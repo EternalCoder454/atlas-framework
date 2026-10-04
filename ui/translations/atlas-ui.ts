@@ -154,20 +154,21 @@
 <context>
     <name>AtlasPasswordField</name>
     <message>
-        <location filename="../AtlasPasswordField.qml" line="84"/>
+        <location filename="../AtlasPasswordField.qml" line="110"/>
         <source>Password</source>
         <extracomment>Spoken name of a password field that has no placeholder or label of its own</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasPasswordField.qml" line="136"/>
+        <location filename="../AtlasPasswordField.qml" line="162"/>
         <source>Hide password</source>
-        <extracomment>Spoken name of the button that shows the text of a password field (when the text is hidden) or hides it again (when it is shown)</extracomment>
+        <extracomment>Spoken name of the eye in a password field while the text is shown: it hides the text again</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasPasswordField.qml" line="136"/>
+        <location filename="../AtlasPasswordField.qml" line="164"/>
         <source>Show password</source>
+        <extracomment>Spoken name of the eye in a password field while the text is hidden: it shows the text</extracomment>
         <translation type="unfinished"></translation>
     </message>
 </context>

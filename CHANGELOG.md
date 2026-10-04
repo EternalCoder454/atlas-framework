@@ -9,7 +9,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 ## 1.4.0 (unreleased)
 
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
-  that hides the text again when focus leaves.
+  that hides the text again when focus leaves, the window goes to the
+  background, or the field is hidden or disabled. `lint-app.sh` points
+  Kirigami.PasswordField and password TextFields to it.
 
 ## 1.3.0
 

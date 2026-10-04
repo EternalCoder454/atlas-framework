@@ -11,7 +11,9 @@
 #   warnings  default controls that Atlas.Ui now has an equivalent for:
 #             TextField, TextArea, ComboBox, CheckBox, RadioButton, Slider,
 #             SpinBox, ToolTip, BusyIndicator; Kirigami.PasswordField and a
-#             TextField with `echoMode: TextInput.Password` (AtlasPasswordField).
+#             TextField or AtlasTextField with a Password `echoMode`
+#             (AtlasPasswordField); an AtlasPasswordField that sets
+#             `echoMode` or `inputMethodHints`.
 # A finding is silenced by `// atlas-lint: allow <reason>` on its line or the
 # line before.
 set -uo pipefail
@@ -28,15 +30,21 @@ function report(n, level, what, why) {
     printf "%s:%d: %s: %s%s\n", file, n, level, what, why
     if (level == "error") errors++; else warnings++
 }
-# Does the item that opens on line n set `echoMode: ... Password`? Counts braces to find its end.
-function isPassword(n,   i, l, o, c, depth) {
+# Does the item that opens on line n set a property matching re itself, not in
+# a child item? Counts braces to find its end.
+function setsOwn(n, re,   i, l, depth) {
     depth = 0
     for (i = n; i <= NR; i++) {
         l = lines[i]
         if (l ~ /^[ \t]*\/\//) continue
-        if (l ~ /echoMode[ \t]*:[ \t]*(TextInput\.)?Password([^A-Za-z0-9_]|$)/) return 1
-        o = gsub(/\{/, "{", l); c = gsub(/\}/, "}", l)
-        depth += o - c
+        sub(/[ \t]\/\/.*$/, "", l)
+        if (i == n) {
+            if (match(l, /\{/) && substr(l, RSTART + 1) ~ re) return 1
+        } else if (depth == 1) {
+            # `Child { echoMode: ... }` on one line is the child's.
+            if ((match(l, /\{/) ? substr(l, 1, RSTART - 1) : l) ~ re) return 1
+        }
+        depth += gsub(/\{/, "{", l) - gsub(/\}/, "}", l)
         if (depth <= 0) return 0
     }
     return 0
@@ -52,6 +60,9 @@ BEGIN {
     n = split(ENVIRON["LINT_LOCALS"], L, "\n"); for (i = 1; i <= n; i++) isLocal[L[i]] = 1
     split("Button ToolButton RoundButton DelayButton Switch", E, " ")
     split("TextField TextArea ComboBox CheckBox RadioButton Slider SpinBox ToolTip BusyIndicator", W, " ")
+    # Any Password echo mode, also in a binding (`show ? TextInput.Normal : TextInput.Password`).
+    PASSWORD = "(^|[^A-Za-z0-9_.])echoMode[ \t]*:.*Password"
+    MASKING = "(^|[^A-Za-z0-9_.])(echoMode|inputMethodHints)[ \t]*:"
     errors = 0; warnings = 0; qq["-"] = 1; kq["-"] = 1; isLocal["-"] = 1
 }
 { lines[NR] = $0 }
@@ -95,9 +106,11 @@ END {
             hit = 0
             for (a in qq) if (uses(s, a, name)) hit = 1
             if (!hit && unq && !(name in isLocal) && uses(s, "", name)) hit = 1
-            if (hit && name == "TextField" && isPassword(nr)) report(nr, "warning", "default TextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
+            if (hit && name == "TextField" && setsOwn(nr, PASSWORD)) report(nr, "warning", "default TextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
             else if (hit) report(nr, "warning", "default " name, ": check whether Atlas.Ui has an equivalent")
         }
+        if (s ~ /(^|[^A-Za-z0-9_])AtlasTextField[ \t]*\{/ && setsOwn(nr, PASSWORD)) report(nr, "warning", "AtlasTextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
+        if (s ~ /(^|[^A-Za-z0-9_])AtlasPasswordField[ \t]*\{/ && setsOwn(nr, MASKING)) report(nr, "warning", "AtlasPasswordField sets echoMode or inputMethodHints", ": it sets both itself; yours can show the password or let the keyboard remember it")
     }
     exit (errors > 0 ? 1 : 0)
 }

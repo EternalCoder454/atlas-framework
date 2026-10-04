@@ -5,8 +5,12 @@ import org.kde.kirigami as Kirigami
 // A rounded single-line password field: AtlasTextField's look, with the text
 // masked and an eye at the trailing end that shows or hides it. The text goes
 // back to hidden when the field loses the keyboard focus (to anything but the
-// eye itself) and when the field is disabled. Copy and cut do nothing while
-// the text is hidden. There is no clear button.
+// eye itself), when its window goes to the background, and when the field is
+// hidden or disabled; the selection goes with it. Copy and cut do nothing
+// while the text is hidden. Unlike AtlasTextField there is no `clearable`.
+// The field sets `echoMode` and `inputMethodHints` itself: setting either can
+// show the password or let the keyboard remember it (lint-app.sh warns).
+// Keep the password itself out of `errorText`, which screen readers speak.
 //
 //   AtlasPasswordField {
 //       placeholderText: qsTr("Password")
@@ -20,16 +24,18 @@ T.TextField {
     property string errorText
 
     // True while the text is shown in clear. `reveal()` and `hide()` change
-    // it; the eye does the same.
-    readonly property bool revealed: internals.shown && control.enabled
+    // it; the eye does the same. Only ever true while the field (or its eye)
+    // has the keyboard focus in the active window, whatever asked for it.
+    readonly property bool revealed: internals.shown && control.enabled && internals.focused && internals.windowActive
 
     // A TextField is no Control, so it has no `mirrored` of its own.
     readonly property bool rtl: LayoutMirroring.enabled
     readonly property bool hasError: errorText.length > 0
 
-    // Shows the text in clear. Does nothing while the field is disabled.
+    // Shows the text in clear while the field (or its eye) has the keyboard
+    // focus. Does nothing when it hasn't, or while the field is disabled.
     function reveal(): void {
-        internals.shown = control.enabled;
+        internals.shown = control.enabled && internals.focused;
     }
 
     // Masks the text again.
@@ -50,11 +56,31 @@ T.TextField {
                 shown = false;
             }
         }
+        // A window in the background (or a locked screen) shows no password.
+        readonly property bool windowActive: control.Window.active
+        onWindowActiveChanged: {
+            if (!windowActive) {
+                shown = false;
+            }
+        }
     }
 
     onEnabledChanged: {
         if (!enabled) {
             internals.shown = false;
+        }
+    }
+    // A page that is only hidden keeps its fields: hide the text too.
+    onVisibleChanged: {
+        if (!visible) {
+            internals.shown = false;
+        }
+    }
+    // A selection made while shown would stay on X11's and Wayland's primary
+    // selection; once masked there is nothing to select anyway.
+    onRevealedChanged: {
+        if (!revealed) {
+            control.deselect();
         }
     }
 
@@ -131,14 +157,16 @@ T.TextField {
         focusPolicy: Qt.TabFocus
         hoverEnabled: true
         Accessible.role: Accessible.Button
-        //: Spoken name of the button that shows the text of a password field
-        //: (when the text is hidden) or hides it again (when it is shown)
-        Accessible.name: control.revealed ? qsTr("Hide password") : qsTr("Show password")
+        Accessible.name: control.revealed
+            //: Spoken name of the eye in a password field while the text is shown: it hides the text again
+            ? qsTr("Hide password")
+            //: Spoken name of the eye in a password field while the text is hidden: it shows the text
+            : qsTr("Show password")
         onClicked: {
-            internals.shown = !internals.shown && control.enabled;
             if (!toggle.activeFocus) {
                 control.forceActiveFocus();
             }
+            internals.shown = !internals.shown && control.enabled && internals.focused;
         }
         background: Rectangle {
             radius: width / 2

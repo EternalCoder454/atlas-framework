@@ -70,9 +70,29 @@ private:
                 if (iface->role() == QAccessible::NoRole) {
                     problems << QStringLiteral("%1: %2 (%3) is reachable with Tab but has no Accessible.role").arg(demo, type, path);
                 }
-                // Qt withholds the name of a password edit on purpose.
-                if (iface->text(QAccessible::Name).trimmed().isEmpty() && !iface->state().passwordEdit) {
+                // A masked field must be a password edit, and nothing a screen
+                // reader can ask for may hold its text. Qt withholds a password
+                // edit's name on purpose (Accessible.name reads empty too).
+                const QVariant echo = item->property("echoMode");
+                const bool masked = echo.isValid() && echo.toInt() != 0; // TextInput.Normal
+                if (!masked && iface->text(QAccessible::Name).trimmed().isEmpty()) {
                     problems << QStringLiteral("%1: %2 (%3) is reachable with Tab but has no Accessible.name").arg(demo, type, path);
+                }
+                if (masked) {
+                    if (!iface->state().passwordEdit) {
+                        problems << QStringLiteral("%1: %2 (%3) masks its text but is not a password edit to screen readers").arg(demo, type, path);
+                    }
+                    const QString secret = item->property("text").toString();
+                    QStringList exposed{iface->text(QAccessible::Name), iface->text(QAccessible::Value), iface->text(QAccessible::Description)};
+                    if (QAccessibleTextInterface *text = iface->textInterface()) {
+                        exposed << text->text(0, text->characterCount());
+                    }
+                    for (const QString &e : std::as_const(exposed)) {
+                        if (!secret.isEmpty() && e.contains(secret)) {
+                            problems << QStringLiteral("%1: %2 (%3) masks its text but gives it to screen readers").arg(demo, type, path);
+                            break;
+                        }
+                    }
                 }
             }
         }
