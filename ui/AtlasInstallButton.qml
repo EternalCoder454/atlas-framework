@@ -4,7 +4,7 @@ import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
 // A pill button for installing an app, with its progress inside the pill:
-// the accent fills it from the left as the download goes. Its `state` says
+// the accent fills it from the left as the download goes. Its `installState` says
 // what it offers and what a press means:
 //
 //   "install"     Install, in the accent colour
@@ -14,7 +14,7 @@ import org.kde.kirigami as Kirigami
 //   "error"       Retry, in the negative colour
 //
 //   AtlasInstallButton {
-//       state: app.state          // "install", "installing", ...
+//       installState: app.state   // "install", "installing", ...
 //       progress: app.progress    // 0 to 1; below 0 when the size is unknown
 //       onClicked: app.act()
 //       onCancelRequested: app.cancel()
@@ -26,9 +26,9 @@ import org.kde.kirigami as Kirigami
 T.AbstractButton {
     id: control
 
-    // `state` is Item's own: set it to one of the five names above; any other
-    // value is drawn as "install".
-    state: "install"
+    // One of the five names above; any other value is drawn as "install".
+    // (Item's own `state` stays free for an app's States.)
+    property string installState: "install"
 
     // 0 to 1 while installing; a negative value means no figure is known.
     property real progress: -1
@@ -41,14 +41,14 @@ T.AbstractButton {
 
     QtObject {
         id: priv
-        readonly property bool installing: control.state === "installing"
+        readonly property bool installing: control.installState === "installing"
         readonly property bool indeterminate: priv.installing && control.progress < 0
         readonly property real fraction: Math.max(0, Math.min(1, control.progress))
-        readonly property bool filled: control.state === "install" || control.state === "update"
-        readonly property bool failed: control.state === "error"
+        readonly property bool filled: control.installState === "install" || control.installState === "update"
+        readonly property bool failed: control.installState === "error"
         readonly property color tint: priv.failed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
         readonly property string label: {
-            switch (control.state) {
+            switch (control.installState) {
             case "installing":
                 return priv.indeterminate ? qsTr("Installing…") : qsTr("%1%").arg(Math.round(priv.fraction * 100));
             case "installed":

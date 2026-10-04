@@ -46,11 +46,11 @@ T.AbstractButton {
 
     readonly property Component defaultAction: Component {
         AtlasInstallButton {
-            state: control.installState
+            installState: control.installState
             progress: control.progress
             Accessible.name: qsTr("%1: %2").arg(control.name).arg(text)
             onClicked: {
-                if (state !== "installing") {
+                if (installState !== "installing") {
                     control.actionClicked();
                 }
             }
