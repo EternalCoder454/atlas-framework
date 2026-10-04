@@ -32,9 +32,13 @@ main() {
         top=$cache/rpmbuild
         rm -rf "$top"
         # Output built with another compiler or Qt can't be trusted: start
-        # over when they change.
+        # over when they change. Also when the version does: the sources
+        # unpack to a directory named after it, and CMake refuses a build
+        # tree made for another source directory.
         toolchain=$(rpm -q gcc-c++ cmake qt6-qtbase-devel qt6-qtdeclarative-devel kf6-kirigami-devel \
             kf6-kwindowsystem-devel kf6-kconfig-devel || true)
+        toolchain="atlas-framework-$version
+$toolchain"
         if [ "$(cat "$cache/toolchain" 2>/dev/null)" != "$toolchain" ]; then
             rm -rf "$cache/cmake"
             printf '%s\n' "$toolchain" >"$cache/toolchain"
