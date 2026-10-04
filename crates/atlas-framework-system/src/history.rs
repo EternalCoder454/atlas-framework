@@ -32,10 +32,17 @@ pub struct Entry {
     pub timestamp: Option<String>,
     /// When this machine first booted it, RFC 3339 UTC.
     pub first_booted: String,
-    /// The line format; `None` for a line from before it existed. Writers
-    /// set [`FORMAT`]. (`version` above is the OS version.)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub format: Option<u32>,
+}
+
+/// What goes on a line: the format, then the entry's own fields. Kept apart
+/// from [`Entry`] so that struct, which callers build with a literal, keeps
+/// its fields. (`version` in the entry is the OS version, so the format has
+/// its own name.)
+#[derive(Serialize)]
+struct Line<'a> {
+    format: u32,
+    #[serde(flatten)]
+    entry: &'a Entry,
 }
 
 /// Read the history at the default path, newest first.
@@ -70,9 +77,11 @@ pub fn append_if_new(path: &Path, entry: &Entry) -> io::Result<bool> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    let mut entry = entry.clone();
-    entry.format.get_or_insert(FORMAT);
-    let line = serde_json::to_string(&entry).map_err(io::Error::other)?;
+    let line = serde_json::to_string(&Line {
+        format: FORMAT,
+        entry,
+    })
+    .map_err(io::Error::other)?;
     crate::fsutil::append_line(path, &line, 0o644)?;
     Ok(true)
 }
@@ -91,7 +100,6 @@ pub fn record_boot(path: &Path, status: &Status, now: &str) -> io::Result<bool> 
         image: booted.image.image.clone(),
         timestamp: booted.timestamp.clone(),
         first_booted: now.to_string(),
-        format: Some(FORMAT),
     };
     append_if_new(path, &entry)
 }
@@ -138,7 +146,6 @@ mod tests {
             image: "x:stable".into(),
             timestamp: None,
             first_booted: "2026-10-01T00:00:00Z".into(),
-            format: None,
         }
     }
 
@@ -166,7 +173,7 @@ mod tests {
         let old: OldEntry = serde_json::from_str(line.trim()).unwrap();
         assert_eq!(old.digest, "sha256:a");
         assert_eq!(old.version.as_deref(), Some("44.1"));
-        assert_eq!(read(&p).unwrap()[0].format, Some(1));
+        assert_eq!(read(&p).unwrap()[0].digest, "sha256:a");
     }
 
     #[test]
@@ -180,8 +187,8 @@ mod tests {
         )
         .unwrap();
         let got = read(&p).unwrap();
-        assert_eq!(got[0].format, Some(9));
-        assert_eq!(got[1].format, None);
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].digest, "sha256:b");
     }
 
     #[test]

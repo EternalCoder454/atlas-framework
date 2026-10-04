@@ -18,7 +18,6 @@ fn history_legacy() {
         digests,
         ["sha256:aaa4", "sha256:aaa3", "sha256:aaa2", "sha256:aaa1"]
     );
-    assert!(h.iter().all(|e| e.format.is_none()));
     let first = &h[3];
     assert_eq!(first.version.as_deref(), Some("44.20260901"));
     assert_eq!(first.image, "ghcr.io/eternalcoder454/atlasos:stable");
@@ -47,7 +46,6 @@ fn history_legacy() {
 fn history_v1() {
     let h = history::read(&fixture("history-v1.jsonl")).unwrap();
     assert_eq!(h.len(), 2);
-    assert!(h.iter().all(|e| e.format == Some(1)));
     assert_eq!(h[1].digest, "sha256:bbb1");
     assert_eq!(h[1].version.as_deref(), Some("44.20261001"));
     assert_eq!(h[1].timestamp.as_deref(), Some("2026-10-01T04:12:09Z"));
@@ -61,16 +59,10 @@ fn history_v1() {
 fn history_future() {
     let h = history::read(&fixture("history-future.jsonl")).unwrap();
     assert_eq!(h.len(), 2);
-    assert_eq!(
-        (h[0].digest.as_str(), h[0].format),
-        ("sha256:ccc2", Some(2))
-    );
+    assert_eq!(h[0].digest, "sha256:ccc2");
     assert_eq!(h[0].version.as_deref(), Some("45.1"));
     assert_eq!(h[0].image, "x:stable");
-    assert_eq!(
-        (h[1].digest.as_str(), h[1].format),
-        ("sha256:ccc1", Some(1))
-    );
+    assert_eq!(h[1].digest, "sha256:ccc1");
 }
 
 #[test]
