@@ -1,6 +1,7 @@
 # Atlas.Ui: the shared look of Atlas apps (pill buttons, grouped sections,
 # status hero, sidebar items, setup steps, live charts, usage and progress
-# bars, tables, search, menus, and Material Symbols icons: see Symbol.qml and
+# bars, tables, search, menus, document tabs, find and status bars, banners,
+# toasts, toolbar buttons, and Material Symbols icons: see Symbol.qml and
 # symbols.h). A QML module installed with Qt's own, like Kirigami: apps
 # `import Atlas.Ui` and link nothing. One library, the plugin, holds the C++
 # types and the QML compiled ahead of time by qmlcachegen.
@@ -45,6 +46,13 @@ qt_add_qml_module(atlasui
         ContextMenuSeparator.qml
         Symbol.qml
         AtlasAboutPage.qml
+        TabBar.qml
+        FindBar.qml
+        StatusBar.qml
+        StatusBarItem.qml
+        InfoBanner.qml
+        Toast.qml
+        ToolbarButton.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp

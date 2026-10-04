@@ -5,6 +5,8 @@ import org.kde.kirigami as Kirigami
 
 // One row of a ContextMenu: an icon, the text, and a shortcut hint on the
 // right. A `destructive` row (Kill, Delete) is drawn in the negative colour.
+// A checked `checkable` row shows a check mark in the icon's place, a row
+// that opens a submenu an arrow at the end. A hidden row takes no room.
 T.MenuItem {
     id: control
 
@@ -14,10 +16,11 @@ T.MenuItem {
     // Shown dimmed on the right ("Del"); it only describes, it doesn't bind.
     property string shortcutText
 
+    readonly property bool showsCheck: checkable && checked
     readonly property color tint: destructive ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.8)
+    implicitHeight: visible ? Math.round(Kirigami.Units.gridUnit * 1.8) : 0
     leftPadding: Kirigami.Units.largeSpacing
     rightPadding: Kirigami.Units.largeSpacing
     hoverEnabled: true
@@ -42,15 +45,15 @@ T.MenuItem {
             // Rows with and without icons line up.
             Kirigami.Icon {
                 anchors.fill: parent
-                visible: control.symbol === 0 && control.icon.name.length > 0
-                source: control.icon.name
+                visible: control.showsCheck || (control.symbol === 0 && source.toString().length > 0)
+                source: control.showsCheck ? "checkmark" : control.icon.name.length > 0 ? control.icon.name : control.icon.source
                 isMask: true
                 color: control.tint
             }
             // Made only when used, so rows without one never load the fonts.
             Loader {
                 anchors.centerIn: parent
-                active: control.symbol !== 0
+                active: control.symbol !== 0 && !control.showsCheck
                 sourceComponent: Symbol {
                     icon: control.symbol
                     // A symbol fills about 5/6 of its square: a little larger
@@ -75,6 +78,14 @@ T.MenuItem {
             font: Kirigami.Theme.smallFont
             color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
             textFormat: Text.PlainText
+        }
+        Kirigami.Icon {
+            visible: control.subMenu !== null
+            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+            Layout.preferredHeight: Layout.preferredWidth
+            source: control.mirrored ? "go-previous" : "go-next"
+            isMask: true
+            color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
         }
     }
 }

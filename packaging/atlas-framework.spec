@@ -9,7 +9,7 @@
 %endif
 
 Name:           atlas-framework
-Version:        1.1.0
+Version:        1.2.0
 Release:        1%{?dist}
 Summary:        The shared base of Atlas apps: Atlas.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -120,6 +120,12 @@ done
 %{_datadir}/applications/net.eterneon.atlas.symbols.desktop
 
 %changelog
+* Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.2.0-1
+- Atlas.Ui: TabBar, FindBar, StatusBar, StatusBarItem, InfoBanner, Toast and
+  ToolbarButton (from Atlas Notepad)
+- ContextMenuItem: a check mark for checked checkable rows, icon.source, a
+  submenu arrow; hidden rows and separators take no room
+
 * Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.1.0-1
 - Atlas.Ui: AtlasApp and AtlasAboutPage
 - atlas-ui ships /usr/share/atlas/crash-reporting.toml (from atlasos-updater):

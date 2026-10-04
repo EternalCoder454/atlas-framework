@@ -1,0 +1,290 @@
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as QQC2
+import QtQuick.Templates as T
+import org.kde.kirigami as Kirigami
+
+// A find (and replace) bar that slides down above the editor. The owner does
+// the searching: it binds `findText` and the three toggles to its search,
+// answers findNext() and the others, and reports `matchCount` and
+// `currentMatch` (1-based, 0 for none) back. `error` replaces the count,
+// for a regular expression that does not compile.
+//
+// Enter finds the next match, Shift+Enter the previous one, Escape closes it
+// and Enter in the replace field replaces. Open it with open(withReplace).
+Item {
+    id: control
+
+    property alias findText: findField.text
+    property alias replaceText: replaceField.text
+    property bool replaceVisible: false
+    property bool matchCase: false
+    property bool wholeWords: false
+    property bool regularExpression: false
+    property int matchCount: 0
+    property int currentMatch: 0
+    property string error
+    property bool opened: false
+
+    signal findNext
+    signal findPrevious
+    signal replaceOne
+    signal replaceAll
+    signal closed
+
+    function open(withReplace) {
+        if (withReplace) {
+            replaceVisible = true;
+        }
+        opened = true;
+        findField.forceActiveFocus();
+        findField.selectAll();
+    }
+    function close() {
+        if (!opened) {
+            return;
+        }
+        opened = false;
+        closed();
+    }
+
+    readonly property string countText: {
+        if (error.length > 0) {
+            return error;
+        }
+        if (findText.length === 0) {
+            return "";
+        }
+        return matchCount === 0 ? qsTr("No results") : qsTr("%1 of %2").arg(currentMatch).arg(matchCount);
+    }
+    readonly property bool failed: error.length > 0 || (findText.length > 0 && matchCount === 0)
+    readonly property real fullHeight: card.implicitHeight + Kirigami.Units.smallSpacing
+
+    implicitWidth: Kirigami.Units.gridUnit * 30
+    implicitHeight: fullHeight
+    height: opened ? fullHeight : 0
+    visible: height > 0
+    clip: true
+    Accessible.role: Accessible.Grouping
+    Accessible.name: qsTr("Find")
+
+    Behavior on height {
+        NumberAnimation {
+            duration: Kirigami.Units.shortDuration
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    // A rounded field like SearchField, without its clear-on-Escape.
+    component Field: T.TextField {
+        id: field
+
+        property string icon
+        property bool invalid: false
+        readonly property bool rtl: LayoutMirroring.enabled
+
+        implicitWidth: Kirigami.Units.gridUnit * 10
+        implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+        leftPadding: Kirigami.Units.largeSpacing + (rtl ? 0 : fieldIcon.visible ? fieldIcon.width + Kirigami.Units.smallSpacing : 0) + Kirigami.Units.smallSpacing
+        rightPadding: Kirigami.Units.largeSpacing + (rtl ? (fieldIcon.visible ? fieldIcon.width + Kirigami.Units.smallSpacing : 0) : 0) + Kirigami.Units.smallSpacing
+        verticalAlignment: TextInput.AlignVCenter
+        placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+        color: Kirigami.Theme.textColor
+        selectionColor: Kirigami.Theme.highlightColor
+        selectedTextColor: Kirigami.Theme.highlightedTextColor
+        font: Kirigami.Theme.defaultFont
+        selectByMouse: true
+        inputMethodHints: Qt.ImhNoPredictiveText
+        hoverEnabled: true
+        Accessible.role: Accessible.EditableText
+        Accessible.name: placeholderText
+
+        background: Rectangle {
+            radius: height / 2
+            color: Qt.alpha(Kirigami.Theme.textColor, field.hovered && !field.activeFocus ? 0.09 : 0.06)
+            border.width: field.activeFocus ? 2 : 1
+            border.color: field.activeFocus ? Qt.alpha(field.invalid ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        }
+
+        // A template field draws no placeholder of its own.
+        Text {
+            x: field.leftPadding
+            anchors.verticalCenter: parent.verticalCenter
+            width: field.availableWidth
+            visible: field.length === 0 && field.preeditText.length === 0
+            text: field.placeholderText
+            font: field.font
+            color: field.placeholderTextColor
+            elide: Text.ElideRight
+            Accessible.ignored: true
+        }
+        Kirigami.Icon {
+            id: fieldIcon
+            visible: field.icon.length > 0
+            x: field.rtl ? field.width - width - Kirigami.Units.largeSpacing : Kirigami.Units.largeSpacing
+            anchors.verticalCenter: parent.verticalCenter
+            width: Kirigami.Units.iconSizes.small
+            height: width
+            source: field.icon
+            isMask: true
+            color: Kirigami.Theme.textColor
+            opacity: 0.55
+        }
+    }
+
+    Rectangle {
+        id: card
+        width: parent.width
+        implicitHeight: column.implicitHeight + Kirigami.Units.smallSpacing * 2
+        radius: 10
+        color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06))
+        border.width: 1
+        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
+
+        ColumnLayout {
+            id: column
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.smallSpacing
+
+            RowLayout {
+                spacing: Kirigami.Units.smallSpacing
+
+                ToolbarButton {
+                    id: chevron
+                    icon.name: control.LayoutMirroring.enabled ? "arrow-left" : "arrow-right"
+                    text: control.replaceVisible ? qsTr("Hide Replace") : qsTr("Show Replace")
+                    // A quarter turn to point down, whichever way it starts.
+                    iconRotation: control.replaceVisible ? (control.LayoutMirroring.enabled ? -90 : 90) : 0
+                    onClicked: {
+                        control.replaceVisible = !control.replaceVisible;
+                        if (control.replaceVisible) {
+                            replaceField.forceActiveFocus();
+                        }
+                    }
+                    Accessible.checkable: true
+                    Accessible.checked: control.replaceVisible
+                }
+                Field {
+                    id: findField
+                    invalid: control.failed
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: Kirigami.Units.gridUnit * 6
+                    icon: "search"
+                    placeholderText: qsTr("Find")
+                    Keys.onReturnPressed: event => (event.modifiers & Qt.ShiftModifier) ? control.findPrevious() : control.findNext()
+                    Keys.onEnterPressed: event => (event.modifiers & Qt.ShiftModifier) ? control.findPrevious() : control.findNext()
+                    Keys.onEscapePressed: control.close()
+                }
+                QQC2.Label {
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 5.5
+                    Layout.maximumWidth: Kirigami.Units.gridUnit * 12
+                    text: control.countText
+                    elide: Text.ElideRight
+                    textFormat: Text.PlainText
+                    font: Kirigami.Theme.smallFont
+                    horizontalAlignment: Text.AlignHCenter
+                    color: control.failed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
+                    opacity: control.failed ? 1 : 0.7
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: text
+                }
+                ToolbarButton {
+                    icon.name: "go-up"
+                    text: qsTr("Previous Match")
+                    shortcutText: qsTr("Shift+Enter")
+                    enabled: control.matchCount > 0
+                    onClicked: control.findPrevious()
+                }
+                ToolbarButton {
+                    icon.name: "go-down"
+                    text: qsTr("Next Match")
+                    shortcutText: qsTr("Enter")
+                    enabled: control.matchCount > 0
+                    onClicked: control.findNext()
+                }
+                ToolbarButton {
+                    text: qsTr("Match Case")
+                    checkable: true
+                    checked: control.matchCase
+                    onToggled: control.matchCase = checked
+                    TypeMark {
+                        text: "Aa"
+                        on: parent.checked
+                    }
+                }
+                ToolbarButton {
+                    text: qsTr("Whole Word")
+                    checkable: true
+                    checked: control.wholeWords
+                    onToggled: control.wholeWords = checked
+                    TypeMark {
+                        text: "ab"
+                        font.underline: true
+                        on: parent.checked
+                    }
+                }
+                ToolbarButton {
+                    text: qsTr("Regular Expression")
+                    checkable: true
+                    checked: control.regularExpression
+                    onToggled: control.regularExpression = checked
+                    TypeMark {
+                        text: ".*"
+                        on: parent.checked
+                    }
+                }
+                ToolbarButton {
+                    icon.name: "window-close"
+                    text: qsTr("Close")
+                    shortcutText: qsTr("Esc")
+                    onClicked: control.close()
+                }
+            }
+
+            RowLayout {
+                visible: control.replaceVisible
+                spacing: Kirigami.Units.smallSpacing
+
+                // Lines the field up under the find field.
+                Item {
+                    Layout.preferredWidth: chevron.width
+                }
+                Field {
+                    id: replaceField
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: Kirigami.Units.gridUnit * 6
+                    icon: "edit-find-replace"
+                    placeholderText: qsTr("Replace")
+                    Keys.onReturnPressed: control.replaceOne()
+                    Keys.onEnterPressed: control.replaceOne()
+                    Keys.onEscapePressed: control.close()
+                }
+                SecondaryButton {
+                    text: qsTr("Replace")
+                    focusPolicy: Qt.NoFocus
+                    enabled: control.matchCount > 0
+                    onClicked: control.replaceOne()
+                }
+                SecondaryButton {
+                    text: qsTr("Replace All")
+                    focusPolicy: Qt.NoFocus
+                    enabled: control.matchCount > 0
+                    onClicked: control.replaceAll()
+                }
+            }
+        }
+    }
+
+    // The letters drawn on a toggle.
+    component TypeMark: Text {
+        property bool on: false
+        anchors.centerIn: parent
+        font.family: Kirigami.Theme.defaultFont.family
+        font.pointSize: Kirigami.Theme.defaultFont.pointSize
+        font.weight: Font.Medium
+        textFormat: Text.PlainText
+        color: Kirigami.Theme.textColor
+        Accessible.ignored: true
+    }
+}

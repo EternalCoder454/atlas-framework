@@ -308,4 +308,154 @@ AtlasPage {
             }
         }
     }
+
+    Section {
+        title: qsTr("Editor components")
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.margins: Kirigami.Units.largeSpacing
+            spacing: Kirigami.Units.largeSpacing
+
+            TabBar {
+                id: tabs
+                Layout.fillWidth: true
+                currentIndex: 0
+                model: ListModel {
+                    id: tabModel
+                    ListElement { title: "Untitled"; modified: false; toolTip: "" }
+                    ListElement { title: "notes.txt"; modified: true; toolTip: "/home/user/notes.txt" }
+                    ListElement { title: "A document with a rather long file name.md"; modified: false; toolTip: "" }
+                    ListElement { title: "todo.md"; modified: false; toolTip: "" }
+                }
+                onActivated: index => currentIndex = index
+                onCloseRequested: index => {
+                    tabModel.remove(index);
+                    currentIndex = Math.min(currentIndex, tabModel.count - 1);
+                }
+                onNewRequested: {
+                    tabModel.append({ title: qsTr("Untitled"), modified: false, toolTip: "" });
+                    currentIndex = tabModel.count - 1;
+                }
+                onMoved: (from, to) => {
+                    tabModel.move(from, to, 1);
+                    currentIndex = to;
+                }
+
+                ToolbarButton {
+                    icon.name: "application-menu"
+                    text: qsTr("Menu")
+                }
+            }
+
+            FindBar {
+                Layout.fillWidth: true
+                opened: true
+                replaceVisible: true
+                findText: "the"
+                replaceText: "THE"
+                matchCount: 12
+                currentMatch: 3
+                onClosed: opened = false
+            }
+
+            InfoBanner {
+                Layout.fillWidth: true
+                type: "info"
+                text: qsTr("This file was changed by another program.")
+                closable: true
+                actions: [
+                    QQC2.Action { text: qsTr("Reload") },
+                    QQC2.Action { text: qsTr("Keep Mine") }
+                ]
+            }
+            InfoBanner {
+                Layout.fillWidth: true
+                type: "warning"
+                text: qsTr("This file is large. Editing may be slow, and a very long line of text shows how the message wraps when it has to.")
+                actions: [QQC2.Action { text: qsTr("Open Read-Only") }]
+            }
+            InfoBanner {
+                Layout.fillWidth: true
+                type: "error"
+                text: qsTr("Could not save the file: permission denied.")
+                closable: true
+                actions: [
+                    QQC2.Action { text: qsTr("Save As") },
+                    QQC2.Action { text: qsTr("Retry") }
+                ]
+            }
+
+            RowLayout {
+                spacing: Kirigami.Units.smallSpacing
+                ToolbarButton {
+                    icon.name: "format-text-bold"
+                    text: qsTr("Bold")
+                    shortcutText: "Ctrl+B"
+                    checkable: true
+                    checked: true
+                }
+                ToolbarButton {
+                    icon.name: "format-text-italic"
+                    text: qsTr("Italic")
+                    shortcutText: "Ctrl+I"
+                    checkable: true
+                }
+                ToolbarButton {
+                    icon.name: "format-text-underline"
+                    text: qsTr("Underline")
+                    shortcutText: "Ctrl+U"
+                    checkable: true
+                }
+                ToolbarButton {
+                    icon.name: "format-list-unordered"
+                    text: qsTr("Bulleted List")
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+                SecondaryButton {
+                    text: qsTr("Show Toast")
+                    onClicked: toast.show(qsTr("Copied to clipboard"))
+                }
+            }
+
+            StatusBar {
+                Layout.fillWidth: true
+                StatusBarItem {
+                    text: qsTr("Ln 12, Col 34")
+                    toolTip: qsTr("Line and column")
+                }
+                StatusBarItem {
+                    text: qsTr("128 words")
+                }
+                StatusBarItem {
+                    text: "100%"
+                    clickable: true
+                    toolTip: qsTr("Zoom")
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+                StatusBarItem {
+                    text: "CRLF"
+                    clickable: true
+                    toolTip: qsTr("Line ending")
+                    menu: QQC2.Menu {
+                        QQC2.MenuItem { text: "CRLF" }
+                        QQC2.MenuItem { text: "LF" }
+                    }
+                }
+                StatusBarItem {
+                    text: "UTF-8"
+                    toolTip: qsTr("Encoding")
+                }
+            }
+        }
+    }
+
+    Toast {
+        id: toast
+        parent: page
+    }
 }

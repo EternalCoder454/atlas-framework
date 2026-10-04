@@ -105,7 +105,13 @@ control takes `iconName`.
 | `LiveChart`, `UsageBar`, `MiniBars` | A live chart, a stacked usage bar, a row of small bars |
 | `DataTable` | A sortable table in the Section style that only makes the rows on screen |
 | `SearchField` | Rounded search field with a debounced `query` |
-| `ContextMenu`, `ContextMenuItem`, `ContextMenuSeparator` | Right-click menu |
+| `ContextMenu`, `ContextMenuItem`, `ContextMenuSeparator` | Right-click menu; a row can be checkable (a check mark), have a Material Symbol or an icon, open a submenu (an arrow) |
+| `TabBar` | Document tabs: a pill per tab with an unsaved dot and a close button, "+" for a new tab, drag to reorder. The app owns the `model` (`title`, `modified`, `toolTip`) and answers its signals. Tabs take no keyboard focus: the app gives Ctrl+Tab and Ctrl+W. Same name as QtQuick.Controls' TabBar, so import Controls qualified (`as QQC2`) (since 1.2.0) |
+| `FindBar` | Find and replace bar with match case, whole words and regex toggles; the app searches and reports `matchCount`, `currentMatch` or `error` (since 1.2.0) |
+| `StatusBar`, `StatusBarItem` | A slim bottom bar of cells (Ln/Col, encoding, zoom); a cell can be clickable or open a `menu` (since 1.2.0) |
+| `InfoBanner` | Inline info, warning or error banner with action buttons; slides with `shown`; its close button sets `shown` to false and emits `closed()` (since 1.2.0) |
+| `Toast` | A short message at the bottom centre that goes by itself: `show("Copied")` (since 1.2.0) |
+| `ToolbarButton` | Small icon button for a formatting toolbar that never takes the editor's focus; can be checkable (since 1.2.0) |
 | `Symbol`, `Symbols` | A Material Symbol, and the singleton of every symbol's value |
 | `Appearance` | Singleton: `transparency`, `blurAvailable`, `effective`, `refresh()`, `applyBlur()` |
 | `AccessibilityState` | Singleton: whether a screen reader is active |

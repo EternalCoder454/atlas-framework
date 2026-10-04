@@ -1,0 +1,260 @@
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as QQC2
+import QtQuick.Templates as T
+import org.kde.kirigami as Kirigami
+
+// A strip of document tabs in the Atlas look, after Windows 11 Notepad: each
+// tab is a rounded pill like a SidebarItem, with an accent tint for the
+// current one, a dot when it holds unsaved changes and a close button on
+// hover. A "+" after the last tab asks for a new one. The strip scrolls
+// sideways with the wheel when the tabs overflow, and keeps the current tab
+// in view.
+//
+// The bar owns no data. `model` (a ListModel or a QAbstractItemModel) has the
+// roles `title`, `modified` and `toolTip`; the app changes `currentIndex` and
+// the model in answer to the signals, including moved(), which reports a tab
+// dragged to a new place. Items put inside the bar sit at its far end.
+Item {
+    id: control
+
+    property var model
+    property int currentIndex: -1
+    default property alias trailing: trailingRow.data
+    // Widest a tab grows before its title is elided.
+    readonly property real maxTabWidth: Kirigami.Units.gridUnit * 14
+
+    signal activated(int index)
+    signal closeRequested(int index)
+    signal newRequested
+    signal moved(int from, int to)
+
+    implicitWidth: Kirigami.Units.gridUnit * 30
+    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9) + Kirigami.Units.smallSpacing * 2
+    Accessible.role: Accessible.PageTabList
+    Accessible.name: qsTr("Tabs")
+
+    function ensureCurrentVisible() {
+        if (control.currentIndex >= 0 && control.currentIndex < list.count) {
+            list.positionViewAtIndex(control.currentIndex, ListView.Contain);
+        }
+    }
+
+    // Double-click on the empty strip opens a new tab.
+    MouseArea {
+        anchors.fill: parent
+        onDoubleClicked: control.newRequested()
+    }
+
+    RowLayout {
+        anchors.fill: parent
+        anchors.leftMargin: Kirigami.Units.smallSpacing
+        anchors.rightMargin: Kirigami.Units.smallSpacing
+        spacing: Kirigami.Units.smallSpacing
+
+        ListView {
+            id: list
+
+            // Where a dragged tab would land, or -1.
+            property int dragFrom: -1
+            property int dropAt: -1
+
+            Layout.fillHeight: true
+            Layout.minimumWidth: 0
+            Layout.preferredWidth: contentWidth
+            orientation: ListView.Horizontal
+            spacing: 2
+            clip: true
+            // Dragging belongs to reordering; the wheel scrolls.
+            interactive: false
+            boundsBehavior: Flickable.StopAtBounds
+            model: control.model
+            currentIndex: control.currentIndex
+            onCountChanged: Qt.callLater(control.ensureCurrentVisible)
+            onWidthChanged: Qt.callLater(control.ensureCurrentVisible)
+
+            WheelHandler {
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: event => {
+                    const d = event.angleDelta.x !== 0 ? event.angleDelta.x : event.angleDelta.y;
+                    const max = Math.max(0, list.contentWidth - list.width);
+                    list.contentX = Math.max(0, Math.min(max, list.contentX - d * (list.mirrored ? -1 : 1)));
+                }
+            }
+
+            readonly property bool mirrored: LayoutMirroring.enabled
+
+            delegate: T.AbstractButton {
+                id: tab
+
+                required property int index
+                required property var model
+                readonly property bool current: index === control.currentIndex
+                readonly property string title: model.title ?? ""
+                readonly property bool modified: model.modified ?? false
+                readonly property string toolTipText: (model.toolTip ?? "").length > 0 ? model.toolTip : title
+                readonly property bool showClose: hoverTracker.hovered || current
+                property real dragX: 0
+
+                implicitWidth: Math.min(control.maxTabWidth, contentItem.implicitWidth + leftPadding + rightPadding)
+                implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+                height: list.height
+                leftPadding: Kirigami.Units.largeSpacing
+                rightPadding: Kirigami.Units.smallSpacing
+                hoverEnabled: true
+                focusPolicy: Qt.NoFocus
+                z: dragHandler.active ? 2 : 0
+                opacity: dragHandler.active ? 0.85 : 1
+                transform: Translate {
+                    x: tab.dragX
+                }
+
+                Accessible.role: Accessible.PageTab
+                Accessible.name: tab.modified ? qsTr("%1, modified").arg(tab.title) : tab.title
+                Accessible.selectable: true
+                Accessible.selected: tab.current
+                Accessible.onPressAction: control.activated(tab.index)
+
+                onPressed: {
+                    if (!tab.current) {
+                        control.activated(tab.index);
+                    }
+                }
+
+                QQC2.ToolTip.visible: tab.hovered && tab.toolTipText.length > 0 && !dragHandler.active && !closeButton.hovered
+                QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                QQC2.ToolTip.text: tab.toolTipText
+
+                HoverHandler {
+                    id: hoverTracker
+                }
+
+                // Middle click closes.
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.MiddleButton
+                    onClicked: control.closeRequested(tab.index)
+                }
+
+                DragHandler {
+                    id: dragHandler
+                    target: null
+                    xAxis.enabled: true
+                    yAxis.enabled: false
+                    acceptedButtons: Qt.LeftButton
+                    onActiveChanged: {
+                        if (active) {
+                            list.dragFrom = tab.index;
+                            list.dropAt = tab.index;
+                        } else {
+                            const from = list.dragFrom;
+                            const to = list.dropAt;
+                            list.dragFrom = -1;
+                            list.dropAt = -1;
+                            tab.dragX = 0;
+                            if (from >= 0 && to >= 0 && from !== to) {
+                                control.moved(from, to);
+                            }
+                        }
+                    }
+                    onTranslationChanged: {
+                        if (!active) {
+                            return;
+                        }
+                        tab.dragX = translation.x;
+                        const at = list.indexAt(tab.x + tab.width / 2 + translation.x, list.height / 2);
+                        if (at >= 0) {
+                            list.dropAt = at;
+                        } else {
+                            // Past either end: the first or last tab.
+                            const centre = tab.x + tab.width / 2 + translation.x;
+                            list.dropAt = centre < 0 ? (list.mirrored ? list.count - 1 : 0) : (list.mirrored ? 0 : list.count - 1);
+                        }
+                    }
+                }
+
+                background: Rectangle {
+                    radius: 8
+                    color: tab.current ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18) : Qt.alpha(Kirigami.Theme.textColor, tab.down ? 0.1 : tab.hovered ? 0.06 : 0)
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Kirigami.Units.shortDuration
+                        }
+                    }
+
+                    // Where a dragged tab would land: a line on that side.
+                    Rectangle {
+                        visible: list.dropAt === tab.index && list.dragFrom !== tab.index && list.dragFrom >= 0
+                        readonly property bool before: list.dropAt < list.dragFrom
+                        x: (before !== list.mirrored) ? -2 : parent.width + 1
+                        y: 4
+                        width: 2
+                        height: parent.height - 8
+                        radius: 1
+                        color: Kirigami.Theme.highlightColor
+                    }
+                }
+
+                contentItem: RowLayout {
+                    spacing: Kirigami.Units.smallSpacing
+                    Rectangle {
+                        visible: tab.modified
+                        Layout.preferredWidth: 7
+                        Layout.preferredHeight: 7
+                        radius: 3.5
+                        color: Kirigami.Theme.textColor
+                        opacity: 0.6
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: tab.title
+                        font.family: Kirigami.Theme.defaultFont.family
+                        font.pointSize: Kirigami.Theme.defaultFont.pointSize
+                        font.weight: tab.current ? Font.Medium : Font.Normal
+                        textFormat: Text.PlainText
+                        elide: Text.ElideRight
+                        color: Kirigami.Theme.textColor
+                        opacity: tab.current ? 1 : 0.8
+                    }
+                    T.AbstractButton {
+                        id: closeButton
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+                        Layout.preferredHeight: Layout.preferredWidth
+                        // Always takes its room, so a tab keeps its width on hover.
+                        opacity: tab.showClose ? 1 : 0
+                        enabled: tab.showClose
+                        hoverEnabled: true
+                        focusPolicy: Qt.NoFocus
+                        Accessible.name: qsTr("Close Tab")
+                        onClicked: control.closeRequested(tab.index)
+                        background: Rectangle {
+                            radius: width / 2
+                            color: Qt.alpha(Kirigami.Theme.textColor, closeButton.down ? 0.16 : closeButton.hovered ? 0.1 : 0)
+                        }
+                        contentItem: Kirigami.Icon {
+                            source: "window-close"
+                            isMask: true
+                            color: Kirigami.Theme.textColor
+                            opacity: 0.7
+                        }
+                    }
+                }
+            }
+        }
+
+        ToolbarButton {
+            icon.name: "list-add"
+            text: qsTr("New Tab")
+            onClicked: control.newRequested()
+        }
+
+        Item {
+            Layout.fillWidth: true
+        }
+
+        RowLayout {
+            id: trailingRow
+            spacing: Kirigami.Units.smallSpacing
+        }
+    }
+}
