@@ -422,14 +422,39 @@ in `Cargo.toml` move together. To release:
 1. Write the `## X.Y.Z` section of `CHANGELOG.md` (for apps: what they can
    now use and what they should change) and the spec's `%changelog`.
 2. Raise the three versions, commit, and tag `vX.Y.Z`.
-3. Push the tag. `release.yml` checks the versions match the tag, publishes
-   the GitHub release with the CHANGELOG section, and opens a pull request
-   in every app in `tools/apps.txt` that moves its crates to the tag (this
-   needs the `APP_UPDATE_TOKEN` secret: a fine-grained token with Contents
-   and Pull requests on the app repositories).
+3. Push main, wait for CI, then push the tag. `release.yml` checks that the
+   tagged commit is on main and passed CI, that the versions match the tag
+   and that the CHANGELOG section is finished (not "unreleased"); publishes
+   the GitHub release with that section; and opens a pull request in every
+   app in `tools/apps.txt` that moves its crates to the tag.
 
-Each app reviews its pull request, and raises its `atlas-ui >=` and `ui:`
-when it adopts something new.
+The app pull requests need a fine-grained token with Contents and Pull
+requests (read and write) on the app repositories. It is a secret of the
+`release` environment only (Settings, Environments), never of the
+repository:
+
+- `release` has a required reviewer and a deployment rule for `v*` tags, and
+  a ruleset protects `v*` tags. The checks in `release.yml` are part of the
+  tagged commit, so they stop mistakes, not someone who can push: approve
+  only a tag whose commit is on main.
+- The token never meets an app's code. An app checkout is not trusted
+  (cargo runs what its `.cargo/config.toml` names), so
+  `tools/open-update-pr.sh` works in two jobs: `lock`, with no secret,
+  clones the app and runs `cargo update` for the atlas-framework crates and
+  hands back only the `Cargo.lock` files; `publish`, with the token, runs
+  nothing from the app, builds the commit from git objects and accepts only
+  lock files in cargo's own layout whose changes a framework update can
+  make (atlas-framework at the tagged commit, crates.io packages the app or
+  the framework already uses). Anything else, and nothing is pushed.
+- If any app's lock job fails, no pull request is opened (a failed one can
+  mean another job forged its output). Fix the cause and "Re-run all jobs":
+  the release step finds the release made, and an existing pull request is
+  left alone.
+- A pin the script cannot move (a `[dependencies.atlas-framework-x]` table)
+  is a warning in the run's log: move it by hand.
+
+Each app reviews its pull request, builds with `--locked`, and raises its
+`atlas-ui >=` and `ui:` when it adopts something new.
 
 ## How a change reaches the apps
 
