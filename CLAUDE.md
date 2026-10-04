@@ -32,8 +32,20 @@ Atlas.Ui, and the compatibility rules. Change it together with the code.
 
 | Task | Command (inside the container, in /src) |
 |---|---|
-| Build | `cmake -S . -B build -G Ninja && cmake --build build` |
+| Build | `cmake -S . -B build -G Ninja -DATLAS_UI_TESTS=ON && cmake --build build` |
 | Crates | `cargo test --workspace --all-features && cargo clippy --workspace --all-features --all-targets` (QMAKE=/usr/bin/qmake6) |
 | qmllint | `cmake --build build --target all_qmllint` |
+| Visual tests | `ctest --test-dir build --output-on-failure` (light, dark, accent, opaque) |
+| Accept new pictures | `ATLAS_UPDATE_GOLDENS=1 ctest --test-dir build`, then look at every changed PNG before committing |
+| API check | `tools/check-api.sh build`; after adding API, `tools/update-api.sh build` and commit `api/` |
+| Semver (crates) | `cargo semver-checks --workspace --baseline-rev <last v* tag>` |
+| App checks | `tools/lint-app.sh <app dir>` and `tools/check-app-names.sh <app dir>` |
+| Performance | `perf/measure.sh build` (budgets in `perf/budget.json`) |
 | Gallery | `xvfb-run -a build/atlas-symbols` |
 | RPMs | `packaging/build-rpm.sh /src/out` (in fedora:44; `ATLAS_BUILD_CACHE=<dir>` outside the tree for fast rebuilds) |
+
+CI (`.github/workflows/ci.yml`) runs all of these. A release is a `vX.Y.Z`
+tag: the version in `CMakeLists.txt`, `Cargo.toml` and the spec must match it,
+and `CHANGELOG.md` needs its section (`.github/workflows/release.yml`).
+New controls are named `Atlas<Name>` and get a `ui/gallery/demos/<Type>Demo.qml`, goldens (tests/README.md) and
+an API line.
