@@ -143,7 +143,20 @@ jobs:
           if ! jq -e 'all(test("^[A-Za-z0-9_-][A-Za-z0-9._-]*$"))' <<<"$apps" >/dev/null; then
             echo "::error::tools/apps.txt has a name that is not a repository name"; exit 1
           fi
-          echo "apps=$apps" >> "$GITHUB_OUTPUT"
+          # A repository with no commits yet (a new app) has nothing to update:
+          # leave it out, or its failed lock job would hold back every app's
+          # pull request. One that can't be reached at all still fails.
+          kept='[]'
+          for app in $(jq -r '.[]' <<<"$apps"); do
+            rc=0
+            GIT_TERMINAL_PROMPT=0 timeout 60 git ls-remote --exit-code "https://github.com/EternalCoder454/$app.git" HEAD >/dev/null || rc=$?
+            case $rc in
+              0) kept=$(jq -c --arg a "$app" '. + [$a]' <<<"$kept") ;;
+              2) echo "::notice::$app has no commits yet: no pull request for it" ;;
+              *) echo "::error::could not reach EternalCoder454/$app (git ls-remote exit $rc)"; exit 1 ;;
+            esac
+          done
+          echo "apps=$kept" >> "$GITHUB_OUTPUT"
 
   update-locks:
     needs: [release, apps]
