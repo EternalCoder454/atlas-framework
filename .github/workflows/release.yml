@@ -1,0 +1,93 @@
+name: Release
+
+# Pushing a tag vX.Y.Z publishes a release of atlas-framework and opens a pull
+# request in every Atlas app (tools/apps.txt) that moves it to the new tag.
+#
+# The pull requests need a token that can push branches and open pull
+# requests in the app repositories: a fine-grained personal access token with
+# Contents and Pull requests (read and write) on those repositories, saved as
+# the secret APP_UPDATE_TOKEN in this repository. Without it the release is
+# still made and the update step says it was skipped.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: The tag matches every version in the tree
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          v=${TAG#v}
+          if ! [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$TAG is not vX.Y.Z"; exit 1
+          fi
+          cmake=$(sed -nE 's/^project\(atlas-framework VERSION ([0-9.]+).*/\1/p' CMakeLists.txt)
+          spec=$(sed -nE 's/^Version:[[:space:]]+([0-9.]+)$/\1/p' packaging/atlas-framework.spec)
+          cargo=$(sed -nE '/^\[workspace.package\]/,/^\[/ s/^version = "([0-9.]+)"$/\1/p' Cargo.toml)
+          bad=0
+          for pair in "CMakeLists.txt:$cmake" "atlas-framework.spec:$spec" "Cargo.toml:$cargo"; do
+            if [ "${pair#*:}" != "$v" ]; then
+              echo "::error::${pair%%:*} says ${pair#*:}, the tag says $v"; bad=1
+            fi
+          done
+          [ $bad = 0 ] || exit 1
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Release notes from CHANGELOG.md
+        env:
+          V: ${{ steps.version.outputs.version }}
+        run: |
+          # The section under "## X.Y.Z", up to the next "## ".
+          awk -v v="$V" '$0 ~ "^## " v "( |$)" {on=1; next} on && /^## / {exit} on' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md has no section for $V"; exit 1
+          fi
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --verify-tag --title "atlas-framework $TAG" --notes-file notes.md
+
+  update-apps:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Open a pull request in every app
+        env:
+          GH_TOKEN: ${{ secrets.APP_UPDATE_TOKEN }}
+          V: ${{ needs.release.outputs.version }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::APP_UPDATE_TOKEN is not set: no update pull requests opened"
+            exit 0
+          fi
+          tag="v$V"
+          branch="atlas-framework-$tag"
+          failed=0
+          while read -r app; do
+            case $app in ''|'#'*) continue ;; esac
+            echo "::group::$app"
+            if ! tools/open-update-pr.sh "EternalCoder454/$app" "$tag" "$branch" "$RUNNER_TEMP/$app"; then
+              echo "::warning::$app: no pull request opened (see the log)"
+              failed=1
+            fi
+            echo "::endgroup::"
+          done < tools/apps.txt
+          exit $failed
