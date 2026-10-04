@@ -33,3 +33,12 @@ its goldens, nothing else. A window demo (`AtlasWindowDemo`) has an
   also shows the OS name and Qt version).
 - `visual/schemes/` holds the Breeze colour schemes the variants start from, so
   the pictures do not follow the distribution's copy.
+
+## Accessibility and translation tests
+
+- `a11y/`: loads every demo and fails on any visible, enabled item that Tab
+  reaches without an `Accessible.role` or `Accessible.name`, naming the demo,
+  the item type and its path. A new control with a demo is covered at once.
+- `i18n/`: with `LANGUAGE=de` and a throwaway `atlas-ui_de.qm` (built from
+  `i18n/atlas-ui_de.ts`), a default `SearchField` must show the German string.
+  Needs qt6-linguist; skipped without it.

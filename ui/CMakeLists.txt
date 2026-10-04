@@ -18,6 +18,8 @@ qt_add_qml_module(atlasui
     PLUGIN_TARGET atlasui
     # The plugin is the module: nothing else registers its C++ types.
     NO_PLUGIN_OPTIONAL
+    NO_GENERATE_PLUGIN_SOURCE
+    CLASS_NAME AtlasUiPlugin
     QML_FILES
         AtlasWindow.qml
         AtlasButton.qml
@@ -67,7 +69,7 @@ qt_add_qml_module(atlasui
         appearance.h appearance.cpp
         atlasapp.h atlasapp.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
-        translations.cpp
+        translations.cpp atlasuiplugin.cpp
 )
 # Development builds run from the source tree find the symbol fonts here when
 # the atlas-symbols-fonts package isn't installed. Not in packaged builds
@@ -93,23 +95,29 @@ endif()
 target_link_libraries(atlasui PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Qml
     KF6::WindowSystem KF6::ConfigCore)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS LinguistTools)
-file(GLOB atlasui_language_ts CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/translations/atlas-ui_*.ts)
-# `cmake --build <dir> --target atlas-ui_update_translations` rewrites the .ts
-# files from the sources; commit the result.
-qt_add_lupdate(SOURCE_TARGETS atlasui
-    TS_FILES translations/atlas-ui.ts ${atlasui_language_ts}
-    LUPDATE_TARGET atlas-ui_update_translations
-    NO_GLOBAL_TARGET)
-if(atlasui_language_ts)
-    qt_add_lrelease(TS_FILES ${atlasui_language_ts}
-        QM_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/translations
-        QM_FILES_OUTPUT_VARIABLE atlasui_qm_files
-        LRELEASE_TARGET atlas-ui_release_translations
+# lupdate and lrelease come with qt6-linguist. Without them the module still
+# builds, without translations (the strings show in English).
+find_package(Qt6 6.11 QUIET COMPONENTS LinguistTools)
+if(Qt6LinguistTools_FOUND)
+    file(GLOB atlasui_language_ts CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/translations/atlas-ui_*.ts)
+    # `cmake --build <dir> --target atlas-ui_update_translations` rewrites the
+    # .ts files from the sources; commit the result.
+    qt_add_lupdate(SOURCE_TARGETS atlasui
+        TS_FILES translations/atlas-ui.ts ${atlasui_language_ts}
+        LUPDATE_TARGET atlas-ui_update_translations
         NO_GLOBAL_TARGET)
-    add_dependencies(atlasui atlas-ui_release_translations)
-    install(FILES ${atlasui_qm_files}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/atlas-ui/translations)
+    if(atlasui_language_ts)
+        qt_add_lrelease(TS_FILES ${atlasui_language_ts}
+            QM_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/translations
+            QM_FILES_OUTPUT_VARIABLE atlasui_qm_files
+            LRELEASE_TARGET atlas-ui_release_translations
+            NO_GLOBAL_TARGET)
+        add_dependencies(atlasui atlas-ui_release_translations)
+        install(FILES ${atlasui_qm_files}
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/atlas-ui/translations)
+    endif()
+else()
+    message(STATUS "Qt6 LinguistTools not found (qt6-linguist): building Atlas.Ui without translations")
 endif()
 
 qt_query_qml_module(atlasui

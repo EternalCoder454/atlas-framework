@@ -20,8 +20,14 @@ namespace {
 
 Q_LOGGING_CATEGORY(lcTranslations, "atlas.ui.translations")
 
+bool installed = false;
+
 void installTranslations()
 {
+    if (installed || !QCoreApplication::instance()) {
+        return;
+    }
+    installed = true;
     QStringList dirs;
 #ifdef ATLAS_UI_TRANSLATIONS_BUILD_DIR
     // Development builds only: a packaged Atlas.Ui is loaded into every Atlas
@@ -49,9 +55,8 @@ void installTranslations()
     delete translator;
 }
 
-// Runs when the application object exists: at its construction if this
-// library was linked in, or at once if a QML import loads it later. Done on
-// the application's thread, which owns the translator.
+// Runs when the application object exists. Done on the application's thread,
+// which owns the translator.
 void startup()
 {
     QCoreApplication *app = QCoreApplication::instance();
@@ -61,5 +66,12 @@ void startup()
 }
 
 } // namespace
+
+// Also called by the QML plugin as the module loads, which is before the
+// startup function runs when a QML import loads this library (atlasuiplugin.cpp).
+void atlasUiInstallTranslations()
+{
+    installTranslations();
+}
 
 Q_COREAPP_STARTUP_FUNCTION(startup)
