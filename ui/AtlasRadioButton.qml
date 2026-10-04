@@ -3,7 +3,9 @@ import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
 // A round radio button with a label. Radio buttons with the same parent form
-// a group: checking one unchecks the others.
+// a group: checking one unchecks the others. The arrow keys move the choice
+// to the next or previous button of the group (wrapping round), as in any
+// radio group.
 //
 //   Column {
 //       AtlasRadioButton { text: qsTr("Light"); checked: true }
@@ -23,6 +25,36 @@ T.RadioButton {
 
     Accessible.name: text
     Accessible.role: Accessible.RadioButton
+
+    QtObject {
+        id: internals
+        // Check the next (1) or previous (-1) enabled sibling in the group.
+        function step(dir: int): void {
+            if (!control.parent) {
+                return;
+            }
+            const group = [];
+            for (const item of control.parent.children) {
+                if (item === control || (item.autoExclusive === true && item.checkable === true && item.visible && item.enabled)) {
+                    group.push(item);
+                }
+            }
+            const at = group.indexOf(control);
+            if (group.length < 2 || at < 0) {
+                return;
+            }
+            const target = group[(at + dir + group.length) % group.length];
+            target.forceActiveFocus(Qt.TabFocusReason);
+            if (!target.checked) {
+                target.toggle();
+            }
+        }
+    }
+
+    Keys.onDownPressed: internals.step(1)
+    Keys.onUpPressed: internals.step(-1)
+    Keys.onRightPressed: internals.step(control.mirrored ? -1 : 1)
+    Keys.onLeftPressed: internals.step(control.mirrored ? 1 : -1)
 
     indicator: Rectangle {
         implicitWidth: Math.round(Kirigami.Units.gridUnit * 1.2)

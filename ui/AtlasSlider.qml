@@ -4,7 +4,8 @@ import org.kde.kirigami as Kirigami
 
 // A slider: a thin pill track filled with the accent up to a white knob.
 // `from`, `to`, `value`, `stepSize` and `onMoved` work as in any Slider; it
-// can be vertical.
+// can be vertical. Beside the arrow keys, Page Up and Page Down move a tenth
+// of the range, Home and End go to the ends.
 //
 //   AtlasSlider { from: 0; to: 100; value: 40; onMoved: volume = value }
 T.Slider {
@@ -19,6 +20,33 @@ T.Slider {
     Accessible.role: Accessible.Slider
     Accessible.name: qsTr("Slider")
     Accessible.description: String(Math.round(control.value * 100) / 100)
+
+    Keys.onPressed: event => {
+        const range = control.to - control.from;
+        let target = NaN;
+        switch (event.key) {
+        case Qt.Key_PageUp:
+            target = control.value + range / 10;
+            break;
+        case Qt.Key_PageDown:
+            target = control.value - range / 10;
+            break;
+        case Qt.Key_Home:
+            target = control.from;
+            break;
+        case Qt.Key_End:
+            target = control.to;
+            break;
+        default:
+            return;
+        }
+        event.accepted = true;
+        const before = control.value;
+        control.value = Math.max(Math.min(control.from, control.to), Math.min(Math.max(control.from, control.to), target));
+        if (control.value !== before) {
+            control.moved();
+        }
+    }
 
     background: Rectangle {
         readonly property real thickness: 4

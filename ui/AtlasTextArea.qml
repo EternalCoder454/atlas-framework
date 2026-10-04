@@ -4,7 +4,8 @@ import org.kde.kirigami as Kirigami
 
 // A rounded multi-line text field. `placeholderText` shows while it is empty.
 // It wraps long lines; put it in a ScrollView or give it a height for long
-// text.
+// text. Tab and Shift+Tab move focus on, as in a form (a plain TextArea
+// would type a tab character).
 //
 //   AtlasTextArea {
 //       placeholderText: qsTr("Notes")
@@ -29,6 +30,21 @@ T.TextArea {
 
     Accessible.role: Accessible.EditableText
     Accessible.name: placeholderText
+
+    Keys.onTabPressed: event => {
+        const next = nextItemInFocusChain(true);
+        if (next && next !== control) {
+            next.forceActiveFocus(Qt.TabFocusReason);
+        }
+        event.accepted = true;
+    }
+    Keys.onBacktabPressed: event => {
+        const prev = nextItemInFocusChain(false);
+        if (prev && prev !== control) {
+            prev.forceActiveFocus(Qt.BacktabFocusReason);
+        }
+        event.accepted = true;
+    }
 
     background: Rectangle {
         radius: 10

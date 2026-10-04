@@ -30,6 +30,13 @@ T.ComboBox {
     Accessible.name: control.displayText.length > 0 ? control.displayText : control.placeholderText
     Accessible.description: control.placeholderText
 
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Down && (event.modifiers & Qt.AltModifier) && !popup.visible) {
+            popup.open();
+            event.accepted = true;
+        }
+    }
+
     delegate: T.ItemDelegate {
         id: row
 

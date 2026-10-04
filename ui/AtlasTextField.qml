@@ -27,7 +27,7 @@ T.TextField {
         id: internals
         readonly property real fieldHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
         readonly property real messageHeight: message.visible ? message.implicitHeight + Kirigami.Units.smallSpacing : 0
-        readonly property bool showClear: control.clearable && control.length > 0 && control.enabled && !control.readOnly
+        readonly property bool showClear: control.clearable && control.text.length > 0 && control.enabled && !control.readOnly
         readonly property real clearSpace: showClear ? clearButton.width + Kirigami.Units.smallSpacing : 0
     }
 
