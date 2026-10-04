@@ -9,11 +9,18 @@
 #       the atlas-framework crates; writes the base commit and the changed
 #       Cargo.lock files to <out dir>. Nothing else from that job is used.
 #
-#   tools/open-update-pr.sh publish <owner/repo> <vX.Y.Z> <branch> <in dir>
+#   FRAMEWORK_COMMIT=<sha> tools/open-update-pr.sh publish <owner/repo> <vX.Y.Z> <branch> <in dir>
 #       With GH_TOKEN. Never checks the app out and runs nothing from it:
 #       builds the commit from git objects (the Cargo.toml rewrite done here
 #       again, on the blobs; the lock files from <in dir>, checked), pushes
-#       the branch and opens the pull request.
+#       the branch and opens the pull request. FRAMEWORK_COMMIT is the commit
+#       the tag names; run it from a checkout of that commit, whose Cargo.lock
+#       says which crates the framework can bring in.
+#
+# A lock job could be made to forge another app's lock files, so publish
+# accepts only changes a framework update can make: atlas-framework crates at
+# exactly FRAMEWORK_COMMIT, and crates.io packages the app already had or the
+# framework's own Cargo.lock names. Anything else, and nothing is pushed.
 #
 # Every `atlas-framework-*` git dependency on this repository, pinned by rev,
 # tag or branch, becomes `tag = "<vX.Y.Z>"`. Nothing else changes: the app's
@@ -40,12 +47,14 @@ if [ "$mode" = publish ]; then
 fi
 url="https://github.com/$repo.git"
 dir=$(realpath -m -- "$dir")
+# Manifests larger than this are skipped (and a person moves them by hand).
+max_manifest=1048576
 
 # Moves the pins in the Cargo.toml files named, in place. Only inline tables
 # naming this repository; the pin key may come before or after `git`.
 move_pins() {
     # shellcheck disable=SC2016 # perl, not shell, expands these
-    TAG=$tag perl -0pi -e '
+    TAG=$tag timeout 60 perl -0pi -e '
         s#(atlas-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?"[^}\n]*?)\b(?:rev|tag|branch)\s*=\s*"[^"]*"#$1tag = "$ENV{TAG}"#g;
         s#(atlas-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?)\b(?:rev|tag|branch)\s*=\s*"[^"]*"([^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?")#$1tag = "$ENV{TAG}"$2#g;
     ' -- "$@"
@@ -74,7 +83,14 @@ if [ "$mode" = lock ]; then
     git clone --quiet --depth 1 "$url" "$work/app"
     cd "$work/app"
     base=$(git rev-parse HEAD)
-    mapfile -t manifests < <(blobs_named Cargo.toml HEAD)
+    manifests=()
+    while IFS= read -r m; do
+        if [ "$(stat -c %s "./$m")" -gt "$max_manifest" ]; then
+            echo "::warning::$repo: $m is too large to move, do it by hand"
+            continue
+        fi
+        manifests+=("$m")
+    done < <(blobs_named Cargo.toml HEAD)
     mapfile -t locks < <(blobs_named Cargo.lock HEAD)
     rm -rf "$dir"
     mkdir -p "$dir/files"
@@ -105,6 +121,17 @@ if [ -n "$(gh pr list --repo "$repo" --head "$branch" --state all --json number 
     echo "$repo: a pull request for $branch already exists"
     exit 0
 fi
+fw_commit=${FRAMEWORK_COMMIT:-}
+[[ $fw_commit =~ ^[0-9a-f]{40}$ ]] || { echo "FRAMEWORK_COMMIT is not a commit id: $fw_commit" >&2; exit 2; }
+fw_lock=$(dirname -- "$(realpath -- "$0")")/../Cargo.lock
+[ -f "$fw_lock" ] || { echo "no atlas-framework Cargo.lock at $fw_lock" >&2; exit 2; }
+# The lock job's output: base, locks and files/, nothing else, no symlinks.
+if [ "$(find "$dir" -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort | tr '\n' ' ')" != "base files locks " ] ||
+    [ -L "$dir/base" ] || [ ! -f "$dir/base" ] || [ -L "$dir/locks" ] || [ ! -f "$dir/locks" ] ||
+    [ -L "$dir/files" ] || [ ! -d "$dir/files" ]; then
+    echo "::error::$repo: the lock job's output is not what it writes: nothing pushed" >&2
+    exit 1
+fi
 base=$(head -n1 "$dir/base")
 [[ $base =~ ^[0-9a-f]{40}$ ]] || { echo "$repo: bad base commit from the lock job" >&2; exit 1; }
 
@@ -127,6 +154,10 @@ changed=0
 
 # Cargo.toml: rewritten here from the blobs.
 while IFS= read -r m; do
+    if [ "$(git cat-file -s "$base:$m")" -gt "$max_manifest" ]; then
+        echo "::warning::$repo: ${m//[[:cntrl:]]/?} is too large to move, do it by hand"
+        continue
+    fi
     git cat-file blob "$base:$m" >"$tmp/manifest"
     cp "$tmp/manifest" "$tmp/manifest.old"
     move_pins "$tmp/manifest"
@@ -155,9 +186,16 @@ lock_packages() {
          END { if (n != "") print n, v, src }' "$1" | tr -d '"' | sort
 }
 
-# Cargo.lock: from the lock job, only over lock files the base has, and only
-# what looks like one. Anything else means the lock job went wrong (or was
-# made to): nothing is pushed.
+# Names of the packages the framework can bring in.
+fw_names=$(lock_packages "$fw_lock" | cut -d' ' -f1 | sort -u)
+fw_source="git+https://github.com/EternalCoder454/atlas-framework?tag=$tag#$fw_commit"
+fw_source_git="git+https://github.com/EternalCoder454/atlas-framework.git?tag=$tag#$fw_commit"
+crates_io="registry+https://github.com/rust-lang/crates.io-index"
+
+# Cargo.lock: from the lock job, only over lock files the base has, only what
+# looks like one, and only changes a framework update can make (see the top).
+# Anything else means the lock job went wrong (or was made to): nothing is
+# pushed.
 mapfile -t base_locks < <(blobs_named Cargo.lock "$base")
 refused=0
 others=()
@@ -174,14 +212,30 @@ while IFS= read -r lock; do
         refused=1
         continue
     fi
+    git cat-file blob "$base:$lock" >"$tmp/lock.old"
+    base_names=$(lock_packages "$tmp/lock.old" | cut -d' ' -f1 | sort -u)
+    bad=0
+    while read -r name version source rest; do
+        shown="${lock//[^A-Za-z0-9 ._\/-]/?}: ${name//[^A-Za-z0-9._-]/?} ${version//[^A-Za-z0-9.+-]/?}"
+        if [[ $name == atlas-framework-* ]]; then
+            if [ -z "$rest" ] && { [ "$source" = "$fw_source" ] || [ "$source" = "$fw_source_git" ]; }; then
+                continue
+            fi
+        elif [ "$source" = "$crates_io" ] && [ -z "$rest" ] &&
+            grep -qxF -- "$name" <<<"$base_names"$'\n'"$fw_names"; then
+            # For the reviewer: anything else the update changed.
+            others+=("$shown")
+            continue
+        fi
+        echo "::error::$repo: the lock job's $shown is not from crates.io or atlas-framework $tag (${source//[^A-Za-z0-9._:\/+#?=-]/?})"
+        bad=1
+    done < <(comm -13 <(lock_packages "$tmp/lock.old") <(lock_packages "$file"))
+    if [ "$bad" = 1 ]; then
+        refused=1
+        continue
+    fi
     git update-index --cacheinfo "100644,$(git hash-object -w "$file"),$lock"
     changed=1
-    # For the reviewer: anything else the lock job changed.
-    git cat-file blob "$base:$lock" >"$tmp/lock.old"
-    while IFS= read -r p; do
-        others+=("$lock: ${p//[^A-Za-z0-9 ._:\/+#?=-]/?}")
-    done < <(comm -13 <(lock_packages "$tmp/lock.old") <(lock_packages "$file") |
-        grep -vE "^atlas-framework-[a-z0-9-]+ [^ ]+ git\+https://github\.com/EternalCoder454/atlas-framework(\.git)?\?tag=${tag//./\\.}#[0-9a-f]{40}\$" || true)
 done <"$dir/locks"
 if [ "$refused" = 1 ]; then
     echo "$repo: nothing pushed" >&2
@@ -197,13 +251,23 @@ commit=$(GIT_AUTHOR_NAME="atlas-framework release" GIT_AUTHOR_EMAIL=atlas@eterne
     GIT_COMMITTER_NAME="atlas-framework release" GIT_COMMITTER_EMAIL=atlas@eterneon.net \
     git commit-tree "$tree" -p "$base" -m "Move atlas-framework to $tag")
 # Forced: no pull request uses the branch (checked above), so it can only be
-# left over from a run that failed before opening one.
+# left over from a run that failed before opening one. A branch of that name
+# that this script did not make is someone's work: left alone.
+old=$(git ls-remote "$url" "refs/heads/$branch" | cut -f1)
+if [ -n "$old" ]; then
+    git fetch --quiet --depth 1 "$url" "$old"
+    if [ "$(git log -1 --format='%an <%ae>' "$old")" != "atlas-framework release <atlas@eterneon.net>" ]; then
+        echo "::error::$repo already has a branch $branch that the release did not make: nothing pushed"
+        exit 1
+    fi
+fi
 git push --quiet --force "$url" "$commit:refs/heads/$branch"
+cd /
 
 if [ ${#others[@]} -eq 0 ]; then
     other_text="Other packages in Cargo.lock: none changed."
 else
-    other_text="Other packages added or changed in Cargo.lock (check that the new atlas-framework needs them):"
+    other_text="Other crates.io packages added or changed in Cargo.lock (check that the new atlas-framework needs them):"
     for p in "${others[@]}"; do other_text+=$'\n'"- \`$p\`"; done
 fi
 gh pr create --repo "$repo" --head "$branch" \

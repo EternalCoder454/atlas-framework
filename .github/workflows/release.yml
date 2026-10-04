@@ -12,6 +12,9 @@ name: Release
 # as the secret APP_UPDATE_TOKEN of the environment "release" (Settings,
 # Environments), with a required reviewer and a deployment rule for v* tags,
 # and protect v* tags with a ruleset, so a pushed tag alone cannot reach it.
+# The checks below are part of the tagged commit, so they stop mistakes, not
+# someone who can push: the reviewer approves only a tag whose commit is on
+# main (the deployment rule matches the tag's name, not its commit).
 # Without the secret the release is still made and the update step says it
 # was skipped.
 
@@ -138,6 +141,7 @@ jobs:
     needs: [release, apps]
     if: needs.apps.outputs.apps != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     strategy:
@@ -157,7 +161,7 @@ jobs:
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: lock-${{ matrix.app }}
+          name: lock-${{ matrix.app }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/lock
           if-no-files-found: error
           include-hidden-files: true
@@ -165,8 +169,11 @@ jobs:
 
   update-apps:
     needs: [release, apps, update-locks]
-    if: always() && needs.release.result == 'success' && needs.apps.result == 'success' && needs.apps.outputs.apps != '[]'
+    # Only when every lock job passed: a failed one can mean another job
+    # uploaded its artifact first.
+    if: needs.apps.outputs.apps != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: release
     permissions:
       contents: read
@@ -180,10 +187,8 @@ jobs:
           persist-credentials: false
 
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        id: lock
-        continue-on-error: true
         with:
-          name: lock-${{ matrix.app }}
+          name: lock-${{ matrix.app }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/lock
 
       - name: Open the pull request
@@ -191,14 +196,10 @@ jobs:
           GH_TOKEN: ${{ secrets.APP_UPDATE_TOKEN }}
           APP: ${{ matrix.app }}
           V: ${{ needs.release.outputs.version }}
-          LOCK: ${{ steps.lock.outcome }}
+          FRAMEWORK_COMMIT: ${{ github.sha }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
             echo "::notice::APP_UPDATE_TOKEN is not set: no pull request opened for $APP"
             exit 0
-          fi
-          if [ "$LOCK" != success ]; then
-            echo "::error::$APP: the lock job left nothing (see update-locks): no pull request opened"
-            exit 1
           fi
           tools/open-update-pr.sh publish "EternalCoder454/$APP" "v$V" "atlas-framework-v$V" "$RUNNER_TEMP/lock"
