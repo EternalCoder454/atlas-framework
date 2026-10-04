@@ -15,7 +15,7 @@ import org.kde.kirigami as Kirigami
 //   }
 //
 // Where the pictures may come from: only file:, qrc:, image: and relative
-// urls load. A source with any other scheme (http:, ftp:, data:, ...) is
+// urls load ("//host/x" is not relative: refused). A source with any other scheme (http:, ftp:, data:, ...) is
 // refused; the slide shows the broken-image state and the refusal is logged
 // once. An app that shows remote screenshots either downloads them itself and
 // passes the local files, or sets `allowRemote: true` for a trusted source;
@@ -43,8 +43,14 @@ T.Control {
         readonly property int decodeHeight: Math.min(1440, Math.ceil(Math.max(1, view.height) * 2 / 256) * 256)
         // Whether `source` may be loaded: no scheme (a relative url), or a local
         // one, or https: when allowed. The empty source is fine (nothing loads).
+        // "//host/x" names a host without a scheme, and Qt drops leading
+        // spaces before reading a scheme: both refused, as is any control
+        // character.
         function allowed(source) {
             const text = String(source ?? "");
+            if (/^\s/.test(text) || /[\x00-\x1f\x7f]/.test(text) || /^[\/\\]{2}/.test(text)) {
+                return false;
+            }
             const m = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(text);
             if (!m) {
                 return true;
@@ -54,7 +60,7 @@ T.Control {
         }
         function schemeOf(source) {
             const m = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(String(source ?? ""));
-            return m ? m[1].toLowerCase() : "";
+            return m ? m[1].toLowerCase() + ":" : "unusual";
         }
         function step(delta) {
             control.currentIndex = Math.max(0, Math.min(control.count - 1, control.currentIndex + delta));
@@ -168,7 +174,7 @@ T.Control {
                         // Said once per refused source, with the scheme only (the rest may hold a token).
                         function logRefused() {
                             if (slide.refused) {
-                                console.warn("AtlasScreenshotCarousel: refused screenshot " + (slide.index + 1) + ": the " + priv.schemeOf(slide.rawSource) + ": scheme is not allowed (see allowRemote)");
+                                console.warn("AtlasScreenshotCarousel: refused screenshot " + (slide.index + 1) + ": " + priv.schemeOf(slide.rawSource) + " sources are not allowed (see allowRemote)");
                             }
                         }
                         onRefusedChanged: slide.logRefused()
