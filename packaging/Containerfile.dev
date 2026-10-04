@@ -11,4 +11,9 @@ RUN dnf -y -q --setopt=install_weak_deps=False install \
         kf6-qqc2-desktop-style plasma-breeze breeze-icon-theme google-noto-sans-fonts \
         cargo corrosion clippy rustfmt flatpak-devel glib2-devel \
         xorg-x11-server-Xvfb xdotool xwd ImageMagick dbus-daemon \
+        jq procps-ng diffutils which openssl-devel \
     && dnf clean all
+# cargo-semver-checks (CI: the crates' public items against the last release).
+# Installed outside /root so any user running the container can call it.
+ENV CARGO_HOME=/opt/cargo PATH=/opt/cargo/bin:$PATH
+RUN cargo install cargo-semver-checks --locked && rm -rf /opt/cargo/registry /opt/cargo/git

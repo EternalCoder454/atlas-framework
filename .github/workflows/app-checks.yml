@@ -1,0 +1,39 @@
+name: Atlas app checks
+
+# Reusable: an Atlas app calls it to enforce the Atlas.Ui rules on its own QML.
+# See tools/README.md for the six lines an app needs.
+on:
+  workflow_call:
+    inputs:
+      framework-ref:
+        description: Branch, tag or commit of atlas-framework whose tools to use
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the app
+        uses: actions/checkout@v5
+
+      - name: Fetch the framework's tools
+        env:
+          FRAMEWORK_REF: ${{ inputs.framework-ref }}
+        run: |
+          # Outside the workspace, so the framework's own QML is not mistaken for the app's.
+          dir="$RUNNER_TEMP/atlas-framework"
+          git init -q "$dir"
+          git -C "$dir" fetch -q --depth 1 https://github.com/EternalCoder454/atlas-framework "$FRAMEWORK_REF"
+          git -C "$dir" checkout -q FETCH_HEAD
+          echo "ATLAS_FRAMEWORK=$dir" >> "$GITHUB_ENV"
+
+      - name: Design rule 6 (no default QQC2 or Kirigami buttons)
+        run: '"$ATLAS_FRAMEWORK/tools/lint-app.sh" .'
+
+      - name: No QML file named like an Atlas.Ui type
+        run: '"$ATLAS_FRAMEWORK/tools/check-app-names.sh" .'

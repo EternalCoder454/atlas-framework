@@ -1,0 +1,330 @@
+AccessibilityState.property active: bool [readonly]
+AccessibilityState.type
+Appearance.method applyBlur(QWindow* window): void
+Appearance.method refresh(): void
+Appearance.property blurAvailable: bool [readonly]
+Appearance.property effective: bool [readonly]
+Appearance.property transparency: bool
+Appearance.type
+AtlasAboutPage.method ensureVisible(QVariant item): QVariant
+AtlasAboutPage.property content: QQmlListProperty<QObject> [readonly]
+AtlasAboutPage.property description: QString
+AtlasAboutPage.property extraContent: QQmlListProperty<QObject> [readonly]
+AtlasAboutPage.property license: QString
+AtlasAboutPage.property maxContentWidth: double [readonly]
+AtlasAboutPage.property title: QString
+AtlasAboutPage.type
+AtlasApp.property id: QString [readonly]
+AtlasApp.property issuesUrl: QString [readonly]
+AtlasApp.property name: QString [readonly]
+AtlasApp.property osHomeUrl: QString [readonly]
+AtlasApp.property osLogo: QString [readonly]
+AtlasApp.property osName: QString [readonly]
+AtlasApp.property osPrettyName: QString [readonly]
+AtlasApp.property osVersion: QString [readonly]
+AtlasApp.property qtVersion: QString [readonly]
+AtlasApp.property repo: QString [readonly]
+AtlasApp.property sourceUrl: QString [readonly]
+AtlasApp.property version: QString [readonly]
+AtlasApp.type
+AtlasButton.property accent: QColor [readonly]
+AtlasButton.property prominent: bool
+AtlasButton.property symbol: int
+AtlasButton.property textTint: QColor [readonly]
+AtlasButton.type
+AtlasFocusRing.property gap: double
+AtlasFocusRing.property shown: bool
+AtlasFocusRing.type
+AtlasPage.method ensureVisible(QVariant item): QVariant
+AtlasPage.property content: QQmlListProperty<QObject> [readonly]
+AtlasPage.property maxContentWidth: double [readonly]
+AtlasPage.property title: QString
+AtlasPage.type
+AtlasProgressBar.property indeterminate: bool
+AtlasProgressBar.property value: double
+AtlasProgressBar.type
+AtlasSwitch.type
+AtlasWindow.method sidebarColor(QColor base): QColor
+AtlasWindow.method syncBlur(): QVariant
+AtlasWindow.method tinted(QColor base, double factor): QColor
+AtlasWindow.property blurAlpha: double
+AtlasWindow.property blurred: bool [readonly]
+AtlasWindow.property sidebarFactor: double
+AtlasWindow.type
+ConfirmDialog.property acceptText: QString
+ConfirmDialog.property body: QQmlListProperty<QObject> [readonly]
+ConfirmDialog.property closeOnAccept: bool
+ConfirmDialog.property focusReject: bool
+ConfirmDialog.property rejectText: QString
+ConfirmDialog.property showReject: bool
+ConfirmDialog.property text: QString
+ConfirmDialog.property title: QString
+ConfirmDialog.signal accepted()
+ConfirmDialog.type
+ContextMenu.type
+ContextMenuItem.property destructive: bool
+ContextMenuItem.property shortcutText: QString
+ContextMenuItem.property showsCheck: bool [readonly]
+ContextMenuItem.property symbol: int
+ContextMenuItem.property tint: QColor [readonly]
+ContextMenuItem.type
+ContextMenuSeparator.type
+DataTable.method openMenuAtCurrent(): QVariant
+DataTable.method sortBy(QVariant i): QVariant
+DataTable.property cellPadding: double [readonly]
+DataTable.property collapsedText: QString [readonly]
+DataTable.property columns: QVariant
+DataTable.property count: int [readonly]
+DataTable.property currentIndex: int
+DataTable.property depthRole: QString
+DataTable.property expandableRole: QString
+DataTable.property expandedRole: QString
+DataTable.property expandedText: QString [readonly]
+DataTable.property mirrored: bool [readonly]
+DataTable.property model: QVariant
+DataTable.property padding: double [readonly]
+DataTable.property placeholderText: QString
+DataTable.property pointerInside: bool [readonly]
+DataTable.property rowHeight: double [readonly]
+DataTable.property sortOrder: int
+DataTable.property sortRole: QString
+DataTable.property widths: QVariant [readonly]
+DataTable.signal activated(int row)
+DataTable.signal contextMenuRequested(int row, double x, double y)
+DataTable.signal deleteRequested(int row)
+DataTable.signal headerMenuRequested(double x, double y)
+DataTable.signal toggleRequested(int row)
+DataTable.type
+FindBar.method close(): QVariant
+FindBar.method open(QVariant withReplace): QVariant
+FindBar.property countText: QString [readonly]
+FindBar.property currentMatch: int
+FindBar.property error: QString
+FindBar.property failed: bool [readonly]
+FindBar.property findText: QString
+FindBar.property fullHeight: double [readonly]
+FindBar.property matchCase: bool
+FindBar.property matchCount: int
+FindBar.property opened: bool
+FindBar.property regularExpression: bool
+FindBar.property replaceText: QString
+FindBar.property replaceVisible: bool
+FindBar.property wholeWords: bool
+FindBar.signal closed()
+FindBar.signal findNext()
+FindBar.signal findPrevious()
+FindBar.signal replaceAll()
+FindBar.signal replaceOne()
+FindBar.type
+InfoBanner.property actions: QQmlListProperty<QObject> [readonly]
+InfoBanner.property closable: bool
+InfoBanner.property iconName: QString [readonly]
+InfoBanner.property shown: bool
+InfoBanner.property text: QString
+InfoBanner.property tint: QColor [readonly]
+InfoBanner.property type: QString
+InfoBanner.signal closed()
+InfoBanner.type
+LiveChart.property captions: bool
+LiveChart.property color2: QColor
+LiveChart.property color: QColor
+LiveChart.property font: QFont
+LiveChart.property label: QString
+LiveChart.property maximum: double
+LiveChart.property minimumScale: double
+LiveChart.property scaleTop: double [readonly]
+LiveChart.property spanText: QString
+LiveChart.property textColor: QColor
+LiveChart.property topText: QString
+LiveChart.property valueText: QString
+LiveChart.property values2: QList<double>
+LiveChart.property values: QList<double>
+LiveChart.type
+LiveChartItem.property captions: bool
+LiveChartItem.property color2: QColor
+LiveChartItem.property color: QColor
+LiveChartItem.property font: QFont
+LiveChartItem.property label: QString
+LiveChartItem.property maximum: double
+LiveChartItem.property minimumScale: double
+LiveChartItem.property scaleTop: double [readonly]
+LiveChartItem.property spanText: QString
+LiveChartItem.property textColor: QColor
+LiveChartItem.property topText: QString
+LiveChartItem.property valueText: QString
+LiveChartItem.property values2: QList<double>
+LiveChartItem.property values: QList<double>
+LiveChartItem.type
+MenuButton.property accent: QColor [readonly]
+MenuButton.property items: QQmlListProperty<QObject> [readonly]
+MenuButton.property prominent: bool
+MenuButton.property symbol: int
+MenuButton.property textTint: QColor [readonly]
+MenuButton.type
+MiniBars.property barHeight: double
+MiniBars.property barWidth: double
+MiniBars.property color: QColor
+MiniBars.property maximum: double
+MiniBars.property nameOf: QVariant
+MiniBars.property numbered: bool
+MiniBars.property textOf: QVariant
+MiniBars.property values: QList<double>
+MiniBars.type
+NotesText.property accent: QColor [readonly]
+NotesText.property body: QString [readonly]
+NotesText.property css: QString [readonly]
+NotesText.property darkTheme: bool [readonly]
+NotesText.property html: QString
+NotesText.property plain: QString
+NotesText.signal linkClicked(QString link)
+NotesText.type
+PrimaryButton.property accent: QColor [readonly]
+PrimaryButton.property prominent: bool
+PrimaryButton.property symbol: int
+PrimaryButton.property textTint: QColor [readonly]
+PrimaryButton.type
+RepaintArea.property content: QVariantList
+RepaintArea.type
+SearchField.property delay: int
+SearchField.property query: QString
+SearchField.property rtl: bool [readonly]
+SearchField.type
+SecondaryButton.property accent: QColor [readonly]
+SecondaryButton.property prominent: bool
+SecondaryButton.property symbol: int
+SecondaryButton.property textTint: QColor [readonly]
+SecondaryButton.type
+Section.property content: QQmlListProperty<QObject> [readonly]
+Section.property foldable: bool
+Section.property folded: bool
+Section.property footer: QString
+Section.property title: QString
+Section.signal foldRequested(bool fold)
+Section.type
+SectionRow.method activate(QVariant event): QVariant
+SectionRow.method ensureVisible(): QVariant
+SectionRow.method step(QVariant forward, QVariant event): QVariant
+SectionRow.property atlasRow: bool [readonly]
+SectionRow.property byMouse: bool
+SectionRow.property checkmark: bool
+SectionRow.property chevron: bool
+SectionRow.property clickable: bool
+SectionRow.property disclosure: bool
+SectionRow.property expanded: bool
+SectionRow.property iconName: QString
+SectionRow.property isFirst: bool [readonly]
+SectionRow.property mirrored: bool [readonly]
+SectionRow.property radio: bool
+SectionRow.property showSwitch: bool
+SectionRow.property subtitle: QString
+SectionRow.property switchChecked: bool
+SectionRow.property title: QString
+SectionRow.property trailing: QQmlListProperty<QObject> [readonly]
+SectionRow.property value: QString
+SectionRow.signal clicked()
+SectionRow.signal switchToggled(bool checked)
+SectionRow.type
+SidebarGroup.property compact: bool
+SidebarGroup.property expanded: bool
+SidebarGroup.property holdsSelection: bool [readonly]
+SidebarGroup.property iconName: QString
+SidebarGroup.property items: QQmlListProperty<QObject> [readonly]
+SidebarGroup.property text: QString
+SidebarGroup.property tintIcon: bool
+SidebarGroup.property value: QString
+SidebarGroup.signal activated()
+SidebarGroup.signal toggled()
+SidebarGroup.type
+SidebarItem.property badge: QString
+SidebarItem.property badgeText: QString
+SidebarItem.property compact: bool
+SidebarItem.property disclosure: bool
+SidebarItem.property expanded: bool
+SidebarItem.property selected: bool
+SidebarItem.property sub: bool
+SidebarItem.property symbol: int
+SidebarItem.property tintIcon: bool
+SidebarItem.property value: QString
+SidebarItem.type
+StatusBar.method refresh(): QVariant
+StatusBar.property content: QQmlListProperty<QObject> [readonly]
+StatusBar.type
+StatusBarItem.property clickable: bool
+StatusBarItem.property leadingSeparator: bool
+StatusBarItem.property menu: QObject*
+StatusBarItem.property toolTip: QString
+StatusBarItem.type
+StatusHero.property actions: QQmlListProperty<QObject> [readonly]
+StatusHero.property badgeUnits: double
+StatusHero.property barText: QString
+StatusHero.property busy: bool
+StatusHero.property cornerBadgeIcon: QString
+StatusHero.property headline: QString
+StatusHero.property iconIsMask: bool
+StatusHero.property iconName: QString
+StatusHero.property progress: double
+StatusHero.property ringWidth: double
+StatusHero.property showBar: bool
+StatusHero.property showTintCircle: bool
+StatusHero.property sideBySide: bool [readonly]
+StatusHero.property subtitle: QString
+StatusHero.property tint: QColor
+StatusHero.property wideWidth: double [readonly]
+StatusHero.type
+StepItem.property clickable: bool
+StepItem.property current: bool
+StepItem.property done: bool
+StepItem.property number: int
+StepItem.type
+Symbol.enum Style: Outlined = 0
+Symbol.enum Style: Rounded = 1
+Symbol.enum Style: Sharp = 2
+Symbol.property codepoint: int [readonly]
+Symbol.property color: QColor
+Symbol.property fill: double
+Symbol.property filled: bool
+Symbol.property grade: int
+Symbol.property icon: int
+Symbol.property name: QString
+Symbol.property size: double
+Symbol.property style: int
+Symbol.property weight: int
+Symbol.type
+Symbols.method codepoint(QString name): int
+Symbols.method family(int style): QString
+Symbols.method key(int codepoint): QString
+Symbols.method name(int codepoint): QString
+Symbols.method names(): QStringList
+Symbols.type
+TabBar.method ensureCurrentVisible(): QVariant
+TabBar.property currentIndex: int
+TabBar.property maxTabWidth: double [readonly]
+TabBar.property model: QVariant
+TabBar.property trailing: QQmlListProperty<QObject> [readonly]
+TabBar.signal activated(int index)
+TabBar.signal closeRequested(int index)
+TabBar.signal moved(int from, int to)
+TabBar.signal newRequested()
+TabBar.type
+TextButton.type
+Toast.method hide(): QVariant
+Toast.method show(QVariant message): QVariant
+Toast.property interval: int
+Toast.property text: QString
+Toast.type
+ToolbarButton.property iconRotation: double
+ToolbarButton.property shortcutText: QString
+ToolbarButton.type
+UsageBar.method colorAt(QVariant i): QVariant
+UsageBar.property barHeight: double
+UsageBar.property colors: QList<QColor>
+UsageBar.property labels: QStringList
+UsageBar.property legend: bool
+UsageBar.property mirrored: bool [readonly]
+UsageBar.property sum: double [readonly]
+UsageBar.property texts: QStringList
+UsageBar.property total: double
+UsageBar.property trackColor: QColor [readonly]
+UsageBar.property values: QList<double>
+UsageBar.property whole: double [readonly]
+UsageBar.type
