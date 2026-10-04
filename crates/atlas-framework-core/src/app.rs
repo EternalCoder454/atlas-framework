@@ -49,7 +49,10 @@ impl AppInfo {
     /// characters, so the result is always a safe file name.
     pub fn short_name(&self) -> String {
         let last = self.id.rsplit('.').next().unwrap_or_default();
-        let last = last.strip_prefix("atlas-").unwrap_or(last);
+        let last = match last.get(..6) {
+            Some(p) if p.eq_ignore_ascii_case("atlas-") => &last[6..],
+            _ => last,
+        };
         let safe: String = last
             .chars()
             .take(58)
@@ -114,6 +117,7 @@ mod tests {
         );
         assert_eq!(app("", "").short_name(), "atlas-app");
         assert_eq!(app("x.atlas-notes", "").short_name(), "atlas-notes");
+        assert_eq!(app("x.Atlas-Notes", "").short_name(), "atlas-notes");
         assert_eq!(app(&"y".repeat(300), "").short_name().len(), 64);
     }
 

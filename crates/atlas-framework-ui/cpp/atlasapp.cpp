@@ -53,11 +53,9 @@ void raise(QQmlApplicationEngine &engine)
 {
     for (QObject *root : engine.rootObjects()) {
         if (auto *window = qobject_cast<QQuickWindow *>(root)) {
-            if (window->visibility() == QWindow::Minimized) {
-                window->showNormal();
-            } else {
-                window->show();
-            }
+            // Un-minimise, keeping maximised or full-screen.
+            window->setWindowStates(window->windowStates() & ~Qt::WindowMinimized);
+            window->show();
             window->raise();
             // KDBusService put the launcher's activation token in the
             // environment: use it, or Wayland won't let the window come up.

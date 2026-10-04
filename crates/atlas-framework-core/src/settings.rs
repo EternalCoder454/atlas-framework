@@ -78,28 +78,49 @@ impl Settings {
             ));
         }
         let target = resolve_link(&self.path)?;
+        // Nothing to change: no lock, no directory, so this works where the
+        // app can read but not write.
+        if !change(&target, group, key, value)?.1 {
+            return Ok(());
+        }
         if let Some(dir) = target.parent() {
             fs::create_dir_all(dir)?;
         }
         let _thread = WRITERS.lock().unwrap_or_else(|e| e.into_inner());
         let _file = lock(&target)?;
-        let (text, meta) = match fs::read_to_string(&target) {
-            Ok(t) => (t, Some(fs::metadata(&target)?)),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => (String::new(), None),
-            Err(e) => return Err(e),
-        };
-        if immutable(&text, group, key) {
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                format!("{group}/{key} is immutable"),
-            ));
-        }
-        let out = set_in(&text, group, key, value);
-        if out == text {
+        // Again under the lock: another writer may have changed it.
+        let (out, changed, meta) = change(&target, group, key, value)?;
+        if !changed {
             return Ok(());
         }
         replace(&target, out.as_bytes(), meta.as_ref())
     }
+}
+
+/// The file's new text, whether that differs from what's there, and the
+/// file's metadata (`None` if it doesn't exist yet).
+fn change(
+    target: &Path,
+    group: &str,
+    key: &str,
+    value: Option<&str>,
+) -> io::Result<(String, bool, Option<fs::Metadata>)> {
+    let (text, meta) = match fs::read_to_string(target) {
+        Ok(t) => (t, Some(fs::metadata(target)?)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => (String::new(), None),
+        Err(e) => return Err(e),
+    };
+    let out = set_in(&text, group, key, value);
+    if out == text {
+        return Ok((out, false, meta));
+    }
+    if immutable(&text, group, key) {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            format!("{group}/{key} is immutable"),
+        ));
+    }
+    Ok((out, true, meta))
 }
 
 /// Where [`config_dir`] points when there is no home: `set` refuses it.
@@ -118,8 +139,14 @@ pub fn config_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(NO_HOME))
 }
 
+/// A name that reads back as itself: no line breaks or brackets (or `=` in
+/// a key), no edge spaces (trimmed on read), and not a comment (`#`, `;`).
 fn check_name(name: &str, banned: &[char]) -> io::Result<()> {
-    if name.is_empty() || name.chars().any(|c| c.is_control() || banned.contains(&c)) {
+    if name.is_empty()
+        || name.trim() != name
+        || name.starts_with(['#', ';'])
+        || name.chars().any(|c| c.is_control() || banned.contains(&c))
+    {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             format!("not a settings group or key: {name:?}"),
@@ -152,6 +179,8 @@ fn resolve_link(path: &Path) -> io::Result<PathBuf> {
 static WRITERS: Mutex<()> = Mutex::new(());
 
 /// An exclusive `flock` on `.<name>.lock` beside `path`, held until dropped.
+/// Opened read-only (flock doesn't need more). Root gives a lock file it
+/// creates to the directory's owner, so the user can still take it.
 fn lock(path: &Path) -> io::Result<fs::File> {
     let name = path.file_name().unwrap_or_default().to_string_lossy();
     let f = fs::OpenOptions::new()
@@ -161,7 +190,27 @@ fn lock(path: &Path) -> io::Result<fs::File> {
         .truncate(false)
         .mode(0o600)
         .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
-        .open(path.with_file_name(format!(".{name}.lock")))?;
+        .open(path.with_file_name(format!(".{name}.lock")))
+        .or_else(|e| match e.kind() {
+            // Someone else's lock file this user may only read.
+            io::ErrorKind::PermissionDenied => fs::OpenOptions::new()
+                .read(true)
+                .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+                .open(path.with_file_name(format!(".{name}.lock"))),
+            _ => Err(e),
+        })?;
+    // SAFETY: geteuid has no preconditions.
+    if unsafe { libc::geteuid() } == 0
+        && let Some(dir) = path.parent()
+        && let Ok(d) = fs::metadata(if dir.as_os_str().is_empty() {
+            Path::new(".")
+        } else {
+            dir
+        })
+        && f.metadata()?.uid() != d.uid()
+    {
+        std::os::unix::fs::fchown(&f, Some(d.uid()), Some(d.gid()))?;
+    }
     loop {
         // SAFETY: flock on a descriptor this function owns.
         if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX) } == 0 {
@@ -215,7 +264,9 @@ fn replace(path: &Path, bytes: &[u8], old: Option<&fs::Metadata>) -> io::Result<
         } else {
             dir
         };
-        fs::File::open(dir)?.sync_all()?;
+        // The new file is in place: a failed directory sync only makes it
+        // less durable, which is no reason to report the write as failed.
+        let _ = fs::File::open(dir).and_then(|d| d.sync_all());
     }
     Ok(())
 }
@@ -257,7 +308,10 @@ fn immutable(text: &str, group: &str, key: &str) -> bool {
             && line_key(line) == Some(key)
             && let Some((k, _)) = line.split_once('=')
             && let Some(i) = k.find("[$")
-            && k[i..].contains('i')
+            && k[i + 2..]
+                .split(']')
+                .next()
+                .is_some_and(|o| o.contains('i'))
         {
             return true;
         }
@@ -517,6 +571,10 @@ mod tests {
             ("G]", "K"),
             ("G", "K=1"),
             ("G", "[K"),
+            ("G", " K"),
+            ("G ", "K"),
+            ("G", "#K"),
+            ("G", ";K"),
             ("", "K"),
             ("G", ""),
         ] {
@@ -534,6 +592,25 @@ mod tests {
         assert_eq!(s.get("G", "K").as_deref(), Some("1"));
         s.set("H", "K", Some("v")).unwrap();
         assert_eq!(s.get("H", "K").as_deref(), Some("v"));
+    }
+
+    #[test]
+    fn options_other_than_i_are_not_immutable() {
+        let t = "[G]\nK[$e][it]=x\n";
+        assert!(!immutable(t, "G", "K"));
+        assert!(immutable("[G]\nK[$ie]=x\n", "G", "K"));
+    }
+
+    #[test]
+    fn unchanged_set_needs_no_write_access() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("atlas-xrc");
+        fs::write(&path, "[G]\nK=v\n").unwrap();
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o500)).unwrap();
+        let r = Settings::at(&path).set("G", "K", Some("v"));
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o700)).unwrap();
+        r.unwrap();
+        assert!(!dir.path().join(".atlas-xrc.lock").exists());
     }
 
     #[test]

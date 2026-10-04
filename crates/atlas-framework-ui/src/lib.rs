@@ -19,6 +19,7 @@
 //! ([`atlas_framework_system::crash`]), and what Atlas.Ui's `AtlasApp` and
 //! `AtlasAboutPage` show. The look itself is the installed Atlas.Ui module.
 
+use std::cell::Cell;
 use std::ffi::{CStr, CString, c_char, c_int};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Once, OnceLock};
@@ -68,22 +69,34 @@ extern "C" fn atlas_framework_ui_start() {
 }
 
 /// A fatal Qt message: logged, and saved as a crash report when the user
-/// turned reports on. Only the first call does anything (Qt may raise
-/// fatals on several threads, or again from inside this one), and a
-/// watchdog ends the process if saving the report hangs.
+/// turned reports on. Only the first call saves one (Qt may raise fatals
+/// on several threads, or again from inside this one). A fatal on another
+/// thread waits here until that report is saved, so its abort can't cut
+/// it off; a watchdog ends the process if saving hangs.
 ///
 /// # Safety
 /// `msg` must be null or a valid NUL-terminated string.
 #[unsafe(no_mangle)]
 unsafe extern "C" fn atlas_framework_ui_fatal(msg: *const c_char) {
-    static ONCE: AtomicBool = AtomicBool::new(false);
-    if ONCE.swap(true, Ordering::SeqCst) {
+    static STARTED: AtomicBool = AtomicBool::new(false);
+    static DONE: AtomicBool = AtomicBool::new(false);
+    thread_local!(static IN_FATAL: Cell<bool> = const { Cell::new(false) });
+    // During thread exit the flag may be gone: treat that as re-entry.
+    if IN_FATAL.try_with(|f| f.replace(true)).unwrap_or(true) {
+        return; // a fatal while saving this thread's report
+    }
+    if STARTED.swap(true, Ordering::SeqCst) {
+        // The alarm the first thread set bounds this wait.
+        while !DONE.load(Ordering::SeqCst) {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
         return;
     }
     // SIGALRM's default action ends the process: Qt's abort comes next
     // anyway, this only stops a lock taken by the crashing code from
     // hanging it. SAFETY: alarm has no preconditions.
     unsafe { libc::alarm(10) };
+    let _done = SetOnDrop(&DONE);
     let text = if msg.is_null() {
         String::from("Qt fatal message")
     } else {
@@ -93,6 +106,14 @@ unsafe extern "C" fn atlas_framework_ui_fatal(msg: *const c_char) {
     };
     log::error!("{text}");
     atlas_framework_system::crash::record_fatal(&text);
+}
+
+struct SetOnDrop(&'static AtomicBool);
+
+impl Drop for SetOnDrop {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
 }
 
 /// 0 name, 1 ID, 2 version, 3 repository; anything else is empty. The

@@ -73,7 +73,8 @@ impl std::error::Error for Denied {}
 
 /// Asks polkit whether the sender of the call in `header` may perform
 /// `action`. `interactive` lets polkit prompt for a password. Anything but a
-/// clear yes is an error.
+/// clear yes is an error. Needs a Tokio runtime with timers, see
+/// [`check_bus_name`].
 pub async fn check(
     conn: &zbus::Connection,
     header: &Header<'_>,
@@ -85,6 +86,10 @@ pub async fn check(
 }
 
 /// [`check`] for a caller known by its unique bus name (`:1.42`).
+///
+/// Runs on Tokio, with timers enabled (`#[tokio::main]` and
+/// `Builder::enable_all` do that): a non-interactive check gives up after
+/// 25 seconds.
 pub async fn check_bus_name(
     conn: &zbus::Connection,
     sender: &str,
