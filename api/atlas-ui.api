@@ -94,6 +94,7 @@ AtlasProgressBar.property indeterminate: bool
 AtlasProgressBar.property value: double
 AtlasProgressBar.type
 AtlasRadioButton.type
+AtlasScreenshotCarousel.property allowRemote: bool
 AtlasScreenshotCarousel.property count: int [readonly]
 AtlasScreenshotCarousel.property currentIndex: int
 AtlasScreenshotCarousel.property sources: QVariant

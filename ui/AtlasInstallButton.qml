@@ -47,7 +47,8 @@ T.AbstractButton {
         readonly property bool installing: control.installState === "installing"
         readonly property bool indeterminate: priv.installing && control.progress < 0
         readonly property real fraction: Math.max(0, Math.min(1, control.progress))
-        readonly property bool filled: control.installState === "install" || control.installState === "update"
+        // "install", "update" and any unknown or empty value are filled with the accent.
+        readonly property bool filled: control.installState !== "installing" && control.installState !== "installed" && control.installState !== "error"
         readonly property bool failed: control.installState === "error"
         readonly property color tint: priv.failed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
         readonly property string label: {
@@ -103,6 +104,8 @@ T.AbstractButton {
         }
     }
 
+    text: priv.label
+
     contentItem: Text {
         text: priv.label
         font: Kirigami.Theme.defaultFont
@@ -139,31 +142,42 @@ T.AbstractButton {
             }
 
             // The progress, inside the pill: a pill of its own, as in AtlasProgressBar.
+            // Known progress grows from the left; unknown progress slides a second
+            // pill to and fro. Both stay within the pill's bounds.
             Rectangle {
                 id: fill
-                visible: priv.installing
+                visible: priv.installing && !priv.indeterminate
+                x: 0
                 height: parent.height
                 radius: height / 2
-                width: priv.indeterminate ? parent.width * 0.35 : priv.fraction > 0 ? Math.max(height, parent.width * priv.fraction) : 0
+                width: priv.fraction > 0 ? Math.min(parent.width, Math.max(height, parent.width * priv.fraction)) : 0
                 color: Qt.alpha(Kirigami.Theme.highlightColor, 0.55)
                 Behavior on width {
-                    enabled: !priv.indeterminate
                     NumberAnimation {
                         duration: Kirigami.Units.longDuration
                         easing.type: Easing.OutCubic
                     }
                 }
+            }
+            Rectangle {
+                id: slider
+                visible: priv.indeterminate
+                x: 0
+                height: parent.height
+                radius: height / 2
+                width: Math.min(parent.width, parent.width * 0.35)
+                color: Qt.alpha(Kirigami.Theme.highlightColor, 0.55)
                 SequentialAnimation on x {
                     running: priv.indeterminate && control.visible && Kirigami.Units.longDuration > 0
                     loops: Animation.Infinite
                     NumberAnimation {
                         from: 0
-                        to: bg.width - fill.width
+                        to: Math.max(0, bg.width - slider.width)
                         duration: Kirigami.Units.veryLongDuration * 2
                         easing.type: Easing.InOutQuad
                     }
                     NumberAnimation {
-                        from: bg.width - fill.width
+                        from: Math.max(0, bg.width - slider.width)
                         to: 0
                         duration: Kirigami.Units.veryLongDuration * 2
                         easing.type: Easing.InOutQuad

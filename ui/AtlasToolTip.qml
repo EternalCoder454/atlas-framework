@@ -3,13 +3,14 @@ import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
 // A small rounded hint on a raised card. Declare it inside the item it
-// describes and set `text`. Bind `shown` to the hover state: the tip opens
+// describes and set `text`. Bind `shown` to the hover state, and to the
+// keyboard focus so that keyboard users get the hint too: the tip opens
 // after the hover delay, closes at once when `shown` ends, and goes by itself
 // after a while. (Setting `visible` opens it at once.)
 //
 //   AtlasButton {
 //       text: qsTr("Refresh")
-//       AtlasToolTip { text: qsTr("Check for updates"); shown: parent.hovered }
+//       AtlasToolTip { text: qsTr("Check for updates"); shown: parent.hovered || parent.visualFocus }
 //   }
 T.ToolTip {
     id: control

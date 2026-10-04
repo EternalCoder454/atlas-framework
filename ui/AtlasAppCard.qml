@@ -77,6 +77,18 @@ T.AbstractButton {
         }
         readonly property bool hasIcon: control.icon.name.length > 0 || control.icon.source.toString().length > 0
         readonly property real iconSide: Math.round(Kirigami.Units.gridUnit * 3.4)
+        // What a screen reader says: the rating in words, not as a bare number.
+        readonly property string spokenMeta: {
+            const parts = [];
+            if (control.rating > 0) {
+                //: Spoken rating of an app: %1 is a number from 0 to 5, such as 4.6
+                parts.push(qsTr("Rating %1").arg(control.rating.toFixed(1)));
+            }
+            if (control.sizeText.length > 0) {
+                parts.push(control.sizeText);
+            }
+            return parts.join(", ");
+        }
         readonly property string meta: {
             const parts = [];
             if (control.rating > 0) {
@@ -97,14 +109,24 @@ T.AbstractButton {
 
     Accessible.role: Accessible.Button
     Accessible.name: control.name
-    Accessible.description: [control.summary, priv.meta].filter(s => s.length > 0).join(", ")
+    Accessible.description: [control.summary, priv.spokenMeta].filter(s => s.length > 0).join(", ")
 
     Keys.onReturnPressed: event => {
+        // A custom action inside the card that has the focus keeps its own Return.
+        if (!control.activeFocus) {
+            event.accepted = false;
+            return;
+        }
         if (!event.isAutoRepeat) {
             control.clicked();
         }
     }
     Keys.onEnterPressed: event => {
+        // A custom action inside the card that has the focus keeps its own Return.
+        if (!control.activeFocus) {
+            event.accepted = false;
+            return;
+        }
         if (!event.isAutoRepeat) {
             control.clicked();
         }
@@ -160,7 +182,7 @@ T.AbstractButton {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            spacing: 2
+            spacing: Math.round(Kirigami.Units.smallSpacing / 2)
             Text {
                 Layout.fillWidth: true
                 text: control.name

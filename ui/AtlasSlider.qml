@@ -2,10 +2,11 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A slider: a thin pill track filled with the accent up to a white knob.
+// A slider: a thin pill track filled with the accent up to a knob in the theme's background colour.
 // `from`, `to`, `value`, `stepSize` and `onMoved` work as in any Slider; it
 // can be vertical. Beside the arrow keys, Page Up and Page Down move a tenth
-// of the range, Home and End go to the ends.
+// of the range, Home and End go to the ends. Name it for screen readers with
+// Accessible.name; the value is spoken as its description.
 //
 //   AtlasSlider { from: 0; to: 100; value: 40; onMoved: volume = value }
 T.Slider {
@@ -22,28 +23,25 @@ T.Slider {
     Accessible.name: qsTr("Slider")
     Accessible.description: String(Math.round(control.value * 100) / 100)
 
+    // Page Up and Page Down move a tenth of the range. They go through
+    // increase() and decrease(), which write the value from C++ and so keep an
+    // app's binding on `value` alive (Home and End are the Slider's own).
     Keys.onPressed: event => {
-        const range = control.to - control.from;
-        let target = NaN;
-        switch (event.key) {
-        case Qt.Key_PageUp:
-            target = control.value + range / 10;
-            break;
-        case Qt.Key_PageDown:
-            target = control.value - range / 10;
-            break;
-        case Qt.Key_Home:
-            target = control.from;
-            break;
-        case Qt.Key_End:
-            target = control.to;
-            break;
-        default:
+        if (event.key !== Qt.Key_PageUp && event.key !== Qt.Key_PageDown) {
             return;
         }
         event.accepted = true;
+        const range = Math.abs(control.to - control.from);
+        const step = control.stepSize > 0 ? control.stepSize : 0.1; // as increase() steps
+        const steps = Math.max(1, Math.min(1000, Math.round(range / 10 / step)));
         const before = control.value;
-        control.value = Math.max(Math.min(control.from, control.to), Math.min(Math.max(control.from, control.to), target));
+        for (let i = 0; i < steps; ++i) {
+            if (event.key === Qt.Key_PageUp) {
+                control.increase();
+            } else {
+                control.decrease();
+            }
+        }
         if (control.value !== before) {
             control.moved();
         }
@@ -75,9 +73,9 @@ T.Slider {
         x: control.leftPadding + (control.horizontal ? control.visualPosition * (control.availableWidth - width) : (control.availableWidth - width) / 2)
         y: control.topPadding + (control.horizontal ? (control.availableHeight - height) / 2 : control.visualPosition * (control.availableHeight - height))
         radius: width / 2
-        color: "white"
-        border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.highlightColor, control.pressed ? 0.7 : 0.45)
+        color: Kirigami.Theme.backgroundColor
+        border.width: 2
+        border.color: Qt.alpha(Kirigami.Theme.highlightColor, control.pressed ? 1 : 0.8)
         scale: control.pressed ? 1.1 : 1
         Behavior on scale {
             NumberAnimation {

@@ -20,7 +20,7 @@ import org.kde.kirigami as Kirigami
 // array's objects); an array of plain strings shows the strings as names.
 // A cell with neither an icon nor a symbol shows a generic file symbol.
 // Click selects, double click or Enter activates, the arrow keys, Home, End
-// and Page Up/Down move, and the Menu key or a right click asks for a
+// and Page Up/Down move, and the Menu key, Shift+F10 or a right click asks for a
 // context menu (`x` and `y` are in the grid, for ContextMenu.popup). Name
 // the grid for screen readers with Accessible.name ("Files").
 T.Control {
@@ -55,11 +55,13 @@ T.Control {
             grid.positionViewAtIndex(grid.currentIndex, GridView.Contain);
         }
         function menuAtCurrent() {
-            const item = grid.itemAtIndex(grid.currentIndex);
-            if (!item) {
+            if (grid.currentIndex < 0 || grid.currentIndex >= grid.count) {
                 return;
             }
-            const p = item.mapToItem(control, item.width / 2, item.height / 2);
+            // From the cell's place, not its delegate, which may not be made yet after a jump.
+            const row = Math.floor(grid.currentIndex / priv.columns);
+            const column = grid.currentIndex % priv.columns;
+            const p = grid.mapToItem(control, column * priv.cellW + priv.cellW / 2 - grid.contentX, row * priv.cellH + priv.cellH / 2 - grid.contentY);
             control.contextMenuRequested(grid.currentIndex, p.x, p.y);
         }
         // `role` of a delegate's model, or the model itself for a plain list
@@ -82,25 +84,35 @@ T.Control {
     Keys.onPressed: event => {
         const page = Math.max(1, Math.floor(grid.height / priv.cellH) - 1) * priv.columns;
         const dir = control.mirrored ? -1 : 1;
-        const at = Math.max(0, grid.currentIndex);
+        const at = grid.currentIndex;
+        const last = grid.count - 1;
+        // With no current item, a forward key goes to the first and a backward key to the last.
+        const none = at < 0;
         switch (event.key) {
         case Qt.Key_Left:
-            priv.move(at - dir);
+            priv.move(none ? (dir > 0 ? last : 0) : at - dir);
             break;
         case Qt.Key_Right:
-            priv.move(at + dir);
+            priv.move(none ? (dir > 0 ? 0 : last) : at + dir);
             break;
         case Qt.Key_Up:
-            priv.move(at - priv.columns);
+            // On the first row there is nowhere to go: stay put.
+            priv.move(none ? last : at < priv.columns ? at : at - priv.columns);
             break;
         case Qt.Key_Down:
-            priv.move(at + priv.columns);
+            if (none) {
+                priv.move(0);
+            } else if (at + priv.columns <= last) {
+                priv.move(at + priv.columns);
+            } else if (Math.floor(at / priv.columns) < Math.floor(last / priv.columns)) {
+                priv.move(last); // a short last row: its end
+            }
             break;
         case Qt.Key_PageUp:
-            priv.move(at - page);
+            priv.move(none ? last : at - page);
             break;
         case Qt.Key_PageDown:
-            priv.move(at + page);
+            priv.move(none ? 0 : at + page);
             break;
         case Qt.Key_Home:
             priv.move(0);
@@ -114,10 +126,14 @@ T.Control {
                 control.activated(grid.currentIndex);
             }
             break;
-        case Qt.Key_Menu:
-            if (grid.currentIndex >= 0 && grid.currentIndex < grid.count) {
-                priv.menuAtCurrent();
+        case Qt.Key_F10: // Shift+F10 is the Menu key's twin
+            if (!(event.modifiers & Qt.ShiftModifier)) {
+                return;
             }
+            priv.menuAtCurrent();
+            break;
+        case Qt.Key_Menu:
+            priv.menuAtCurrent();
             break;
         default:
             return;
@@ -222,6 +238,7 @@ T.Control {
                     anchors.right: parent.right
                     anchors.leftMargin: Kirigami.Units.largeSpacing
                     anchors.rightMargin: Kirigami.Units.largeSpacing
+                    Accessible.ignored: true // the cell carries the name
                     text: cell.title
                     font: Kirigami.Theme.defaultFont
                     color: Kirigami.Theme.textColor

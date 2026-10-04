@@ -6,7 +6,10 @@ import org.kde.kirigami as Kirigami
 // `value`, `stepSize` and `editable` work as in any SpinBox; `prefix` and
 // `suffix` ("MB", "%") are drawn beside the number.
 //
-//   AtlasSpinBox { from: 1; to: 64; value: 8; editable: true; suffix: " GB" }
+//   AtlasSpinBox { from: 1; to: 64; value: 8; editable: true; suffix: " GB"; Accessible.name: qsTr("Memory") }
+//
+// Name it for screen readers with Accessible.name (what the number is for);
+// the value itself is spoken as the description.
 T.SpinBox {
     id: control
 
@@ -30,7 +33,9 @@ T.SpinBox {
     opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.SpinBox
-    Accessible.name: textFromValue(control.value, control.locale)
+    //: Spoken name of a number field that has no label of its own (the app sets Accessible.name)
+    Accessible.name: qsTr("Number")
+    Accessible.description: textFromValue(control.value, control.locale)
 
     textFromValue: (value, locale) => prefix + Number(value).toLocaleString(locale, 'f', 0) + suffix
     valueFromText: (text, locale) => {
@@ -60,6 +65,7 @@ T.SpinBox {
         clip: true
         Accessible.role: Accessible.EditableText
         Accessible.name: control.Accessible.name
+        Accessible.description: control.Accessible.description
     }
 
     up.indicator: Item {

@@ -37,6 +37,25 @@ Item {
     Accessible.name: control.title
     Accessible.description: control.text
 
+    QtObject {
+        id: priv
+        // The default font, bold and 30% larger; a pixel-sized theme font has
+        // pointSize -1, so it scales its pixel size instead.
+        readonly property font titleFont: {
+            const f = Kirigami.Theme.defaultFont;
+            const o = {
+                "family": f.family,
+                "bold": true
+            };
+            if (f.pixelSize > 0) {
+                o.pixelSize = Math.round(f.pixelSize * 1.3);
+            } else {
+                o.pointSize = f.pointSize * 1.3;
+            }
+            return Qt.font(o);
+        }
+    }
+
     ColumnLayout {
         id: column
         anchors.centerIn: parent
@@ -72,9 +91,7 @@ Item {
             visible: text.length > 0
             Layout.preferredHeight: visible ? implicitHeight : 0
             text: control.title
-            font.family: Kirigami.Theme.defaultFont.family
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.3
-            font.bold: true
+            font: priv.titleFont
             color: Kirigami.Theme.textColor
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap

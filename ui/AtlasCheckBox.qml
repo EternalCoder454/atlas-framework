@@ -18,7 +18,8 @@ T.CheckBox {
     implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 1.4), implicitContentHeight + topPadding + bottomPadding)
     spacing: Kirigami.Units.largeSpacing
     padding: 0
-    leftPadding: indicator.width + spacing
+    leftPadding: control.mirrored ? 0 : indicator.width + spacing
+    rightPadding: control.mirrored ? indicator.width + spacing : 0
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     opacity: enabled ? 1 : 0.5

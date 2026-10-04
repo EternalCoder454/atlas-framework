@@ -11,7 +11,15 @@ SecondaryButton {
     rightPadding: control.mirrored ? leftPadding : leftPadding + Kirigami.Units.iconSizes.small
     leftPadding: control.mirrored ? Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing + Kirigami.Units.iconSizes.small : Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
     Accessible.role: Accessible.ButtonMenu
+    // Qt has no Accessible.expanded for QML: the state is the description,
+    // and a change of it is announced (see the menu below).
     Accessible.description: menu.visible ? qsTr("Expanded") : qsTr("Collapsed")
+    QtObject {
+        id: priv
+        function announceState() {
+            control.Accessible.announce(menu.visible ? qsTr("Expanded") : qsTr("Collapsed"));
+        }
+    }
     onClicked: menu.popup(control, 0, control.height + 4)
 
     Kirigami.Icon {
@@ -28,6 +36,7 @@ SecondaryButton {
 
     QQC2.Menu {
         id: menu
+        onVisibleChanged: priv.announceState()
         delegate: QQC2.MenuItem {
             Kirigami.MnemonicData.enabled: false
         }

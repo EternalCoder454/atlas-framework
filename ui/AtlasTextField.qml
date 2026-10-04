@@ -52,6 +52,12 @@ T.TextField {
     //: Spoken name of a text field that has no placeholder or label of its own
     Accessible.name: placeholderText.length > 0 ? placeholderText : qsTr("Text field")
     Accessible.description: errorText
+    // A new message is spoken when it appears, not only when the field is read.
+    onErrorTextChanged: {
+        if (control.errorText.length > 0) {
+            Accessible.announce(control.errorText);
+        }
+    }
 
     background: Rectangle {
         height: internals.fieldHeight
