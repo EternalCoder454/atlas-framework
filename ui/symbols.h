@@ -10,7 +10,10 @@
 // lists it under at fonts.google.com/icons, or one of its older names, and
 // warns at run time if there is no such symbol.
 //
-// The fonts are installed by the atlas-symbols-fonts package. Without it, a
+// The Rounded font (the default) is installed by the atlas-symbols-fonts
+// package; Outlined and Sharp by atlas-symbols-fonts-extra. A missing Rounded
+// is reported when the fonts load, a missing Outlined or Sharp when a Symbol
+// first asks for it. Without the packages, a
 // development build (any install prefix but /usr) loads them from
 // $ATLAS_UI_SYMBOLS_DIR or ui/symbols/. A packaged build reads neither.
 #pragma once
@@ -42,10 +45,13 @@ public:
     Q_INVOKABLE QStringList names() const;
     // The font family of a Symbol.Style (0 Outlined, 1 Rounded, 2 Sharp).
     Q_INVOKABLE QString family(int style) const;
+    // Whether the font of a Symbol.Style is installed (no warning if not).
+    Q_INVOKABLE bool available(int style) const;
 
     // codepoint() without the warning, for C++.
     static int lookup(QStringView name);
 
 private:
     static void loadFonts();
+    static bool resolveStyle(int style);
 };

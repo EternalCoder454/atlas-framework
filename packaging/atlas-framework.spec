@@ -1,5 +1,5 @@
 # The shared base of Atlas apps: Atlas.Ui, its Material Symbols fonts, and
-# the Atlas Symbols gallery.
+# the Atlas Gallery (atlas-symbols).
 
 # --define "_atlas_build_cache <dir>" (packaging/build-rpm.sh passes it when
 # ATLAS_BUILD_CACHE is set) keeps the CMake build in <dir>, so a rebuild only
@@ -35,7 +35,8 @@ BuildRequires:  cmake(KF6Config)
 BuildRequires:  kf6-kirigami-devel
 
 %description
-Source package for atlas-ui, atlas-symbols-fonts and atlas-symbols.
+Source package for atlas-ui, atlas-symbols-fonts, atlas-symbols-fonts-extra and
+atlas-symbols (the Atlas Gallery).
 
 %package -n atlas-ui
 Summary:        Atlas.Ui, the QML module every Atlas app shares
@@ -64,18 +65,37 @@ BuildArch:      noarch
 Requires:       fontconfig
 
 %description -n atlas-symbols-fonts
-Google's Material Symbols (Outlined, Rounded and Sharp) as variable fonts:
-about 4,000 icons that Atlas apps draw through Atlas.Ui's Symbol.
+Google's Material Symbols Rounded as a variable font: about 4,000 icons that
+Atlas apps draw through Atlas.Ui's Symbol (Rounded is its default style). The
+Outlined and Sharp styles are in atlas-symbols-fonts-extra.
+
+%package -n atlas-symbols-fonts-extra
+Summary:        Material Symbols Outlined and Sharp fonts for Atlas apps
+License:        Apache-2.0
+URL:            https://fonts.google.com/icons
+BuildArch:      noarch
+# Same release: they are the same icon set, and the files moved here from
+# atlas-symbols-fonts, so a 1.2.0 atlas-symbols-fonts must be replaced first.
+Requires:       atlas-symbols-fonts = %{version}-%{release}
+
+%description -n atlas-symbols-fonts-extra
+The Outlined and Sharp styles of Google's Material Symbols, for apps that ask
+Atlas.Ui's Symbol for them (Symbol.Outlined, Symbol.Sharp) and for the Atlas
+Gallery. Without this package those symbols are blank and the app logs a
+warning once.
 
 %package -n atlas-symbols
-Summary:        Atlas Symbols: browse the Material Symbols and copy the QML
+Summary:        Atlas Gallery: every Atlas control and Material Symbol
 License:        MIT
 Requires:       atlas-ui = %{version}-%{release}
 Requires:       kf6-qqc2-desktop-style
+# Its Symbols page shows the Outlined and Sharp styles.
+Recommends:     atlas-symbols-fonts-extra = %{version}-%{release}
 
 %description -n atlas-symbols
-Atlas Symbols lists every Material Symbol Atlas.Ui can draw. Search, pick a
-style, fill and weight, and copy the QML for one.
+The Atlas Gallery shows every Atlas.Ui control live (with a Disabled switch and
+the QML to copy) and lists every Material Symbol: search, pick a style, fill and
+weight, and copy the QML for one.
 
 %prep
 %autosetup -n atlas-framework-%{version}
@@ -112,7 +132,13 @@ done
 %files -n atlas-symbols-fonts
 %license ui/symbols/LICENSE.txt
 %dir %{_datadir}/fonts/atlas-symbols
-%{_datadir}/fonts/atlas-symbols/MaterialSymbols*.ttf
+%{_datadir}/fonts/atlas-symbols/MaterialSymbolsRounded.ttf
+
+%files -n atlas-symbols-fonts-extra
+%license ui/symbols/LICENSE.txt
+%dir %{_datadir}/fonts/atlas-symbols
+%{_datadir}/fonts/atlas-symbols/MaterialSymbolsOutlined.ttf
+%{_datadir}/fonts/atlas-symbols/MaterialSymbolsSharp.ttf
 
 %files -n atlas-symbols
 %license LICENSE
