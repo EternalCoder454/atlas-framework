@@ -60,22 +60,25 @@ void installNow()
 
 // Installs once, on the application's thread, whichever thread asks first (the
 // QML engine may load the plugin off the main thread). Does nothing until the
-// application object exists, and then the first caller does it.
+// application object exists, and then the first caller has it done.
 void installTranslations()
 {
     QCoreApplication *app = QCoreApplication::instance();
     if (!app) {
         return;
     }
-    // The first caller claims the job; the others return at once rather than
-    // wait (a wait could deadlock against the blocking call below).
+    // The first caller claims the job; the others return at once.
     if (claimed.test_and_set()) {
         return;
     }
     if (QThread::currentThread() == app->thread()) {
         installNow();
     } else {
-        QMetaObject::invokeMethod(app, [] { installNow(); }, Qt::BlockingQueuedConnection);
+        // Queued, not blocking: the application's thread may itself be
+        // waiting on this one (an engine loading on a worker thread), and a
+        // blocking call would deadlock. Installing the translator sends
+        // LanguageChange, which retranslates the app's QML.
+        QMetaObject::invokeMethod(app, [] { installNow(); }, Qt::QueuedConnection);
     }
 }
 
