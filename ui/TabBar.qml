@@ -120,6 +120,7 @@ Item {
                 }
 
                 Accessible.role: Accessible.PageTab
+                //: Name of a tab with unsaved changes: %1 is the document title
                 Accessible.name: tab.modified ? qsTr("%1, modified").arg(tab.title) : tab.title
                 Accessible.selectable: true
                 Accessible.selected: tab.current

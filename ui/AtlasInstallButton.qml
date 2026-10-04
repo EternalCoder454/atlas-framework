@@ -33,8 +33,11 @@ T.AbstractButton {
     // 0 to 1 while installing; a negative value means no figure is known.
     property real progress: -1
     property string installText: qsTr("Install")
+    //: Button that opens an app that is already installed (a verb, not "open" as an adjective)
     property string installedText: qsTr("Open")
+    //: Button that updates an installed app to a newer version (a verb)
     property string updateText: qsTr("Update")
+    //: Button that tries a failed install again (a verb)
     property string errorText: qsTr("Retry")
 
     signal cancelRequested

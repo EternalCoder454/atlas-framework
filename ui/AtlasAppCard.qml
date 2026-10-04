@@ -48,6 +48,7 @@ T.AbstractButton {
         AtlasInstallButton {
             installState: control.installState
             progress: control.progress
+            //: Spoken label of a card detail: %1 is the app name, %2 the detail text
             Accessible.name: qsTr("%1: %2").arg(control.name).arg(text)
             onClicked: {
                 if (installState !== "installing") {

@@ -51,6 +51,7 @@ T.Control {
 
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Screenshots")
+    //: Spoken position in the screenshot gallery: %1 is the current image, %2 how many there are
     Accessible.description: control.count > 0 ? qsTr("Image %1 of %2").arg(control.currentIndex + 1).arg(control.count) : qsTr("No screenshots")
 
     Keys.onPressed: event => {
@@ -129,6 +130,7 @@ T.Control {
                         x: (slide.index - priv.position) * width * (control.mirrored ? -1 : 1)
                         visible: Math.abs(slide.index - priv.position) < 1.001
                         Accessible.role: Accessible.Graphic
+                        //: Name of one screenshot: %1 is its number, %2 how many there are
                         Accessible.name: qsTr("Screenshot %1 of %2").arg(slide.index + 1).arg(control.count)
                         Accessible.ignored: slide.index !== control.currentIndex
 
@@ -222,6 +224,7 @@ T.Control {
                     width: Kirigami.Units.gridUnit * 0.9
                     height: dots.height
                     Accessible.role: Accessible.Button
+                    //: Name of the button that shows screenshot number %1
                     Accessible.name: qsTr("Screenshot %1").arg(dot.index + 1)
                     Accessible.onPressAction: control.currentIndex = dot.index
                     Rectangle {
@@ -247,6 +250,7 @@ T.Control {
             Text {
                 visible: priv.many
                 anchors.verticalCenter: parent.verticalCenter
+                //: Counter shown on a screenshot: %1 is its number, %2 how many there are ("2 / 5")
                 text: qsTr("%1 / %2").arg(control.currentIndex + 1).arg(control.count)
                 font: Kirigami.Theme.smallFont
                 color: Qt.alpha(Kirigami.Theme.textColor, 0.7)

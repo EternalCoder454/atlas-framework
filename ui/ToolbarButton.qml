@@ -28,6 +28,7 @@ T.AbstractButton {
 
     QQC2.ToolTip.visible: control.hovered && control.text.length > 0
     QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+    //: Tooltip: %1 is the action ("Bold"), %2 its keyboard shortcut ("Ctrl+B")
     QQC2.ToolTip.text: control.shortcutText.length > 0 ? qsTr("%1 (%2)").arg(control.text).arg(control.shortcutText) : control.text
 
     background: Rectangle {
