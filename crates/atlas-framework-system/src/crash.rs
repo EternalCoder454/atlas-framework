@@ -29,7 +29,7 @@ use std::cell::Cell;
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::hash::{Hash, Hasher};
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -744,7 +744,9 @@ const SECRET_KEYS: &[&str] = &[
 
 /// Hide the value after a [`SECRET_KEYS`] name (`=`, `:` or, for `bearer`,
 /// a space). A name counts at the end of a word (`access_token`, `api-key`)
-/// but not inside one (`monkey`).
+/// but not inside one (`monkey`), nor as part of a `::` path
+/// (`zbus::auth::handshake`, `Session::open`). A quoted value is hidden up to
+/// its closing quote, spaces and all.
 fn scrub_secrets(s: &str) -> String {
     // Bytes, not str slices: a name only starts on an ASCII byte, and text
     // around it may be any UTF-8.
@@ -770,9 +772,21 @@ fn scrub_secrets(s: &str) -> String {
             j += 1;
         }
         let sep = j < b.len() && matches!(b[j], b'=' | b':');
+        let path = |at: usize| b.get(at..at + 2) == Some(b"::".as_slice());
+        // `zbus::auth::x`, `Session::open`; but `cfg::password=x` is a value
+        let assign = sep && !path(j);
+        if (sep && path(j)) || (i >= 2 && path(i - 2) && !assign) {
+            i += key.len();
+            continue;
+        }
+        let mut quote = None;
         if sep {
             j += 1;
-            while j < b.len() && matches!(b[j], b' ' | b'"' | b'\'') {
+            while j < b.len() && b[j] == b' ' {
+                j += 1;
+            }
+            if j < b.len() && matches!(b[j], b'"' | b'\'') {
+                quote = Some(b[j]);
                 j += 1;
             }
             // `Authorization: Bearer x`: hide the word after the scheme too
@@ -785,10 +799,21 @@ fn scrub_secrets(s: &str) -> String {
             i += key.len();
             continue;
         }
-        let end = b[j..]
-            .iter()
-            .position(|c| c.is_ascii_whitespace() || b"&\"',;)]}<>".contains(c))
-            .map_or(b.len(), |n| j + n);
+        let end = match quote {
+            // up to the closing quote (not an escaped one), else the end of
+            // the line; `""` hides nothing
+            Some(q) => {
+                let mut k = j;
+                while k < b.len() && b[k] != q && b[k] != b'\n' {
+                    k += if b[k] == b'\\' { 2 } else { 1 };
+                }
+                k.min(b.len())
+            }
+            None => b[j..]
+                .iter()
+                .position(|c| c.is_ascii_whitespace() || b"&\"',;)]}<>".contains(c))
+                .map_or(b.len(), |n| j + n),
+        };
         if end > j {
             out.push_str(&s[copied..j]);
             out.push_str("REDACTED");
@@ -2108,20 +2133,46 @@ fn post(report: &Report, ep: &Endpoint) -> io::Result<Server> {
     let dir = state_dir().ok_or_else(|| io::Error::other("no state directory"))?;
     let tmp = dir.join(format!("send-{}.json", random_hex(8)?));
     write_private(&tmp, &body, false)?;
-    let out = Command::new("/usr/bin/curl")
-        .args(curl_args(ep, &tmp))
+    let out = run_curl(ep, &tmp);
+    let _ = fs::remove_file(&tmp);
+    let (status, stdout, stderr) = out?;
+    if stdout.len() > MAX_ANSWER {
+        // Sent, but the answer is not a relay's: stopped at the limit
+        // (`--max-filesize` only holds when the length is announced).
+        return Ok(Server::default());
+    }
+    if !status.success() {
+        return Err(io::Error::other(
+            String::from_utf8_lossy(&stderr).trim().to_string(),
+        ));
+    }
+    Ok(parse_server_answer(&stdout))
+}
+
+/// curl's status, its answer (at most [`MAX_ANSWER`] + 1 bytes) and its
+/// error text.
+fn run_curl(
+    ep: &Endpoint,
+    body_file: &Path,
+) -> io::Result<(std::process::ExitStatus, Vec<u8>, Vec<u8>)> {
+    let mut child = Command::new("/usr/bin/curl")
+        .args(curl_args(ep, body_file))
         .env_clear()
         .env("PATH", "/usr/bin")
         .stdin(Stdio::null())
-        .output();
-    let _ = fs::remove_file(&tmp);
-    let out = out?;
-    if !out.status.success() {
-        return Err(io::Error::other(
-            String::from_utf8_lossy(&out.stderr).trim().to_string(),
-        ));
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let mut answer = Vec::new();
+    let read = child.stdout.take().map_or(Ok(0), |o| {
+        o.take(MAX_ANSWER as u64 + 1).read_to_end(&mut answer)
+    });
+    if read.is_err() || answer.len() > MAX_ANSWER {
+        let _ = child.kill();
     }
-    Ok(parse_server_answer(&out.stdout))
+    let out = child.wait_with_output()?;
+    read?;
+    Ok((out.status, answer, out.stderr))
 }
 
 const MAX_URL: usize = 7000;
@@ -3300,6 +3351,23 @@ mod tests {
             ),
             ("bearer abcdef", "bearer REDACTED"),
             ("monkey=banana", "monkey=banana"),
+            (
+                r#"password="my pass phrase" ok"#,
+                r#"password="REDACTED" ok"#,
+            ),
+            (
+                r#"{"secret": "a b c", "n": 1}"#,
+                r#"{"secret": "REDACTED", "n": 1}"#,
+            ),
+            ("pwd='open\nnext", "pwd='REDACTED\nnext"),
+            ("in zbus::auth::handshake", "in zbus::auth::handshake"),
+            ("cfg::password=hunter2 x", "cfg::password=REDACTED x"),
+            ("Config::token: abc", "Config::token: REDACTED"),
+            (r#"password="" and "x""#, r#"password="" and "x""#),
+            (r#"pwd="pa\"ss word" ok"#, r#"pwd="REDACTED" ok"#),
+            ("x::key::y", "x::key::y"),
+            ("at Session::open()", "at Session::open()"),
+            ("rustls::sign::signature", "rustls::sign::signature"),
             ("keyboard: us", "keyboard: us"),
             ("ghp_abcdefghijklmnop1234", "<token>"),
             (

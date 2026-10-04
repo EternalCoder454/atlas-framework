@@ -217,7 +217,7 @@ pub fn version_cmp(a: &str, b: &str) -> Option<std::cmp::Ordering> {
 
 /// An RFC 3339 time in UTC to the second (`2026-10-02T18:54:39`), which
 /// orders as text; `None` for any other form.
-pub(crate) fn utc_second(t: &str) -> Option<&str> {
+pub fn utc_second(t: &str) -> Option<&str> {
     let s = t.get(..19)?;
     let b = s.as_bytes();
     (t.ends_with('Z') && b[4] == b'-' && b[10] == b'T' && b[13] == b':').then_some(s)
@@ -294,7 +294,7 @@ impl fmt::Display for RefError {
 impl std::error::Error for RefError {}
 
 /// Transports a switch may use. The transport of the booted ref is kept as is.
-pub(crate) const TRANSPORTS: &[&str] = &[
+pub const TRANSPORTS: &[&str] = &[
     "registry",
     "oci",
     "oci-archive",
