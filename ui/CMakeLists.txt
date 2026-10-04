@@ -53,6 +53,17 @@ qt_add_qml_module(atlasui
         InfoBanner.qml
         Toast.qml
         ToolbarButton.qml
+        AtlasTextField.qml
+        AtlasTextArea.qml
+        AtlasComboBox.qml
+        AtlasCheckBox.qml
+        AtlasRadioButton.qml
+        AtlasSlider.qml
+        AtlasSpinBox.qml
+        AtlasToolTip.qml
+        AtlasSpinner.qml
+        AtlasPlaceholder.qml
+        AtlasEmptyState.qml
         AtlasFocusRing.qml
     SOURCES
         livechart.h livechart.cpp

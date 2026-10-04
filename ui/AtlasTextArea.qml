@@ -1,0 +1,58 @@
+import QtQuick
+import QtQuick.Templates as T
+import org.kde.kirigami as Kirigami
+
+// A rounded multi-line text field. `placeholderText` shows while it is empty.
+// It wraps long lines; put it in a ScrollView or give it a height for long
+// text.
+//
+//   AtlasTextArea {
+//       placeholderText: qsTr("Notes")
+//       implicitHeight: Kirigami.Units.gridUnit * 8
+//   }
+T.TextArea {
+    id: control
+
+    implicitWidth: Kirigami.Units.gridUnit * 14
+    implicitHeight: Math.max(Kirigami.Units.gridUnit * 6, contentHeight + topPadding + bottomPadding)
+    padding: Kirigami.Units.largeSpacing
+    wrapMode: TextEdit.Wrap
+    placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+    color: Kirigami.Theme.textColor
+    selectionColor: Kirigami.Theme.highlightColor
+    selectedTextColor: Kirigami.Theme.highlightedTextColor
+    font: Kirigami.Theme.defaultFont
+    selectByMouse: true
+    hoverEnabled: true
+    focusPolicy: Qt.StrongFocus
+    opacity: enabled ? 1 : 0.5
+
+    Accessible.role: Accessible.EditableText
+    Accessible.name: placeholderText
+
+    background: Rectangle {
+        radius: 10
+        color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
+        border.width: control.activeFocus ? 2 : 1
+        border.color: control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        AtlasFocusRing {
+            radius: parent.radius + gap
+            shown: control.activeFocus && (control.focusReason === Qt.TabFocusReason || control.focusReason === Qt.BacktabFocusReason || control.focusReason === Qt.ShortcutFocusReason)
+        }
+    }
+
+    // A template area keeps placeholderText but draws nothing for it.
+    Text {
+        x: control.leftPadding
+        y: control.topPadding
+        width: control.width - control.leftPadding - control.rightPadding
+        visible: control.length === 0 && control.preeditText.length === 0
+        text: control.placeholderText
+        font: control.font
+        color: control.placeholderTextColor
+        wrapMode: Text.Wrap
+        textFormat: Text.PlainText
+        renderType: control.renderType
+        Accessible.ignored: true
+    }
+}
