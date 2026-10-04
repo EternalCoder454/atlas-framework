@@ -37,6 +37,10 @@ T.BusyIndicator {
             id: arc
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
+            // Drawn once into a texture; turning it is then one transform per
+            // frame, on the render thread, with nothing to re-tessellate.
+            layer.enabled: true
+            layer.smooth: true
             // The shape is a ring track and a quarter arc on it.
             ShapePath {
                 fillColor: "transparent"
