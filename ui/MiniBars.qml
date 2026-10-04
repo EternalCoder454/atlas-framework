@@ -20,6 +20,7 @@ Flow {
     property real barWidth: Math.round(Kirigami.Units.gridUnit * 0.9)
     property real barHeight: Kirigami.Units.gridUnit * 2.5
     // What a screen reader says for bar i, e.g. "Core 3".
+    //: Name of one CPU core in a chart: %1 is its number
     property var nameOf: i => qsTr("Core %1").arg(i)
     property var textOf: v => Math.round(v) + "%"
 

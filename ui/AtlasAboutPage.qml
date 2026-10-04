@@ -38,6 +38,7 @@ AtlasPage {
         Kirigami.Icon {
             Layout.alignment: Qt.AlignHCenter
             source: AtlasApp.id
+            Accessible.ignored: true
             Layout.preferredWidth: Math.round(Kirigami.Units.gridUnit * 5)
             Layout.preferredHeight: Layout.preferredWidth
         }
@@ -51,6 +52,7 @@ AtlasPage {
             Layout.alignment: Qt.AlignHCenter
             visible: AtlasApp.version.length > 0
             opacity: 0.7
+            //: Version line under the app name: %1 is the version number ("Version 1.2.0")
             text: qsTr("Version %1").arg(AtlasApp.version)
             textFormat: Text.PlainText
         }
@@ -82,6 +84,7 @@ AtlasPage {
             value: AtlasApp.qtVersion
         }
         SectionRow {
+            //: The software licence of the app, as in "MIT License" (not a driving licence)
             title: qsTr("License")
             value: page.license
             visible: page.license.length > 0

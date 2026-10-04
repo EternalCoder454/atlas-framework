@@ -55,6 +55,7 @@ Item {
         if (findText.length === 0) {
             return "";
         }
+        //: Position of the current search hit: %1 is its number, %2 how many hits there are ("3 of 12")
         return matchCount === 0 ? qsTr("No results") : qsTr("%1 of %2").arg(currentMatch).arg(matchCount);
     }
     readonly property bool failed: error.length > 0 || (findText.length > 0 && matchCount === 0)
@@ -199,6 +200,7 @@ Item {
                 ToolbarButton {
                     icon.name: "go-down"
                     text: qsTr("Next Match")
+                    //: Name of the Enter key, as shown in a tooltip
                     shortcutText: qsTr("Enter")
                     enabled: control.matchCount > 0
                     onClicked: control.findNext()
@@ -237,6 +239,7 @@ Item {
                 ToolbarButton {
                     icon.name: "window-close"
                     text: qsTr("Close")
+                    //: Name of the Escape key, as shown in a tooltip
                     shortcutText: qsTr("Esc")
                     onClicked: control.close()
                 }
@@ -261,6 +264,7 @@ Item {
                     Keys.onEscapePressed: control.close()
                 }
                 SecondaryButton {
+                    //: Button: replace the current match (a verb)
                     text: qsTr("Replace")
                     focusPolicy: Qt.NoFocus
                     enabled: control.matchCount > 0

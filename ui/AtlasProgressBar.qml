@@ -13,7 +13,8 @@ Item {
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 0.45)
 
     Accessible.role: Accessible.ProgressBar
-    Accessible.name: root.indeterminate ? "" : Math.round(root.value * 100) + "%"
+    //: Spoken name of a progress bar: %1 is the percent done; "Working" when the time left is unknown
+    Accessible.name: root.indeterminate ? qsTr("Working") : qsTr("%1%").arg(Math.round(root.value * 100))
 
     Rectangle {
         id: track

@@ -70,6 +70,7 @@ T.AbstractButton {
             }
             Text {
                 id: label
+                Accessible.ignored: true
                 anchors.verticalCenter: parent.verticalCenter
                 text: control.text
                 font: Kirigami.Theme.defaultFont

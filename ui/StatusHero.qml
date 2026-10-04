@@ -113,7 +113,7 @@ ColumnLayout {
                 }
             }
             RotationAnimator on rotation {
-                running: root.busy && root.progress < 0 && Kirigami.Units.longDuration > 0
+                running: root.visible && root.busy && root.progress < 0 && Kirigami.Units.longDuration > 0
                 from: 0
                 to: 360
                 loops: Animation.Infinite

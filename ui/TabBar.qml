@@ -15,6 +15,13 @@ import org.kde.kirigami as Kirigami
 // roles `title`, `modified` and `toolTip`; the app changes `currentIndex` and
 // the model in answer to the signals, including moved(), which reports a tab
 // dragged to a new place. Items put inside the bar sit at its far end.
+//
+// contextMenuRequested(index, position) asks for the tab's context menu: on a
+// right click on the tab, and on the Menu key or Shift+F10 while the tab has
+// the keyboard focus (Tab reaches the current tab; clicking never takes the
+// focus from the editor). `position` is in the bar's coordinates, ready for
+// ContextMenu.popup(tabBar, position): the pointer for a click, the tab's
+// bottom-left for a key. A middle click still emits closeRequested().
 Item {
     id: control
 
@@ -28,6 +35,7 @@ Item {
     signal closeRequested(int index)
     signal newRequested
     signal moved(int from, int to)
+    signal contextMenuRequested(int index, point position)
 
     implicitWidth: Kirigami.Units.gridUnit * 30
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9) + Kirigami.Units.smallSpacing * 2
@@ -102,7 +110,9 @@ Item {
                 leftPadding: Kirigami.Units.largeSpacing
                 rightPadding: Kirigami.Units.smallSpacing
                 hoverEnabled: true
-                focusPolicy: Qt.NoFocus
+                // Tab reaches the current tab only, and a click never takes the
+                // focus (the editor keeps it).
+                focusPolicy: tab.current ? Qt.TabFocus : Qt.NoFocus
                 z: dragHandler.active ? 2 : 0
                 opacity: dragHandler.active ? 0.85 : 1
                 transform: Translate {
@@ -110,10 +120,25 @@ Item {
                 }
 
                 Accessible.role: Accessible.PageTab
+                //: Name of a tab with unsaved changes: %1 is the document title
                 Accessible.name: tab.modified ? qsTr("%1, modified").arg(tab.title) : tab.title
                 Accessible.selectable: true
                 Accessible.selected: tab.current
                 Accessible.onPressAction: control.activated(tab.index)
+
+                function requestMenuFromKey() {
+                    control.contextMenuRequested(tab.index, tab.mapToItem(control, 0, tab.height));
+                }
+                Keys.onMenuPressed: event => {
+                    tab.requestMenuFromKey();
+                    event.accepted = true;
+                }
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier)) {
+                        tab.requestMenuFromKey();
+                        event.accepted = true;
+                    }
+                }
 
                 onPressed: {
                     if (!tab.current) {
@@ -129,11 +154,17 @@ Item {
                     id: hoverTracker
                 }
 
-                // Middle click closes.
+                // Middle click closes; right click asks for the context menu.
                 MouseArea {
                     anchors.fill: parent
-                    acceptedButtons: Qt.MiddleButton
-                    onClicked: control.closeRequested(tab.index)
+                    acceptedButtons: Qt.MiddleButton | Qt.RightButton
+                    onClicked: mouse => {
+                        if (mouse.button === Qt.RightButton) {
+                            control.contextMenuRequested(tab.index, mapToItem(control, mouse.x, mouse.y));
+                        } else {
+                            control.closeRequested(tab.index);
+                        }
+                    }
                 }
 
                 DragHandler {
@@ -182,6 +213,13 @@ Item {
                         }
                     }
 
+                    // Inside the tab: the list clips what lies outside.
+                    AtlasFocusRing {
+                        gap: 0
+                        radius: parent.radius
+                        shown: tab.visualFocus
+                    }
+
                     // Where a dragged tab would land: a line on that side.
                     Rectangle {
                         visible: list.dropAt === tab.index && list.dragFrom !== tab.index && list.dragFrom >= 0
@@ -206,6 +244,7 @@ Item {
                         opacity: 0.6
                     }
                     Text {
+                        Accessible.ignored: true
                         Layout.fillWidth: true
                         text: tab.title
                         font.family: Kirigami.Theme.defaultFont.family

@@ -9,6 +9,7 @@ QQC2.Popup {
 
     property string title
     property string text
+    //: Default text of the confirming button of a dialog
     property string acceptText: qsTr("OK")
     property string rejectText: qsTr("Cancel")
     property bool showReject: true

@@ -10,6 +10,8 @@ SecondaryButton {
 
     rightPadding: control.mirrored ? leftPadding : leftPadding + Kirigami.Units.iconSizes.small
     leftPadding: control.mirrored ? Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing + Kirigami.Units.iconSizes.small : Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+    Accessible.role: Accessible.ButtonMenu
+    Accessible.description: menu.visible ? qsTr("Expanded") : qsTr("Collapsed")
     onClicked: menu.popup(control, 0, control.height + 4)
 
     Kirigami.Icon {
@@ -21,6 +23,7 @@ SecondaryButton {
         width: Kirigami.Units.iconSizes.small
         height: width
         opacity: control.enabled ? 0.8 : 0.4
+        Accessible.ignored: true
     }
 
     QQC2.Menu {

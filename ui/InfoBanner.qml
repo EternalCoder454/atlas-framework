@@ -32,6 +32,19 @@ Item {
     clip: card.progress < 1
     Accessible.role: Accessible.Alert
     Accessible.name: control.text
+    Accessible.description: control.type === "error" ? qsTr("Error") : control.type === "warning" ? qsTr("Warning") : qsTr("Information")
+
+    // Say it when it appears, or changes while it is up.
+    onShownChanged: {
+        if (control.shown && control.text.length > 0) {
+            Accessible.announce(control.text);
+        }
+    }
+    onTextChanged: {
+        if (control.shown && control.visible && control.text.length > 0) {
+            Accessible.announce(control.text);
+        }
+    }
 
     Rectangle {
         id: card
@@ -110,7 +123,8 @@ Item {
                 implicitWidth: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
                 implicitHeight: implicitWidth
                 hoverEnabled: true
-                focusPolicy: Qt.NoFocus
+                focusPolicy: Qt.StrongFocus
+                Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Close")
                 onClicked: {
                     control.shown = false;
@@ -119,6 +133,10 @@ Item {
                 background: Rectangle {
                     radius: width / 2
                     color: Qt.alpha(Kirigami.Theme.textColor, closeButton.down ? 0.16 : closeButton.hovered ? 0.1 : 0)
+                    AtlasFocusRing {
+                        radius: parent.radius + gap
+                        shown: closeButton.visualFocus
+                    }
                 }
                 contentItem: Kirigami.Icon {
                     source: "window-close"
