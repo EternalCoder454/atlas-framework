@@ -336,9 +336,19 @@ impl Notifier {
 /// own.
 fn off_runtime<T: Send>(f: impl FnOnce() -> Result<T, String> + Send) -> Result<T, String> {
     std::thread::scope(|s| {
-        s.spawn(f)
-            .join()
-            .unwrap_or_else(|_| Err("the notification thread panicked".into()))
+        let thread = std::thread::Builder::new()
+            .name("atlas-notify".into())
+            .spawn_scoped(s, f)
+            .map_err(|e| format!("could not start the notification thread: {e}"))?;
+        thread.join().unwrap_or_else(|panic| {
+            let why = panic
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| panic.downcast_ref::<String>().cloned())
+                .unwrap_or_default();
+            log::error!("notification thread panicked: {why}");
+            Err("the notification thread panicked".into())
+        })
     })
 }
 
@@ -456,6 +466,24 @@ mod tests {
     fn off_runtime_reports_a_panic() {
         let r: Result<(), String> = off_runtime(|| panic!("boom"));
         assert_eq!(r, Err("the notification thread panicked".into()));
+    }
+
+    /// Without any session (no DBUS_SESSION_BUS_ADDRESS, no socket where zbus
+    /// then looks, as in a container or CI), connecting is "no service".
+    /// Skipped where a session bus exists.
+    #[tokio::test]
+    async fn no_session_at_all_is_no_service() {
+        if std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_some() {
+            return;
+        }
+        let dir = std::env::var("XDG_RUNTIME_DIR")
+            .unwrap_or_else(|_| format!("/run/user/{}", unsafe { libc::geteuid() }));
+        if Path::new(&dir).join("bus").exists() {
+            return;
+        }
+        let e = zbus::Connection::session().await.unwrap_err();
+        assert!(no_bus(&e), "{e:?}");
+        assert_eq!(plain(e, true).to_string(), NO_SERVICE);
     }
 
     #[test]

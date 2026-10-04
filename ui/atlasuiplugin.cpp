@@ -1,15 +1,28 @@
 // The Atlas.Ui plugin class. Qt would generate it; this one also tells each
 // QML engine that loads the module to re-evaluate its translated strings,
 // and installs the module's translator as the module loads (translations.cpp).
-#include <QtCore/qcoreapplication.h>
-#include <QtCore/qmetaobject.h>
 #include <QtCore/qplugin.h>
-#include <QtCore/qpointer.h>
+#include <QtCore/qtimer.h>
 #include <QtQml/qqmlengine.h>
 #include <QtQml/qqmlextensionplugin.h>
 
 extern void qml_register_types_Atlas_Ui();
 bool atlasUiInstallTranslations();
+bool atlasUiTranslationsDone();
+
+namespace {
+// Retranslates `engine` once the translator is in place, looking every 10 ms
+// for up to 5 s. Runs on the engine's thread, and the timers die with the
+// engine, so nothing touches it from another thread or after it is gone.
+void retranslateWhenDone(QQmlEngine *engine, int triesLeft = 500)
+{
+    if (atlasUiTranslationsDone()) {
+        engine->retranslate();
+    } else if (triesLeft > 0) {
+        QTimer::singleShot(10, engine, [engine, triesLeft] { retranslateWhenDone(engine, triesLeft - 1); });
+    }
+}
+}
 
 class AtlasUiPlugin : public QQmlEngineExtensionPlugin
 {
@@ -38,14 +51,7 @@ public:
         }
         // The install runs later on the application's thread: retranslate
         // after it, on the engine's own thread.
-        if (QCoreApplication *app = QCoreApplication::instance()) {
-            QPointer<QQmlEngine> target(engine);
-            QMetaObject::invokeMethod(app, [target] {
-                if (target) {
-                    QMetaObject::invokeMethod(target.data(), &QQmlEngine::retranslate, Qt::QueuedConnection);
-                }
-            }, Qt::QueuedConnection);
-        }
+        retranslateWhenDone(engine);
     }
 };
 

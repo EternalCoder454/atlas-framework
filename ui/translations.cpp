@@ -36,6 +36,14 @@ void markDone()
     state = State::Done;
 }
 
+// When the application object goes, so does the translator it owned: a later
+// application in the same process (some tests make one) installs again.
+void reset()
+{
+    QMutexLocker lock(&mutex);
+    state = State::None;
+}
+
 // Runs on the application's thread, which owns the translator.
 void installNow()
 {
@@ -78,23 +86,26 @@ bool installTranslations()
     if (!app) {
         return false;
     }
+    const bool here = QThread::currentThread() == app->thread();
     {
         QMutexLocker lock(&mutex);
         if (state != State::None) {
             return state == State::Done;
         }
         state = State::Started;
+        qAddPostRoutine(reset);
+        if (!here) {
+            // Queued, not blocking: the application's thread may itself be
+            // waiting on this one (an engine loading on a worker thread), and
+            // a blocking call would deadlock. Posted under the lock, so that
+            // whoever sees Started finds the install already queued.
+            QMetaObject::invokeMethod(app, [] { installNow(); markDone(); }, Qt::QueuedConnection);
+            return false;
+        }
     }
-    if (QThread::currentThread() == app->thread()) {
-        installNow();
-        markDone();
-        return true;
-    }
-    // Queued, not blocking: the application's thread may itself be waiting
-    // on this one (an engine loading on a worker thread), and a blocking call
-    // would deadlock.
-    QMetaObject::invokeMethod(app, [] { installNow(); markDone(); }, Qt::QueuedConnection);
-    return false;
+    installNow();
+    markDone();
+    return true;
 }
 
 // Runs when the application object exists.
@@ -113,6 +124,13 @@ void startup()
 bool atlasUiInstallTranslations()
 {
     return installTranslations();
+}
+
+// Whether the translator is in place (or there is none for this language).
+bool atlasUiTranslationsDone()
+{
+    QMutexLocker lock(&mutex);
+    return state == State::Done;
 }
 
 Q_COREAPP_STARTUP_FUNCTION(startup)

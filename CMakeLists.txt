@@ -39,6 +39,12 @@ set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # AUTO (the default): on for any install prefix but /usr. ATLAS_UI_TESTS needs
 # them and turns them on. Worked out on every configure, never stored, so a
 # reused build tree follows its current prefix and options.
+# A build tree configured before 1.3.0's final form cached it as a BOOL holding
+# the computed value: back to AUTO.
+get_property(_atlas_dev_type CACHE ATLAS_UI_DEV_PATHS PROPERTY TYPE)
+if(_atlas_dev_type STREQUAL "BOOL")
+    set(ATLAS_UI_DEV_PATHS AUTO CACHE STRING "" FORCE)
+endif()
 set(ATLAS_UI_DEV_PATHS AUTO CACHE STRING "Atlas.Ui: look in the source and build trees, honour development environment variables (AUTO, ON or OFF)")
 set_property(CACHE ATLAS_UI_DEV_PATHS PROPERTY STRINGS AUTO ON OFF)
 if(ATLAS_UI_DEV_PATHS STREQUAL "AUTO")
@@ -47,10 +53,12 @@ if(ATLAS_UI_DEV_PATHS STREQUAL "AUTO")
     else()
         set(ATLAS_UI_DEV_BUILD ON)
     endif()
-elseif(ATLAS_UI_DEV_PATHS)
+elseif(ATLAS_UI_DEV_PATHS MATCHES "^(ON|YES|TRUE|Y|1)$")
     set(ATLAS_UI_DEV_BUILD ON)
-else()
+elseif(ATLAS_UI_DEV_PATHS MATCHES "^(OFF|NO|FALSE|N|0)$")
     set(ATLAS_UI_DEV_BUILD OFF)
+else()
+    message(FATAL_ERROR "ATLAS_UI_DEV_PATHS is \"${ATLAS_UI_DEV_PATHS}\": use AUTO, ON or OFF")
 endif()
 if(ATLAS_UI_TESTS AND NOT ATLAS_UI_DEV_BUILD)
     message(STATUS "ATLAS_UI_TESTS=ON: development paths on (the tests need the build-tree paths and test hooks)")
