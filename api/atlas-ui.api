@@ -25,25 +25,109 @@ AtlasApp.property osVersion: QString [readonly]
 AtlasApp.property qtVersion: QString [readonly]
 AtlasApp.property repo: QString [readonly]
 AtlasApp.property sourceUrl: QString [readonly]
+AtlasApp.property uiVersion: QString [readonly]
 AtlasApp.property version: QString [readonly]
 AtlasApp.type
+AtlasAppCard.property actionComponent: QQmlComponent*
+AtlasAppCard.property defaultAction: QQmlComponent* [readonly]
+AtlasAppCard.property installState: QString
+AtlasAppCard.property name: QString
+AtlasAppCard.property progress: double
+AtlasAppCard.property rating: double
+AtlasAppCard.property sizeText: QString
+AtlasAppCard.property summary: QString
+AtlasAppCard.property symbol: int
+AtlasAppCard.signal actionClicked()
+AtlasAppCard.signal cancelRequested()
+AtlasAppCard.type
+AtlasBreadcrumb.property count: int [readonly]
+AtlasBreadcrumb.property segments: QVariant
+AtlasBreadcrumb.signal activated(int index)
+AtlasBreadcrumb.type
 AtlasButton.property accent: QColor [readonly]
 AtlasButton.property prominent: bool
 AtlasButton.property symbol: int
 AtlasButton.property textTint: QColor [readonly]
 AtlasButton.type
+AtlasCheckBox.type
+AtlasComboBox.property placeholderText: QString
+AtlasComboBox.type
+AtlasEmptyState.property actionText: QString
+AtlasEmptyState.property iconName: QString
+AtlasEmptyState.property symbol: int
+AtlasEmptyState.property text: QString
+AtlasEmptyState.property title: QString
+AtlasEmptyState.signal triggered()
+AtlasEmptyState.type
 AtlasFocusRing.property gap: double
 AtlasFocusRing.property shown: bool
 AtlasFocusRing.type
+AtlasIconGrid.property count: int [readonly]
+AtlasIconGrid.property currentIndex: int
+AtlasIconGrid.property iconRole: QString
+AtlasIconGrid.property iconSize: double
+AtlasIconGrid.property model: QVariant
+AtlasIconGrid.property placeholderText: QString
+AtlasIconGrid.property symbolRole: QString
+AtlasIconGrid.property textRole: QString
+AtlasIconGrid.signal activated(int index)
+AtlasIconGrid.signal contextMenuRequested(int index, double x, double y)
+AtlasIconGrid.type
+AtlasInstallButton.property errorText: QString
+AtlasInstallButton.property installState: QString
+AtlasInstallButton.property installText: QString
+AtlasInstallButton.property installedText: QString
+AtlasInstallButton.property progress: double
+AtlasInstallButton.property updateText: QString
+AtlasInstallButton.signal cancelRequested()
+AtlasInstallButton.type
 AtlasPage.method ensureVisible(QVariant item): QVariant
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property maxContentWidth: double [readonly]
 AtlasPage.property title: QString
 AtlasPage.type
+AtlasPlaceholder.property animated: bool
+AtlasPlaceholder.property lineHeight: double
+AtlasPlaceholder.property lines: int
+AtlasPlaceholder.type
 AtlasProgressBar.property indeterminate: bool
 AtlasProgressBar.property value: double
 AtlasProgressBar.type
+AtlasRadioButton.type
+AtlasScreenshotCarousel.property count: int [readonly]
+AtlasScreenshotCarousel.property currentIndex: int
+AtlasScreenshotCarousel.property sources: QVariant
+AtlasScreenshotCarousel.type
+AtlasSearchResults.method activateCurrent(): QVariant
+AtlasSearchResults.method handleKey(QVariant event): QVariant
+AtlasSearchResults.method moveCurrent(QVariant delta): QVariant
+AtlasSearchResults.property count: int [readonly]
+AtlasSearchResults.property currentIndex: int
+AtlasSearchResults.property iconRole: QString
+AtlasSearchResults.property model: QVariant
+AtlasSearchResults.property placeholderText: QString
+AtlasSearchResults.property sectionRole: QString
+AtlasSearchResults.property shortcutRole: QString
+AtlasSearchResults.property subtitleRole: QString
+AtlasSearchResults.property symbolRole: QString
+AtlasSearchResults.property textRole: QString
+AtlasSearchResults.signal activated(int index)
+AtlasSearchResults.type
+AtlasSlider.type
+AtlasSpinBox.property prefix: QString
+AtlasSpinBox.property suffix: QString
+AtlasSpinBox.type
+AtlasSpinner.property animated: bool
+AtlasSpinner.type
 AtlasSwitch.type
+AtlasTextArea.type
+AtlasTextField.property clearable: bool
+AtlasTextField.property errorText: QString
+AtlasTextField.property hasError: bool [readonly]
+AtlasTextField.property rtl: bool [readonly]
+AtlasTextField.type
+AtlasToolTip.property shown: bool
+AtlasToolTip.type
 AtlasWindow.method sidebarColor(QColor base): QColor
 AtlasWindow.method syncBlur(): QVariant
 AtlasWindow.method tinted(QColor base, double factor): QColor
@@ -290,6 +374,7 @@ Symbol.property size: double
 Symbol.property style: int
 Symbol.property weight: int
 Symbol.type
+Symbols.method available(int style): bool
 Symbols.method codepoint(QString name): int
 Symbols.method family(int style): QString
 Symbols.method key(int codepoint): QString
@@ -303,6 +388,7 @@ TabBar.property model: QVariant
 TabBar.property trailing: QQmlListProperty<QObject> [readonly]
 TabBar.signal activated(int index)
 TabBar.signal closeRequested(int index)
+TabBar.signal contextMenuRequested(int index, QPointF position)
 TabBar.signal moved(int from, int to)
 TabBar.signal newRequested()
 TabBar.type
