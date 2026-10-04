@@ -282,13 +282,34 @@ impl Settings {
         if let Some(d) = path.parent() {
             fs::create_dir_all(d)?;
         }
-        fs::write(
-            path,
-            format!(
-                "# Atlas crash reporting; see docs. Off unless true.\nenabled = {}\n",
-                self.enabled
-            ),
-        )
+        let text = format!(
+            "# Atlas crash reporting; see docs. Off unless true.\nenabled = {}\n",
+            self.enabled
+        );
+        // Temp file next to the target (never follows a symlink), then rename:
+        // a planted symlink at `path` is replaced, not written through.
+        let name = path.file_name().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "settings path has no file name")
+        })?;
+        let mut tmp_name = name.to_os_string();
+        tmp_name.push(format!(".tmp{}", std::process::id()));
+        let tmp = path.with_file_name(tmp_name);
+        let _ = fs::remove_file(&tmp);
+        let res = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o644)
+            .custom_flags(libc::O_NOFOLLOW)
+            .open(&tmp)
+            .and_then(|mut f| {
+                f.write_all(text.as_bytes())?;
+                f.sync_all()
+            })
+            .and_then(|()| fs::rename(&tmp, path));
+        if res.is_err() {
+            let _ = fs::remove_file(&tmp);
+        }
+        res
     }
 }
 
@@ -1663,16 +1684,44 @@ fn field(v: &Value, key: &str) -> Option<String> {
     }
 }
 
+/// An absolute path with no control characters or `..`, of sane length.
+fn valid_exe(e: &str) -> bool {
+    e.starts_with('/')
+        && e.len() <= 4096
+        && !e.chars().any(char::is_control)
+        && !e.split('/').any(|c| c == "..")
+}
+
+/// True when journald itself says systemd-coredump wrote the entry (trusted
+/// `_COMM`/`_SYSTEMD_UNIT`; a user cannot run in a system unit) and the dump
+/// is of `uid`'s process, by both the trusted `_UID` and COREDUMP_UID.
+fn trusted_coredump(entry: &Value, uid: &str) -> bool {
+    !uid.is_empty()
+        && field(entry, "_COMM").as_deref() == Some("systemd-coredum")
+        && field(entry, "_SYSTEMD_UNIT")
+            .is_some_and(|u| u.starts_with("systemd-coredump@") && u.ends_with(".service"))
+        && field(entry, "_UID").as_deref() == Some(uid)
+        && field(entry, "COREDUMP_UID").as_deref() == Some(uid)
+}
+
 /// One coredump journal entry (`journalctl -o json`) as a report plus its
-/// timestamp in microseconds. Reads only COREDUMP_EXE, COMM, SIGNAL_NAME,
+/// timestamp in microseconds. Entries not written by systemd-coredump for
+/// `uid` are dropped (COREDUMP_* fields can be forged by any local user; the
+/// `_`-prefixed ones are added by journald and cannot). Reads only COREDUMP_EXE, COMM, SIGNAL_NAME,
 /// TIMESTAMP, PACKAGE_NAME/VERSION and MESSAGE (and only frame lines of it).
 fn coredump_report(
     entry: &Value,
     scrubber: &Scrubber,
+    uid: &str,
     rpm_version: impl Fn(&str) -> Option<String>,
 ) -> Option<(u64, Report)> {
+    if !trusted_coredump(entry, uid) {
+        return None;
+    }
     let ts: u64 = field(entry, "COREDUMP_TIMESTAMP")?.parse().ok()?;
-    let exe = field(entry, "COREDUMP_EXE").unwrap_or_default();
+    let exe = field(entry, "COREDUMP_EXE")
+        .filter(|e| valid_exe(e))
+        .unwrap_or_default();
     let comm = field(entry, "COREDUMP_COMM").unwrap_or_default();
     let signal = field(entry, "COREDUMP_SIGNAL_NAME").unwrap_or_else(|| "unknown signal".into());
     let name = if exe.is_empty() {
@@ -1730,7 +1779,7 @@ fn journal(args: &[String]) -> Vec<Value> {
 
 /// The journal fields we read; `--output-fields` keeps the rest (command
 /// line, environment, working directory, ...) out of this process.
-const JOURNAL_FIELDS: &str = "MESSAGE,COREDUMP_EXE,COREDUMP_COMM,COREDUMP_SIGNAL_NAME,COREDUMP_TIMESTAMP,COREDUMP_PACKAGE_NAME,COREDUMP_PACKAGE_VERSION,COREDUMP_UID";
+const JOURNAL_FIELDS: &str = "MESSAGE,COREDUMP_EXE,COREDUMP_COMM,COREDUMP_SIGNAL_NAME,COREDUMP_TIMESTAMP,COREDUMP_PACKAGE_NAME,COREDUMP_PACKAGE_VERSION,COREDUMP_UID,_UID,_COMM,_SYSTEMD_UNIT";
 
 /// journalctl arguments for coredump entries after `since_micros`.
 fn journal_args(since_micros: u64, uid: Option<&str>) -> Vec<String> {
@@ -1741,6 +1790,8 @@ fn journal_args(since_micros: u64, uid: Option<&str>) -> Vec<String> {
     a.push(format!("--output-fields={JOURNAL_FIELDS}"));
     a.push(format!("--since=@{}", since_micros / 1_000_000));
     a.push(format!("MESSAGE_ID={COREDUMP_MESSAGE_ID}"));
+    // trusted field (journald sets it; comm is truncated to 15 chars)
+    a.push("_COMM=systemd-coredum".into());
     match uid {
         Some(u) => a.push(format!("COREDUMP_UID={u}")),
         None => a.insert(0, "--user".into()),
@@ -1750,7 +1801,7 @@ fn journal_args(since_micros: u64, uid: Option<&str>) -> Vec<String> {
 
 fn rpm_version(exe: &str) -> Option<String> {
     let o = Command::new("/usr/bin/rpm")
-        .args(["-qf", "--qf", "%{NAME} %{VERSION}-%{RELEASE}", exe])
+        .args(["-qf", "--qf", "%{NAME} %{VERSION}-%{RELEASE}", "--", exe])
         .env_clear()
         .env("PATH", "/usr/bin")
         .stdin(Stdio::null())
@@ -1788,6 +1839,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
         entries = journal(&journal_args(since, Some(&own_uid())));
     }
     let scrubber = Scrubber::from_env();
+    let uid = own_uid();
     let mut newest = since;
     let mut out = Vec::new();
     for e in &entries {
@@ -1798,7 +1850,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
         if ts <= since {
             continue;
         }
-        let Some((_, report)) = coredump_report(e, &scrubber, rpm_version) else {
+        let Some((_, report)) = coredump_report(e, &scrubber, &uid, rpm_version) else {
             continue;
         };
         let Some(d) = reports_dir() else { break };
@@ -2493,6 +2545,10 @@ mod tests {
     fn coredump_entry_uses_only_allowed_fields() {
         let entry = json!({
             "MESSAGE_ID": COREDUMP_MESSAGE_ID,
+            "_COMM": "systemd-coredum",
+            "_UID": "1000",
+            "_SYSTEMD_UNIT": "systemd-coredump@1-2-3.service",
+            "COREDUMP_UID": "1000",
             "COREDUMP_TIMESTAMP": "1790000000000000",
             "COREDUMP_EXE": "/usr/bin/plasmashell",
             "COREDUMP_COMM": "plasmashell",
@@ -2502,7 +2558,7 @@ mod tests {
             "COREDUMP_CWD": "/home/zach",
             "MESSAGE": "Process 1 (plasmashell) of user 1000 dumped core.\n\nStack trace of thread 1:\n#0  0x00007f1 raise (libc.so.6 + 0x9a)\n#1  0x00007f2 foo (/home/zach/lib.so + 0x1)"
         });
-        let (ts, r) = coredump_report(&entry, &sc(), |exe| {
+        let (ts, r) = coredump_report(&entry, &sc(), "1000", |exe| {
             (exe == "/usr/bin/plasmashell").then(|| "plasma-workspace 6.8.0-1.fc44".to_string())
         })
         .unwrap();
@@ -2705,6 +2761,66 @@ mod tests {
         );
     }
 
+    fn real_entry() -> Value {
+        json!({
+            "_COMM": "systemd-coredum",
+            "_UID": "1000",
+            "_SYSTEMD_UNIT": "systemd-coredump@48-57347-3760438_7887167-0.service",
+            "COREDUMP_UID": "1000",
+            "COREDUMP_TIMESTAMP": "1790000000000000",
+            "COREDUMP_EXE": "/usr/bin/foo",
+            "COREDUMP_COMM": "foo",
+            "MESSAGE": "Process 1 (foo) dumped core."
+        })
+    }
+
+    #[test]
+    fn forged_or_foreign_coredump_entries_are_dropped() {
+        let no_rpm = |_: &str| None;
+        assert!(coredump_report(&real_entry(), &sc(), "1000", no_rpm).is_some());
+        for (k, v) in [
+            ("_UID", "1001"),
+            ("_COMM", "evil"),
+            ("_SYSTEMD_UNIT", "user@1000.service"),
+            ("COREDUMP_UID", "1001"),
+        ] {
+            let mut e = real_entry();
+            e[k] = json!(v);
+            assert!(coredump_report(&e, &sc(), "1000", no_rpm).is_none(), "{k}");
+        }
+        let mut e = real_entry();
+        e.as_object_mut().unwrap().remove("_SYSTEMD_UNIT");
+        assert!(coredump_report(&e, &sc(), "1000", no_rpm).is_none());
+        // an entry for another user is not ours
+        assert!(coredump_report(&real_entry(), &sc(), "1001", no_rpm).is_none());
+    }
+
+    #[test]
+    fn option_looking_exe_is_never_passed_to_rpm() {
+        for bad in ["--eval=%(touch /tmp/pwn)", "-qf", "usr/bin/x", "/usr/../etc/x", "/a\nb", "/a\u{1b}b"] {
+            let mut e = real_entry();
+            e["COREDUMP_EXE"] = json!(bad);
+            let (_, r) = coredump_report(&e, &sc(), "1000", |x| {
+                panic!("rpm called with {x:?}")
+            })
+            .unwrap();
+            assert!(!r.app_name.contains("eval"), "{bad}");
+        }
+        assert!(!valid_exe(&format!("/{}", "a".repeat(5000))));
+    }
+
+    #[test]
+    fn settings_save_replaces_a_symlink_instead_of_following_it() {
+        let d = tempfile::tempdir().unwrap();
+        let victim = d.path().join("victim");
+        fs::write(&victim, "keep").unwrap();
+        let p = d.path().join("s.conf");
+        std::os::unix::fs::symlink(&victim, &p).unwrap();
+        Settings { enabled: true }.save_to(&p).unwrap();
+        assert_eq!(fs::read_to_string(&victim).unwrap(), "keep");
+        assert!(fs::read_to_string(&p).unwrap().contains("enabled = true"));
+    }
+
     #[test]
     fn journal_arguments_limit_fields_and_start_at_the_marker() {
         let a = journal_args(5_000_000, Some("1000"));
@@ -2719,6 +2835,7 @@ mod tests {
         );
         assert!(a.contains(&"--since=@5".to_string()));
         assert!(a.contains(&"COREDUMP_UID=1000".to_string()));
+        assert!(a.contains(&"_COMM=systemd-coredum".to_string()));
         assert_eq!(journal_args(0, None)[0], "--user");
     }
 
