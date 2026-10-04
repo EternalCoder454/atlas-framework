@@ -9,7 +9,7 @@
 %endif
 
 Name:           atlas-framework
-Version:        1.2.0
+Version:        1.3.0
 Release:        1%{?dist}
 Summary:        The shared base of Atlas apps: Atlas.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -146,6 +146,17 @@ done
 %{_datadir}/applications/net.eterneon.atlas.symbols.desktop
 
 %changelog
+* Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.3.0-1
+- Atlas.Ui: form controls (AtlasTextField, AtlasTextArea, AtlasComboBox,
+  AtlasCheckBox, AtlasRadioButton, AtlasSlider, AtlasSpinBox), feedback
+  (AtlasToolTip, AtlasSpinner, AtlasPlaceholder, AtlasEmptyState,
+  AtlasFocusRing) and AtlasBreadcrumb, AtlasIconGrid, AtlasAppCard,
+  AtlasScreenshotCarousel, AtlasInstallButton, AtlasSearchResults
+- Atlas.Ui reports its version (AtlasApp.uiVersion) for the apps' startup check
+- atlas-symbols-fonts ships Rounded only; Outlined and Sharp move to the new
+  atlas-symbols-fonts-extra
+- atlas-symbols is the Atlas Gallery: every control live, and the symbols
+
 * Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.2.0-1
 - Atlas.Ui: TabBar, FindBar, StatusBar, StatusBarItem, InfoBanner, Toast and
   ToolbarButton (from Atlas Notepad)

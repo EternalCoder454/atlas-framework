@@ -8,6 +8,36 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.3.0 (unreleased)
 
+- Atlas.Ui form controls: AtlasTextField (error text, clear button),
+  AtlasTextArea, AtlasComboBox, AtlasCheckBox (tristate), AtlasRadioButton,
+  AtlasSlider and AtlasSpinBox (prefix, suffix).
+- Atlas.Ui feedback: AtlasToolTip, AtlasSpinner, AtlasPlaceholder (loading
+  lines), AtlasEmptyState and AtlasFocusRing.
+- Atlas.Ui for file managers, stores and launchers: AtlasBreadcrumb,
+  AtlasIconGrid, AtlasAppCard, AtlasScreenshotCarousel, AtlasInstallButton
+  (with progress and cancel) and AtlasSearchResults (keyboard navigation).
+- Atlas.Ui version check: `ui: "1.3.0"` in `app!` (or
+  `atlas_app_require_ui()`) stops an app with a plain message when the
+  installed Atlas.Ui is older than it needs. `AtlasApp.uiVersion` reports it.
+- `atlas_framework_system::notify` (feature `notify`): desktop notifications
+  for every app, the sender Atlas Updater used. The template ships a
+  `.notifyrc`.
+- On-disk formats carry a version: `"format": 1` on history and event lines,
+  `[Atlas] Format=1` in settings. Readers accept files without it.
+- Crash report scrubbing is tested against a set of fake secrets.
+- atlas-symbols is now the Atlas Gallery: every Atlas.Ui control live (with
+  a Disabled switch and the QML to copy) next to the symbol browser.
+- atlas-symbols-fonts ships Material Symbols Rounded only, the style Atlas.Ui
+  uses; Outlined and Sharp are in atlas-symbols-fonts-extra (about 20 MB less
+  on disk for a system without the gallery). `Symbols.available(style)` says
+  whether a style is installed.
+- Checks for apps: `tools/lint-app.sh` (default buttons and controls Atlas.Ui
+  replaces) and `tools/check-app-names.sh`, as a reusable workflow
+  (`app-checks.yml`).
+- Releases: `vX.Y.Z` tags publish a release from this file and open a pull
+  request in every app that moves its crates to the tag. Apps pin
+  `tag = "vX.Y.Z"` instead of a commit.
+
 ## 1.2.0
 
 - Atlas.Ui: TabBar, FindBar, StatusBar, StatusBarItem, InfoBanner, Toast and
