@@ -22,6 +22,8 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - `atlas_framework_system::notify` (feature `notify`): desktop notifications
   for every app, the sender Atlas Updater used. The template ships a
   `.notifyrc`.
+- The template's live demo data stops while its window is minimized or
+  hidden, the way an app's polling should.
 - On-disk formats carry a version: `"format": 1` on history and event lines,
   `[Atlas] Format=1` in settings. Readers accept files without it.
 - Crash report scrubbing is tested against a set of fake secrets.

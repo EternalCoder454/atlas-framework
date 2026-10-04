@@ -2,5 +2,5 @@
   "startup_ms": 190,
   "rss_kb": 129200,
   "pss_kb": 114800,
-  "idle_cpu_percent": 0.5
+  "idle_cpu_percent": 1.0
 }

@@ -13,6 +13,10 @@ AtlasPage {
 
     title: qsTr("Home")
 
+    // Live data is worth fetching only while someone can see it: the timers
+    // below stop while the window is minimized or hidden.
+    readonly property bool shown: page.Window.visibility !== Window.Minimized && page.Window.visibility !== Window.Hidden
+
     StatusHero {
         iconName: "checkmark"
         headline: qsTr("Hello from an Atlas app")
@@ -55,7 +59,7 @@ AtlasPage {
 
         Timer {
             interval: 1000
-            running: true
+            running: page.shown
             repeat: true
             triggeredOnStart: true
             onTriggered: {
@@ -258,7 +262,7 @@ AtlasPage {
 
         Timer {
             interval: 1000
-            running: true
+            running: page.shown
             repeat: true
             onTriggered: {
                 table.load = table.load.map((l, i) => ({ cpu: Math.max(0, Math.min(100, l.cpu + (Math.random() - 0.5) * 12 * (i % 3 + 1))), memory: l.memory }));

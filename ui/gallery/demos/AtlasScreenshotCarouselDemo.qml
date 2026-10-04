@@ -11,7 +11,7 @@ Rectangle {
     // Nothing runs by itself; the slide only plays on a key or a click.
     property bool animate: true
 
-    implicitWidth: Kirigami.Units.gridUnit * 44
+    implicitWidth: Kirigami.Units.gridUnit * 36
     implicitHeight: Kirigami.Units.gridUnit * 20
     color: Kirigami.Theme.backgroundColor
 

@@ -6,7 +6,9 @@
 #
 #   startup_ms        from exec until the app's window is mapped (median of 3 starts)
 #   rss_kb, pss_kb    from /proc/<pid>/smaps_rollup after 3 s idle
-#   idle_cpu_percent  CPU time over 5 s idle, as a share of one core
+#   idle_cpu_percent  CPU time over 10 s idle (all threads), as a share of one core
+#                     (not zero: the template's page shows live data, two charts
+#                     and a table updated once a second, as a monitor app would)
 #
 # Writes perf/out.json (or $PERF_OUT) and exits 1 when any figure is over budget.
 # Atlas.Ui has to be installed where Qt looks (the template's CMake reads it
@@ -74,13 +76,17 @@ if [ "${1:-}" = "--inner" ]; then
     sleep 3
     rss=$(awk '/^Rss:/ {print $2}' "/proc/$pid/smaps_rollup")
     pss=$(awk '/^Pss:/ {print $2}' "/proc/$pid/smaps_rollup")
-    ticks() { sed 's/.*) //' "/proc/$pid/stat" | awk '{print $12 + $13}'; }
-    c0=$(ticks)
-    s0=$(date +%s.%N)
-    sleep 5
-    c1=$(ticks)
-    s1=$(date +%s.%N)
-    cpu=$(awk -v a="$c0" -v b="$c1" -v s="$s0" -v e="$s1" -v hz="$(getconf CLK_TCK)" 'BEGIN { printf "%.2f", (b - a) / hz / (e - s) * 100 }')
+    # Nanoseconds on a CPU, summed over the app's threads (schedstat's first
+    # field). The stat file's clock ticks are 10 ms: over 5 s that reads only
+    # in 0.2 % steps, too coarse for the budget. A thread that ends in the
+    # window takes its time with it, which an idle app doesn't do.
+    oncpu() { cat /proc/"$pid"/task/*/schedstat 2>/dev/null | awk '{ns += $1} END {printf "%.0f", ns}'; }
+    c0=$(oncpu)
+    s0=$(date +%s%N)
+    sleep 10
+    c1=$(oncpu)
+    s1=$(date +%s%N)
+    cpu=$(awk -v a="$c0" -v b="$c1" -v s="$s0" -v e="$s1" 'BEGIN { printf "%.2f", (b - a) / (e - s) * 100 }')
     stop
 
     jq -n --argjson all "$(printf '%s\n' "${starts[@]}" | jq -s .)" \
