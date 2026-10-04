@@ -1,0 +1,11 @@
+[Atlas]
+Format=2
+Added=in-a-later-format
+
+[General]
+CrashReports=true
+Language=de_DE
+NewKey[$e]=whatever
+
+[LaterGroup]
+Anything=1

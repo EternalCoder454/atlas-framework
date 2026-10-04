@@ -1,0 +1,10 @@
+[Atlas]
+Format=1
+
+[General]
+CrashReports=false
+Language=en_US
+
+[Restart]
+ScheduledAt=1800000000
+Note=a\sb\nc

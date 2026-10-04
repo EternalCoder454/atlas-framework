@@ -13,6 +13,22 @@ use serde::{Deserialize, Serialize};
 const MAX_ERROR_CHARS: usize = 300;
 pub const DEFAULT_PATH: &str = "/var/lib/atlas-core/events.jsonl";
 
+/// The line format the writers produce (`"format": 1`, before the event's
+/// own fields). Lines from before it have no `format`; lines with a higher
+/// number read by the fields this build knows. Old readers ignore the field.
+/// (`version` in a line is the OS version, so the format has its own name.)
+pub const FORMAT: u32 = 1;
+
+/// What goes on a line: the format, then the event's own fields. Kept apart
+/// from [`Event`] so that struct, which callers build with a literal, keeps
+/// its fields.
+#[derive(Serialize)]
+struct Line<'a> {
+    format: u32,
+    #[serde(flatten)]
+    event: &'a Event,
+}
+
 /// Events that `record-event` accepts from greenboot scripts.
 pub const CLI_EVENTS: &[&str] = &["health-check-failed", "health-check-passed"];
 
@@ -66,7 +82,11 @@ pub fn append(path: &Path, event: &Event) -> io::Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    let line = serde_json::to_string(event).map_err(io::Error::other)?;
+    let line = serde_json::to_string(&Line {
+        format: FORMAT,
+        event,
+    })
+    .map_err(io::Error::other)?;
     let lock = fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -172,7 +192,13 @@ mod tests {
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("e.jsonl");
         let e = Event::new("update-failed", None, Some(&"\u{1}".repeat(300)));
-        let line = serde_json::to_string(&e).unwrap().len() as u64 + 1;
+        let line = serde_json::to_string(&Line {
+            format: FORMAT,
+            event: &e,
+        })
+        .unwrap()
+        .len() as u64
+            + 1;
         assert!(line > 1500, "escaped error line is {line} bytes");
         let (mut prev, mut cut) = (0, false);
         for _ in 0..2000 {
@@ -233,5 +259,49 @@ mod tests {
         assert_eq!(ev[0].error.as_deref(), Some("cannot read <path>"));
         assert!(!fs::read_to_string(&p).unwrap().contains("\"error\":null"));
         assert!(read(&d.path().join("none")).is_empty());
+    }
+
+    /// The struct as it was before `format` existed: what an older helper or
+    /// app (a rollback) reads the file with.
+    #[derive(Debug, Deserialize)]
+    struct OldEvent {
+        event: String,
+        #[serde(default)]
+        version: Option<String>,
+        #[serde(default)]
+        error: Option<String>,
+        time: String,
+    }
+
+    #[test]
+    fn lines_carry_format_1_and_old_readers_still_read_them() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("e.jsonl");
+        append(&p, &Event::new("update-staged", Some("44.1".into()), None)).unwrap();
+        let text = fs::read_to_string(&p).unwrap();
+        assert!(
+            text.starts_with("{\"format\":1,\"event\":\"update-staged\""),
+            "{text}"
+        );
+        let old: OldEvent = serde_json::from_str(text.trim()).unwrap();
+        assert_eq!(
+            (old.event.as_str(), old.version.as_deref()),
+            ("update-staged", Some("44.1"))
+        );
+        assert!(old.error.is_none() && !old.time.is_empty());
+        assert_eq!(read(&p).len(), 1);
+    }
+
+    #[test]
+    fn lines_of_any_format_read() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("e.jsonl");
+        fs::write(
+            &p,
+            "{\"event\":\"a\",\"time\":\"t\"}\n{\"format\":5,\"event\":\"b\",\"time\":\"t\",\"more\":[1]}\n",
+        )
+        .unwrap();
+        let names: Vec<_> = read(&p).into_iter().map(|e| e.event).collect();
+        assert_eq!(names, ["a", "b"]);
     }
 }

@@ -18,8 +18,13 @@
 // AtlasApp (Atlas.Ui) reads the app's names once, when QML first uses it:
 // call atlas_app_ready before loading any QML.
 //
+// The Atlas.Ui version the app needs: name it in the Rust `app!` (a trailing
+// `ui: "1.3.0"`), or call atlas_app_require_ui before atlas_app_ready. Then
+// atlas_app_ready checks the installed Atlas.Ui before any QML loads. With no
+// version named it checks nothing, at no cost.
+//
 // A CMake app that doesn't get this header from the crate can declare the
-// three functions itself: they have C linkage and only plain types.
+// functions itself: they have C linkage and only plain types.
 #pragma once
 
 extern "C" {
@@ -33,6 +38,19 @@ void atlas_app_init();
 // After QApplication: the display name, the window icon, and what Atlas.Ui's
 // AtlasApp shows.
 void atlas_app_ready();
+
+// Optional, before atlas_app_ready (or atlas_app_run, which calls it first):
+// the oldest Atlas.Ui the app works with, as "major.minor.patch" ("1.3.0").
+// It overrides the `ui:` of the app's `app!`; null or "" removes the
+// requirement. atlas_app_ready then loads a tiny QML component that reads
+// AtlasApp.uiVersion. If Atlas.Ui is not installed, is older than asked, or
+// is older than 1.3.0 (which has no uiVersion to answer with), it logs why,
+// shows a plain window (no Atlas.Ui in it) saying which version is needed,
+// which is installed and how to fix it, and exits with code 1 once the
+// window is closed. On the offscreen and minimal Qt platforms there is no
+// one to read it: it logs and exits at once. A string that isn't a version
+// is logged and ignored.
+void atlas_app_require_ui(const char *minVersion);
 
 // Everything: atlas_app_init, QApplication, atlas_app_ready, one instance per
 // session (a second launch raises the first window and exits, dropping its

@@ -13,6 +13,13 @@ use crate::bootc::Status;
 
 pub const DEFAULT_PATH: &str = "/var/lib/atlas-core/history.jsonl";
 
+/// The line format the writers produce (`"format": 1`). Lines from before it
+/// have no `format` and read as format 0; lines with a higher number than
+/// this build knows read too, by the fields it knows (unknown ones are
+/// ignored). Only a change that would make an old reader misread a line
+/// raises it, and old readers keep working because they ignore the field.
+pub const FORMAT: u32 = 1;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
     #[serde(default)]
@@ -25,6 +32,10 @@ pub struct Entry {
     pub timestamp: Option<String>,
     /// When this machine first booted it, RFC 3339 UTC.
     pub first_booted: String,
+    /// The line format; `None` for a line from before it existed. Writers
+    /// set [`FORMAT`]. (`version` above is the OS version.)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<u32>,
 }
 
 /// Read the history at the default path, newest first.
@@ -59,7 +70,9 @@ pub fn append_if_new(path: &Path, entry: &Entry) -> io::Result<bool> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    let line = serde_json::to_string(entry).map_err(io::Error::other)?;
+    let mut entry = entry.clone();
+    entry.format.get_or_insert(FORMAT);
+    let line = serde_json::to_string(&entry).map_err(io::Error::other)?;
     crate::fsutil::append_line(path, &line, 0o644)?;
     Ok(true)
 }
@@ -78,6 +91,7 @@ pub fn record_boot(path: &Path, status: &Status, now: &str) -> io::Result<bool> 
         image: booted.image.image.clone(),
         timestamp: booted.timestamp.clone(),
         first_booted: now.to_string(),
+        format: Some(FORMAT),
     };
     append_if_new(path, &entry)
 }
@@ -124,7 +138,50 @@ mod tests {
             image: "x:stable".into(),
             timestamp: None,
             first_booted: "2026-10-01T00:00:00Z".into(),
+            format: None,
         }
+    }
+
+    /// The struct as it was before `format` existed: what an older helper or
+    /// app (a rollback) reads the file with.
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct OldEntry {
+        #[serde(default)]
+        version: Option<String>,
+        digest: String,
+        #[serde(default)]
+        image: String,
+        #[serde(default)]
+        timestamp: Option<String>,
+        first_booted: String,
+    }
+
+    #[test]
+    fn writers_write_format_1_and_old_readers_still_read_it() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("h.jsonl");
+        append_if_new(&p, &entry("sha256:a")).unwrap();
+        let line = fs::read_to_string(&p).unwrap();
+        assert!(line.contains("\"format\":1"), "{line}");
+        let old: OldEntry = serde_json::from_str(line.trim()).unwrap();
+        assert_eq!(old.digest, "sha256:a");
+        assert_eq!(old.version.as_deref(), Some("44.1"));
+        assert_eq!(read(&p).unwrap()[0].format, Some(1));
+    }
+
+    #[test]
+    fn legacy_and_future_formats_read() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("h.jsonl");
+        fs::write(
+            &p,
+            "{\"digest\":\"sha256:a\",\"first_booted\":\"t\"}\n\
+             {\"format\":9,\"digest\":\"sha256:b\",\"first_booted\":\"t\",\"later\":{\"x\":1}}\n",
+        )
+        .unwrap();
+        let got = read(&p).unwrap();
+        assert_eq!(got[0].format, Some(9));
+        assert_eq!(got[1].format, None);
     }
 
     #[test]

@@ -1,0 +1,5 @@
+{"version":"44.20260901","digest":"sha256:aaa1","image":"ghcr.io/eternalcoder454/atlasos:stable","timestamp":"2026-09-01T04:00:00Z","first_booted":"2026-09-02T08:00:00Z"}
+{"digest":"sha256:aaa2","first_booted":"2026-09-10T08:00:00Z"}
+{"version":"44.20260915","digest":"sha256:aaa3","image":"ghcr.io/eternalcoder454/atlasos:stable","first_booted":"2026-09-16T08:00:00Z"}
+this line is not json
+{"version":null,"digest":"sha256:aaa4","image":"x:beta","timestamp":null,"first_booted":"2026-09-20T08:00:00Z"}

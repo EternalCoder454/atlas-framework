@@ -120,7 +120,29 @@ fn change(
             format!("{group}/{key} is immutable"),
         ));
     }
-    Ok((out, true, meta))
+    Ok((with_format(&text, out), true, meta))
+}
+
+/// The settings file's format version, in `[Atlas] Format=`. Written when a
+/// file is first created or changed; never required when reading, so files
+/// from before it, and files a newer app wrote (a higher number), read the
+/// same. Only a change to how existing keys are read would raise it.
+pub const FORMAT: u32 = 1;
+
+/// `out` (the new text, derived from `old`) with `[Atlas] Format=` added
+/// unless the file already has one (any number: a newer app's stays) or
+/// KConfig would ignore the write. A new file gets it first.
+fn with_format(old: &str, out: String) -> String {
+    if out.is_empty()
+        || get_in(&out, "Atlas", "Format").is_some()
+        || immutable(old, "Atlas", "Format")
+    {
+        return out;
+    }
+    if old.trim().is_empty() {
+        return format!("[Atlas]\nFormat={FORMAT}\n\n{out}");
+    }
+    set_in(&out, "Atlas", "Format", Some(&FORMAT.to_string()))
 }
 
 /// Where [`config_dir`] points when there is no home: `set` refuses it.
@@ -539,7 +561,10 @@ mod tests {
                 .file_type()
                 .is_symlink()
         );
-        assert_eq!(fs::read_to_string(&real).unwrap(), "[G]\nA=1\nB=2\n");
+        assert_eq!(
+            fs::read_to_string(&real).unwrap(),
+            "[G]\nA=1\nB=2\n\n[Atlas]\nFormat=1\n"
+        );
         assert_eq!(
             fs::metadata(&real).unwrap().permissions().mode() & 0o777,
             0o640
@@ -555,7 +580,10 @@ mod tests {
         let s = Settings::at(&path);
         assert_eq!(s.get("G", "K").as_deref(), Some("2"));
         s.set("G", "K", Some("3")).unwrap();
-        assert_eq!(fs::read_to_string(&path).unwrap(), "[G]\nK=3\n");
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "[G]\nK=3\n\n[Atlas]\nFormat=1\n"
+        );
         assert_eq!(
             fs::metadata(&path).unwrap().permissions().mode() & 0o777,
             0o666
@@ -630,7 +658,7 @@ mod tests {
         Settings::at(&link).set("G", "K", Some("v")).unwrap();
         assert_eq!(
             fs::read_to_string(dir.path().join("real")).unwrap(),
-            "[G]\nK=v\n"
+            "[Atlas]\nFormat=1\n\n[G]\nK=v\n"
         );
     }
 
@@ -665,5 +693,43 @@ mod tests {
                 .set("G", "K", Some("v"))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn writes_the_format_once_and_never_requires_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("atlas-xrc");
+        let s = Settings::at(&path);
+        s.set("G", "K", Some("1")).unwrap();
+        assert_eq!(s.get("Atlas", "Format").as_deref(), Some("1"));
+        s.set("G", "K", Some("2")).unwrap();
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "[Atlas]\nFormat=1\n\n[G]\nK=2\n"
+        );
+        // a file without it reads, and gets it on its next change
+        fs::write(&path, "[G]\nK=old\n").unwrap();
+        assert_eq!(s.get("G", "K").as_deref(), Some("old"));
+        assert_eq!(s.get("Atlas", "Format"), None);
+        s.set("G", "K", Some("new")).unwrap();
+        assert_eq!(s.get("Atlas", "Format").as_deref(), Some("1"));
+        // a newer app's number stays
+        fs::write(&path, "[Atlas]\nFormat=7\n[G]\nK=1\n").unwrap();
+        s.set("G", "K", Some("2")).unwrap();
+        assert_eq!(s.get("Atlas", "Format").as_deref(), Some("7"));
+        // removing a key that isn't there changes nothing, so no Format either
+        fs::write(&path, "[G]\nK=1\n").unwrap();
+        s.set("G", "Nope", None).unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "[G]\nK=1\n");
+    }
+
+    #[test]
+    fn an_immutable_atlas_group_is_left_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("atlas-xrc");
+        fs::write(&path, "[Atlas][$i]\nOther=1\n").unwrap();
+        let s = Settings::at(&path);
+        s.set("G", "K", Some("v")).unwrap();
+        assert_eq!(s.get("Atlas", "Format"), None);
     }
 }

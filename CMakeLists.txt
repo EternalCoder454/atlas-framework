@@ -11,7 +11,9 @@
 #   cmake -S . -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr
 #   cmake --build build && cmake --install build
 cmake_minimum_required(VERSION 3.24)
-project(atlas-framework VERSION 1.0.0 LANGUAGES CXX)
+# The version is the Atlas.Ui version: AtlasApp.uiVersion reports it, and apps
+# name the oldest one they work with (`ui:` in atlas_framework_ui::app!).
+project(atlas-framework VERSION 1.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

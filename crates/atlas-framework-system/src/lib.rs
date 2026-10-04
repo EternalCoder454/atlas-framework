@@ -8,11 +8,15 @@
 //! - [`events`]: update and rollback events the system helper records.
 //! - `polkit` (feature `polkit`): the authorization check for a root D-Bus
 //!   helper's admin actions.
+//! - `notify` (feature `notify`): desktop notifications the way KNotification
+//!   sends them, for the app's own events.
 
 pub mod bootc;
 pub mod crash;
 pub mod events;
 pub mod history;
+#[cfg(feature = "notify")]
+pub mod notify;
 #[cfg(feature = "polkit")]
 pub mod polkit;
 
