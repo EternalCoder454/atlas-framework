@@ -53,6 +53,7 @@ qt_add_qml_module(atlasui
         InfoBanner.qml
         Toast.qml
         ToolbarButton.qml
+        AtlasFocusRing.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp
