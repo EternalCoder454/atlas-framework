@@ -55,6 +55,8 @@ class Goldens : public DemoList
 {
     Q_OBJECT
 public:
+    // True when this run rewrites the goldens instead of comparing.
+    Q_INVOKABLE bool updating() const { return qEnvironmentVariableIntValue("ATLAS_UPDATE_GOLDENS") == 1; }
     Q_INVOKABLE QString variant() const { return env("ATLAS_VARIANT", QStringLiteral("light")); }
 
     // Grabs `target` (an Item, or a window) and compares it with the golden of

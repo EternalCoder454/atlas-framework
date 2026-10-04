@@ -30,12 +30,20 @@ Atlas.Ui, and the compatibility rules. Change it together with the code.
 
 ## Commands
 
+**The everyday check is one command from the host:** `tools/dev-check.sh`
+(incremental build, qmllint, every test in parallel, API check, gallery lint;
+about 25 s). `tools/dev-check.sh AtlasFoo` runs the visual and a11y tests for
+that demo only; `--translations` also rewrites `ui/translations/atlas-ui.ts`.
+Each checkout gets its own build directory, so worktrees can run it at once.
+Run it yourself; it needs no tester agent. The commands below are what it
+runs, for when you need one step on its own.
+
 | Task | Command (inside the container, in /src) |
 |---|---|
 | Build | `cmake -S . -B build -G Ninja -DATLAS_UI_TESTS=ON && cmake --build build` |
 | Crates | `cargo test --workspace --all-features && cargo clippy --workspace --all-features --all-targets` (QMAKE=/usr/bin/qmake6) |
 | qmllint | `cmake --build build --target all_qmllint` |
-| Visual tests | `ctest --test-dir build --output-on-failure` (light, dark, accent, opaque) |
+| Visual tests | `ctest --test-dir build -j$(nproc) --output-on-failure` (light, dark, accent, opaque, a11y, i18n; `ATLAS_DEMO_FILTER='^(AtlasFoo)$'` for one demo) |
 | Accept new pictures | `ATLAS_UPDATE_GOLDENS=1 ctest --test-dir build`, then look at every changed PNG before committing |
 | API check | `tools/check-api.sh build`; after adding API, `tools/update-api.sh build` and commit `api/` |
 | Semver (crates) | `cargo semver-checks --workspace --baseline-rev <last v* tag>` |

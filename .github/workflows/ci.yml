@@ -52,7 +52,7 @@ jobs:
         run: $RUN cargo clippy --workspace --all-features --all-targets -- -D warnings
 
       - name: Visual tests
-        run: $RUN bash -c 'ctest --test-dir build --output-on-failure'
+        run: $RUN bash -c 'ctest --test-dir build -j "$(nproc)" --output-on-failure'
 
       - name: Upload the actual and diff pictures of a failed visual test
         if: failure()

@@ -37,9 +37,22 @@ Rectangle {
             } else {
                 waitForRendering(stage);
             }
-            // Popups open and transitions end.
-            wait(600);
-            const message = Goldens.check(obj, data.tag);
+            // Popups open and transitions end. A new golden waits for them;
+            // a comparison looks early and again every 200 ms until the
+            // picture matches or 3 s have gone, so a busy machine (tests
+            // run in parallel) only takes longer, and a pass takes a frame.
+            let message;
+            if (Goldens.updating()) {
+                wait(600);
+                message = Goldens.check(obj, data.tag);
+            } else {
+                wait(50);
+                message = Goldens.check(obj, data.tag);
+                for (let tries = 0; message !== "" && tries < 15; ++tries) {
+                    wait(200);
+                    message = Goldens.check(obj, data.tag);
+                }
+            }
             if (isWindow) {
                 obj.close();
             }

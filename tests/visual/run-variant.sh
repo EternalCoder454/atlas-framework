@@ -65,6 +65,10 @@ fi
 # Passing the dbus session keeps KDE libraries from starting services on the
 # user's bus when this runs on a desktop. Not `exec`: the EXIT trap removes
 # the temporary directory, and the test's status is passed on.
+# Each test starts looking for a free X display at its own number: tests run
+# in parallel (ctest -j), and two `xvfb-run -a` started at once can pick the
+# same display and draw into each other's screen.
+display=$((100 + $(printf '%s' "$ATLAS_TEST_BIN $variant $ATLAS_OUT_DIR" | cksum | cut -d' ' -f1) % 800))
 rc=0
-dbus-run-session -- xvfb-run -a -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
+dbus-run-session -- xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
 exit "$rc"

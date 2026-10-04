@@ -5,8 +5,14 @@ unchanged). In the dev container:
 
 ```sh
 cmake -S . -B build -G Ninja -DATLAS_UI_TESTS=ON && cmake --build build
-ctest --test-dir build --output-on-failure
+ctest --test-dir build -j"$(nproc)" --output-on-failure
 ```
+
+Or, from the host, `tools/dev-check.sh [Type...]` does the build, the tests
+and the other checks in the container. The tests run in parallel: each one
+starts its own X server at a display number of its own, and a picture is
+compared as soon as the demo is drawn, then again every 200 ms (up to 3 s)
+until it matches, so a busy machine is slower, not red.
 
 ## Visual tests (`visual/`)
 
