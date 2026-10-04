@@ -23,6 +23,11 @@
 // atlas_app_ready checks the installed Atlas.Ui before any QML loads. With no
 // version named it checks nothing, at no cost.
 //
+// The check reads Atlas.Ui through the default QML import paths of a fresh
+// engine (the installed module, plus QML_IMPORT_PATH and QML2_IMPORT_PATH),
+// the same ones the app's own QML uses. `app!` is the only supported way to
+// define the app's info: the C++ side reads it from the Rust library.
+//
 // A CMake app that doesn't get this header from the crate can declare the
 // functions itself: they have C linkage and only plain types.
 #pragma once
@@ -43,7 +48,10 @@ void atlas_app_ready();
 // the oldest Atlas.Ui the app works with, as "major.minor.patch" ("1.3.0").
 // It overrides the `ui:` of the app's `app!`; null or "" removes the
 // requirement. atlas_app_ready then loads a tiny QML component that reads
-// AtlasApp.uiVersion. If Atlas.Ui is not installed, is older than asked, or
+// AtlasApp.uiVersion. (atlas_app_run does this after the single-instance
+// registration, so a second launch that only raises the window skips it.)
+// If Atlas.Ui cannot be loaded (the window says "could not be loaded" and
+// gives the first line of the error), is older than asked, or
 // is older than 1.3.0 (which has no uiVersion to answer with), it logs why,
 // shows a plain window (no Atlas.Ui in it) saying which version is needed,
 // which is installed and how to fix it, and exits with code 1 once the

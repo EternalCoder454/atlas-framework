@@ -56,7 +56,7 @@ public:
     QString osLogo() const { return m_osLogo; }
     QString osHomeUrl() const { return m_osHomeUrl; }
     QString qtVersion() const { return m_qtVersion; }
-    QString uiVersion() const { return QStringLiteral(ATLAS_UI_VERSION); }
+    QString uiVersion() const;
 
 private:
     QString m_name, m_id, m_version, m_repo, m_sourceUrl, m_issuesUrl;
