@@ -62,6 +62,7 @@ dependencies = [
 [[package]]
 name = "atlas-core"
 version = "0.1.0"
+source = "git+https://github.com/EternalCoder454/atlasos-updater?rev=bd4bbaa0413dd1ca14b1bacb11d97797f5240013#bd4bbaa0413dd1ca14b1bacb11d97797f5240013"
 dependencies = [
  "getrandom 0.3.4",
  "libc",

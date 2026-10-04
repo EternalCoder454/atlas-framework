@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 
 include(GNUInstallDirs)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
 qt_policy(SET QTP0001 NEW)
 find_package(Corrosion REQUIRED)
 
@@ -19,11 +19,15 @@ corrosion_set_env_vars(atlas_app_template QMAKE=${QMAKE6})
 qt_add_executable(template-app main.cpp)
 set_target_properties(template-app PROPERTIES OUTPUT_NAME atlas-app-template)
 
+# The shared Atlas look, Atlas.Ui, is installed like Kirigami (the atlas-ui
+# package): QML imports it, and nothing links it. qmlcachegen and qmllint read
+# its types from the installed copy.
+if(NOT EXISTS "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_QML}/Atlas/Ui/qmldir")
+    message(FATAL_ERROR "Atlas.Ui is not installed: dnf install atlas-ui (see README.md)")
+endif()
+
 # qt_add_qml_module compiles the QML to C++ with qmlcachegen at build time and
 # embeds it in the executable: no .qml files are read at run time.
-# The shared Atlas look. When you copy this template out of the repo, copy ../ui
-# next to it (or point this at wherever Atlas.Ui lives).
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../ui atlas-ui)
 
 qt_add_qml_module(template-app
     URI net.eterneon.atlas.apptemplate
@@ -34,7 +38,7 @@ qt_add_qml_module(template-app
 )
 
 target_link_libraries(template-app PRIVATE
-    atlas_app_template atlas-ui atlas-uiplugin
+    atlas_app_template
     Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
 
 install(TARGETS template-app RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

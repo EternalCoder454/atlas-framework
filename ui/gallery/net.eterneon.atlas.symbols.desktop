@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Atlas Symbols
+GenericName=Icon Browser
+Comment=Browse the Material Symbols Atlas apps draw with, and copy the QML for one
+Exec=atlas-symbols
+Icon=preferences-desktop-icons
+Categories=Qt;KDE;Development;
+Keywords=icons;symbols;material;qml;

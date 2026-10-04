@@ -17,10 +17,10 @@ crate-type = ["staticlib"]
 cxx = "1"
 cxx-qt = "0.10"
 cxx-qt-lib = "0.10"
-# In this repo atlas-core is a path dependency. Once the template is copied to
-# its own repo, use the git form instead:
-#   atlas-core = { git = "https://github.com/EternalCoder454/atlasos-updater", package = "atlas-core" }
-atlas-core = { path = "../crates/atlas-core" }
+# atlas-core lives in the Atlas Updater repository, pinned to a commit so a
+# change there can't break the app, or slip into its build unreviewed. Move
+# the rev forward on purpose.
+atlas-core = { git = "https://github.com/EternalCoder454/atlasos-updater", rev = "bd4bbaa0413dd1ca14b1bacb11d97797f5240013", package = "atlas-core" }
 
 [build-dependencies]
 cxx-qt-build = "0.10"

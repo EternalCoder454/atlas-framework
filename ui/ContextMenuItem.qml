@@ -9,6 +9,8 @@ T.MenuItem {
     id: control
 
     property bool destructive: false
+    // A Material Symbol (Symbols.<Name>) to draw instead of icon.name.
+    property int symbol: 0
     // Shown dimmed on the right ("Del"); it only describes, it doesn't bind.
     property string shortcutText
 
@@ -34,14 +36,29 @@ T.MenuItem {
     contentItem: RowLayout {
         spacing: Kirigami.Units.largeSpacing
 
-        Kirigami.Icon {
+        Item {
             Layout.preferredWidth: control.icon.width
             Layout.preferredHeight: control.icon.height
             // Rows with and without icons line up.
-            opacity: control.icon.name.length > 0 ? 1 : 0
-            source: control.icon.name
-            isMask: true
-            color: control.tint
+            Kirigami.Icon {
+                anchors.fill: parent
+                visible: control.symbol === 0 && control.icon.name.length > 0
+                source: control.icon.name
+                isMask: true
+                color: control.tint
+            }
+            // Made only when used, so rows without one never load the fonts.
+            Loader {
+                anchors.centerIn: parent
+                active: control.symbol !== 0
+                sourceComponent: Symbol {
+                    icon: control.symbol
+                    // A symbol fills about 5/6 of its square: a little larger
+                    // matches a theme icon of the same slot.
+                    size: Math.round(control.icon.width * 1.2)
+                    color: control.tint
+                }
+            }
         }
         Text {
             Layout.fillWidth: true

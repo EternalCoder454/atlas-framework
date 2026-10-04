@@ -17,6 +17,9 @@ T.AbstractButton {
     property bool compact: false
     // Tint a monochrome icon with the accent; false keeps a coloured icon as is.
     property bool tintIcon: true
+    // A Material Symbol (Symbols.<Name>) to draw instead of icon.name. It
+    // fills in while the entry is selected.
+    property int symbol: 0
     // Shown dimmed at the right edge; hidden when compact.
     property string value
     property bool sub: false
@@ -69,13 +72,33 @@ T.AbstractButton {
             Layout.fillWidth: control.compact
             visible: control.compact
         }
-        Kirigami.Icon {
+        Item {
+            id: iconSlot
+            readonly property int side: control.sub ? Kirigami.Units.iconSizes.small : Kirigami.Units.iconSizes.smallMedium
             Layout.leftMargin: control.compact ? 0 : Kirigami.Units.largeSpacing + (control.sub ? Kirigami.Units.gridUnit : 0)
-            Layout.preferredWidth: control.sub ? Kirigami.Units.iconSizes.small : Kirigami.Units.iconSizes.smallMedium
-            Layout.preferredHeight: Layout.preferredWidth
-            source: control.icon.name
-            isMask: control.tintIcon
-            color: Kirigami.Theme.highlightColor
+            Layout.preferredWidth: side
+            Layout.preferredHeight: side
+
+            Kirigami.Icon {
+                anchors.fill: parent
+                visible: control.symbol === 0
+                source: control.icon.name
+                isMask: control.tintIcon
+                color: Kirigami.Theme.highlightColor
+            }
+            // Made only when used, so entries without one never load the fonts.
+            Loader {
+                anchors.centerIn: parent
+                active: control.symbol !== 0
+                sourceComponent: Symbol {
+                    icon: control.symbol
+                    // A symbol fills about 5/6 of its square: a little larger
+                    // matches a theme icon of the same slot.
+                    size: Math.round(iconSlot.side * 1.2)
+                    filled: control.selected
+                    color: control.tintIcon ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
+                }
+            }
 
             Kirigami.Icon {
                 visible: control.compact && control.badge.length > 0

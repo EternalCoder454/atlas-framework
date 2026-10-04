@@ -7,6 +7,8 @@ T.AbstractButton {
     id: control
 
     property bool prominent: false
+    // A Material Symbol (Symbols.<Name>) to draw instead of icon.name.
+    property int symbol: 0
     readonly property color accent: Kirigami.Theme.highlightColor
     readonly property color textTint: Kirigami.Theme.textColor
 
@@ -44,8 +46,21 @@ T.AbstractButton {
             id: row
             anchors.centerIn: parent
             spacing: Kirigami.Units.smallSpacing
+            // Made only when used, so buttons without one never load the fonts.
+            Loader {
+                active: control.symbol !== 0
+                visible: active
+                anchors.verticalCenter: parent.verticalCenter
+                sourceComponent: Symbol {
+                    icon: control.symbol
+                    // A symbol fills about 5/6 of its square: a little larger
+                    // matches a theme icon of the same slot.
+                    size: Math.round(Kirigami.Units.iconSizes.small * 1.2)
+                    color: label.color
+                }
+            }
             Kirigami.Icon {
-                visible: control.icon.name.length > 0
+                visible: control.symbol === 0 && control.icon.name.length > 0
                 source: control.icon.name
                 isMask: true
                 color: label.color
