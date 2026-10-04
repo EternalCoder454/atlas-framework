@@ -1,0 +1,14 @@
+# The development container for atlas-framework: Atlas.Ui, the gallery, the
+# template and the Rust crates build and run headless in it. The host has no
+# Qt development packages.
+#
+#   podman build -t localhost/atlas-framework-dev:44 -f packaging/Containerfile.dev packaging
+FROM registry.fedoraproject.org/fedora:44
+RUN dnf -y -q --setopt=install_weak_deps=False install \
+        cmake ninja-build gcc-c++ git-core rpm-build desktop-file-utils libappstream-glib \
+        qt6-qtbase-devel qt6-qtbase-private-devel qt6-qtbase-gui qt6-qtdeclarative-devel \
+        kf6-kirigami-devel kf6-kconfig-devel kf6-kwindowsystem-devel kf6-kdbusaddons-devel \
+        kf6-qqc2-desktop-style plasma-breeze breeze-icon-theme google-noto-sans-fonts \
+        cargo corrosion clippy rustfmt flatpak-devel glib2-devel \
+        xorg-x11-server-Xvfb xdotool xwd ImageMagick dbus-daemon \
+    && dnf clean all

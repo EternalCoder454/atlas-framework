@@ -1,7 +1,8 @@
 # atlas-framework
 
 Atlas.Ui (the QML module every Atlas app imports), the Material Symbols
-fonts, the Atlas Symbols gallery and the app template. Qt 6.11 and KF6 on
+fonts, the Atlas Symbols gallery, the app template and the Rust crates
+(`crates/`: startup, settings, logging, crash reports, polkit, Flatpak). Qt 6.11 and KF6 on
 Fedora 44. Read `docs/DESIGN.md` first: the design rules, how apps use
 Atlas.Ui, and the compatibility rules. Change it together with the code.
 
@@ -12,9 +13,12 @@ Atlas.Ui, and the compatibility rules. Change it together with the code.
   type, property, signal, function, enum value or `Symbols.<Name>` without
   updating every app first (see "Compatibility" in docs/DESIGN.md). Before
   adding a type, check no app has a `.qml` file of that name: the import
-  would hide the app's own.
+  would hide the app's own. The crates' public items, the C functions in
+  `crates/atlas-framework-ui/include/atlas/app.h` and every on-disk or D-Bus
+  format are contracts too.
 - **Build and test in a container**, never on the host (no Qt -devel there):
-  `localhost/atlas-ui-dev:44`, or `registry.fedoraproject.org/fedora:44` for
+  `localhost/atlas-framework-dev:44` (`packaging/Containerfile.dev` builds it;
+  the older `localhost/atlas-ui-dev:44` lacks flatpak-devel), or `registry.fedoraproject.org/fedora:44` for
   RPMs. Mount the repo at `/src` (the path has a space; quote it) with
   `--security-opt label=disable`.
 - **Never run the GUI on the user's display.** Use `xvfb-run -a -s "-screen 0
@@ -29,6 +33,7 @@ Atlas.Ui, and the compatibility rules. Change it together with the code.
 | Task | Command (inside the container, in /src) |
 |---|---|
 | Build | `cmake -S . -B build -G Ninja && cmake --build build` |
+| Crates | `cargo test --workspace --all-features && cargo clippy --workspace --all-features --all-targets` (QMAKE=/usr/bin/qmake6) |
 | qmllint | `cmake --build build --target all_qmllint` |
 | Gallery | `xvfb-run -a build/atlas-symbols` |
 | RPMs | `packaging/build-rpm.sh /src/out` (in fedora:44; `ATLAS_BUILD_CACHE=<dir>` outside the tree for fast rebuilds) |

@@ -1,8 +1,10 @@
 # Atlas app template
 
 A minimal Atlas app: Kirigami UI (QML compiled ahead of time by `qt_add_qml_module`),
-one Rust QObject exposed through CXX-Qt, built with CMake and Corrosion, and a
-dependency on `atlas-core`, using the installed Atlas.Ui. It builds on its own.
+one Rust QObject exposed through CXX-Qt, built with CMake and Corrosion, on
+atlas-framework's Rust crates and the installed Atlas.Ui. The framework starts
+the app (app ID, one instance per session, journal logging, crash hooks) and
+Atlas.Ui gives it the look and an About page. It builds on its own.
 
 ## Start a new app from it
 
@@ -10,10 +12,13 @@ dependency on `atlas-core`, using the installed Atlas.Ui. It builds on its own.
 2. Rename (search and replace in every file, and rename the files that carry it):
    - crate `atlas-app-template` / lib `atlas_app_template` (Cargo.toml, CMakeLists.txt)
    - QML module URI `net.eterneon.atlas.apptemplate` (CMakeLists.txt, main.cpp)
-   - app ID and desktop file `net.eterneon.atlas.apptemplate` (main.cpp, data/)
+   - app ID and desktop file `net.eterneon.atlas.apptemplate` (main.cpp,
+     src/lib.rs, data/), and the name and repository in `src/lib.rs`'s `app!`
    - binary name `atlas-app-template` (CMakeLists.txt, main.cpp)
    - `atlas_backend_new` and the `atlas_app` C++ namespace if you like
-3. In `Cargo.toml`, pin `atlas-core` to a commit (the comment shows how).
+3. In `Cargo.toml`, take `atlas-framework-ui` from git pinned to a commit (the
+   comment shows how), and add `atlas-framework-system` or
+   `atlas-framework-flatpak` only if the app needs them.
 4. Give the app's RPM `Requires: atlas-ui` and `BuildRequires: atlas-ui`
    (with `>= <version>` once it uses something newer than 1.0.0).
 5. Add properties and invokables to `src/backend.rs`, pages to `qml/` and to the
@@ -23,7 +28,8 @@ dependency on `atlas-core`, using the installed Atlas.Ui. It builds on its own.
 
 ```sh
 dnf install cmake ninja-build gcc-c++ cargo corrosion qt6-qtbase-devel \
-  qt6-qtdeclarative-devel kf6-kirigami-devel kf6-qqc2-desktop-style atlas-ui
+  qt6-qtdeclarative-devel kf6-kirigami-devel kf6-qqc2-desktop-style \
+  kf6-kdbusaddons-devel kf6-kwindowsystem-devel atlas-ui
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 QT_QPA_PLATFORM=offscreen ./build/atlas-app-template
@@ -31,9 +37,20 @@ QT_QPA_PLATFORM=offscreen ./build/atlas-app-template
 
 ## How it fits together
 
-- `main.cpp` is the only C++: it starts Qt and loads the QML module.
-- `src/lib.rs` exports `atlas_backend_new()`, which hands the Rust `Backend`
-  QObject to the QML engine (`required property var backend` in `qml/Main.qml`).
+- `src/lib.rs` names the app once with `atlas_framework_ui::app!`, and exports
+  `atlas_backend_new()`, which hands the Rust `Backend` QObject to the QML
+  engine (`required property var backend` in `qml/Main.qml`).
+- `main.cpp` is the only C++, one call: `atlas_app_run` (atlas-framework-ui's
+  `include/atlas/app.h`) sets up Qt and the app ID, keeps one instance per
+  session (a second launch raises the window), starts logging and crash
+  hooks, and loads `Main` from the QML module.
+- The app links `KF6::DBusAddons` and `KF6::WindowSystem` in CMake for that
+  startup code (Corrosion doesn't pass a crate's native libraries on).
+- `AtlasApp` (name, version, OS, links) and `AtlasAboutPage` come from
+  Atlas.Ui; `qml/Main.qml` pushes the About page.
+- Settings: `atlas_framework_ui::atlas_framework_core::settings::Settings::for_app`
+  reads and writes `~/.config/atlas-<app>rc`. Logging: the `log` crate's
+  macros (add `log = "0.4"`) go to the journal (`journalctl -t atlas-<app>`).
 - Slow work runs on a thread and posts back with `qt_thread().queue(..)`; never
   block the GUI thread.
 - Atlas.Ui is installed system-wide (`/usr/lib64/qt6/qml/Atlas/Ui`, from the

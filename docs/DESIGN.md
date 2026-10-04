@@ -9,11 +9,14 @@ that copy. It holds:
   icons with (`ui/symbols/`)
 - **Atlas Symbols**, a gallery of those icons (`ui/gallery/`)
 - **the app template**, the starting point for a new Atlas app (`template/`)
+- **the Rust crates** (`crates/`), the code every Atlas app shares: startup,
+  settings, logging, crash reports, AtlasOS state, polkit checks, Flatpak
 - the design rules below
 
-atlas-core (the Rust crate and the root system helper) stays in the Atlas
-Updater repository (`EternalCoder454/atlasos-updater`). Apps take it from
-there through git.
+The update engine (the root `atlas-system-helper` and its D-Bus protocol)
+stays in the Atlas Updater repository (`EternalCoder454/atlasos-updater`):
+only the Updater uses it. Everything apps share moved here from its
+atlas-core crate.
 
 Stack: Qt 6.11 and KDE Frameworks 6.30 on Fedora 44.
 
@@ -29,7 +32,12 @@ ui/                           Atlas.Ui (URI Atlas.Ui, version 1.0)
   symbols/                    the fonts, and their generated name table
   symbols/generate.py         updates them from a fonts.google.com download
   gallery/                    Atlas Symbols: browse the symbols, copy the QML
-template/                     minimal Atlas app (Kirigami window, Rust backend, atlas-core)
+Cargo.toml                    the Rust workspace
+crates/atlas-framework-core/    every app: AppInfo, settings, logging, os-release
+crates/atlas-framework-ui/      every GUI app: startup (C++ and Rust), app!
+crates/atlas-framework-system/  system apps: crash reports, AtlasOS state, polkit
+crates/atlas-framework-flatpak/ Flatpak through libflatpak: the Updater, Atlas Store
+template/                     minimal Atlas app (Kirigami window, Rust backend, the crates)
 packaging/atlas-framework.spec  the packages below
 packaging/build-rpm.sh        builds them inside fedora:44: build-rpm.sh <out dir>
 packaging/atlas-framework.conf  dnf's protected list
@@ -101,8 +109,13 @@ control takes `iconName`.
 | `Symbol`, `Symbols` | A Material Symbol, and the singleton of every symbol's value |
 | `Appearance` | Singleton: `transparency`, `blurAvailable`, `effective`, `refresh()`, `applyBlur()` |
 | `AccessibilityState` | Singleton: whether a screen reader is active |
+| `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`. Set by atlas-framework-ui's startup |
+| `AtlasAboutPage` | The About page: icon, name, version, `description`, the version and OS rows, `license`, source and issue links; extra content goes below |
 
 Each file's header comment says how to use it.
+
+New types that an app might also write itself get an `Atlas` prefix
+(`AtlasAboutPage`, not `AboutPage`: five apps have their own).
 
 ### Symbols
 
@@ -125,6 +138,47 @@ names.
 To update the fonts, download them from fonts.google.com and run
 `ui/symbols/generate.py`, which rewrites `symbolnames.h` and
 `symboltable.inc`.
+
+## The Rust crates
+
+One Cargo workspace, four crates, so a small app pays only for what it uses:
+
+| Crate | For | Holds |
+|---|---|---|
+| `atlas-framework-core` | every app | `AppInfo` and `app_info!`; `settings` (`~/.config/atlas-<app>rc`, KConfig format, atomic writes); `log` (the `log` crate to the journal, `ATLAS_LOG=debug`); `osrelease`; `fsutil`. No Qt, no async runtime |
+| `atlas-framework-ui` | every GUI app | `app!`, and the startup in `include/atlas/app.h`: `atlas_app_run` (or `atlas_app_init` and `atlas_app_ready` for an app with its own shell) sets the app ID and names, the org.kde.desktop style, one instance per session (KDBusService; a second launch raises the window, with its Wayland activation token), the journal logger, Rust panic and fatal Qt message hooks, and what `AtlasApp` shows |
+| `atlas-framework-system` | system apps | `crash` (opt-in crash reports), `history`, `bootc`, `events`; `polkit` (feature `polkit`: checks a D-Bus caller's authorisation, fail-closed) |
+| `atlas-framework-flatpak` | the Updater, Atlas Store | Flatpak updates through libflatpak |
+
+An app names itself once in its Rust library:
+
+```rust
+atlas_framework_ui::app! {
+    name: "Atlas Notepad",
+    id: "net.eterneon.atlas.notepad",
+    repo: "atlasos-notepad",
+}
+```
+
+and its `main.cpp` is one call, `atlas_app_run(argc, argv, "<QML module>",
+"Main", atlas_backend_new)`. Corrosion doesn't pass a crate's native
+libraries to the executable, so the app's CMake links `KF6::DBusAddons` and
+`KF6::WindowSystem` itself (the template shows it).
+
+Apps take the crates from git pinned to a commit:
+
+```toml
+atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", rev = "<commit>" }
+```
+
+Unlike Atlas.Ui, the crates are compiled into each app: a change reaches an
+app when it moves its `rev` forward and is rebuilt. Shared behaviour that
+should change everywhere at once (look, layout, the About page) belongs in
+Atlas.Ui.
+
+Build and test the crates in the development container
+(`packaging/Containerfile.dev`, `localhost/atlas-framework-dev:44`): `cargo test --workspace --all-features`
+and `cargo clippy --workspace --all-features --all-targets`.
 
 ## How apps use it
 
@@ -182,6 +236,14 @@ change that breaks an app breaks it on users' machines.
   one working.
 - **Changing the look** (colours, spacing, radii) is allowed when it follows
   these design rules: every app changes with it, which is the point.
+- **The Rust crates follow semver.** Their public items are a contract too,
+  but an app only gets a change when it moves its `rev`, so a break shows up
+  in that app's build, not on users' machines. Still: add rather than
+  rename, and raise the major version for a break. Two things are fixed
+  across versions because separately built programs share them: the C
+  functions in `include/atlas/app.h` (only add new ones), and anything on
+  disk or on D-Bus (the settings file format, crash report and history
+  files, polkit action IDs): read the old form forever.
 - **Atlas.Ui is tied to the Qt minor version.** qmlcachegen compiles its
   QML against Qt's private API, so `libatlasui.so` needs the exact Qt minor
   it was built with (rpm records this as `Qt_6.11_PRIVATE_API`). A Qt minor

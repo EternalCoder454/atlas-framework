@@ -1,0 +1,27 @@
+# The Rust side of atlas-framework. Apps take only the crates they need, so a
+# small app (Atlas Notepad) stays light:
+#   atlas-framework-core     every app: app identity, settings, logging, os-release
+#   atlas-framework-ui       every app with a window: startup, app ID, crash hooks
+#   atlas-framework-system   system apps: crash reports, AtlasOS state, polkit
+#   atlas-framework-flatpak  Atlas Updater and Atlas Store: libflatpak
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+# The template builds on its own, as a copied app would.
+exclude = ["template"]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/EternalCoder454/atlas-framework"
+rust-version = "1.89"
+
+[workspace.dependencies]
+atlas-framework-core = { path = "crates/atlas-framework-core", version = "1.0.0" }
+atlas-framework-system = { path = "crates/atlas-framework-system", version = "1.0.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+log = { version = "0.4", features = ["std"] }
+tempfile = "3"

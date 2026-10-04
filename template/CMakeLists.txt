@@ -10,6 +10,9 @@ include(GNUInstallDirs)
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
 qt_policy(SET QTP0001 NEW)
 find_package(Corrosion REQUIRED)
+# atlas-framework-ui's startup code (single instance, window activation)
+find_package(KF6DBusAddons REQUIRED)
+find_package(KF6WindowSystem REQUIRED)
 
 # Rust crate (static library). cxx-qt-build finds Qt through $QMAKE.
 find_program(QMAKE6 NAMES qmake6 qmake REQUIRED)
@@ -39,7 +42,8 @@ qt_add_qml_module(template-app
 
 target_link_libraries(template-app PRIVATE
     atlas_app_template
-    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets
+    KF6::DBusAddons KF6::WindowSystem)
 
 install(TARGETS template-app RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES data/net.eterneon.atlas.apptemplate.desktop

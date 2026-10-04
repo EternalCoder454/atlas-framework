@@ -1,0 +1,17 @@
+[package]
+name = "atlas-framework-ui"
+description = "Starts an Atlas app: app ID, names, style, single instance, crash and log hooks, the Atlas.Ui About data"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+links = "atlas_framework_ui"
+
+[dependencies]
+atlas-framework-core.workspace = true
+atlas-framework-system.workspace = true
+log.workspace = true
+
+[build-dependencies]
+cxx-qt-build = "0.10"

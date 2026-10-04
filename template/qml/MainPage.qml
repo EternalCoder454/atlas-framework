@@ -9,6 +9,8 @@ AtlasPage {
 
     required property var backend
 
+    signal aboutRequested()
+
     title: qsTr("Home")
 
     StatusHero {
@@ -20,6 +22,10 @@ AtlasPage {
             text: qsTr("Refresh")
             enabled: !page.backend.busy
             onClicked: page.backend.refresh()
+        }
+        TextButton {
+            text: qsTr("About")
+            onClicked: page.aboutRequested()
         }
     }
 

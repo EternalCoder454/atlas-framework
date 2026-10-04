@@ -1,7 +1,16 @@
-//! Rust side of the app. C++ (`main.cpp`) only starts Qt and loads the QML;
+//! Rust side of the app. C++ (`main.cpp`) only hands over to the framework;
 //! everything else lives here as QObjects exposed to QML.
 
 mod backend;
+
+// Who this app is: its name, app ID (also the desktop file and icon name) and
+// repository. The framework uses it for the window, the single-instance name,
+// the journal, crash reports and the About page.
+atlas_framework_ui::app! {
+    name: "Atlas App",
+    id: "net.eterneon.atlas.apptemplate",
+    repo: "atlas-framework",
+}
 
 use std::ffi::c_void;
 

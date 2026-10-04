@@ -44,11 +44,13 @@ qt_add_qml_module(atlasui
         ContextMenuItem.qml
         ContextMenuSeparator.qml
         Symbol.qml
+        AtlasAboutPage.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp
         accessibilitystate.h accessibilitystate.cpp
         appearance.h appearance.cpp
+        atlasapp.h atlasapp.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
 )
 # Development builds run from the source tree find the symbol fonts here when

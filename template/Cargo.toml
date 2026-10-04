@@ -3,10 +3,10 @@ name = "atlas-app-template"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-rust-version = "1.85"
-description = "Starting point for Atlas apps: Kirigami + CXX-Qt + atlas-core"
+rust-version = "1.89"
+description = "Starting point for Atlas apps: Kirigami + CXX-Qt + atlas-framework"
 
-# The template is not part of the atlas-updater workspace; it builds on its own.
+# The template is not part of the framework workspace; it builds on its own.
 [workspace]
 
 [lib]
@@ -17,10 +17,13 @@ crate-type = ["staticlib"]
 cxx = "1"
 cxx-qt = "0.10"
 cxx-qt-lib = "0.10"
-# atlas-core lives in the Atlas Updater repository, pinned to a commit so a
-# change there can't break the app, or slip into its build unreviewed. Move
-# the rev forward on purpose.
-atlas-core = { git = "https://github.com/EternalCoder454/atlasos-updater", rev = "bd4bbaa0413dd1ca14b1bacb11d97797f5240013", package = "atlas-core" }
+# The Atlas framework crates. Here they come from this checkout; a copied app
+# takes them from git, pinned to a commit so a change there can't break the
+# app or slip into its build unreviewed (move the rev forward on purpose):
+#   atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", rev = "<40-character commit>" }
+# Add atlas-framework-system (crash reports, AtlasOS state, polkit) or
+# atlas-framework-flatpak only if the app needs them.
+atlas-framework-ui = { path = "../crates/atlas-framework-ui" }
 
 [build-dependencies]
 cxx-qt-build = "0.10"

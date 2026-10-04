@@ -1,0 +1,16 @@
+[package]
+name = "atlas-framework-core"
+description = "What every Atlas app uses: app identity, settings, logging, os-release"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+libc.workspace = true
+log.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,30 +1,13 @@
-// Thin C++ glue: start Qt, hand the Rust backend to QML, load the window.
-#include <QApplication>
-#include <QQmlApplicationEngine>
-#include <QQuickStyle>
-#include <QVariant>
+// The framework starts the app (atlas-framework-ui, include/atlas/app.h): Qt,
+// the app ID and names, one instance per session, logging and crash hooks.
+// Then it loads the QML module's Main with the Rust backend.
 
+// Defined by atlas-framework-ui.
+extern "C" int atlas_app_run(int argc, char *argv[], const char *qmlModule, const char *qmlType, void *(*makeBackend)());
 // Defined in src/lib.rs.
 extern "C" void *atlas_backend_new();
 
 int main(int argc, char *argv[])
 {
-    QApplication app(argc, argv);
-    QApplication::setApplicationName(QStringLiteral("atlas-app-template"));
-    QApplication::setDesktopFileName(QStringLiteral("net.eterneon.atlas.apptemplate"));
-
-    if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) {
-        QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
-    }
-
-    auto *backend = static_cast<QObject *>(atlas_backend_new());
-
-    QQmlApplicationEngine engine;
-    engine.setInitialProperties({{QStringLiteral("backend"), QVariant::fromValue(backend)}});
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
-    engine.loadFromModule(QStringLiteral("net.eterneon.atlas.apptemplate"), QStringLiteral("Main"));
-
-    const int rc = app.exec();
-    delete backend;
-    return rc;
+    return atlas_app_run(argc, argv, "net.eterneon.atlas.apptemplate", "Main", atlas_backend_new);
 }
