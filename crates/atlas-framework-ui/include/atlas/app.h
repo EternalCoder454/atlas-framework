@@ -15,24 +15,29 @@
 //     atlas_app_ready();
 //     ... its own KDBusService and windows ...
 //
+// AtlasApp (Atlas.Ui) reads the app's names once, when QML first uses it:
+// call atlas_app_ready before loading any QML.
+//
 // A CMake app that doesn't get this header from the crate can declare the
 // three functions itself: they have C linkage and only plain types.
 #pragma once
 
 extern "C" {
 
-// Before QApplication: the journal logger and Rust crash hook, the app's
-// names (the app ID becomes the single-instance D-Bus name and the desktop
-// file name), and the org.kde.desktop style.
+// Before QApplication: the journal logger, the Rust crash hook and the fatal
+// Qt message hook (a crash report when the user turned reports on), the
+// app's names (the app ID becomes the single-instance D-Bus name and the
+// desktop file name), and the org.kde.desktop style.
 void atlas_app_init();
 
-// After QApplication: fatal Qt messages save a crash report (when the user
-// turned reports on), the display name, the window icon, and what Atlas.Ui's
+// After QApplication: the display name, the window icon, and what Atlas.Ui's
 // AtlasApp shows.
 void atlas_app_ready();
 
 // Everything: atlas_app_init, QApplication, atlas_app_ready, one instance per
-// session (a second launch raises the first window), and the QML type
+// session (a second launch raises the first window and exits, dropping its
+// arguments: an app that opens files uses init/ready and its own
+// KDBusService; with no session bus each launch runs), and the QML type
 // `qmlType` of module `qmlModule` as the window. `makeBackend` (may be null)
 // is called once QApplication exists; the QObject it returns is the window's
 // `backend` property, and is deleted after the event loop ends. Returns the

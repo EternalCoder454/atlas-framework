@@ -4,6 +4,7 @@
 #include <QGuiApplication>
 #include <QHash>
 #include <QRegularExpression>
+#include <QUrl>
 
 namespace
 {
@@ -72,9 +73,10 @@ AtlasApp::AtlasApp(QObject *parent)
     m_id = QGuiApplication::desktopFileName();
     m_version = QGuiApplication::applicationVersion();
 
-    static const QRegularExpression repoRe(QStringLiteral("^[A-Za-z0-9._-]+$"));
+    // A plain repository name, so the links can only point at its page.
+    static const QRegularExpression repoRe(QRegularExpression::anchoredPattern(QStringLiteral("[A-Za-z0-9._-]+")));
     const QString repo = qApp ? qApp->property("atlasRepo").toString() : QString();
-    if (repoRe.match(repo).hasMatch()) {
+    if (repoRe.match(repo).hasMatch() && repo != QLatin1String(".") && repo != QLatin1String("..")) {
         m_repo = repo;
         m_sourceUrl = QStringLiteral("https://github.com/EternalCoder454/") + repo;
         m_issuesUrl = m_sourceUrl + QStringLiteral("/issues");
@@ -94,5 +96,9 @@ AtlasApp::AtlasApp(QObject *parent)
     if (m_osLogo.isEmpty()) {
         m_osLogo = QStringLiteral("distributor-logo");
     }
-    m_osHomeUrl = os.value(QStringLiteral("HOME_URL"));
+    // Only a web page: apps may open it.
+    const QUrl home(os.value(QStringLiteral("HOME_URL")), QUrl::StrictMode);
+    if (home.isValid() && (home.scheme() == QLatin1String("https") || home.scheme() == QLatin1String("http")) && !home.host().isEmpty()) {
+        m_osHomeUrl = home.toString();
+    }
 }

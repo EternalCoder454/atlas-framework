@@ -12,13 +12,20 @@
 //! ```
 //!
 //! Each [`Settings::set`] reads the file, changes one key and replaces the
-//! file atomically, keeping every other line as it was. Two processes setting
-//! keys at the same moment can lose one of the two changes, never the file.
+//! file atomically, keeping every other line, its mode and its owner. Writers
+//! take a lock (a thread lock, and `flock` on `.<name>.lock` beside the file,
+//! which stays: removing it would race the next writer),
+//! so concurrent `set`s in Atlas code never lose a change; another program
+//! writing the file without the lock can still race, but never corrupts it.
+//! Keys and groups KConfig marks immutable (`[$i]`) are refused.
 
 use std::fs;
 use std::io::{self, Write};
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::os::fd::AsRawFd;
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::AppInfo;
 
@@ -43,6 +50,7 @@ impl Settings {
     }
 
     /// The value, unescaped; `None` if the file, group or key is missing.
+    /// The last of duplicate keys wins, as in KConfig.
     pub fn get(&self, group: &str, key: &str) -> Option<String> {
         get_in(&fs::read_to_string(&self.path).ok()?, group, key)
     }
@@ -57,33 +65,48 @@ impl Settings {
 
     /// Sets `group`/`key`; `None` removes it. Writes nothing when the file
     /// would not change, and never overwrites a file it couldn't read.
+    /// Fails with `InvalidInput` for a group or key that can't be written as
+    /// one (control characters, brackets, `=`), and `PermissionDenied` for an
+    /// immutable one.
     pub fn set(&self, group: &str, key: &str, value: Option<&str>) -> io::Result<()> {
-        // A symlinked rc file (dotfiles) keeps its link: write the target.
-        let target = match fs::symlink_metadata(&self.path) {
-            Ok(m) if m.file_type().is_symlink() => fs::canonicalize(&self.path)?,
-            _ => self.path.clone(),
-        };
-        let (text, mode) = match fs::read_to_string(&target) {
-            Ok(t) => {
-                let mode = fs::metadata(&target)?.permissions().mode() & 0o7777;
-                (t, mode)
-            }
-            Err(e) if e.kind() == io::ErrorKind::NotFound => (String::new(), 0o600),
+        check_name(group, &['[', ']'])?;
+        check_name(key, &['[', ']', '='])?;
+        if self.path.starts_with(NO_HOME) {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "no home directory to keep settings in",
+            ));
+        }
+        let target = resolve_link(&self.path)?;
+        if let Some(dir) = target.parent() {
+            fs::create_dir_all(dir)?;
+        }
+        let _thread = WRITERS.lock().unwrap_or_else(|e| e.into_inner());
+        let _file = lock(&target)?;
+        let (text, meta) = match fs::read_to_string(&target) {
+            Ok(t) => (t, Some(fs::metadata(&target)?)),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => (String::new(), None),
             Err(e) => return Err(e),
         };
+        if immutable(&text, group, key) {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                format!("{group}/{key} is immutable"),
+            ));
+        }
         let out = set_in(&text, group, key, value);
         if out == text {
             return Ok(());
         }
-        if let Some(dir) = target.parent() {
-            fs::create_dir_all(dir)?;
-        }
-        replace(&target, out.as_bytes(), mode)
+        replace(&target, out.as_bytes(), meta.as_ref())
     }
 }
 
+/// Where [`config_dir`] points when there is no home: `set` refuses it.
+const NO_HOME: &str = "/nonexistent";
+
 /// `$XDG_CONFIG_HOME`, else `~/.config`. Relative values are ignored, as the
-/// XDG spec says.
+/// XDG spec says. With neither, `/nonexistent`, where nothing is written.
 pub fn config_dir() -> PathBuf {
     let abs = |k: &str| {
         std::env::var_os(k)
@@ -92,33 +115,154 @@ pub fn config_dir() -> PathBuf {
     };
     abs("XDG_CONFIG_HOME")
         .or_else(|| abs("HOME").map(|h| h.join(".config")))
-        .unwrap_or_else(|| PathBuf::from("/nonexistent"))
+        .unwrap_or_else(|| PathBuf::from(NO_HOME))
 }
 
-/// Write a temp file beside `path`, sync it and rename it over `path`: a
-/// crash never leaves a half-written file.
-fn replace(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
+fn check_name(name: &str, banned: &[char]) -> io::Result<()> {
+    if name.is_empty() || name.chars().any(|c| c.is_control() || banned.contains(&c)) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("not a settings group or key: {name:?}"),
+        ));
+    }
+    Ok(())
+}
+
+/// A symlinked rc file (dotfiles) keeps its link: write its target, even one
+/// that doesn't exist yet.
+fn resolve_link(path: &Path) -> io::Result<PathBuf> {
+    let mut path = path.to_path_buf();
+    for _ in 0..40 {
+        match fs::symlink_metadata(&path) {
+            Ok(m) if m.file_type().is_symlink() => {
+                let to = fs::read_link(&path)?;
+                path = match path.parent() {
+                    Some(dir) => dir.join(to),
+                    None => to,
+                };
+            }
+            _ => return Ok(path),
+        }
+    }
+    Err(io::Error::other("too many levels of symbolic links"))
+}
+
+/// One writer at a time in this process (flock is per open file, so threads
+/// sharing it need their own lock).
+static WRITERS: Mutex<()> = Mutex::new(());
+
+/// An exclusive `flock` on `.<name>.lock` beside `path`, held until dropped.
+fn lock(path: &Path) -> io::Result<fs::File> {
     let name = path.file_name().unwrap_or_default().to_string_lossy();
-    let tmp = path.with_file_name(format!(".{name}.tmp{}", std::process::id()));
+    let f = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(path.with_file_name(format!(".{name}.lock")))?;
+    loop {
+        // SAFETY: flock on a descriptor this function owns.
+        if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX) } == 0 {
+            return Ok(f);
+        }
+        let e = io::Error::last_os_error();
+        if e.kind() != io::ErrorKind::Interrupted {
+            return Err(e);
+        }
+    }
+}
+
+/// Write a temp file beside `path`, sync it and rename it over `path`, then
+/// sync the directory: a crash leaves the old file or the new one, whole.
+/// The new file gets the old one's mode and, when running as root, its owner.
+fn replace(path: &Path, bytes: &[u8], old: Option<&fs::Metadata>) -> io::Result<()> {
+    static COUNT: AtomicU64 = AtomicU64::new(0);
+    let name = path.file_name().unwrap_or_default().to_string_lossy();
+    let tmp = path.with_file_name(format!(
+        ".{name}.tmp{}-{}",
+        std::process::id(),
+        COUNT.fetch_add(1, Ordering::Relaxed)
+    ));
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(&tmp)?;
+    // Only this call's own temp file is ever removed.
     let written = (|| {
-        let mut f = fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(mode)
-            .custom_flags(libc::O_NOFOLLOW)
-            .open(&tmp)?;
+        if let Some(old) = old {
+            // SAFETY: geteuid has no preconditions.
+            if unsafe { libc::geteuid() } == 0 {
+                std::os::unix::fs::fchown(&f, Some(old.uid()), Some(old.gid()))?;
+            }
+            // After any chown, which clears set-id bits; not through the umask.
+            f.set_permissions(fs::Permissions::from_mode(old.mode() & 0o7777))?;
+        }
         f.write_all(bytes)?;
         f.sync_all()?;
         fs::rename(&tmp, path)
     })();
     if written.is_err() {
         let _ = fs::remove_file(&tmp);
+        return written;
     }
-    written
+    if let Some(dir) = path.parent() {
+        let dir = if dir.as_os_str().is_empty() {
+            Path::new(".")
+        } else {
+            dir
+        };
+        fs::File::open(dir)?.sync_all()?;
+    }
+    Ok(())
 }
 
+/// A group header's name, without KConfig's trailing `[$i]`-style options.
 fn header(line: &str) -> Option<&str> {
-    line.trim().strip_prefix('[')?.strip_suffix(']')
+    header_and_options(line).map(|(g, _)| g)
+}
+
+/// `[Group][$i]` is `("Group", "i")`; a line `[$i]` alone (the whole file
+/// is immutable) is `("", "i")`.
+fn header_and_options(line: &str) -> Option<(&str, &str)> {
+    let inner = line.trim().strip_prefix('[')?.strip_suffix(']')?;
+    if let Some(opts) = inner.strip_prefix('$') {
+        return Some(("", opts));
+    }
+    Some(match inner.rfind("][$") {
+        Some(i) => (&inner[..i], &inner[i + 3..]),
+        None => (inner, ""),
+    })
+}
+
+/// Whether KConfig would ignore a change to `group`/`key`: the file, the
+/// group or the key is marked `$i`.
+fn immutable(text: &str, group: &str, key: &str) -> bool {
+    let mut in_group = false;
+    let mut seen_group = false;
+    for line in text.lines() {
+        if let Some((g, opts)) = header_and_options(line) {
+            if g.is_empty() && !seen_group && opts.contains('i') {
+                return true;
+            }
+            seen_group = true;
+            in_group = g == group;
+            if in_group && opts.contains('i') {
+                return true;
+            }
+        } else if in_group
+            && line_key(line) == Some(key)
+            && let Some((k, _)) = line.split_once('=')
+            && let Some(i) = k.find("[$")
+            && k[i..].contains('i')
+        {
+            return true;
+        }
+    }
+    false
 }
 
 /// The key of a `key=value` line, without KConfig's `[$i]`-style options.
@@ -131,18 +275,22 @@ fn line_key(line: &str) -> Option<&str> {
     })
 }
 
-/// The value of `group`/`key` in KConfig text, unescaped.
+/// The value of `group`/`key` in KConfig text, unescaped. The last of
+/// duplicate keys wins, as in KConfig.
 pub fn get_in(text: &str, group: &str, key: &str) -> Option<String> {
     let mut in_group = false;
+    let mut found = None;
     for line in text.lines() {
         if let Some(g) = header(line) {
             in_group = g == group;
-        } else if in_group && line_key(line) == Some(key) {
-            let (_, v) = line.split_once('=')?;
-            return Some(unescape(v.trim()));
+        } else if in_group
+            && line_key(line) == Some(key)
+            && let Some((_, v)) = line.split_once('=')
+        {
+            found = Some(unescape(v.trim()));
         }
     }
-    None
+    found
 }
 
 /// `text` with `group`/`key` set to `value` (escaped), or removed for `None`.
@@ -313,8 +461,13 @@ mod tests {
         assert_eq!(s.get_bool("G", "On"), Some(true));
         let mode = fs::metadata(s.path()).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o600);
-        // only the file itself is left: no temp files
-        assert_eq!(fs::read_dir(dir.path().join("sub")).unwrap().count(), 1);
+        // the file and its lock file are left: no temp files
+        let mut names: Vec<_> = fs::read_dir(dir.path().join("sub"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        names.sort();
+        assert_eq!(names, [".atlas-xrc.lock", "atlas-xrc"]);
     }
 
     #[test]
@@ -337,6 +490,92 @@ mod tests {
             fs::metadata(&real).unwrap().permissions().mode() & 0o777,
             0o640
         );
+    }
+
+    #[test]
+    fn keeps_a_wide_mode_and_last_duplicate_wins() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("atlas-xrc");
+        fs::write(&path, "[G]\nK=1\nK=2\n").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o666)).unwrap();
+        let s = Settings::at(&path);
+        assert_eq!(s.get("G", "K").as_deref(), Some("2"));
+        s.set("G", "K", Some("3")).unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "[G]\nK=3\n");
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o666
+        );
+    }
+
+    #[test]
+    fn refuses_bad_names_and_immutable_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let s = Settings::at(dir.path().join("atlas-xrc"));
+        for (g, k) in [
+            ("G\n[H]", "K"),
+            ("G]", "K"),
+            ("G", "K=1"),
+            ("G", "[K"),
+            ("", "K"),
+            ("G", ""),
+        ] {
+            let e = s.set(g, k, Some("v")).unwrap_err();
+            assert_eq!(e.kind(), io::ErrorKind::InvalidInput, "{g:?} {k:?}");
+        }
+        for text in ["[G]\nK[$i]=locked\n", "[G][$i]\nK=1\n", "[$i]\n[G]\nK=1\n"] {
+            fs::write(s.path(), text).unwrap();
+            let e = s.set("G", "K", Some("v")).unwrap_err();
+            assert_eq!(e.kind(), io::ErrorKind::PermissionDenied, "{text:?}");
+            assert_eq!(fs::read_to_string(s.path()).unwrap(), text);
+        }
+        // an immutable group doesn't lock the others; [G][$i] is still group G
+        fs::write(s.path(), "[G][$i]\nK=1\n").unwrap();
+        assert_eq!(s.get("G", "K").as_deref(), Some("1"));
+        s.set("H", "K", Some("v")).unwrap();
+        assert_eq!(s.get("H", "K").as_deref(), Some("v"));
+    }
+
+    #[test]
+    fn no_home_is_refused() {
+        let s = Settings::at(Path::new(NO_HOME).join("atlas-xrc"));
+        assert_eq!(
+            s.set("G", "K", Some("v")).unwrap_err().kind(),
+            io::ErrorKind::NotFound
+        );
+    }
+
+    #[test]
+    fn dangling_symlink_creates_its_target() {
+        let dir = tempfile::tempdir().unwrap();
+        let link = dir.path().join("atlas-xrc");
+        std::os::unix::fs::symlink("real", &link).unwrap();
+        Settings::at(&link).set("G", "K", Some("v")).unwrap();
+        assert_eq!(
+            fs::read_to_string(dir.path().join("real")).unwrap(),
+            "[G]\nK=v\n"
+        );
+    }
+
+    #[test]
+    fn concurrent_sets_all_land() {
+        let dir = tempfile::tempdir().unwrap();
+        let s = Settings::at(dir.path().join("atlas-xrc"));
+        std::thread::scope(|scope| {
+            for t in 0..8 {
+                let s = &s;
+                scope.spawn(move || {
+                    for i in 0..10 {
+                        s.set("G", &format!("K{t}_{i}"), Some("v")).unwrap();
+                    }
+                });
+            }
+        });
+        for t in 0..8 {
+            for i in 0..10 {
+                assert_eq!(s.get("G", &format!("K{t}_{i}")).as_deref(), Some("v"));
+            }
+        }
     }
 
     #[test]

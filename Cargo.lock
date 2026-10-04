@@ -81,6 +81,7 @@ dependencies = [
  "atlas-framework-core",
  "atlas-framework-system",
  "cxx-qt-build",
+ "libc",
  "log",
 ]
 

@@ -94,20 +94,30 @@ pub async fn check_bus_name(
     let authority = AuthorityProxy::new(conn)
         .await
         .map_err(|e| Denied::Unavailable(e.to_string()))?;
-    let (authorized, _challenge, _details) = authority
-        .check_authorization(
-            &subject(sender),
-            action,
-            &HashMap::new(),
-            if interactive {
-                ALLOW_USER_INTERACTION
-            } else {
-                0
-            },
-            "",
-        )
-        .await
-        .map_err(|e| Denied::Unavailable(e.to_string()))?;
+    let subject = subject(sender);
+    let details = HashMap::new();
+    let call = authority.check_authorization(
+        &subject,
+        action,
+        &details,
+        if interactive {
+            ALLOW_USER_INTERACTION
+        } else {
+            0
+        },
+        "",
+    );
+    // A password prompt waits for the person; anything else that takes this
+    // long is a stuck polkitd, and the answer is no.
+    let reply = if interactive {
+        call.await
+    } else {
+        tokio::time::timeout(NON_INTERACTIVE_TIMEOUT, call)
+            .await
+            .map_err(|_| Denied::Unavailable("polkit did not answer".into()))?
+    };
+    let (authorized, _challenge, _details) =
+        reply.map_err(|e| Denied::Unavailable(e.to_string()))?;
     if authorized {
         Ok(())
     } else {
@@ -116,6 +126,8 @@ pub async fn check_bus_name(
         })
     }
 }
+
+const NON_INTERACTIVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(25);
 
 fn subject(sender: &str) -> (&'static str, HashMap<&'static str, Value<'_>>) {
     (
@@ -146,7 +158,12 @@ mod tests {
 
     #[tokio::test]
     async fn no_polkit_is_a_refusal() {
-        // A private bus with no polkit on it: the check must fail closed.
+        // A bus with no polkit on it: the check must fail closed. Only on a
+        // private bus (`ATLAS_TEST_PRIVATE_BUS=1` under dbus-run-session),
+        // never the user's session bus.
+        if std::env::var_os("ATLAS_TEST_PRIVATE_BUS").is_none() {
+            return;
+        }
         let Ok(builder) = zbus::connection::Builder::session() else {
             return;
         };

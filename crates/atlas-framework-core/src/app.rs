@@ -42,14 +42,17 @@ macro_rules! app_info {
 const GITHUB: &str = "https://github.com/EternalCoder454/";
 
 impl AppInfo {
-    /// `atlas-updater` for `net.eterneon.atlas.updater`: the last part of the
-    /// ID after `atlas-`. Names the settings file (`atlas-updaterrc`) and the
-    /// journal identifier. Characters outside `[a-z0-9_-]` become `_`, so the
-    /// result is always a safe file name.
+    /// `atlas-updater` for `net.eterneon.atlas.updater`: `atlas-` and the
+    /// last part of the ID (without an `atlas-` of its own). Names the
+    /// settings file (`atlas-updaterrc`) and the journal identifier.
+    /// Characters outside `[a-z0-9_-]` become `_`, and it is at most 64
+    /// characters, so the result is always a safe file name.
     pub fn short_name(&self) -> String {
         let last = self.id.rsplit('.').next().unwrap_or_default();
+        let last = last.strip_prefix("atlas-").unwrap_or(last);
         let safe: String = last
             .chars()
+            .take(58)
             .map(|c| match c {
                 'a'..='z' | '0'..='9' | '_' | '-' => c,
                 'A'..='Z' => c.to_ascii_lowercase(),
@@ -110,6 +113,8 @@ mod tests {
             "atlas-a_b_c"
         );
         assert_eq!(app("", "").short_name(), "atlas-app");
+        assert_eq!(app("x.atlas-notes", "").short_name(), "atlas-notes");
+        assert_eq!(app(&"y".repeat(300), "").short_name().len(), 64);
     }
 
     #[test]

@@ -109,7 +109,7 @@ control takes `iconName`.
 | `Symbol`, `Symbols` | A Material Symbol, and the singleton of every symbol's value |
 | `Appearance` | Singleton: `transparency`, `blurAvailable`, `effective`, `refresh()`, `applyBlur()` |
 | `AccessibilityState` | Singleton: whether a screen reader is active |
-| `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`. Set by atlas-framework-ui's startup |
+| `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `repo`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`. Set by atlas-framework-ui's startup |
 | `AtlasAboutPage` | The About page: icon, name, version, `description`, the version and OS rows, `license`, source and issue links; extra content goes below |
 
 Each file's header comment says how to use it.
@@ -170,6 +170,11 @@ Apps take the crates from git pinned to a commit:
 ```toml
 atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", rev = "<commit>" }
 ```
+
+Compiled into an app, the crates' file paths (panic locations, debug info)
+come with them: an app's packaged build passes
+`RUSTFLAGS=--remap-path-prefix=<source>=. --remap-path-prefix=$CARGO_HOME=cargo`
+and `-ffile-prefix-map=<source>=.` so no build path lands in the RPM.
 
 Unlike Atlas.Ui, the crates are compiled into each app: a change reaches an
 app when it moves its `rev` forward and is rebuilt. Shared behaviour that

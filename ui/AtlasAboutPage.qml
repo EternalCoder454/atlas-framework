@@ -108,6 +108,7 @@ AtlasPage {
     ColumnLayout {
         id: extra
         Layout.fillWidth: true
+        visible: children.length > 0
         spacing: Kirigami.Units.gridUnit * 1.2
     }
 }

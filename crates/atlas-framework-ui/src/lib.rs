@@ -20,6 +20,7 @@
 //! `AtlasAboutPage` show. The look itself is the installed Atlas.Ui module.
 
 use std::ffi::{CStr, CString, c_char, c_int};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Once, OnceLock};
 
 pub use atlas_framework_core;
@@ -67,12 +68,22 @@ extern "C" fn atlas_framework_ui_start() {
 }
 
 /// A fatal Qt message: logged, and saved as a crash report when the user
-/// turned reports on.
+/// turned reports on. Only the first call does anything (Qt may raise
+/// fatals on several threads, or again from inside this one), and a
+/// watchdog ends the process if saving the report hangs.
 ///
 /// # Safety
 /// `msg` must be null or a valid NUL-terminated string.
 #[unsafe(no_mangle)]
 unsafe extern "C" fn atlas_framework_ui_fatal(msg: *const c_char) {
+    static ONCE: AtomicBool = AtomicBool::new(false);
+    if ONCE.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    // SIGALRM's default action ends the process: Qt's abort comes next
+    // anyway, this only stops a lock taken by the crashing code from
+    // hanging it. SAFETY: alarm has no preconditions.
+    unsafe { libc::alarm(10) };
     let text = if msg.is_null() {
         String::from("Qt fatal message")
     } else {

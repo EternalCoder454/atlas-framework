@@ -39,6 +39,8 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
         // the previous handler aborts.
         atlas_framework_ui_fatal(msg.toUtf8().constData());
     }
+    // Qt 6 hands back its default handler (journal or stderr) when none was
+    // installed, so this is normally that.
     if (s_previousHandler) {
         s_previousHandler(type, context, msg);
     } else {
@@ -51,7 +53,11 @@ void raise(QQmlApplicationEngine &engine)
 {
     for (QObject *root : engine.rootObjects()) {
         if (auto *window = qobject_cast<QQuickWindow *>(root)) {
-            window->show();
+            if (window->visibility() == QWindow::Minimized) {
+                window->showNormal();
+            } else {
+                window->show();
+            }
             window->raise();
             // KDBusService put the launcher's activation token in the
             // environment: use it, or Wayland won't let the window come up.
@@ -65,6 +71,9 @@ void raise(QQmlApplicationEngine &engine)
 extern "C" void atlas_app_init()
 {
     atlas_framework_ui_start();
+    // Before QApplication, so a fatal while it starts (no display, no
+    // platform plugin) is saved too.
+    s_previousHandler = qInstallMessageHandler(messageHandler);
     // KDBusService registers <reversed organization domain>.<application
     // name>: split the app ID so that is the app ID itself.
     const QString id = field(Id);
@@ -82,7 +91,6 @@ extern "C" void atlas_app_init()
 
 extern "C" void atlas_app_ready()
 {
-    s_previousHandler = qInstallMessageHandler(messageHandler);
     QGuiApplication::setApplicationDisplayName(field(Name));
     QGuiApplication::setWindowIcon(QIcon::fromTheme(field(Id)));
     // Atlas.Ui's AtlasApp reads it for the About page's links.
@@ -96,7 +104,12 @@ extern "C" int atlas_app_run(int argc, char *argv[], const char *qmlModule, cons
     atlas_app_ready();
 
     // A second launch asks this one to raise its window, then exits here.
-    KDBusService service(KDBusService::Unique);
+    // Without a session bus (ssh, a bare container) there is nobody to ask:
+    // run anyway, as one more instance.
+    KDBusService service(KDBusService::Unique | KDBusService::NoExitOnFailure);
+    if (!service.isRegistered()) {
+        qWarning("No single-instance service, running as a separate instance: %s", qPrintable(service.errorMessage()));
+    }
 
     // Deleted after the engine, which must never own it.
     std::unique_ptr<QObject> backend(makeBackend ? static_cast<QObject *>(makeBackend()) : nullptr);

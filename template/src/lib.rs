@@ -9,6 +9,8 @@ mod backend;
 atlas_framework_ui::app! {
     name: "Atlas App",
     id: "net.eterneon.atlas.apptemplate",
+    // The app's own repository under github.com/EternalCoder454: the About
+    // page links to it. Change it in a copied app.
     repo: "atlas-framework",
 }
 

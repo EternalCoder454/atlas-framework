@@ -41,10 +41,13 @@ struct Journal {
 
 impl Journal {
     fn new(ident: String, path: &Path) -> Journal {
+        // Non-blocking: a stalled journal must not stall the app (its GUI
+        // thread logs too). A message it can't take goes to stderr.
         let socket = path
             .exists()
             .then(UnixDatagram::unbound)
             .and_then(Result::ok)
+            .filter(|s| s.set_nonblocking(true).is_ok())
             .map(|s| (s, path.to_path_buf()));
         Journal { ident, socket }
     }
@@ -69,9 +72,10 @@ impl Log for Journal {
         }
         let _ = writeln!(
             std::io::stderr().lock(),
-            "{}: {}: {message}",
+            "{}: {}: {}",
             self.ident,
-            record.level().as_str().to_ascii_lowercase()
+            record.level().as_str().to_ascii_lowercase(),
+            for_terminal(&message)
         );
     }
 
@@ -116,6 +120,22 @@ fn field(out: &mut Vec<u8>, name: &str, value: &str) {
     }
     out.extend_from_slice(value.as_bytes());
     out.push(b'\n');
+}
+
+/// A message for a terminal: control characters other than newline and tab
+/// (escape sequences) are shown, not obeyed.
+fn for_terminal(s: &str) -> std::borrow::Cow<'_, str> {
+    if !s.chars().any(|c| c.is_control() && c != '\n' && c != '\t') {
+        return s.into();
+    }
+    s.chars()
+        .map(|c| match c {
+            '\n' | '\t' => c.to_string(),
+            c if c.is_control() => c.escape_unicode().to_string(),
+            c => c.to_string(),
+        })
+        .collect::<String>()
+        .into()
 }
 
 fn truncate(s: &mut String, max: usize) {
@@ -194,5 +214,7 @@ mod tests {
         let mut s = "ééé".to_string();
         truncate(&mut s, 3);
         assert_eq!(s, "é…");
+        assert_eq!(for_terminal("a\nb\tc"), "a\nb\tc");
+        assert_eq!(for_terminal("\u{1b}[2J"), "\\u{1b}[2J");
     }
 }
