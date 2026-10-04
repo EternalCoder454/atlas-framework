@@ -377,7 +377,16 @@ change that breaks an app breaks it on users' machines.
   lets an app with an older lock resolve a version that was never built
   and fail to compile (zbus 5.16 lacks `Error::Connection`). When
   `cargo update` moves the lock past an API the code starts using, raise
-  the floor with it.
+  the floor with it. An app moving to a release whose floor is above its
+  own lock entry for that crate (it uses tokio itself, say) gets "failed to
+  select a version for `tokio`" from `cargo update -p atlas-framework-...`:
+  add `-p tokio` and run it again, once per crate named. `--recursive`
+  doesn't cover a crate the framework didn't use in the old lock (a newly
+  enabled feature). The release pull request does this by itself, up to
+  10 crates; when cargo's error names no crate, its lock job fails with
+  cargo's message and that app is moved by hand. `-p` takes the newest
+  compatible version, so the pull request can move such a crate further
+  than the floor needs.
 - **The version check.** An app that needs something new says so twice:
   `Requires: atlas-ui >= X.Y.Z` in its spec (dnf), and `ui: "X.Y.Z"` in
   `app!` (a plain error at startup when an older Atlas.Ui is installed some
@@ -447,7 +456,8 @@ repository:
 - The token never meets an app's code. An app checkout is not trusted
   (cargo runs what its `.cargo/config.toml` names), so
   `tools/open-update-pr.sh` works in two jobs: `lock`, with no secret,
-  clones the app and runs `cargo update` for the atlas-framework crates and
+  clones the app and runs `cargo update` for the atlas-framework crates
+  (plus each crate cargo names as a conflict, see "Dependency floors") and
   hands back only the `Cargo.lock` files; `publish`, with the token, runs
   nothing from the app, builds the commit from git objects and accepts only
   lock files in cargo's own layout whose changes a framework update can

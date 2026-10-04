@@ -6,7 +6,8 @@
 #
 #   tools/open-update-pr.sh lock <owner/repo> <vX.Y.Z> <out dir>
 #       No token. Clones the app, moves the pins and runs `cargo update` for
-#       the atlas-framework crates; writes the base commit and the changed
+#       the atlas-framework crates (and each crate cargo names as a conflict:
+#       a raised floor); writes the base commit and the changed
 #       Cargo.lock files to <out dir>. Nothing else from that job is used.
 #
 #   FRAMEWORK_COMMIT=<sha> tools/open-update-pr.sh publish <owner/repo> <vX.Y.Z> <branch> <in dir>
@@ -104,7 +105,37 @@ if [ "$mode" = lock ]; then
         [ ${#pkgs[@]} -gt 0 ] || continue
         args=()
         for p in "${pkgs[@]}"; do args+=(-p "$p"); done
-        (cd "$(dirname "./$lock")" && cargo update --quiet "${args[@]}")
+        # Only the framework crates, and then each crate cargo names as the
+        # conflict: it won't move a crate the app also depends on itself past
+        # its lock entry, so when the release raised that crate's floor (zbus,
+        # tokio, ...) the update fails until that crate is named too.
+        # (--recursive doesn't help when the crate wasn't the framework's
+        # dependency in the old lock, such as behind a newly used feature.)
+        updated=0
+        for _ in $(seq 10); do
+            if (cd "$(dirname "./$lock")" && cargo update --quiet --color never "${args[@]}") 2>"$work/update.err"; then
+                updated=1; break
+            fi
+            # shellcheck disable=SC2016 # the backquotes are cargo's
+            name=$(sed -nE '0,/^error: failed to select a version for `([A-Za-z0-9_][A-Za-z0-9_-]*)`.*/s//\1/p' "$work/update.err")
+            [ -n "$name" ] || break
+            # The locked version cargo kept, so `-p` isn't ambiguous when the
+            # lock holds two versions of the crate.
+            # shellcheck disable=SC2016
+            version=$(sed -nE "0,/^ *previously selected package \`$name v([0-9][0-9A-Za-z.+-]*)\`.*/s//\\1/p" "$work/update.err")
+            spec=$name${version:+@$version}
+            [[ " ${args[*]} " != *" -p $spec "* ]] || break
+            echo "::notice::$repo $lock: the release needs a newer $name than the app's lock has; updating it too"
+            args+=(-p "$spec")
+        done
+        if [ $updated = 0 ]; then
+            # Cargo's message, which can quote the app's files: bounded, and
+            # no line read as a workflow command.
+            head -c 20000 "$work/update.err" | tr '\r\000-\010\013\014\016-\037' ' ' | sed 's/^/    /' >&2
+            echo "::error::$repo $lock: cargo update failed" >&2
+            exit 1
+        fi
+        rm -f "$work/update.err"
         if ! git diff --quiet -- "./$lock"; then
             mkdir -p "$dir/files/$(dirname "$lock")"
             cp -- "./$lock" "$dir/files/$lock"
