@@ -9,7 +9,7 @@
 %endif
 
 Name:           atlas-framework
-Version:        1.0.0
+Version:        1.1.0
 Release:        1%{?dist}
 Summary:        The shared base of Atlas apps: Atlas.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -87,6 +87,8 @@ style, fill and weight, and copy the QML for one.
 %install
 %cmake_install
 install -Dpm0644 packaging/atlas-framework.conf %{buildroot}%{_sysconfdir}/dnf/protected.d/atlas-framework.conf
+# Where every Atlas app's crash reports go (atlas-framework-system's crash).
+install -Dpm0644 crates/atlas-framework-system/data/atlas/crash-reporting.toml %{buildroot}%{_datadir}/atlas/crash-reporting.toml
 
 %check
 desktop-file-validate %{buildroot}%{_datadir}/applications/net.eterneon.atlas.symbols.desktop
@@ -103,6 +105,8 @@ done
 %license LICENSE
 %dir %{_libdir}/qt6/qml/Atlas
 %{_libdir}/qt6/qml/Atlas/Ui/
+%dir %{_datadir}/atlas
+%{_datadir}/atlas/crash-reporting.toml
 %config(noreplace) %{_sysconfdir}/dnf/protected.d/atlas-framework.conf
 
 %files -n atlas-symbols-fonts
@@ -116,6 +120,11 @@ done
 %{_datadir}/applications/net.eterneon.atlas.symbols.desktop
 
 %changelog
+* Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.1.0-1
+- Atlas.Ui: AtlasApp and AtlasAboutPage
+- atlas-ui ships /usr/share/atlas/crash-reporting.toml (from atlasos-updater):
+  crash reports go to the AtlasOS relay, which posts them as GitHub issues
+
 * Sat Oct 03 2026 Atlas <atlas@eterneon.net> - 1.0.0-1
 - First package: Atlas.Ui, atlas-symbols-fonts and Atlas Symbols, moved out
   of atlasos-updater

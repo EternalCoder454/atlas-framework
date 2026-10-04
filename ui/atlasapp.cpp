@@ -92,8 +92,10 @@ AtlasApp::AtlasApp(QObject *parent)
     if (m_osPrettyName.isEmpty()) {
         m_osPrettyName = (m_osName + QLatin1Char(' ') + m_osVersion).trimmed();
     }
+    // A plain icon name only, as atlas-framework-core's logo_icon: not a path.
+    static const QRegularExpression iconRe(QRegularExpression::anchoredPattern(QStringLiteral("[A-Za-z0-9._+-]+")));
     m_osLogo = os.value(QStringLiteral("LOGO"));
-    if (m_osLogo.isEmpty()) {
+    if (!iconRe.match(m_osLogo).hasMatch()) {
         m_osLogo = QStringLiteral("distributor-logo");
     }
     // Only a web page: apps may open it.

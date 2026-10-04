@@ -80,10 +80,21 @@ impl OsRelease {
     }
 }
 
-/// The OS logo's icon name (`LOGO=`), if the system names one.
+impl OsRelease {
+    /// `LOGO=` if it is a plain icon name; a path or an empty value counts
+    /// as missing.
+    pub fn logo_icon(&self) -> Option<String> {
+        let v = self.logo.as_str();
+        let ok = !v.is_empty()
+            && v.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | '+'));
+        ok.then(|| v.to_string())
+    }
+}
+
+/// The OS logo's icon name (`LOGO=`), if the system names a plain one.
 pub fn logo_icon() -> Option<String> {
-    let logo = OsRelease::load().logo;
-    (!logo.is_empty()).then_some(logo)
+    OsRelease::load().logo_icon()
 }
 
 /// os-release values are shell-style: optionally single- or double-quoted;
@@ -136,6 +147,30 @@ mod tests {
         assert_eq!(OsRelease::default().display_name(), "Linux");
         let r = OsRelease::parse("NAME=Fedora\nVERSION_ID=44\n");
         assert_eq!(r.display_name(), "Fedora 44");
+    }
+
+    #[test]
+    fn logo_must_be_a_plain_icon_name() {
+        let logo = |t: &str| OsRelease::parse(t).logo_icon();
+        assert_eq!(
+            logo("NAME=Atlas\nLOGO=atlasos\n").as_deref(),
+            Some("atlasos")
+        );
+        assert_eq!(
+            logo("LOGO=\"fedora-logo-icon\"").as_deref(),
+            Some("fedora-logo-icon")
+        );
+        assert_eq!(logo("LOGO='x'\r\n").as_deref(), Some("x"));
+        assert_eq!(logo("LOGO=a\nLOGO=b\n").as_deref(), Some("b"));
+        for bad in [
+            "NAME=Atlas\n",
+            "LOGO=\n",
+            "LOGO=/usr/share/x.svg\n",
+            "#LOGO=atlasos\n",
+            "PRETTY_LOGO=atlasos\n",
+        ] {
+            assert_eq!(logo(bad), None, "{bad:?}");
+        }
     }
 
     #[test]

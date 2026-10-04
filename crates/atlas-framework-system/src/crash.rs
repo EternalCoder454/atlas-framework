@@ -77,6 +77,9 @@ pub struct Report {
     /// Server-side event ID once sent.
     #[serde(default)]
     pub sent_event_id: Option<String>,
+    /// The public GitHub issue the relay filed for it, once sent.
+    #[serde(default)]
+    pub issue_url: Option<String>,
     /// Where the report is stored; not part of the report.
     #[serde(skip)]
     pub path: Option<PathBuf>,
@@ -1072,6 +1075,7 @@ pub(crate) fn build_report(
         ram_total_kb: total,
         mem_used_kb: total.saturating_sub(avail),
         sent_event_id: None,
+        issue_url: None,
         path: None,
     })
 }
@@ -1159,6 +1163,43 @@ pub(crate) fn write_report(dir: &Path, report: &Report) -> io::Result<PathBuf> {
     Err(io::Error::other("too many reports in the same second"))
 }
 
+/// The helper's non-problem events, which an older version queued as reports.
+/// Only these (with no stack trace) are deleted from `pending/`, so a real
+/// helper panic or coredump is never lost.
+const SUCCESS_EVENTS: [&str; 8] = [
+    "update-staged",
+    "update-applied",
+    "rollback-requested",
+    "rollback-applied",
+    "rollback-cancelled",
+    "channel-switched",
+    "channel-switch-applied",
+    "health-check-passed",
+];
+
+/// Helper events that are not problems (an older version queued them).
+fn is_stale_event_report(r: &Report) -> bool {
+    r.app_name == "atlas-system-helper"
+        && r.stacktrace.trim().is_empty()
+        && SUCCESS_EVENTS.contains(&r.report_type.as_str())
+}
+
+/// The pending reports; ones made from success events are deleted.
+fn read_pending(dir: &Path) -> Vec<Report> {
+    read_reports(dir)
+        .into_iter()
+        .filter(|r| {
+            if !is_stale_event_report(r) {
+                return true;
+            }
+            if let Some(p) = &r.path {
+                let _ = fs::remove_file(p);
+            }
+            false
+        })
+        .collect()
+}
+
 fn read_reports(dir: &Path) -> Vec<Report> {
     let mut paths: Vec<PathBuf> = fs::read_dir(dir)
         .into_iter()
@@ -1197,7 +1238,7 @@ fn read_reports(dir: &Path) -> Vec<Report> {
 pub fn pending() -> Vec<Report> {
     prune_sent();
     reports_dir()
-        .map(|d| read_reports(&d.join("pending")))
+        .map(|d| read_pending(&d.join("pending")))
         .unwrap_or_default()
 }
 
@@ -1263,16 +1304,17 @@ fn prune_older_than(dir: &Path, keep: Duration, now: SystemTime) {
 
 /// After a successful POST: record it in `sent/` and drop the pending file.
 /// Best effort on both: the data is out, so this never fails the send.
-fn finish_sent(report: &Report, server_id: Option<String>) {
+fn finish_sent(report: &Report, server: Server) {
     if let Some(d) = reports_dir() {
-        move_to_sent(&d.join("sent"), report, server_id);
+        move_to_sent(&d.join("sent"), report, server);
         prune_older_than(&d.join("sent"), SENT_KEEP, SystemTime::now());
     }
 }
 
-fn move_to_sent(sent_dir: &Path, report: &Report, server_id: Option<String>) {
+fn move_to_sent(sent_dir: &Path, report: &Report, server: Server) {
     let mut r = report.clone();
-    r.sent_event_id = server_id;
+    r.sent_event_id = server.id;
+    r.issue_url = server.url;
     let _ = write_report(sent_dir, &r);
     if let Some(p) = &report.path
         && let Err(e) = fs::remove_file(p)
@@ -1645,6 +1687,16 @@ pub fn collect_events(since: Option<&str>) -> Vec<Report> {
     }
 }
 
+/// The only helper events that become reports: the failures. Successes
+/// (`update-staged`, `update-applied`, ...) are skipped.
+const REPORTED_EVENTS: [&str; 5] = [
+    "update-failed",
+    "rollback-failed",
+    "channel-switch-failed",
+    "automatic-rollback",
+    "health-check-failed",
+];
+
 /// The work of [`collect_events`] with every input given: `None` when there is
 /// no marker yet (and no `since`). `enabled` is asked again right before each
 /// report is written, so turning reporting off mid-run writes nothing more.
@@ -1669,6 +1721,10 @@ fn collect_events_in(
     let mut marker_now = start.clone();
     let mut out = Vec::new();
     for e in pick_events(events, &start, now) {
+        if !REPORTED_EVENTS.contains(&e.event.as_str()) {
+            marker_now = advance_event_marker(marker_now, &e.time);
+            continue;
+        }
         let name = scrubber.scrub_message(&e.event);
         let version = e.version.as_deref().map(|v| scrubber.scrub_message(v));
         let mut msg = name.clone();
@@ -1795,8 +1851,8 @@ fn send_with(report: &Report, enabled: bool, ep: Option<Endpoint>) -> io::Result
         ));
     }
     let ep = ep.ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no endpoint configured"))?;
-    let id = post(report, &ep)?;
-    finish_sent(report, id);
+    let server = post(report, &ep)?;
+    finish_sent(report, server);
     Ok(())
 }
 
@@ -1849,7 +1905,30 @@ fn curl_args(ep: &Endpoint, body_file: &Path) -> Vec<String> {
     a
 }
 
-fn post(report: &Report, ep: &Endpoint) -> io::Result<Option<String>> {
+/// What the relay answered: its event ID and the issue it filed.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct Server {
+    id: Option<String>,
+    url: Option<String>,
+}
+
+const ISSUE_URL_PREFIX: &str = "https://github.com/EternalCoder454/AtlasOS/issues/";
+
+/// `{"id": ..., "url": ...}`; the url is kept only if it is an issue of the
+/// AtlasOS project (the answer is not trusted to link anywhere else).
+fn parse_server_answer(body: &[u8]) -> Server {
+    let v = serde_json::from_slice::<Value>(body).unwrap_or(Value::Null);
+    let get = |k: &str| v.get(k).and_then(Value::as_str).map(str::to_string);
+    Server {
+        id: get("id"),
+        url: get("url").filter(|u| {
+            u.strip_prefix(ISSUE_URL_PREFIX)
+                .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+        }),
+    }
+}
+
+fn post(report: &Report, ep: &Endpoint) -> io::Result<Server> {
     let body = serde_json::to_vec(&report.payload()).map_err(io::Error::other)?;
     let dir = state_dir().ok_or_else(|| io::Error::other("no state directory"))?;
     let tmp = dir.join(format!("send-{}.json", random_hex(8)?));
@@ -1867,9 +1946,7 @@ fn post(report: &Report, ep: &Endpoint) -> io::Result<Option<String>> {
             String::from_utf8_lossy(&out.stderr).trim().to_string(),
         ));
     }
-    Ok(serde_json::from_slice::<Value>(&out.stdout)
-        .ok()
-        .and_then(|v| v.get("id")?.as_str().map(str::to_string)))
+    Ok(parse_server_answer(&out.stdout))
 }
 
 const MAX_URL: usize = 7000;
@@ -1886,9 +1963,14 @@ fn percent_encode(s: &str) -> String {
         .collect()
 }
 
+fn is_event_type(t: &str) -> bool {
+    !matches!(t, "panic" | "fatal" | "coredump")
+}
+
 /// A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...`
 /// URL, at most about 7 KB (the trace is cut to fit). Secondary to [`send`].
 pub fn github_issue_url(r: &Report, repo: &str) -> String {
+    let is_event = r.stacktrace.trim().is_empty() && is_event_type(&r.report_type);
     let first: String = r
         .message
         .lines()
@@ -1897,12 +1979,19 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         .chars()
         .take(80)
         .collect();
-    let title = format!(
-        "Crash in {} {}: {}",
-        r.app_name,
-        r.app_version.as_deref().unwrap_or(""),
-        first
-    );
+    let title = if is_event {
+        match &r.atlasos_version {
+            Some(v) => format!("Update problem: {} (version {v})", r.report_type),
+            None => format!("Update problem: {}", r.report_type),
+        }
+    } else {
+        format!(
+            "Crash in {} {}: {}",
+            r.app_name,
+            r.app_version.as_deref().unwrap_or(""),
+            first
+        )
+    };
     let base = format!(
         "https://github.com/EternalCoder454/{}/issues/new?title={}&body=",
         percent_encode(repo),
@@ -1910,7 +1999,7 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
     );
     let na = |o: &Option<String>| o.clone().unwrap_or_else(|| "unknown".into());
     let head = format!(
-        "**App:** {} {}\n**AtlasOS:** {} ({})\n**Kernel:** {}\n**GPU:** {} ({})\n**Type:** {}\n**Message:** {}\n\n```\n",
+        "**App:** {} {}\n**AtlasOS:** {} ({})\n**Kernel:** {}\n**GPU:** {} ({})\n**Type:** {}\n**Message:** {}\n\n",
         r.app_name,
         na(&r.app_version),
         na(&r.atlasos_version),
@@ -1922,6 +2011,11 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         r.message
     );
     let trace = filter_trace(&r.stacktrace);
+    if trace.trim().is_empty() {
+        // no stack trace (an event report): no empty code block
+        return format!("{base}{}", percent_encode(head.trim_end()));
+    }
+    let head = format!("{head}```\n");
     let lines: Vec<&str> = trace.lines().collect();
     let mut keep = lines.len();
     loop {
@@ -2240,10 +2334,21 @@ mod tests {
         let got = read_reports(&pend);
         assert_eq!(got.len(), 2);
         discard(&got[0]).unwrap();
-        move_to_sent(&d.path().join("sent"), &got[1], Some("srv1".into()));
+        move_to_sent(
+            &d.path().join("sent"),
+            &got[1],
+            Server {
+                id: Some("srv1".into()),
+                url: Some(format!("{ISSUE_URL_PREFIX}7")),
+            },
+        );
         assert!(read_reports(&pend).is_empty());
         let sent = read_reports(&d.path().join("sent"));
         assert_eq!(sent[0].sent_event_id.as_deref(), Some("srv1"));
+        assert_eq!(
+            sent[0].issue_url.as_deref(),
+            Some("https://github.com/EternalCoder454/AtlasOS/issues/7")
+        );
         prune_older_than(&d.path().join("sent"), SENT_KEEP, SystemTime::now());
         assert_eq!(read_reports(&d.path().join("sent")).len(), 1);
         prune_older_than(
@@ -2756,5 +2861,249 @@ mod tests {
             pend.join("broken.json").exists(),
             "unknown damage is left alone"
         );
+    }
+
+    fn event_report(event: &str) -> Report {
+        let c = Crash {
+            report_type: event,
+            app_name: "atlas-system-helper",
+            app_version: Some("0.1.0"),
+            message: event,
+            stacktrace: "",
+        };
+        build_report(&c, &sc(), Some("2026-10-02T10:00:00Z")).unwrap()
+    }
+
+    #[test]
+    fn only_failure_events_become_reports() {
+        let d = tempfile::tempdir().unwrap();
+        let (marker, pending) = (d.path().join("events-last"), d.path().join("pending"));
+        let sc = Scrubber::new(&[], &[], &[]);
+        let mut log = Vec::new();
+        for (i, name) in [
+            "update-staged",
+            "update-failed",
+            "update-applied",
+            "rollback-requested",
+            "rollback-failed",
+            "channel-switched",
+            "channel-switch-failed",
+            "rollback-applied",
+            "automatic-rollback",
+            "health-check-passed",
+            "health-check-failed",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let mut e = ev(&format!("2026-10-02T10:00:{i:02}Z"));
+            e.event = name.to_string();
+            log.push(e);
+        }
+        fs::write(&marker, "2026-10-02T09:00:00Z 0").unwrap();
+        let on = || true;
+        let out = collect_events_in(
+            &log,
+            &marker,
+            &pending,
+            &sc,
+            "2026-10-02T12:00:00Z",
+            None,
+            &on,
+        )
+        .unwrap();
+        let got: Vec<&str> = out.iter().map(|r| r.report_type.as_str()).collect();
+        assert_eq!(got, REPORTED_EVENTS);
+        // the marker went past the last event, skipped or not
+        let m = fs::read_to_string(&marker).unwrap();
+        assert!(m.starts_with("2026-10-02T10:00:10Z"), "{m}");
+        // a log of successes only still moves the marker
+        let mut e = ev("2026-10-02T11:00:00Z");
+        e.event = "update-staged".into();
+        let out = collect_events_in(
+            &[e],
+            &marker,
+            &pending,
+            &sc,
+            "2026-10-02T12:00:00Z",
+            None,
+            &on,
+        )
+        .unwrap();
+        assert!(out.is_empty());
+        assert!(
+            fs::read_to_string(&marker)
+                .unwrap()
+                .starts_with("2026-10-02T11:00:00Z")
+        );
+    }
+
+    #[test]
+    fn waiting_success_event_reports_are_discarded() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let staged = write_report(&pend, &event_report("update-staged")).unwrap();
+        let failed = write_report(&pend, &event_report("update-failed")).unwrap();
+        let panic = write_report(&pend, &report("  0: f\n")).unwrap();
+        let got = read_pending(&pend);
+        let types: Vec<&str> = got.iter().map(|r| r.report_type.as_str()).collect();
+        assert_eq!(types.len(), 2);
+        assert!(types.contains(&"update-failed") && types.contains(&"panic"));
+        assert!(!staged.exists() && failed.exists() && panic.exists());
+    }
+
+    #[test]
+    fn a_helper_panic_with_a_trace_survives_pending() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let mut r = report("  0: f\n");
+        r.app_name = "atlas-system-helper".into();
+        let p = write_report(&pend, &r).unwrap();
+        // even a success-event name with a trace is kept
+        let mut s = event_report("update-staged");
+        s.stacktrace = "  0: f\n".into();
+        let p2 = write_report(&pend, &s).unwrap();
+        assert_eq!(read_pending(&pend).len(), 2);
+        assert!(p.exists() && p2.exists());
+        // a helper panic with no trace is kept too
+        let mut e = event_report("panic");
+        e.report_type = "panic".into();
+        let p3 = write_report(&pend, &e).unwrap();
+        assert_eq!(read_pending(&pend).len(), 3);
+        assert!(p3.exists());
+    }
+
+    #[test]
+    fn skipped_and_reported_events_in_the_same_second() {
+        let d = tempfile::tempdir().unwrap();
+        let (marker, pending) = (d.path().join("events-last"), d.path().join("pending"));
+        let sc = Scrubber::new(&[], &[], &[]);
+        let t = "2026-10-02T10:00:00Z";
+        let (mut a, b) = (ev(t), ev(t));
+        a.event = "update-staged".into();
+        let log = vec![a, b];
+        fs::write(&marker, "2026-10-02T09:00:00Z 0").unwrap();
+        let on = || true;
+        let out = collect_events_in(
+            &log,
+            &marker,
+            &pending,
+            &sc,
+            "2026-10-02T12:00:00Z",
+            None,
+            &on,
+        )
+        .unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].report_type, "update-failed");
+        assert_eq!(fs::read_to_string(&marker).unwrap(), format!("{t} 2"));
+        // a later event in the same second is still collected, nothing twice
+        let mut c = ev(t);
+        c.event = "health-check-failed".into();
+        let mut log2 = log.clone();
+        log2.push(c);
+        let out = collect_events_in(
+            &log2,
+            &marker,
+            &pending,
+            &sc,
+            "2026-10-02T12:00:00Z",
+            None,
+            &on,
+        )
+        .unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].report_type, "health-check-failed");
+    }
+
+    #[test]
+    fn legacy_marker_without_a_count_skips_the_taken_events() {
+        let d = tempfile::tempdir().unwrap();
+        let (marker, pending) = (d.path().join("events-last"), d.path().join("pending"));
+        let sc = Scrubber::new(&[], &[], &[]);
+        let t = "2026-10-02T10:00:00Z";
+        let mut a = ev(t);
+        a.event = "update-staged".into();
+        let log = vec![a, ev(t)];
+        // old format: the time only; the events at that time were taken
+        fs::write(&marker, t).unwrap();
+        let on = || true;
+        let now = "2026-10-02T12:00:00Z";
+        let out = collect_events_in(&log, &marker, &pending, &sc, now, None, &on).unwrap();
+        assert!(out.is_empty());
+        let mut c = ev("2026-10-02T10:00:05Z");
+        c.event = "rollback-failed".into();
+        let mut log2 = log.clone();
+        log2.push(c);
+        let out = collect_events_in(&log2, &marker, &pending, &sc, now, None, &on).unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].report_type, "rollback-failed");
+    }
+
+    #[test]
+    fn default_endpoint_store_url() {
+        let ep = Endpoint::parse("https://atlasos@atlasos.eterneon.net/crash/1").unwrap();
+        assert_eq!(ep.key, "atlasos");
+        assert_eq!(
+            ep.store_url,
+            "https://atlasos.eterneon.net/crash/api/1/store/"
+        );
+        let shipped = include_str!("../data/atlas/crash-reporting.toml");
+        let dsn = toml_value(shipped, "dsn").unwrap();
+        assert_eq!(Endpoint::parse(&dsn), Some(ep));
+    }
+
+    #[test]
+    fn server_answer_keeps_only_atlasos_issue_links() {
+        let ok = parse_server_answer(
+            br#"{"id":"abc","url":"https://github.com/EternalCoder454/AtlasOS/issues/12"}"#,
+        );
+        assert_eq!(ok.id.as_deref(), Some("abc"));
+        assert_eq!(
+            ok.url.as_deref(),
+            Some("https://github.com/EternalCoder454/AtlasOS/issues/12")
+        );
+        for bad in [
+            "https://evil.example/EternalCoder454/AtlasOS/issues/1",
+            "http://github.com/EternalCoder454/AtlasOS/issues/1",
+            "https://github.com/EternalCoder454/Other/issues/1",
+            "https://github.com/EternalCoder454/AtlasOS/issues/",
+            "https://github.com/EternalCoder454/AtlasOS/issues/1 x",
+            "https://github.com/EternalCoder454/AtlasOS/issues/1/../../x",
+            "https://github.com/EternalCoder454/AtlasOS/issues/1?a=b",
+        ] {
+            let body = format!(r#"{{"id":"abc","url":"{bad}"}}"#);
+            let got = parse_server_answer(body.as_bytes());
+            assert_eq!(got.id.as_deref(), Some("abc"));
+            assert_eq!(got.url, None, "{bad}");
+        }
+        assert_eq!(parse_server_answer(br#"{"id":"abc"}"#).url, None);
+        assert_eq!(parse_server_answer(b"nope"), Server::default());
+    }
+
+    #[test]
+    fn old_sent_files_load_without_a_link() {
+        let mut v = serde_json::to_value(report("")).unwrap();
+        v.as_object_mut().unwrap().remove("issue_url");
+        let r: Report = serde_json::from_value(v).unwrap();
+        assert_eq!(r.issue_url, None);
+    }
+
+    #[test]
+    fn event_report_url_has_no_empty_block_and_a_problem_title() {
+        let mut r = event_report("update-failed");
+        r.atlasos_version = Some("44.20261003-1".into());
+        let url = github_issue_url(&r, "AtlasOS");
+        assert!(!url.contains("%60%60%60"), "{url}");
+        assert!(
+            url.contains(
+                "title=Update%20problem%3A%20update-failed%20%28version%2044.20261003-1%29"
+            ),
+            "{url}"
+        );
+        assert!(!url.contains("Crash%20in"), "{url}");
+        // a real crash keeps its block and title
+        let c = github_issue_url(&report("  0: f\n"), "AtlasOS");
+        assert!(c.contains("%60%60%60") && c.contains("Crash%20in"), "{c}");
     }
 }

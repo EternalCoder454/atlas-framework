@@ -46,7 +46,7 @@ main() {
     trap 'rm -rf "$top"' EXIT
     mkdir -p "$top"/{SOURCES,BUILD,RPMS,SRPMS,SPECS}
     tar -C "$src" \
-        --exclude=./.git --exclude=./out --exclude=./build \
+        --exclude=./.git --exclude=./out --exclude=./build --exclude=./target \
         --exclude=./template/target --exclude=./template/build \
         --transform "s,^\./,atlas-framework-$version/," \
         -czf "$top/SOURCES/atlas-framework-$version.tar.gz" .
