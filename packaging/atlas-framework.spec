@@ -101,7 +101,7 @@ weight, and copy the QML for one.
 %autosetup -n atlas-framework-%{version}
 
 %build
-%cmake -G Ninja -DCMAKE_BUILD_TYPE=Release
+%cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DATLAS_UI_DEV_PATHS=OFF
 %cmake_build
 
 %install
@@ -115,8 +115,11 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/net.eterneon.atlas.sy
 # A packaged build loads the fonts and translations from the system only: no
 # path into the source or build tree, and none of the development-only
 # variables ($ATLAS_UI_SYMBOLS_DIR, $ATLAS_UI_TRANSLATIONS_DIR) or test hooks.
+# Both as bytes and as UTF-16 (QStringLiteral), which grep alone can't see.
+lib=%{buildroot}%{_libdir}/qt6/qml/Atlas/Ui/libatlasui.so
+strings -el "$lib" > utf16-strings.txt
 for s in "%{_builddir}" %{?_atlas_build_cache:"%{_atlas_build_cache}"} ATLAS_UI_SYMBOLS_DIR ATLAS_UI_TRANSLATIONS_DIR ATLAS_UI_TEST_FIXED_ENV; do
-    if grep -qF "$s" %{buildroot}%{_libdir}/qt6/qml/Atlas/Ui/libatlasui.so; then
+    if grep -qF "$s" "$lib" || grep -qF "$s" utf16-strings.txt; then
         echo "libatlasui.so holds $s, which only development builds may" >&2
         exit 1
     fi

@@ -105,7 +105,7 @@ impl Note {
 }
 
 /// Escapes text for the body, which the server reads as markup. Control
-/// characters other than line feed and tab become spaces.
+/// characters (C0, DEL, C1) other than line feed and tab become spaces.
 pub fn escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
@@ -115,7 +115,7 @@ pub fn escape(s: &str) -> String {
             '>' => out.push_str("&gt;"),
             '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&#39;"),
-            c if (c as u32) < 0x20 && c != '\n' && c != '\t' => out.push(' '),
+            c if c.is_control() && c != '\n' && c != '\t' => out.push(' '),
             c => out.push(c),
         }
     }
@@ -155,12 +155,26 @@ fn no_service_name(name: &str) -> bool {
     )
 }
 
+/// Whether opening the session bus failed because there is none to open (no
+/// socket, or nobody listening on it).
+fn no_bus(e: &zbus::Error) -> bool {
+    let io = match e {
+        zbus::Error::InputOutput(io) | zbus::Error::Connection(io, _) => io,
+        _ => return false,
+    };
+    matches!(
+        io.kind(),
+        std::io::ErrorKind::NotFound | std::io::ErrorKind::ConnectionRefused
+    )
+}
+
 /// Logs the raw error and returns the one the user can read: a missing
 /// service (or no session bus to find it on) in plain words, anything else
-/// unchanged. `connecting`: the error came from opening the session bus.
+/// (a bad bus address, a refused login) unchanged. `connecting`: the error
+/// came from opening the session bus.
 fn plain(e: zbus::Error, connecting: bool) -> zbus::Error {
     log::warn!("notification: {e}");
-    let missing = connecting
+    let missing = (connecting && no_bus(&e))
         || matches!(&e, zbus::Error::MethodError(name, _, _) if no_service_name(name.as_str()));
     if missing {
         zbus::Error::Failure(NO_SERVICE.into())
@@ -226,7 +240,11 @@ impl Notifier {
             )
     }
 
-    /// Sends `n`. `Ok(None)`: the user turned this event's popup off.
+    /// Sends `n`. `Ok(None)`: the user turned this event's popup off. Gives
+    /// up after 10 seconds; the server may still show the notification after
+    /// that, so don't retry blindly. Needs a Tokio runtime with the time
+    /// driver (`#[tokio::main]` and `enable_all()` have it); without one the
+    /// timeout panics.
     pub async fn send(&self, conn: &zbus::Connection, n: &Note) -> zbus::Result<Option<Sent>> {
         if !event_id_ok(n.event) {
             return Err(zbus::Error::Failure(format!(
@@ -288,29 +306,40 @@ impl Notifier {
 
     /// [`Notifier::send`] from a worker thread, for a notification nobody
     /// acts on (its actions are not followed). Blocking; gives up after 10
-    /// seconds. Not for the UI thread, and refuses inside a Tokio runtime
-    /// (use [`Notifier::send`] there).
+    /// seconds. Not for the UI thread or async code; fine from
+    /// `spawn_blocking`. It runs on a thread of its own, with a runtime of
+    /// its own.
     pub fn send_blocking(&self, n: &Note) -> Result<(), String> {
-        if tokio::runtime::Handle::try_current().is_ok() {
-            return Err("send_blocking cannot run inside a Tokio runtime; use send".into());
-        }
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| e.to_string())?;
-        rt.block_on(async {
-            let go = async {
-                let conn = zbus::Connection::session()
-                    .await
-                    .map_err(|e| plain(e, true))?;
-                self.send(&conn, n).await
-            };
-            match tokio::time::timeout(CALL_TIMEOUT, go).await {
-                Ok(r) => r.map(|_| ()).map_err(|e| e.to_string()),
-                Err(_) => Err(timed_out().to_string()),
-            }
+        off_runtime(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| e.to_string())?;
+            rt.block_on(async {
+                let go = async {
+                    let conn = zbus::Connection::session()
+                        .await
+                        .map_err(|e| plain(e, true))?;
+                    self.send(&conn, n).await
+                };
+                match tokio::time::timeout(CALL_TIMEOUT, go).await {
+                    Ok(r) => r.map(|_| ()).map_err(|e| e.to_string()),
+                    Err(_) => Err(timed_out().to_string()),
+                }
+            })
         })
     }
+}
+
+/// Runs `f` on a new thread and waits for it. That thread has no Tokio
+/// context, whatever the caller's has, so `f` may block on a runtime of its
+/// own.
+fn off_runtime<T: Send>(f: impl FnOnce() -> Result<T, String> + Send) -> Result<T, String> {
+    std::thread::scope(|s| {
+        s.spawn(f)
+            .join()
+            .unwrap_or_else(|_| Err("the notification thread panicked".into()))
+    })
 }
 
 fn timed_out() -> zbus::Error {
@@ -318,7 +347,8 @@ fn timed_out() -> zbus::Error {
     zbus::Error::Failure("the notification server did not answer".into())
 }
 
-/// Closes notification `id`. Gives up after 10 seconds.
+/// Closes notification `id`. Gives up after 10 seconds. Needs a Tokio runtime
+/// with the time driver, like [`Notifier::send`].
 pub async fn close(conn: &zbus::Connection, id: u32) -> zbus::Result<()> {
     let call = conn.call_method(
         Some(SERVICE),
@@ -367,7 +397,7 @@ mod tests {
 
     #[test]
     fn escape_turns_control_characters_into_spaces() {
-        assert_eq!(escape("a\x00b\x07c\x1bd\x1fe"), "a b c d e");
+        assert_eq!(escape("a\x00b\x07c\x1bd\x1fe\x7ff\u{85}g"), "a b c d e f g");
         assert_eq!(escape("line\none\ttab"), "line\none\ttab");
     }
 
@@ -403,19 +433,42 @@ mod tests {
         assert!(no_service_name("org.freedesktop.DBus.Error.ServiceUnknown"));
         assert!(no_service_name("org.freedesktop.DBus.Error.NameHasNoOwner"));
         assert!(!no_service_name("org.freedesktop.DBus.Error.AccessDenied"));
-        let e = plain(zbus::Error::Failure("no bus at /x".into()), true);
-        assert_eq!(e.to_string(), NO_SERVICE);
         let other = plain(zbus::Error::Failure("boom".into()), false);
         assert_ne!(other.to_string(), NO_SERVICE);
     }
 
     #[tokio::test]
-    async fn send_blocking_refuses_inside_a_runtime() {
-        let n = Notifier::new(&app("net.eterneon.atlas.updater", "Atlas Updater"));
-        let err = n
-            .send_blocking(&Note::new("updateStaged", "T", "B"))
-            .unwrap_err();
-        assert!(err.contains("Tokio runtime"), "{err}");
+    async fn off_runtime_leaves_the_runtime_behind() {
+        assert!(tokio::runtime::Handle::try_current().is_ok());
+        let inside = tokio::task::spawn_blocking(|| {
+            off_runtime(|| Ok(tokio::runtime::Handle::try_current().is_ok()))
+        })
+        .await
+        .unwrap();
+        assert_eq!(inside, Ok(false));
+        assert_eq!(
+            off_runtime(|| Ok(tokio::runtime::Handle::try_current().is_ok())),
+            Ok(false)
+        );
+    }
+
+    #[test]
+    fn off_runtime_reports_a_panic() {
+        let r: Result<(), String> = off_runtime(|| panic!("boom"));
+        assert_eq!(r, Err("the notification thread panicked".into()));
+    }
+
+    #[test]
+    fn only_a_missing_bus_is_called_missing() {
+        use std::io::{Error, ErrorKind};
+        use std::sync::Arc;
+        let io = |k| zbus::Error::InputOutput(Arc::new(Error::from(k)));
+        assert!(no_bus(&io(ErrorKind::NotFound)));
+        assert!(no_bus(&io(ErrorKind::ConnectionRefused)));
+        assert!(!no_bus(&io(ErrorKind::PermissionDenied)));
+        assert!(!no_bus(&zbus::Error::Address("bad".into())));
+        assert_eq!(plain(io(ErrorKind::NotFound), true).to_string(), NO_SERVICE);
+        assert_ne!(plain(zbus::Error::Handshake("auth".into()), true).to_string(), NO_SERVICE);
     }
 
     #[test]

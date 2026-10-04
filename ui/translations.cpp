@@ -11,12 +11,11 @@
 #include <QLocale>
 #include <QLoggingCategory>
 #include <QMetaObject>
+#include <QMutex>
 #include <QStringList>
 #include <QThread>
 #include <QTranslator>
 #include <QtGlobal>
-
-#include <atomic>
 
 #ifndef ATLAS_UI_TRANSLATIONS_DIR
 #error "ATLAS_UI_TRANSLATIONS_DIR (the installed translations directory) must be defined by CMake"
@@ -26,7 +25,16 @@ namespace {
 
 Q_LOGGING_CATEGORY(lcTranslations, "atlas.ui.translations")
 
-std::atomic_flag claimed = ATOMIC_FLAG_INIT;
+// Whether the install has been started (on its way to the application's
+// thread, or running there) or is done.
+QMutex mutex;
+enum class State { None, Started, Done } state = State::None;
+
+void markDone()
+{
+    QMutexLocker lock(&mutex);
+    state = State::Done;
+}
 
 // Runs on the application's thread, which owns the translator.
 void installNow()
@@ -60,26 +68,33 @@ void installNow()
 
 // Installs once, on the application's thread, whichever thread asks first (the
 // QML engine may load the plugin off the main thread). Does nothing until the
-// application object exists, and then the first caller has it done.
-void installTranslations()
+// application object exists, and then the first caller has it done. True when
+// the translator is in place on return; false when the install is still to
+// run on the application's thread (anything queued there after this call runs
+// after it).
+bool installTranslations()
 {
     QCoreApplication *app = QCoreApplication::instance();
     if (!app) {
-        return;
+        return false;
     }
-    // The first caller claims the job; the others return at once.
-    if (claimed.test_and_set()) {
-        return;
+    {
+        QMutexLocker lock(&mutex);
+        if (state != State::None) {
+            return state == State::Done;
+        }
+        state = State::Started;
     }
     if (QThread::currentThread() == app->thread()) {
         installNow();
-    } else {
-        // Queued, not blocking: the application's thread may itself be
-        // waiting on this one (an engine loading on a worker thread), and a
-        // blocking call would deadlock. Installing the translator sends
-        // LanguageChange, which retranslates the app's QML.
-        QMetaObject::invokeMethod(app, [] { installNow(); }, Qt::QueuedConnection);
+        markDone();
+        return true;
     }
+    // Queued, not blocking: the application's thread may itself be waiting
+    // on this one (an engine loading on a worker thread), and a blocking call
+    // would deadlock.
+    QMetaObject::invokeMethod(app, [] { installNow(); markDone(); }, Qt::QueuedConnection);
+    return false;
 }
 
 // Runs when the application object exists.
@@ -95,9 +110,9 @@ void startup()
 
 // Also called by the QML plugin as the module loads, which is before the
 // startup function runs when a QML import loads this library (atlasuiplugin.cpp).
-void atlasUiInstallTranslations()
+bool atlasUiInstallTranslations()
 {
-    installTranslations();
+    return installTranslations();
 }
 
 Q_COREAPP_STARTUP_FUNCTION(startup)

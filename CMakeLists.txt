@@ -35,20 +35,29 @@ set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # $ATLAS_UI_SYMBOLS_DIR), translations from the build tree (or
 # $ATLAS_UI_TRANSLATIONS_DIR) and honours $ATLAS_UI_TEST_FIXED_ENV. A packaged
 # build must have none of them: it is loaded into every Atlas app, so it holds
-# no path into the source tree and reads nothing its environment names. On by
-# default for any install prefix but /usr; off for /usr unless asked.
-if(CMAKE_INSTALL_PREFIX STREQUAL "/usr")
-    set(_atlas_dev_default OFF)
+# no path into the source tree and reads nothing its environment names.
+# AUTO (the default): on for any install prefix but /usr. ATLAS_UI_TESTS needs
+# them and turns them on. Worked out on every configure, never stored, so a
+# reused build tree follows its current prefix and options.
+set(ATLAS_UI_DEV_PATHS AUTO CACHE STRING "Atlas.Ui: look in the source and build trees, honour development environment variables (AUTO, ON or OFF)")
+set_property(CACHE ATLAS_UI_DEV_PATHS PROPERTY STRINGS AUTO ON OFF)
+if(ATLAS_UI_DEV_PATHS STREQUAL "AUTO")
+    if(CMAKE_INSTALL_PREFIX STREQUAL "/usr")
+        set(ATLAS_UI_DEV_BUILD OFF)
+    else()
+        set(ATLAS_UI_DEV_BUILD ON)
+    endif()
+elseif(ATLAS_UI_DEV_PATHS)
+    set(ATLAS_UI_DEV_BUILD ON)
 else()
-    set(_atlas_dev_default ON)
+    set(ATLAS_UI_DEV_BUILD OFF)
 endif()
-option(ATLAS_UI_DEV_PATHS "Atlas.Ui: look in the source and build trees, honour development environment variables" ${_atlas_dev_default})
-if(ATLAS_UI_TESTS AND NOT ATLAS_UI_DEV_PATHS)
-    message(STATUS "ATLAS_UI_TESTS=ON: forcing ATLAS_UI_DEV_PATHS=ON (the tests need the build-tree paths and test hooks)")
-    set(ATLAS_UI_DEV_PATHS ON CACHE BOOL "" FORCE)
+if(ATLAS_UI_TESTS AND NOT ATLAS_UI_DEV_BUILD)
+    message(STATUS "ATLAS_UI_TESTS=ON: development paths on (the tests need the build-tree paths and test hooks)")
+    set(ATLAS_UI_DEV_BUILD ON)
 endif()
-if(ATLAS_UI_DEV_PATHS)
-    message(STATUS "ATLAS_UI_DEV_PATHS=ON: Atlas.Ui reads source- and build-tree paths (not for packages)")
+if(ATLAS_UI_DEV_BUILD)
+    message(STATUS "Atlas.Ui development paths on: reads source- and build-tree paths (not for packages)")
 endif()
 
 add_subdirectory(ui)

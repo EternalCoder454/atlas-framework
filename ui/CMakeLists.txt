@@ -84,12 +84,12 @@ qt_add_qml_module(atlasui
 )
 # AtlasApp.uiVersion: the project version in the root CMakeLists.txt.
 target_compile_definitions(atlasui PRIVATE ATLAS_UI_VERSION="${PROJECT_VERSION}")
-# Development builds (ATLAS_UI_DEV_PATHS, see the root CMakeLists.txt) run from
+# Development builds (ATLAS_UI_DEV_BUILD, see the root CMakeLists.txt) run from
 # the source tree: they find the symbol fonts in ui/symbols when the
 # atlas-symbols-fonts package isn't installed, and honour the test hook. A
 # packaged build has none of it: the path wouldn't exist on the user's
 # machine. Decided when configuring.
-if(ATLAS_UI_DEV_PATHS)
+if(ATLAS_UI_DEV_BUILD)
     target_compile_definitions(atlasui PRIVATE
         ATLAS_UI_DEV_PATHS
         ATLAS_UI_SYMBOLS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/symbols")
@@ -101,7 +101,7 @@ endif()
 # build tree, for the same reason as the symbol fonts above.
 target_compile_definitions(atlasui PRIVATE
     ATLAS_UI_TRANSLATIONS_DIR="${CMAKE_INSTALL_FULL_DATADIR}/atlas-ui/translations")
-if(ATLAS_UI_DEV_PATHS)
+if(ATLAS_UI_DEV_BUILD)
     target_compile_definitions(atlasui PRIVATE
         ATLAS_UI_TRANSLATIONS_BUILD_DIR="${CMAKE_CURRENT_BINARY_DIR}/translations")
 endif()
