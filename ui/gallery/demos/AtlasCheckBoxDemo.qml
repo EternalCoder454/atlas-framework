@@ -33,6 +33,6 @@ Item {
         Caption { text: "Long text" }
         AtlasCheckBox { text: "A very long label that does not fit and is cut off"; Layout.preferredWidth: Kirigami.Units.gridUnit * 12 }
         Caption { text: "No text" }
-        AtlasCheckBox { checked: true }
+        AtlasCheckBox { checked: true; Accessible.name: qsTr("Option") } // no visible label: the app names it
     }
 }

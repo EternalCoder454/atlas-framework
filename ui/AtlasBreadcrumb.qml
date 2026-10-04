@@ -124,6 +124,7 @@ T.Control {
     focusPolicy: Qt.StrongFocus
 
     Accessible.role: Accessible.ToolBar
+    //: Spoken name of a path bar (breadcrumb)
     Accessible.name: qsTr("Path")
 
     Keys.onPressed: event => {
@@ -192,6 +193,7 @@ T.Control {
                         text: seg.info.title ?? ""
                         Accessible.role: Accessible.Button
                         Accessible.name: button.text
+                        //: Spoken hint on the last segment of a path bar: it is where you are now
                         Accessible.description: seg.last ? qsTr("Current location") : ""
                         implicitWidth: Math.min(Math.round(Kirigami.Units.gridUnit * 16), label.implicitWidth + leftPadding + rightPadding)
                         onClicked: {
@@ -262,6 +264,7 @@ T.Control {
                                 hoverEnabled: true
                                 focusPolicy: Qt.NoFocus
                                 Accessible.role: Accessible.Button
+                                //: Spoken name of the "…" button of a path bar, which opens the folders that do not fit
                                 Accessible.name: qsTr("Hidden folders")
                                 onClicked: {
                                     priv.current = -1;

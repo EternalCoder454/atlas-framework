@@ -25,6 +25,8 @@ T.RadioButton {
 
     Accessible.name: text
     Accessible.role: Accessible.RadioButton
+    Accessible.checkable: true
+    Accessible.checked: control.checked
 
     QtObject {
         id: internals

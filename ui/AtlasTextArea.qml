@@ -29,7 +29,8 @@ T.TextArea {
     opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.EditableText
-    Accessible.name: placeholderText
+    //: Spoken name of a multi-line text field that has no placeholder or label of its own
+    Accessible.name: placeholderText.length > 0 ? placeholderText : qsTr("Text area")
 
     Keys.onTabPressed: event => {
         const next = nextItemInFocusChain(true);

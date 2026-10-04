@@ -64,18 +64,21 @@
 <context>
     <name>AtlasBreadcrumb</name>
     <message>
-        <location filename="../AtlasBreadcrumb.qml" line="127"/>
+        <location filename="../AtlasBreadcrumb.qml" line="128"/>
         <source>Path</source>
+        <extracomment>Spoken name of a path bar (breadcrumb)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasBreadcrumb.qml" line="195"/>
+        <location filename="../AtlasBreadcrumb.qml" line="197"/>
         <source>Current location</source>
+        <extracomment>Spoken hint on the last segment of a path bar: it is where you are now</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasBreadcrumb.qml" line="265"/>
+        <location filename="../AtlasBreadcrumb.qml" line="268"/>
         <source>Hidden folders</source>
+        <extracomment>Spoken name of the &quot;…&quot; button of a path bar, which opens the folders that do not fit</extracomment>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -105,28 +108,38 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasInstallButton.qml" line="56"/>
+        <location filename="../AtlasInstallButton.qml" line="57"/>
         <source>Installing…</source>
+        <extracomment>Install button label while installing: a plain notice when the progress is unknown, else the percentage (%1 is a number)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasInstallButton.qml" line="56"/>
+        <location filename="../AtlasInstallButton.qml" line="57"/>
         <source>%1%</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasInstallButton.qml" line="78"/>
+        <location filename="../AtlasInstallButton.qml" line="79"/>
         <source>Installing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasInstallButton.qml" line="79"/>
+        <location filename="../AtlasInstallButton.qml" line="80"/>
         <source>Press to cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasInstallButton.qml" line="79"/>
+        <location filename="../AtlasInstallButton.qml" line="80"/>
         <source>%1%, press to cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>AtlasPlaceholder</name>
+    <message>
+        <location filename="../AtlasPlaceholder.qml" line="35"/>
+        <source>Loading</source>
+        <extracomment>Spoken name of a busy indicator or loading skeleton: content is on its way</extracomment>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -189,6 +202,48 @@
         <location filename="../AtlasScreenshotCarousel.qml" line="254"/>
         <source>%1 / %2</source>
         <extracomment>Counter shown on a screenshot: %1 is its number, %2 how many there are (&quot;2 / 5&quot;)</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>AtlasSlider</name>
+    <message>
+        <location filename="../AtlasSlider.qml" line="22"/>
+        <source>Slider</source>
+        <extracomment>Spoken name of a slider that has no label of its own</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>AtlasSpinner</name>
+    <message>
+        <location filename="../AtlasSpinner.qml" line="31"/>
+        <source>Loading</source>
+        <extracomment>Spoken name of a busy indicator or loading skeleton: content is on its way</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>AtlasTextArea</name>
+    <message>
+        <location filename="../AtlasTextArea.qml" line="33"/>
+        <source>Text area</source>
+        <extracomment>Spoken name of a multi-line text field that has no placeholder or label of its own</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>AtlasTextField</name>
+    <message>
+        <location filename="../AtlasTextField.qml" line="53"/>
+        <source>Text field</source>
+        <extracomment>Spoken name of a text field that has no placeholder or label of its own</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../AtlasTextField.qml" line="94"/>
+        <source>Clear</source>
+        <extracomment>Spoken name of the button that empties a text field</extracomment>
         <translation type="unfinished"></translation>
     </message>
 </context>

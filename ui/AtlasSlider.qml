@@ -18,6 +18,7 @@ T.Slider {
     opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.Slider
+    //: Spoken name of a slider that has no label of its own
     Accessible.name: qsTr("Slider")
     Accessible.description: String(Math.round(control.value * 100) / 100)
 

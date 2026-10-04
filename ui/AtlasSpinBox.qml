@@ -58,6 +58,8 @@ T.SpinBox {
         inputMethodHints: control.inputMethodHints
         selectByMouse: control.editable
         clip: true
+        Accessible.role: Accessible.EditableText
+        Accessible.name: control.Accessible.name
     }
 
     up.indicator: Item {

@@ -31,6 +31,7 @@ Item {
     implicitHeight: internals.count * control.lineHeight + (internals.count - 1) * Kirigami.Units.smallSpacing
 
     Accessible.role: Accessible.Indicator
+    //: Spoken name of a busy indicator or loading skeleton: content is on its way
     Accessible.name: qsTr("Loading")
 
     NumberAnimation {

@@ -27,6 +27,7 @@ T.BusyIndicator {
     visible: running
 
     Accessible.role: Accessible.Indicator
+    //: Spoken name of a busy indicator or loading skeleton: content is on its way
     Accessible.name: qsTr("Loading")
 
     contentItem: Item {

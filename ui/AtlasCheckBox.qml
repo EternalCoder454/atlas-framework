@@ -9,6 +9,8 @@ import org.kde.kirigami as Kirigami
 //
 //   AtlasCheckBox { text: qsTr("Remember me"); checked: true }
 //   AtlasCheckBox { text: qsTr("Select all"); tristate: true; checkState: Qt.PartiallyChecked }
+//
+// Without `text`, name it for screen readers with Accessible.name.
 T.CheckBox {
     id: control
 
@@ -23,6 +25,9 @@ T.CheckBox {
 
     Accessible.name: text
     Accessible.role: Accessible.CheckBox
+    Accessible.checkable: true
+    Accessible.checked: control.checkState !== Qt.Unchecked
+    Accessible.checkStateMixed: control.checkState === Qt.PartiallyChecked
 
     indicator: Rectangle {
         implicitWidth: Math.round(Kirigami.Units.gridUnit * 1.2)

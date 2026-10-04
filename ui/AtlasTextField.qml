@@ -49,7 +49,8 @@ T.TextField {
     opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.EditableText
-    Accessible.name: placeholderText
+    //: Spoken name of a text field that has no placeholder or label of its own
+    Accessible.name: placeholderText.length > 0 ? placeholderText : qsTr("Text field")
     Accessible.description: errorText
 
     background: Rectangle {
@@ -89,6 +90,7 @@ T.TextField {
         visible: internals.showClear
         focusPolicy: Qt.NoFocus
         hoverEnabled: true
+        //: Spoken name of the button that empties a text field
         Accessible.name: qsTr("Clear")
         onClicked: {
             control.clear();

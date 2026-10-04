@@ -53,6 +53,7 @@ T.AbstractButton {
         readonly property string label: {
             switch (control.installState) {
             case "installing":
+                //: Install button label while installing: a plain notice when the progress is unknown, else the percentage (%1 is a number)
                 return priv.indeterminate ? qsTr("Installing…") : qsTr("%1%").arg(Math.round(priv.fraction * 100));
             case "installed":
                 return control.installedText;

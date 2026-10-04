@@ -51,6 +51,9 @@ T.ToolTip {
         color: Kirigami.Theme.textColor
         wrapMode: Text.Wrap
         textFormat: Text.PlainText
+        // A popup takes no Accessible of its own; the text carries it.
+        Accessible.role: Accessible.ToolTip
+        Accessible.name: control.text
     }
 
     background: Rectangle {
