@@ -45,6 +45,8 @@ if [ "$variant" = opaque ]; then
 fi
 
 export ATLAS_VARIANT=$variant
+# The About page shows the OS and Qt version: pin them for the pictures.
+export ATLAS_UI_TEST_FIXED_ENV=1
 export QT_QUICK_BACKEND=software
 export QT_SCALE_FACTOR=1
 export QT_FONT_DPI=96

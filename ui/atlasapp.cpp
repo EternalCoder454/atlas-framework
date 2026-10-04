@@ -103,4 +103,15 @@ AtlasApp::AtlasApp(QObject *parent)
     if (home.isValid() && (home.scheme() == QLatin1String("https") || home.scheme() == QLatin1String("http")) && !home.host().isEmpty()) {
         m_osHomeUrl = home.toString();
     }
+
+    // Test hook (tests/visual/run-variant.sh): fixed OS and Qt values, so a
+    // picture of the About page does not change with the machine or an update.
+    if (qEnvironmentVariable("ATLAS_UI_TEST_FIXED_ENV") == QLatin1String("1")) {
+        m_osName = QStringLiteral("Atlas Test OS");
+        m_osVersion = QStringLiteral("1");
+        m_osPrettyName = QStringLiteral("Atlas Test OS 1");
+        m_osLogo = QStringLiteral("distributor-logo");
+        m_osHomeUrl.clear();
+        m_qtVersion = QStringLiteral("6.0.0");
+    }
 }
