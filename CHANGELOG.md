@@ -51,6 +51,9 @@ Upgrading:
   built.
 - `InfoBanner`'s close button and the current `TabBar` tab now take keyboard
   focus with Tab (never on click), and show the focus ring.
+- The crates require the dependency versions they are tested with (zbus
+  5.19, tokio 1.53, serde 1.0.229, ...), so `cargo update` moves an app's
+  older ones up; the release pull request does this.
 
 ## 1.2.0
 

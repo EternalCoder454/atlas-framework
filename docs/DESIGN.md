@@ -371,6 +371,13 @@ change that breaks an app breaks it on users' machines.
   functions in `include/atlas/app.h` (only add new ones), and anything on
   disk or on D-Bus (the settings file format, crash report and history
   files, polkit action IDs): read the old form forever.
+- **Dependency floors are what CI tests.** A crate's requirement on another
+  crate names the version in this repository's Cargo.lock (`zbus =
+  "5.19.0"`, not `"5"`). CI builds only against the lock, so a looser floor
+  lets an app with an older lock resolve a version that was never built
+  and fail to compile (zbus 5.16 lacks `Error::Connection`). When
+  `cargo update` moves the lock past an API the code starts using, raise
+  the floor with it.
 - **The version check.** An app that needs something new says so twice:
   `Requires: atlas-ui >= X.Y.Z` in its spec (dnf), and `ui: "X.Y.Z"` in
   `app!` (a plain error at startup when an older Atlas.Ui is installed some
