@@ -7,6 +7,8 @@
 #include <QMetaEnum>
 
 #include <algorithm>
+#include <atomic>
+#include <mutex>
 #include <cstring>
 #include <iterator>
 
@@ -26,6 +28,7 @@ constexpr Entry table[] = {
 };
 
 constexpr const char *styles[] = {"Outlined", "Rounded", "Sharp"};
+constexpr int Rounded = 1;
 
 QMetaEnum nameEnum()
 {
@@ -57,41 +60,47 @@ Symbols::Symbols(QObject *parent)
     loadFonts();
 }
 
-void Symbols::loadFonts()
+// The family of style `i` is installed, or (development builds) loaded from a
+// source directory. Checked once per style, the first time it is needed.
+bool Symbols::resolveStyle(int i)
 {
-    static bool done = false;
-    if (done) {
-        return;
-    }
-    done = true;
-
-    const QStringList installed = QFontDatabase::families();
-    QStringList dirs;
+    static std::once_flag once[std::size(styles)];
+    static std::atomic<bool> ready[std::size(styles)];
+    std::call_once(once[i], [i] {
+        const QString family = QLatin1String("Material Symbols ") + QLatin1String(styles[i]);
+        bool ok = QFontDatabase::hasFamily(family);
 #ifdef ATLAS_UI_SYMBOLS_SOURCE_DIR
-    // Development builds only: a packaged Atlas.Ui is loaded into every Atlas
-    // app, and must not parse a font file named by its environment.
-    if (const QString env = qEnvironmentVariable("ATLAS_UI_SYMBOLS_DIR"); !env.isEmpty()) {
-        dirs << env;
-    }
-    dirs << QStringLiteral(ATLAS_UI_SYMBOLS_SOURCE_DIR);
-#endif
-    for (const char *style : styles) {
-        const QString family = QLatin1String("Material Symbols ") + QLatin1String(style);
-        if (installed.contains(family)) {
-            continue;
+        // Development builds only: a packaged Atlas.Ui is loaded into every
+        // Atlas app, and must not parse a font file named by its environment.
+        QStringList dirs;
+        if (const QString env = qEnvironmentVariable("ATLAS_UI_SYMBOLS_DIR"); !env.isEmpty()) {
+            dirs << env;
         }
-        bool loaded = false;
+        dirs << QStringLiteral(ATLAS_UI_SYMBOLS_SOURCE_DIR);
         for (const QString &dir : std::as_const(dirs)) {
-            const QString file = QDir(dir).filePath(QLatin1String("MaterialSymbols") + QLatin1String(style) + QLatin1String(".ttf"));
-            if (QFileInfo::exists(file) && QFontDatabase::addApplicationFont(file) >= 0) {
-                loaded = true;
+            if (ok) {
                 break;
             }
+            const QString file = QDir(dir).filePath(QLatin1String("MaterialSymbols") + QLatin1String(styles[i]) + QLatin1String(".ttf"));
+            ok = QFileInfo::exists(file) && QFontDatabase::addApplicationFont(file) >= 0;
         }
-        if (!loaded) {
-            qCWarning(lcSymbols) << family << "is not installed (atlas-symbols-fonts): its symbols will be blank";
+#endif
+        ready[i] = ok;
+    });
+    return ready[i];
+}
+
+void Symbols::loadFonts()
+{
+    static std::once_flag once;
+    // Rounded is what Symbol draws with by default, so a missing one is a
+    // broken install: say so now. Outlined and Sharp (atlas-symbols-fonts-extra)
+    // are optional and are looked for when a Symbol first asks for them.
+    std::call_once(once, [] {
+        if (!resolveStyle(Rounded)) {
+            qCWarning(lcSymbols) << "Material Symbols Rounded is not installed (atlas-symbols-fonts): its symbols will be blank";
         }
-    }
+    });
 }
 
 int Symbols::lookup(QStringView name)
@@ -141,6 +150,19 @@ QStringList Symbols::names() const
 
 QString Symbols::family(int style) const
 {
-    const int i = style >= 0 && style < int(std::size(styles)) ? style : 1;
+    const int i = style >= 0 && style < int(std::size(styles)) ? style : Rounded;
+    if (!resolveStyle(i)) {
+        static std::once_flag warned[std::size(styles)];
+        std::call_once(warned[i], [i] {
+            if (i != Rounded) { // Rounded warned when the fonts loaded
+                qCWarning(lcSymbols) << "Material Symbols" << styles[i] << "is not installed (atlas-symbols-fonts-extra): its symbols will be blank";
+            }
+        });
+    }
     return QLatin1String("Material Symbols ") + QLatin1String(styles[i]);
+}
+
+bool Symbols::available(int style) const
+{
+    return style >= 0 && style < int(std::size(styles)) && resolveStyle(style);
 }
