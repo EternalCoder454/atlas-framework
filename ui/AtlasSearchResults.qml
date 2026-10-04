@@ -45,11 +45,16 @@ T.Control {
     signal activated(int index)
 
     // Moves the highlight by `delta` rows, staying on the first or last row.
+    // With no highlight yet, forward goes to the first row and backward to the last.
     function moveCurrent(delta) {
-        if (list.count === 0) {
+        if (list.count === 0 || delta === 0) {
             return;
         }
-        list.currentIndex = Math.max(0, Math.min(list.count - 1, Math.max(0, list.currentIndex) + delta));
+        if (list.currentIndex < 0) {
+            list.currentIndex = delta > 0 ? 0 : list.count - 1;
+        } else {
+            list.currentIndex = Math.max(0, Math.min(list.count - 1, list.currentIndex + delta));
+        }
         list.positionViewAtIndex(list.currentIndex, ListView.Contain);
     }
     // Emits activated() for the highlighted row, if there is one.
@@ -60,6 +65,18 @@ T.Control {
     }
     // Lets a search field pass on its keys: true if the key was used.
     function handleKey(event) {
+        switch (event.key) {
+        case Qt.Key_Up:
+        case Qt.Key_Down:
+        case Qt.Key_PageUp:
+        case Qt.Key_PageDown:
+            if (list.count === 0) {
+                return false; // nothing to move over: the key is the caller's
+            }
+            break;
+        default:
+            break;
+        }
         switch (event.key) {
         case Qt.Key_Up:
             control.moveCurrent(-1);
@@ -75,6 +92,9 @@ T.Control {
             break;
         case Qt.Key_Return:
         case Qt.Key_Enter:
+            if (event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier)) {
+                return false; // Shift+Enter and Ctrl+Enter are the app's
+            }
             if (event.isAutoRepeat) {
                 break;
             }
@@ -249,6 +269,7 @@ T.Control {
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
                         width: parent.width
+                        Accessible.ignored: true // the row carries the name
                         text: row.title
                         font: Kirigami.Theme.defaultFont
                         color: Kirigami.Theme.textColor
@@ -258,6 +279,7 @@ T.Control {
                     Text {
                         visible: row.subtitle.length > 0
                         width: parent.width
+                        Accessible.ignored: true
                         text: row.subtitle
                         font: Kirigami.Theme.smallFont
                         color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
@@ -271,6 +293,7 @@ T.Control {
                     anchors.right: parent.right
                     anchors.rightMargin: Kirigami.Units.largeSpacing * 2
                     anchors.verticalCenter: parent.verticalCenter
+                    Accessible.ignored: true
                     text: row.shortcut
                     font: Kirigami.Theme.smallFont
                     color: Qt.alpha(Kirigami.Theme.textColor, 0.5)

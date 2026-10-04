@@ -136,11 +136,33 @@ T.ComboBox {
         closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutsideParent
 
         contentItem: ListView {
+            id: choices
             implicitHeight: contentHeight
             model: control.popup.visible ? control.delegateModel : null
             currentIndex: control.highlightedIndex
             clip: true
             keyNavigationEnabled: true
+            // An empty model opens a single disabled row, not an empty card.
+            footer: Item {
+                width: choices.width
+                visible: choices.count === 0
+                height: visible ? Math.round(Kirigami.Units.gridUnit * 1.8) : 0
+                Accessible.role: Accessible.StaticText
+                //: Shown in a drop-down list that has no choices
+                Accessible.name: qsTr("No choices")
+                Text {
+                    anchors.fill: parent
+                    anchors.leftMargin: Kirigami.Units.largeSpacing
+                    anchors.rightMargin: Kirigami.Units.largeSpacing
+                    text: qsTr("No choices")
+                    font: Kirigami.Theme.defaultFont
+                    color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                    textFormat: Text.PlainText
+                    Accessible.ignored: true
+                }
+            }
         }
 
         background: Rectangle {

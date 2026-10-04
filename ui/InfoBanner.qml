@@ -35,14 +35,32 @@ Item {
     Accessible.description: control.type === "error" ? qsTr("Error") : control.type === "warning" ? qsTr("Warning") : qsTr("Information")
 
     // Say it when it appears, or changes while it is up.
+    // Both changes in one turn (text set, then shown) announce once, from a
+    // queued call.
+    QtObject {
+        id: priv
+        property bool announcePending: false
+        function queueAnnounce() {
+            if (priv.announcePending) {
+                return;
+            }
+            priv.announcePending = true;
+            Qt.callLater(() => {
+                priv.announcePending = false;
+                if (control.shown && control.text.length > 0) {
+                    control.Accessible.announce(control.text);
+                }
+            });
+        }
+    }
     onShownChanged: {
-        if (control.shown && control.text.length > 0) {
-            Accessible.announce(control.text);
+        if (control.shown) {
+            priv.queueAnnounce();
         }
     }
     onTextChanged: {
-        if (control.shown && control.visible && control.text.length > 0) {
-            Accessible.announce(control.text);
+        if (control.shown && control.visible) {
+            priv.queueAnnounce();
         }
     }
 
@@ -123,7 +141,7 @@ Item {
                 implicitWidth: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
                 implicitHeight: implicitWidth
                 hoverEnabled: true
-                focusPolicy: Qt.StrongFocus
+                focusPolicy: Qt.TabFocus // a click must not take the editor's focus
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Close")
                 onClicked: {

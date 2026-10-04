@@ -217,7 +217,7 @@ Item {
                     AtlasFocusRing {
                         gap: 0
                         radius: parent.radius
-                        shown: tab.visualFocus
+                        shown: tab.visualFocus && tab.current
                     }
 
                     // Where a dragged tab would land: a line on that side.

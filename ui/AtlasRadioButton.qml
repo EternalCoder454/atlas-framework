@@ -18,9 +18,11 @@ T.RadioButton {
     implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 1.4), implicitContentHeight + topPadding + bottomPadding)
     spacing: Kirigami.Units.largeSpacing
     padding: 0
-    leftPadding: indicator.width + spacing
+    leftPadding: control.mirrored ? 0 : indicator.width + spacing
+    rightPadding: control.mirrored ? indicator.width + spacing : 0
     hoverEnabled: true
-    focusPolicy: Qt.StrongFocus
+    // Tab visits one radio of a group: the checked one, or the first if none is.
+    focusPolicy: internals.tabStop ? Qt.StrongFocus : Qt.ClickFocus
     opacity: enabled ? 1 : 0.5
 
     Accessible.name: text
@@ -30,33 +32,56 @@ T.RadioButton {
 
     QtObject {
         id: internals
-        // Check the next (1) or previous (-1) enabled sibling in the group.
-        function step(dir: int): void {
+
+        // The enabled, visible radio buttons of control's group, itself included.
+        readonly property var group: {
+            const list = [];
             if (!control.parent) {
-                return;
+                return [control];
             }
-            const group = [];
             for (const item of control.parent.children) {
                 if (item === control || (item.autoExclusive === true && item.checkable === true && item.visible && item.enabled)) {
-                    group.push(item);
+                    list.push(item);
                 }
             }
+            return list;
+        }
+
+        // Whether Tab stops here: when alone, when checked, or when it is the
+        // first of a group in which none is checked.
+        readonly property bool tabStop: {
+            if (internals.group.length < 2 || control.checked) {
+                return true;
+            }
+            for (const item of internals.group) {
+                if (item.checked) {
+                    return false;
+                }
+            }
+            return internals.group[0] === control;
+        }
+
+        // Check the next (1) or previous (-1) button of the group; false when
+        // there is none to move to (the key then goes on).
+        function step(dir: int): bool {
+            const group = internals.group;
             const at = group.indexOf(control);
             if (group.length < 2 || at < 0) {
-                return;
+                return false;
             }
             const target = group[(at + dir + group.length) % group.length];
             target.forceActiveFocus(Qt.TabFocusReason);
             if (!target.checked) {
                 target.toggle();
             }
+            return true;
         }
     }
 
-    Keys.onDownPressed: internals.step(1)
-    Keys.onUpPressed: internals.step(-1)
-    Keys.onRightPressed: internals.step(control.mirrored ? -1 : 1)
-    Keys.onLeftPressed: internals.step(control.mirrored ? 1 : -1)
+    Keys.onDownPressed: event => event.accepted = internals.step(1)
+    Keys.onUpPressed: event => event.accepted = internals.step(-1)
+    Keys.onRightPressed: event => event.accepted = internals.step(control.mirrored ? -1 : 1)
+    Keys.onLeftPressed: event => event.accepted = internals.step(control.mirrored ? 1 : -1)
 
     indicator: Rectangle {
         implicitWidth: Math.round(Kirigami.Units.gridUnit * 1.2)

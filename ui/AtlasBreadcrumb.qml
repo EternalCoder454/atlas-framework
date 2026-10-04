@@ -108,6 +108,14 @@ T.Control {
             const to = Math.max(0, Math.min(priv.stops.length - 1, at + delta));
             priv.current = priv.stops[to];
         }
+        // Tell screen readers which segment the keyboard moved to.
+        function announceFocused() {
+            const at = priv.focused;
+            const title = at === -1 ? qsTr("Hidden folders") : (control.segments[at]?.title ?? "");
+            if (title.length > 0) {
+                Accessible.announce(title);
+            }
+        }
         function press(stop) {
             if (stop === -1) {
                 if (priv.moreItem) {
@@ -129,18 +137,23 @@ T.Control {
 
     Keys.onPressed: event => {
         const dir = control.mirrored ? -1 : 1;
+        let moved = false;
         switch (event.key) {
         case Qt.Key_Left:
             priv.move(-dir);
+            moved = true;
             break;
         case Qt.Key_Right:
             priv.move(dir);
+            moved = true;
             break;
         case Qt.Key_Home:
             priv.current = 0;
+            moved = true;
             break;
         case Qt.Key_End:
             priv.current = control.count - 1;
+            moved = true;
             break;
         case Qt.Key_Return:
         case Qt.Key_Enter:
@@ -154,6 +167,9 @@ T.Control {
             return;
         }
         event.accepted = true;
+        if (moved) {
+            priv.announceFocused();
+        }
     }
 
     background: null
@@ -167,6 +183,9 @@ T.Control {
             Repeater {
                 id: items
                 model: control.count
+                // Widths are known only once a delegate exists, so measure again.
+                onItemAdded: priv.revision++
+                onItemRemoved: priv.revision++
                 delegate: Item {
                     id: seg
                     required property int index
@@ -192,6 +211,7 @@ T.Control {
                         focusPolicy: Qt.NoFocus
                         text: seg.info.title ?? ""
                         Accessible.role: Accessible.Button
+                        Accessible.focused: seg.keyFocus
                         Accessible.name: button.text
                         //: Spoken hint on the last segment of a path bar: it is where you are now
                         Accessible.description: seg.last ? qsTr("Current location") : ""
@@ -264,6 +284,7 @@ T.Control {
                                 hoverEnabled: true
                                 focusPolicy: Qt.NoFocus
                                 Accessible.role: Accessible.Button
+                                Accessible.focused: control.visualFocus && priv.focused === -1
                                 //: Spoken name of the "…" button of a path bar, which opens the folders that do not fit
                                 Accessible.name: qsTr("Hidden folders")
                                 onClicked: {

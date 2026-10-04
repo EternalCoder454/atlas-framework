@@ -9,10 +9,17 @@ import org.kde.kirigami as Kirigami
 // costs no more than a short one.
 //
 //   AtlasScreenshotCarousel {
-//       sources: ["file:///a.png", "https://example.org/b.png"]
+//       sources: ["file:///a.png", "qrc:/b.png"]
 //       Layout.fillWidth: true
 //       Layout.preferredHeight: width * 9 / 16
 //   }
+//
+// Where the pictures may come from: only file:, qrc:, image: and relative
+// urls load. A source with any other scheme (http:, ftp:, data:, ...) is
+// refused; the slide shows the broken-image state and the refusal is logged
+// once. An app that shows remote screenshots either downloads them itself and
+// passes the local files, or sets `allowRemote: true` for a trusted source;
+// then https: also loads. Plain http: never does.
 //
 // With no sources it shows a short "No screenshots" message instead.
 T.Control {
@@ -21,6 +28,8 @@ T.Control {
     // Image urls (strings or url values).
     property var sources: []
     property int currentIndex: 0
+    // Lets https: sources load; see above. http: is refused either way.
+    property bool allowRemote: false
     readonly property int count: control.sources ? control.sources.length : 0
 
     QtObject {
@@ -32,6 +41,21 @@ T.Control {
         // reload on every pixel, and never beyond what a screenshot needs.
         readonly property int decodeWidth: Math.min(2560, Math.ceil(Math.max(1, view.width) * 2 / 256) * 256)
         readonly property int decodeHeight: Math.min(1440, Math.ceil(Math.max(1, view.height) * 2 / 256) * 256)
+        // Whether `source` may be loaded: no scheme (a relative url), or a local
+        // one, or https: when allowed. The empty source is fine (nothing loads).
+        function allowed(source) {
+            const text = String(source ?? "");
+            const m = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(text);
+            if (!m) {
+                return true;
+            }
+            const scheme = m[1].toLowerCase();
+            return scheme === "file" || scheme === "qrc" || scheme === "image" || (scheme === "https" && control.allowRemote);
+        }
+        function schemeOf(source) {
+            const m = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(String(source ?? ""));
+            return m ? m[1].toLowerCase() : "";
+        }
         function step(delta) {
             control.currentIndex = Math.max(0, Math.min(control.count - 1, control.currentIndex + delta));
         }
@@ -132,7 +156,23 @@ T.Control {
                         Accessible.role: Accessible.Graphic
                         //: Name of one screenshot: %1 is its number, %2 how many there are
                         Accessible.name: qsTr("Screenshot %1 of %2").arg(slide.index + 1).arg(control.count)
+                        Accessible.description: slide.failed ? qsTr("The screenshot could not be loaded") : ""
                         Accessible.ignored: slide.index !== control.currentIndex
+
+                        readonly property var rawSource: control.sources[slide.index] ?? ""
+                        readonly property bool refused: !priv.allowed(slide.rawSource)
+                        // Set by the image: it could not be read.
+                        property bool loadError: false
+                        readonly property bool failed: slide.refused || slide.loadError
+
+                        // Said once per refused source, with the scheme only (the rest may hold a token).
+                        function logRefused() {
+                            if (slide.refused) {
+                                console.warn("AtlasScreenshotCarousel: refused screenshot " + (slide.index + 1) + ": the " + priv.schemeOf(slide.rawSource) + ": scheme is not allowed (see allowRemote)");
+                            }
+                        }
+                        onRefusedChanged: slide.logRefused()
+                        Component.onCompleted: slide.logRefused()
 
                         Loader {
                             anchors.fill: parent
@@ -142,18 +182,30 @@ T.Control {
                                     id: img
                                     anchors.fill: parent
                                     anchors.margins: Kirigami.Units.smallSpacing
-                                    source: control.sources[slide.index] ?? ""
+                                    source: slide.refused ? "" : slide.rawSource
                                     asynchronous: true
-                                    cache: false
+                                    onStatusChanged: slide.loadError = img.status === Image.Error
                                     fillMode: Image.PreserveAspectFit
                                     sourceSize: Qt.size(priv.decodeWidth, priv.decodeHeight)
                                 }
-                                Symbol {
+                                Column {
                                     anchors.centerIn: parent
+                                    spacing: Kirigami.Units.smallSpacing
                                     visible: img.status !== Image.Ready
-                                    icon: img.status === Image.Error ? Symbols.BrokenImage : Symbols.Image
-                                    size: Kirigami.Units.iconSizes.large
-                                    color: Qt.alpha(Kirigami.Theme.textColor, 0.4)
+                                    Symbol {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        icon: slide.failed ? Symbols.BrokenImage : Symbols.Image
+                                        size: Kirigami.Units.iconSizes.large
+                                        color: Qt.alpha(Kirigami.Theme.textColor, 0.4)
+                                    }
+                                    Text {
+                                        visible: slide.failed
+                                        text: qsTr("Screenshot unavailable")
+                                        font: Kirigami.Theme.smallFont
+                                        color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                                        textFormat: Text.PlainText
+                                        Accessible.ignored: true
+                                    }
                                 }
                             }
                         }

@@ -193,12 +193,12 @@ Item {
                     Layout.topMargin: Kirigami.Units.gridUnit
                     text: qsTr("Weight %1").arg(root.weight)
                 }
-                QQC2.Slider {
+                AtlasSlider {
                     Layout.fillWidth: true
                     from: 100
                     to: 700
                     stepSize: 100
-                    snapMode: QQC2.Slider.SnapAlways
+                    snapMode: AtlasSlider.SnapAlways
                     value: root.weight
                     onMoved: root.weight = value
                     Accessible.name: qsTr("Weight")
