@@ -4,7 +4,8 @@ import org.kde.kirigami as Kirigami
 
 // A rounded multi-line text field. `placeholderText` shows while it is empty.
 // It wraps long lines; put it in a ScrollView or give it a height for long
-// text. Tab and Shift+Tab move focus on, as in a form (a plain TextArea
+// text. With `wrapMode: TextEdit.NoWrap` (a log or code view) it is as wide
+// as its longest line, so a ScrollView around it scrolls sideways. Tab and Shift+Tab move focus on, as in a form (a plain TextArea
 // would type a tab character).
 //
 //   AtlasTextArea {
@@ -14,7 +15,12 @@ import org.kde.kirigami as Kirigami
 T.TextArea {
     id: control
 
-    implicitWidth: Kirigami.Units.gridUnit * 14
+    // Unwrapped, as wide as the longest line (a ScrollView takes this as its
+    // content width); wrapped, a fixed width (contentWidth then follows the
+    // width, so it can't feed back into it).
+    implicitWidth: wrapMode === TextEdit.NoWrap
+        ? Math.max(Kirigami.Units.gridUnit * 14, contentWidth + leftPadding + rightPadding)
+        : Kirigami.Units.gridUnit * 14
     implicitHeight: Math.max(Kirigami.Units.gridUnit * 6, contentHeight + topPadding + bottomPadding)
     padding: Kirigami.Units.largeSpacing
     wrapMode: TextEdit.Wrap

@@ -262,7 +262,7 @@
 <context>
     <name>AtlasTextArea</name>
     <message>
-        <location filename="../AtlasTextArea.qml" line="33"/>
+        <location filename="../AtlasTextArea.qml" line="39"/>
         <source>Text area</source>
         <extracomment>Spoken name of a multi-line text field that has no placeholder or label of its own</extracomment>
         <translation type="unfinished"></translation>
