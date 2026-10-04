@@ -18,9 +18,9 @@ Item {
     RowLayout {
         anchors.centerIn: parent
         spacing: 20
-        AtlasSwitch { checked: false }
-        AtlasSwitch { checked: true }
-        AtlasSwitch { checked: true; enabled: false }
-        AtlasSwitch { checked: false; enabled: false }
+        AtlasSwitch { Accessible.name: "Demo switch"; checked: false }
+        AtlasSwitch { Accessible.name: "Demo switch"; checked: true }
+        AtlasSwitch { Accessible.name: "Demo switch"; checked: true; enabled: false }
+        AtlasSwitch { Accessible.name: "Demo switch"; checked: false; enabled: false }
     }
 }

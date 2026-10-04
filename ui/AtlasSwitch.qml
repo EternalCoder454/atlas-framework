@@ -10,6 +10,8 @@ T.Switch {
     implicitHeight: 24
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
+    // The label beside the switch is the app's: name it with `text` or Accessible.name.
+    Accessible.name: control.text
 
     indicator: Rectangle {
         implicitWidth: 40

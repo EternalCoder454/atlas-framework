@@ -26,6 +26,7 @@ T.AbstractButton {
 
     contentItem: Text {
         id: label
+        Accessible.ignored: true
         verticalAlignment: Text.AlignVCenter
         text: control.text
         font: Kirigami.Theme.defaultFont

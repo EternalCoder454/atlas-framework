@@ -38,6 +38,7 @@ AtlasPage {
         Kirigami.Icon {
             Layout.alignment: Qt.AlignHCenter
             source: AtlasApp.id
+            Accessible.ignored: true
             Layout.preferredWidth: Math.round(Kirigami.Units.gridUnit * 5)
             Layout.preferredHeight: Layout.preferredWidth
         }

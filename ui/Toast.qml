@@ -15,6 +15,7 @@ Item {
 
     function show(message) {
         label.text = message;
+        Accessible.announce(message);
         timer.showing = true;
         timer.restart();
     }

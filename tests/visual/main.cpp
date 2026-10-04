@@ -8,6 +8,8 @@
 //   ATLAS_OUT_DIR       where actual and diff images of a failure go
 //   ATLAS_VARIANT       light, dark, accent or opaque
 //   ATLAS_UPDATE_GOLDENS=1 rewrites the goldens instead of comparing
+#include "../demolist.h"
+
 #include <QtQuickTest/quicktest.h>
 
 #include <QDir>
@@ -49,44 +51,11 @@ bool savePng(const QImage &image, const QString &path)
 
 } // namespace
 
-class Goldens : public QObject
+class Goldens : public DemoList
 {
     Q_OBJECT
 public:
     Q_INVOKABLE QString variant() const { return env("ATLAS_VARIANT", QStringLiteral("light")); }
-
-    // The demo names, sorted, minus the "Demo" suffix.
-    Q_INVOKABLE QStringList demos() const
-    {
-        const QDir dir(env("ATLAS_DEMO_DIR"));
-        const QRegularExpression filter(env("ATLAS_DEMO_FILTER", QStringLiteral(".*")));
-        QStringList names;
-        const QStringList files = dir.entryList({QStringLiteral("*Demo.qml")}, QDir::Files, QDir::Name);
-        for (const QString &file : files) {
-            const QString name = file.chopped(int(sizeof("Demo.qml") - 1));
-            if (filter.match(name).hasMatch()) {
-                names << name;
-            }
-        }
-        return names;
-    }
-
-    Q_INVOKABLE QUrl demoUrl(const QString &name) const
-    {
-        return QUrl::fromLocalFile(QDir(env("ATLAS_DEMO_DIR")).filePath(name + QStringLiteral("Demo.qml")));
-    }
-
-    // True when the demo's root element is a window (AtlasWindowDemo).
-    Q_INVOKABLE bool rootIsWindow(const QString &name) const
-    {
-        QFile file(QDir(env("ATLAS_DEMO_DIR")).filePath(name + QStringLiteral("Demo.qml")));
-        if (!file.open(QIODevice::ReadOnly)) {
-            return false;
-        }
-        static const QRegularExpression root(QStringLiteral("^(?:[A-Za-z0-9_]+\\.)?[A-Za-z0-9_]*Window\\s*\\{"),
-                                             QRegularExpression::MultilineOption);
-        return root.match(QString::fromUtf8(file.readAll())).hasMatch();
-    }
 
     // Grabs `target` (an Item, or a window) and compares it with the golden of
     // `name`. Returns "" when it matches, else a sentence for the failure.
