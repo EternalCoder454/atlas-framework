@@ -55,7 +55,16 @@ export QT_QUICK_CONTROLS_STYLE=org.kde.desktop
 export QT_QPA_PLATFORMTHEME=
 export QT_LOGGING_RULES='qt.qpa.fonts=false'
 unset WAYLAND_DISPLAY KDE_FULL_SESSION XDG_CURRENT_DESKTOP
+# English, whatever the machine's language, so a translation never reaches the
+# pictures. The i18n test brings its own catalogue and language: it keeps them.
+if [ -z "${ATLAS_UI_TRANSLATIONS_DIR:-}" ]; then
+    export LANG=C.UTF-8 LC_ALL=C.UTF-8
+    unset LANGUAGE
+fi
 
 # Passing the dbus session keeps KDE libraries from starting services on the
-# user's bus when this runs on a desktop.
-exec dbus-run-session -- xvfb-run -a -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb
+# user's bus when this runs on a desktop. Not `exec`: the EXIT trap removes
+# the temporary directory, and the test's status is passed on.
+rc=0
+dbus-run-session -- xvfb-run -a -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
+exit "$rc"

@@ -16,4 +16,4 @@ RUN dnf -y -q --setopt=install_weak_deps=False install \
 # cargo-semver-checks (CI: the crates' public items against the last release).
 # Installed outside /root so any user running the container can call it.
 ENV CARGO_HOME=/opt/cargo PATH=/opt/cargo/bin:$PATH
-RUN cargo install cargo-semver-checks --locked && rm -rf /opt/cargo/registry /opt/cargo/git
+RUN cargo install cargo-semver-checks --version 0.51.0 --locked && rm -rf /opt/cargo/registry /opt/cargo/git

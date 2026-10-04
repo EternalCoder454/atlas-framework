@@ -3,11 +3,17 @@ name: Release
 # Pushing a tag vX.Y.Z publishes a release of atlas-framework and opens a pull
 # request in every Atlas app (tools/apps.txt) that moves it to the new tag.
 #
+# A release is made only from a commit on main whose CI run passed, and only
+# when CHANGELOG.md has a finished section for the version.
+#
 # The pull requests need a token that can push branches and open pull
 # requests in the app repositories: a fine-grained personal access token with
-# Contents and Pull requests (read and write) on those repositories, saved as
-# the secret APP_UPDATE_TOKEN in this repository. Without it the release is
-# still made and the update step says it was skipped.
+# Contents and Pull requests (read and write) on those repositories. Keep it
+# as the secret APP_UPDATE_TOKEN of the environment "release" (Settings,
+# Environments), with a required reviewer and a deployment rule for v* tags,
+# and protect v* tags with a ruleset, so a pushed tag alone cannot reach it.
+# Without the secret the release is still made and the update step says it
+# was skipped.
 
 on:
   push:
@@ -21,10 +27,38 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The tag is on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::the tagged commit is not on main"; exit 1
+          fi
+
+      - name: CI passed for the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The push to main started it; wait for it to finish (up to an hour).
+          for _ in $(seq 120); do
+            runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" \
+                     --event push --branch main --json status,conclusion)
+            if [ "$(jq 'length' <<<"$runs")" -gt 0 ] && [ "$(jq '[.[] | select(.status != "completed")] | length' <<<"$runs")" = 0 ]; then
+              if [ "$(jq '[.[] | select(.conclusion == "success")] | length' <<<"$runs")" -gt 0 ]; then
+                echo "CI passed"; exit 0
+              fi
+              echo "::error::CI did not pass for $GITHUB_SHA"; exit 1
+            fi
+            sleep 30
+          done
+          echo "::error::no finished CI run on main for $GITHUB_SHA"; exit 1
 
       - name: The tag matches every version in the tree
         id: version
@@ -52,9 +86,16 @@ jobs:
           V: ${{ steps.version.outputs.version }}
         run: |
           # The section under "## X.Y.Z", up to the next "## ".
-          awk -v v="$V" '$0 ~ "^## " v "( |$)" {on=1; next} on && /^## / {exit} on' CHANGELOG.md > notes.md
-          if ! grep -q '[^[:space:]]' notes.md; then
+          heading=$(grep -m1 -E "^## ${V//./\\.}( |$)" CHANGELOG.md || true)
+          if [ -z "$heading" ]; then
             echo "::error::CHANGELOG.md has no section for $V"; exit 1
+          fi
+          if grep -qi 'unreleased' <<<"$heading"; then
+            echo "::error::CHANGELOG.md still calls $V unreleased: change its heading to \"## $V\""; exit 1
+          fi
+          awk -v h="$heading" '$0 == h {on=1; next} on && /^## / {exit} on' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::the CHANGELOG.md section for $V is empty"; exit 1
           fi
 
       - name: Publish the release
@@ -66,8 +107,11 @@ jobs:
   update-apps:
     needs: release
     runs-on: ubuntu-latest
+    environment: release
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - name: Open a pull request in every app
         env:

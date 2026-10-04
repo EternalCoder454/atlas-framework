@@ -112,9 +112,10 @@ install -Dpm0644 crates/atlas-framework-system/data/atlas/crash-reporting.toml %
 
 %check
 desktop-file-validate %{buildroot}%{_datadir}/applications/net.eterneon.atlas.symbols.desktop
-# A packaged build loads the fonts from the system only: no path into the
-# source or build tree, and not the development-only $ATLAS_UI_SYMBOLS_DIR.
-for s in "%{_builddir}" %{?_atlas_build_cache:"%{_atlas_build_cache}"} ATLAS_UI_SYMBOLS_DIR; do
+# A packaged build loads the fonts and translations from the system only: no
+# path into the source or build tree, and none of the development-only
+# variables ($ATLAS_UI_SYMBOLS_DIR, $ATLAS_UI_TRANSLATIONS_DIR) or test hooks.
+for s in "%{_builddir}" %{?_atlas_build_cache:"%{_atlas_build_cache}"} ATLAS_UI_SYMBOLS_DIR ATLAS_UI_TRANSLATIONS_DIR ATLAS_UI_TEST_FIXED_ENV; do
     if grep -qF "$s" %{buildroot}%{_libdir}/qt6/qml/Atlas/Ui/libatlasui.so; then
         echo "libatlasui.so holds $s, which only development builds may" >&2
         exit 1

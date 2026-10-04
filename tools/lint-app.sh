@@ -33,7 +33,9 @@ function uses(s, a, name,   re) {
     return match(s, re) > 0
 }
 BEGIN {
-    n = split(locals, L, " "); for (i = 1; i <= n; i++) isLocal[L[i]] = 1
+    # From the environment, not -v: awk would read backslashes in them as escapes.
+    file = ENVIRON["LINT_FILE"]
+    n = split(ENVIRON["LINT_LOCALS"], L, "\n"); for (i = 1; i <= n; i++) isLocal[L[i]] = 1
     split("Button ToolButton RoundButton DelayButton Switch", E, " ")
     split("TextField TextArea ComboBox CheckBox RadioButton Slider SpinBox ToolTip BusyIndicator", W, " ")
     errors = 0; warnings = 0; qq["-"] = 1; kq["-"] = 1; isLocal["-"] = 1
@@ -90,10 +92,13 @@ for app in "$@"; do
         echo "lint-app: not a directory: $app" >&2
         exit 2
     fi
+    count=0
     while IFS= read -r -d '' file; do
+        count=$((count + 1))
         dir=$(dirname "$file")
-        locals=$(find "$dir" -maxdepth 1 -name '*.qml' -printf '%f\n' | sed 's/\.qml$//' | tr '\n' ' ')
-        out=$(awk -v file="$file" -v locals="$locals" "$program" "$file")
+        locals=$(find "$dir" -maxdepth 1 -name '*.qml' -printf '%f\n' | sed 's/\.qml$//')
+        # Control characters in a name could forge CI log commands (::error::).
+        out=$(LINT_FILE=${file//[[:cntrl:]]/?} LINT_LOCALS=$locals awk "$program" "$file")
         rc=$?
         if [ -n "$out" ]; then
             echo "$out"
@@ -101,7 +106,8 @@ for app in "$@"; do
             total_warnings=$((total_warnings + $(grep -c ': warning: ' <<<"$out")))
         fi
         [ "$rc" -ne 0 ] && status=1
-    done < <(find "$app" \( -type d \( -name '.git' -o -name 'build*' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
+    done < <(find "$app/" \( -type d \( -name '.git' -o -name 'build*' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
+    [ "$count" -eq 0 ] && echo "lint-app: no QML files in ${app//[[:cntrl:]]/?}"
 done
 echo "lint-app: $total_errors error(s), $total_warnings warning(s)"
 exit "$status"

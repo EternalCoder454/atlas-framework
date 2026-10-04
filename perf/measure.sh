@@ -41,7 +41,7 @@ if [ "${1:-}" = "--inner" ]; then
     # Starts the app, waits for its window to be mapped, and sets START_MS.
     # (Not run in a subshell: `pid` has to stay known to stop().)
     start() {
-        local t0 t1 win= deadline
+        local t0 t1 deadline win=""
         t0=$(date +%s%N)
         "$bin" >"$work/app.log" 2>&1 &
         pid=$!
@@ -97,8 +97,9 @@ trap 'rm -rf "$work"' EXIT
 # Atlas.Ui where the template's CMake looks for it.
 qml_dir=$(qmake6 -query QT_INSTALL_QML)
 if [ ! -f "$qml_dir/Atlas/Ui/qmldir" ]; then
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "measure: Atlas.Ui is not installed in $qml_dir; run as root in the container or install it" >&2
+    # Only into a container's /usr, never over a host system's.
+    if [ "$(id -u)" -ne 0 ] || { [ ! -e /run/.containerenv ] && [ ! -e /.dockerenv ] && [ "${ATLAS_PERF_INSTALL:-}" != 1 ]; }; then
+        echo "measure: Atlas.Ui is not installed in $qml_dir; run as root in the dev container (or install it yourself)" >&2
         exit 2
     fi
     cmake --install "$build" --prefix /usr >/dev/null
@@ -124,7 +125,8 @@ mv "$out.tmp" "$out"
 echo "measure: wrote $out"
 cat "$out"
 
-# Compare with the budget.
+# Compare with the budget. Keys in PERF_WARN_ONLY (space-separated; CI passes
+# startup_ms, which a shared runner makes noisy) warn instead of failing.
 status=0
 if [ ! -f "$budget" ]; then
     echo "measure: no budget at $budget; nothing to compare" >&2
@@ -134,8 +136,12 @@ else
         value=$(jq -r --arg k "$key" '.[$k]' "$out")
         [ -n "$limit" ] || continue
         if awk -v v="$value" -v l="$limit" 'BEGIN { exit !(v > l) }'; then
-            echo "OVER BUDGET: $key is $value, budget $limit"
-            status=1
+            if [[ " ${PERF_WARN_ONLY:-} " == *" $key "* ]]; then
+                echo "::warning::over budget (not failing): $key is $value, budget $limit"
+            else
+                echo "OVER BUDGET: $key is $value, budget $limit"
+                status=1
+            fi
         else
             echo "ok: $key $value (budget $limit)"
         fi

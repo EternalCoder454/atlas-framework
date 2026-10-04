@@ -38,6 +38,18 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   request in every app that moves its crates to the tag. Apps pin
   `tag = "vX.Y.Z"` instead of a commit.
 
+Upgrading:
+
+- A system upgraded from 1.2.0 keeps only the Rounded symbols unless
+  atlas-symbols-fonts-extra is installed (the gallery recommends it; dnf
+  installs a new recommendation on upgrade only with weak dependencies on).
+  No Atlas app uses Outlined or Sharp today.
+- Apps that move from `rev =` to `tag =` must build with `cargo build --locked`
+  (or `--frozen`), so the commit in Cargo.lock, not the tag, decides what is
+  built.
+- `InfoBanner`'s close button and the current `TabBar` tab now take keyboard
+  focus with Tab (never on click), and show the focus ring.
+
 ## 1.2.0
 
 - Atlas.Ui: TabBar, FindBar, StatusBar, StatusBarItem, InfoBanner, Toast and

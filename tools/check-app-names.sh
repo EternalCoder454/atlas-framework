@@ -42,15 +42,19 @@ for app in "$@"; do
         echo "check-app-names: not a directory: $app" >&2
         exit 2
     fi
+    count=0
     while IFS= read -r -d '' file; do
+        count=$((count + 1))
         base=$(basename "$file" .qml)
         if grep -qxF -- "$base" "$names"; then
-            echo "$file: clashes with the Atlas.Ui type $base."
+            # Control characters in a name could forge CI log commands (::error::).
+            echo "${file//[[:cntrl:]]/?}: clashes with the Atlas.Ui type $base."
             echo "  Rule: 'import Atlas.Ui' hides an app's own QML file of the same name, so the app's $base.qml"
             echo "  is replaced by the framework's. Rename the app's file (the Installer's SearchField became ListSearchField)."
             status=1
         fi
-    done < <(find "$app" \( -type d \( -name '.git' -o -name 'build*' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
+    done < <(find "$app/" \( -type d \( -name '.git' -o -name 'build*' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
+    [ "$count" -eq 0 ] && echo "check-app-names: no QML files in ${app//[[:cntrl:]]/?}"
 done
 if [ "$status" -eq 0 ]; then
     echo "check-app-names: no clashes"

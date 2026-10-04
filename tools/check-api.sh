@@ -43,7 +43,17 @@ for name in atlas-ui.api symbols.txt; do
 done
 
 # The version rule: a change to api/ since the last release needs a new version.
-tag=$(git -C "$root" describe --tags --match 'v*' --abbrev=0 2>/dev/null || true)
+# "No names found" means no release yet; any other git error (not a
+# repository, "dubious ownership" as root in a container) fails, so the rule
+# is never skipped by accident.
+if ! tag=$(git -C "$root" describe --tags --match 'v*' --abbrev=0 2>"$tmp/git-err"); then
+    if ! grep -q 'No names found\|cannot describe anything\|No tags can describe' "$tmp/git-err"; then
+        echo "check-api: git could not read the tags:" >&2
+        cat "$tmp/git-err" >&2
+        exit 2
+    fi
+    tag=
+fi
 if [ -z "$tag" ]; then
     echo "notice: no v* tag yet, so the version check is skipped"
 elif ! git -C "$root" diff --quiet "$tag" -- api; then
