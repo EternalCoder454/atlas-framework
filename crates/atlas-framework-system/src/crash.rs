@@ -3,9 +3,11 @@
 //!
 //! - [`Settings`]: per-user switch, `~/.config/atlas/crash-reporting.toml`
 //!   (`enabled = false`). When off, nothing is collected or written.
-//! - [`Endpoint`]: a GlitchTip (Sentry compatible) DSN from
-//!   `/etc/atlas/crash-reporting.toml`, default `/usr/share/atlas/...`. Empty
-//!   by default: [`send`] then fails with "no endpoint configured".
+//! - [`Endpoint`]: a Sentry-compatible DSN from
+//!   `/etc/atlas/crash-reporting.toml`, default `/usr/share/atlas/...`: the
+//!   AtlasOS relay, which posts each report it gets as a **public** issue in
+//!   github.com/EternalCoder454/AtlasOS. An empty dsn in `/etc` turns
+//!   sending off: [`send`] then fails with "no endpoint configured".
 //! - Sources: Rust panics ([`install`], [`record_fatal`]), systemd-coredump
 //!   entries of the user's own processes ([`collect_coredumps`]) and update
 //!   and rollback events from the helper ([`collect_events`]).
@@ -15,11 +17,13 @@
 //!
 //! Collected: AtlasOS version, channel, previous version; app name, version
 //! and category; the stack trace; kernel; GPU model and driver; uptime; CPU
-//! model, RAM total and use; a rotating random ID (new every 30 days; never
-//! `/etc/machine-id`), a timestamp and the report type. Never: core dumps,
-//! usernames, hostnames, MAC/IP addresses, serials, installed apps, file
-//! contents, command lines, environment or working directory. Every string
-//! is scrubbed ([`Scrubber`]).
+//! model, RAM total and use; a timestamp and the report type. A rotating
+//! random ID (new every 30 days; never `/etc/machine-id`) stays on the
+//! machine: it is not sent, so public reports can't be linked to each other.
+//! Never: core dumps, usernames, hostnames, MAC/IP addresses, serials, email
+//! addresses, credentials and tokens, installed apps, file contents, command
+//! lines, environment or working directory. Every string is scrubbed
+//! ([`Scrubber`]).
 
 use std::cell::Cell;
 use std::collections::hash_map::DefaultHasher;
@@ -118,7 +122,6 @@ impl Report {
                            "free_memory": (self.ram_total_kb.saturating_sub(self.mem_used_kb)) * 1024},
                 "runtime": {"uptime_secs": self.uptime_secs},
             },
-            "user": {"id": self.crash_id},
         });
         let frames = parse_frames(&self.stacktrace);
         if !frames.is_empty() {
@@ -401,8 +404,9 @@ fn reset_markers_in(dir: &Path) {
 
 // ---------------------------------------------------------------- scrubbing
 
-/// Replaces home directories, user names, host names, MAC and IP addresses
-/// and machine/boot IDs in strings. Matching is case-insensitive.
+/// Replaces home directories, user names, host names, MAC and IP addresses,
+/// machine/boot IDs, email addresses, credentials and tokens in strings.
+/// Matching is case-insensitive.
 #[derive(Debug, Clone, Default)]
 pub struct Scrubber {
     users: Vec<String>,
@@ -546,7 +550,7 @@ impl Scrubber {
         for h in &self.hosts {
             out = replace_ci(&out, h, "HOST");
         }
-        scrub_addresses(&out)
+        scrub_addresses(&scrub_secrets(&out))
     }
 
     /// [`scrub`](Self::scrub), then hide paths that can name a file the user
@@ -700,6 +704,9 @@ fn scrub_word(tok: &str) -> String {
         core = &core[..core.len() - 1];
     }
     let suffix = &tok[core.len()..];
+    if let Some(k) = classify_secret(core) {
+        return format!("{k}{suffix}");
+    }
     if let Some(k) = classify(core) {
         return format!("{k}{suffix}");
     }
@@ -710,6 +717,158 @@ fn scrub_word(tok: &str) -> String {
         }
     }
     tok.to_string()
+}
+
+/// Names whose value is a secret: `token=...`, `Password: ...`,
+/// `access_token=...`, `Authorization: Bearer ...`.
+const SECRET_KEYS: &[&str] = &[
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "pwd",
+    "passphrase",
+    "key",
+    "apikey",
+    "auth",
+    "authorization",
+    "bearer",
+    "credential",
+    "credentials",
+    "session",
+    "sessionid",
+    "cookie",
+    "signature",
+    "sig",
+];
+
+/// Hide the value after a [`SECRET_KEYS`] name (`=`, `:` or, for `bearer`,
+/// a space). A name counts at the end of a word (`access_token`, `api-key`)
+/// but not inside one (`monkey`).
+fn scrub_secrets(s: &str) -> String {
+    // Bytes, not str slices: a name only starts on an ASCII byte, and text
+    // around it may be any UTF-8.
+    let lower = s.to_ascii_lowercase().into_bytes();
+    let b = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut copied = 0;
+    let mut i = 0;
+    while i < b.len() {
+        let key = SECRET_KEYS.iter().find(|k| {
+            lower[i..].starts_with(k.as_bytes())
+                && !b
+                    .get(i + k.len())
+                    .is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_' || *c == b'-')
+        });
+        let Some(key) = key.filter(|_| i == 0 || !b[i - 1].is_ascii_alphanumeric()) else {
+            i += 1;
+            continue;
+        };
+        let mut j = i + key.len();
+        // `"key": "value"`, `key = value`, `Bearer value`
+        while j < b.len() && matches!(b[j], b' ' | b'"' | b'\'') {
+            j += 1;
+        }
+        let sep = j < b.len() && matches!(b[j], b'=' | b':');
+        if sep {
+            j += 1;
+            while j < b.len() && matches!(b[j], b' ' | b'"' | b'\'') {
+                j += 1;
+            }
+            // `Authorization: Bearer x`: hide the word after the scheme too
+            for scheme in ["bearer ", "basic ", "token "] {
+                if lower[j..].starts_with(scheme.as_bytes()) {
+                    j += scheme.len();
+                }
+            }
+        } else if *key != "bearer" || j == i + key.len() {
+            i += key.len();
+            continue;
+        }
+        let end = b[j..]
+            .iter()
+            .position(|c| c.is_ascii_whitespace() || b"&\"',;)]}<>".contains(c))
+            .map_or(b.len(), |n| j + n);
+        if end > j {
+            out.push_str(&s[copied..j]);
+            out.push_str("REDACTED");
+            copied = end;
+        }
+        i = end.max(i + 1);
+    }
+    out.push_str(&s[copied..]);
+    out
+}
+
+/// systemd unit suffixes: `user@1000.service` is a unit, not an address.
+const UNIT_SUFFIXES: &[&str] = &[
+    ".service",
+    ".socket",
+    ".target",
+    ".slice",
+    ".scope",
+    ".mount",
+    ".timer",
+    ".path",
+    ".device",
+    ".swap",
+    ".automount",
+];
+
+/// `<email>` for an email address, `REDACTED@host` for credentials in a
+/// URL (`user:pass@host`), `<token>` for an access token or key.
+fn classify_secret(w: &str) -> Option<String> {
+    if let Some(at) = w.rfind('@')
+        && at > 0
+        && at + 1 < w.len()
+    {
+        let (local, domain) = (&w[..at], &w[at + 1..]);
+        if local.contains(':') {
+            return Some(format!("REDACTED@{domain}"));
+        }
+        let tld = domain.rsplit('.').next().unwrap_or_default();
+        let unit = UNIT_SUFFIXES.iter().any(|u| domain.ends_with(u));
+        if domain.contains('.')
+            && !unit
+            && tld.len() >= 2
+            && tld.chars().all(|c| c.is_ascii_alphabetic())
+        {
+            return Some("<email>".into());
+        }
+    }
+    const PREFIXES: &[&str] = &[
+        "ghp_",
+        "gho_",
+        "ghu_",
+        "ghs_",
+        "ghr_",
+        "github_pat_",
+        "glpat-",
+        "sk-",
+        "xoxb-",
+        "xoxp-",
+        "xoxa-",
+        "xoxs-",
+        "AKIA",
+        "ASIA",
+        "eyJ",
+    ];
+    let tokenish = |c: char| c.is_ascii_alphanumeric() || "_-+.~".contains(c);
+    if w.len() >= 16 && w.chars().all(tokenish) && PREFIXES.iter().any(|p| w.starts_with(p)) {
+        return Some("<token>".into());
+    }
+    // A long random-looking word: upper and lower case letters and digits
+    // (hex IDs, symbol hashes and words are one case or have no digits).
+    if w.len() >= 24
+        && w.chars().all(tokenish)
+        && !w.starts_with("_ZN")
+        && w.chars().any(|c| c.is_ascii_uppercase())
+        && w.chars().any(|c| c.is_ascii_lowercase())
+        && w.chars().filter(|c| c.is_ascii_digit()).count() >= 2
+    {
+        return Some("<token>".into());
+    }
+    None
 }
 
 /// Replace MAC, IP addresses and machine/boot IDs with `<mac>`, `<ip>`, `<id>`.
@@ -1878,6 +2037,8 @@ fn curl_args(ep: &Endpoint, body_file: &Path) -> Vec<String> {
         "30",
         "--max-redirs",
         "0",
+        "--max-filesize",
+        "65536",
     ]
     .iter()
     .map(|s| s.to_string())
@@ -1914,17 +2075,31 @@ struct Server {
 
 const ISSUE_URL_PREFIX: &str = "https://github.com/EternalCoder454/AtlasOS/issues/";
 
+/// Whether `u` is an issue of the AtlasOS project: the only link a sent
+/// report may carry. Check it again wherever a stored link is shown.
+pub fn is_issue_url(u: &str) -> bool {
+    u.strip_prefix(ISSUE_URL_PREFIX)
+        .is_some_and(|n| !n.is_empty() && n.len() <= 12 && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// The relay's answer is small; anything longer is not one.
+const MAX_ANSWER: usize = 64 * 1024;
+
 /// `{"id": ..., "url": ...}`; the url is kept only if it is an issue of the
-/// AtlasOS project (the answer is not trusted to link anywhere else).
+/// AtlasOS project (the answer is not trusted to link anywhere else), the id
+/// only if it is a plain event ID.
 fn parse_server_answer(body: &[u8]) -> Server {
+    if body.len() > MAX_ANSWER {
+        return Server::default();
+    }
     let v = serde_json::from_slice::<Value>(body).unwrap_or(Value::Null);
     let get = |k: &str| v.get(k).and_then(Value::as_str).map(str::to_string);
     Server {
-        id: get("id"),
-        url: get("url").filter(|u| {
-            u.strip_prefix(ISSUE_URL_PREFIX)
-                .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+        id: get("id").filter(|id| {
+            (1..=64).contains(&id.len())
+                && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
         }),
+        url: get("url").filter(|u| is_issue_url(u)),
     }
 }
 
@@ -2192,7 +2367,9 @@ mod tests {
         assert_eq!(p["tags"]["app"], "net.eterneon.atlas.updater");
         assert_eq!(p["tags"]["category"], "Atlas app");
         assert_eq!(p["tags"]["report_type"], "panic");
-        assert_eq!(p["user"]["id"], r.crash_id);
+        // reports are public: nothing that links one to another
+        assert!(p.get("user").is_none());
+        assert!(!p.to_string().contains(&r.crash_id));
         assert!(p["contexts"]["os"].is_object() && p["contexts"]["gpu"].is_object());
         let frames = &p["exception"]["values"][0]["stacktrace"]["frames"];
         assert_eq!(frames.as_array().unwrap().len(), 2);
@@ -3079,6 +3256,70 @@ mod tests {
         }
         assert_eq!(parse_server_answer(br#"{"id":"abc"}"#).url, None);
         assert_eq!(parse_server_answer(b"nope"), Server::default());
+    }
+
+    #[test]
+    fn server_answer_ids_and_size_are_checked() {
+        let url = "https://github.com/EternalCoder454/AtlasOS/issues/7";
+        for bad in ["", "a b", "<b>x</b>", &"a".repeat(65)] {
+            let body = serde_json::json!({"id": bad, "url": url}).to_string();
+            let got = parse_server_answer(body.as_bytes());
+            assert_eq!(got.id, None, "{bad:?}");
+            assert_eq!(got.url.as_deref(), Some(url));
+        }
+        let mut big = format!(r#"{{"id":"a","url":"{url}","x":""#).into_bytes();
+        big.resize(MAX_ANSWER + 10, b' ');
+        assert_eq!(parse_server_answer(&big), Server::default());
+        assert!(is_issue_url(url));
+        assert!(!is_issue_url(
+            "https://github.com/EternalCoder454/AtlasOS/issues/1234567890123"
+        ));
+    }
+
+    #[test]
+    fn scrubs_emails_credentials_and_tokens() {
+        let s = Scrubber::default();
+        let cases = [
+            ("mail zach.s+x@example.co.uk now", "mail <email> now"),
+            ("<a@b.dev>", "<<email>>"),
+            ("user@1000.service failed", "user@1000.service failed"),
+            ("atlasos@44.20261003", "atlasos@44.20261003"),
+            (
+                "GET https://bob:hunter2@example.com/x",
+                "GET https://REDACTED@example.com/x",
+            ),
+            (
+                "url?access_token=abc123&x=1",
+                "url?access_token=REDACTED&x=1",
+            ),
+            ("Password: hunter2 next", "Password: REDACTED next"),
+            (r#"{"api_key": "s3cr3t"}"#, r#"{"api_key": "REDACTED"}"#),
+            (
+                "Authorization: Bearer abc.def-ghi",
+                "Authorization: Bearer REDACTED",
+            ),
+            ("bearer abcdef", "bearer REDACTED"),
+            ("monkey=banana", "monkey=banana"),
+            ("keyboard: us", "keyboard: us"),
+            ("ghp_abcdefghijklmnop1234", "<token>"),
+            (
+                "x eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc y",
+                "x <token> y",
+            ),
+            ("k Zm9vYmFyQmF6UXV4MTIzNDU2Nzg5 k", "k <token> k"),
+            // stack frames and hashes stay readable
+            (
+                "_ZN4core3fmt5write17h1a2b3c4d5e6f7a8bE",
+                "_ZN4core3fmt5write17h1a2b3c4d5e6f7a8bE",
+            ),
+            (
+                "atlas_core::helper::service::run",
+                "atlas_core::helper::service::run",
+            ),
+        ];
+        for (input, want) in cases {
+            assert_eq!(s.scrub(input), want, "{input:?}");
+        }
     }
 
     #[test]
