@@ -1,0 +1,5 @@
+atlasos-updater
+atlasos-installer
+atlasos-monitor
+atlasos-notepad
+atlasos-notes

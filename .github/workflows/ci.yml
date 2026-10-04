@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  framework:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      # Every step below runs in the dev container, with the checkout at /src.
+      RUN: docker run --rm -v ${{ github.workspace }}:/src -w /src -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 atlas-framework-dev:ci
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Tags and history: check-api.sh reads the last v* tag, cargo-semver-checks the baseline.
+          fetch-depth: 0
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the dev container
+        uses: docker/build-push-action@v6
+        with:
+          context: packaging
+          file: packaging/Containerfile.dev
+          load: true
+          tags: atlas-framework-dev:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Atlas.Ui, the gallery, the tests and the API dump
+        run: $RUN bash -c 'cmake -S . -B build -G Ninja -DATLAS_UI_TESTS=ON -DCMAKE_BUILD_TYPE=Release && cmake --build build'
+
+      - name: qmllint
+        run: $RUN bash -c 'cmake --build build --target all_qmllint'
+
+      - name: Rust tests
+        run: $RUN cargo test --workspace --all-features
+
+      - name: Clippy
+        run: $RUN cargo clippy --workspace --all-features --all-targets -- -D warnings
+
+      - name: Visual tests
+        run: $RUN bash -c 'ctest --test-dir build --output-on-failure'
+
+      - name: Upload the actual and diff pictures of a failed visual test
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-test-output
+          path: build/visual-out
+          if-no-files-found: ignore
+
+      - name: API check
+        run: $RUN tools/check-api.sh build
+
+      - name: Baseline for cargo-semver-checks
+        id: baseline
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # The latest v* tag; else, for a pull request, where it branched from the target.
+          ref=$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null || true)
+          if [ -z "$ref" ] && [ -n "$BASE_REF" ]; then
+            ref=$(git merge-base HEAD "origin/$BASE_REF" || true)
+          fi
+          if [ -z "$ref" ]; then
+            echo "::notice::No v* tag and not a pull request: cargo-semver-checks has no baseline, skipped"
+            exit 0
+          fi
+          git worktree add "$RUNNER_TEMP/baseline" "$ref"
+          echo "root=$RUNNER_TEMP/baseline" >> "$GITHUB_OUTPUT"
+          echo "Baseline: $ref"
+
+      - name: cargo semver-checks
+        if: steps.baseline.outputs.root != ''
+        run: docker run --rm -v "${{ github.workspace }}:/src" -v "${{ steps.baseline.outputs.root }}:/baseline:ro" -w /src -e CARGO_TARGET_DIR=/src/target/semver -e QMAKE=/usr/bin/qmake6 atlas-framework-dev:ci cargo semver-checks --workspace --baseline-root /baseline
+
+      - name: Performance
+        run: $RUN bash -c 'perf/measure.sh build'
+
+      - name: Show the performance numbers
+        if: always()
+        run: |
+          if [ -f perf/out.json ]; then
+            { echo '### Performance (template app, headless)'; echo '```json'; cat perf/out.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the performance numbers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-out
+          path: perf/out.json
+          if-no-files-found: ignore
+
+  apps:
+    # The Atlas apps against this Atlas.Ui: a type named like one of an app's own
+    # files breaks that app (it fails here); rule 6 findings belong to the apps
+    # and are only printed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Clone the apps
+        run: |
+          mkdir -p "$RUNNER_TEMP/apps"
+          while read -r app; do
+            [ -z "$app" ] && continue
+            git clone --depth 1 "https://github.com/EternalCoder454/$app" "$RUNNER_TEMP/apps/$app"
+          done < tools/apps.txt
+
+      - name: Design rule 6 findings (informational)
+        run: tools/lint-app.sh "$RUNNER_TEMP"/apps/* || echo "::notice::Rule 6 errors above belong to those apps; they do not fail this check"
+
+      - name: Type names against the apps' files
+        run: tools/check-app-names.sh "$RUNNER_TEMP"/apps/*

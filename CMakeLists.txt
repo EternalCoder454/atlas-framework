@@ -35,3 +35,12 @@ option(ATLAS_BUILD_GALLERY "Build Atlas Symbols, the icon gallery" ON)
 if(ATLAS_BUILD_GALLERY)
     add_subdirectory(ui/gallery)
 endif()
+
+# The visual tests and the API dump behind tools/check-api.sh: for CI and
+# reviewers, not packaged (the RPM build leaves this off).
+option(ATLAS_UI_TESTS "Build the Atlas.Ui visual tests and the API dump tool" OFF)
+if(ATLAS_UI_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+    add_subdirectory(tools/apidump)
+endif()
