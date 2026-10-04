@@ -15,8 +15,12 @@ that copy. It holds:
 
 The update engine (the root `atlas-system-helper` and its D-Bus protocol)
 stays in the Atlas Updater repository (`EternalCoder454/atlasos-updater`):
-only the Updater uses it. Everything apps share moved here from its
-atlas-core crate.
+only the Updater uses it. Everything apps share moved here from its old
+atlas-core crate. The state files keep that name in their path
+(`/var/lib/atlas-core/history.jsonl` and `events.jsonl`): the path is an
+on-disk format other code and existing systems rely on, and a rollback
+boots an older helper that still writes there (the RPM is now
+`atlas-system-helper`, crate `atlas-update-engine`).
 
 Stack: Qt 6.11 and KDE Frameworks 6.30 on Fedora 44.
 

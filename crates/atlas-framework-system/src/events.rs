@@ -1,6 +1,7 @@
 //! `/var/lib/atlas-core/events.jsonl`: update and rollback events the helper
 //! records, one JSON object per line, world-readable. Apps turn new lines into
 //! crash reports (see `crash::collect_events`) when the user opted in.
+//! The path keeps the old atlas-core name: existing systems hold data there.
 
 use std::fs;
 use std::io::{self, Write};

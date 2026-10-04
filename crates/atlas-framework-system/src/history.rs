@@ -1,5 +1,6 @@
 //! Boot history: `/var/lib/atlas-core/history.jsonl`, one JSON object per line,
 //! appended by `atlas-system-helper record-boot` when the booted digest changes.
+//! The path keeps the old atlas-core name: existing systems hold data there.
 
 use std::fs;
 use std::io;

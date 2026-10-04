@@ -61,8 +61,8 @@ impl qobject::Backend {
         self.as_mut().set_status(QString::from("Working…"));
         let qt = self.qt_thread();
         std::thread::spawn(move || {
-            // Replace with a call into atlas-core (helper_client, history, ...).
-            let text = format!("atlas-core {}", env!("CARGO_PKG_VERSION"));
+            // Replace with the app's own work (atlas_framework_* crates, ...).
+            let text = format!("Template {}", env!("CARGO_PKG_VERSION"));
             let _ = qt.queue(move |mut obj| {
                 obj.as_mut().set_status(QString::from(text.as_str()));
                 obj.as_mut().set_busy(false);
