@@ -1692,6 +1692,23 @@ fn valid_exe(e: &str) -> bool {
         && !e.split('/').any(|c| c == "..")
 }
 
+/// Drops control characters (newlines and tabs kept only if `multiline`) and
+/// invisible Unicode format/bidi characters, then keeps at most `max` chars.
+fn clean(s: &str, max: usize, multiline: bool) -> String {
+    s.chars()
+        .filter(|&c| {
+            if c == '\n' || c == '\t' {
+                return multiline;
+            }
+            !c.is_control()
+                && !matches!(c, '\u{ad}' | '\u{61c}' | '\u{180e}'
+                    | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}'
+                    | '\u{2060}'..='\u{206f}' | '\u{feff}')
+        })
+        .take(max)
+        .collect()
+}
+
 /// True when journald itself says systemd-coredump wrote the entry (trusted
 /// `_COMM`/`_SYSTEMD_UNIT`; a user cannot run in a system unit) and the dump
 /// is of `uid`'s process, by both the trusted `_UID` and COREDUMP_UID.
@@ -1722,8 +1739,11 @@ fn coredump_report(
     let exe = field(entry, "COREDUMP_EXE")
         .filter(|e| valid_exe(e))
         .unwrap_or_default();
-    let comm = field(entry, "COREDUMP_COMM").unwrap_or_default();
-    let signal = field(entry, "COREDUMP_SIGNAL_NAME").unwrap_or_else(|| "unknown signal".into());
+    let comm = clean(&field(entry, "COREDUMP_COMM").unwrap_or_default(), 64, false);
+    let signal = field(entry, "COREDUMP_SIGNAL_NAME")
+        .map(|s| clean(&s, 64, false))
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "unknown signal".into());
     let name = if exe.is_empty() {
         comm.clone()
     } else {
@@ -1733,7 +1753,7 @@ fn coredump_report(
         field(entry, "COREDUMP_PACKAGE_NAME"),
         field(entry, "COREDUMP_PACKAGE_VERSION"),
     ) {
-        (_, Some(v)) => Some(v),
+        (_, Some(v)) => Some(clean(&v, 128, false)).filter(|v| !v.is_empty()),
         _ if !exe.is_empty() => rpm_version(&exe),
         _ => None,
     };
@@ -1743,7 +1763,7 @@ fn coredump_report(
         app_name: &scrubber.scrub(&name),
         app_version: version.as_deref(),
         message: &format!("{} crashed with {signal}", scrubber.scrub(&comm)),
-        stacktrace: &field(entry, "MESSAGE").unwrap_or_default(),
+        stacktrace: &clean(&field(entry, "MESSAGE").unwrap_or_default(), 8192, true),
     };
     Some((ts, build_report(&crash, scrubber, Some(&time)).ok()?))
 }
@@ -1793,7 +1813,12 @@ fn journal_args(since_micros: u64, uid: Option<&str>) -> Vec<String> {
     // trusted field (journald sets it; comm is truncated to 15 chars)
     a.push("_COMM=systemd-coredum".into());
     match uid {
-        Some(u) => a.push(format!("COREDUMP_UID={u}")),
+        Some(u) => {
+            // trusted uid, filtered by journald before the -n limit so
+            // forged entries of other users can't push ours out
+            a.push(format!("_UID={u}"));
+            a.push(format!("COREDUMP_UID={u}"));
+        }
         None => a.insert(0, "--user".into()),
     }
     a
@@ -2796,6 +2821,24 @@ mod tests {
     }
 
     #[test]
+    fn coredump_text_fields_are_filtered_and_capped() {
+        let mut e = real_entry();
+        e["COREDUMP_COMM"] = json!(format!("fo\u{202e}o\u{1b}[31m{}", "x".repeat(200)));
+        e["COREDUMP_SIGNAL_NAME"] = json!("SIG\u{200b}SEGV\n");
+        e["COREDUMP_PACKAGE_VERSION"] = json!(format!("1.0\u{7}{}", "9".repeat(300)));
+        e["MESSAGE"] = json!(format!("a\u{202e}b\nc\u{0}{}", "y".repeat(20000)));
+        let (_, r) = coredump_report(&e, &sc(), "1000", |_| None).unwrap();
+        assert!(r.message.contains("crashed with SIGSEGV"), "{}", r.message);
+        assert!(!r.message.contains('\u{202e}') && !r.message.contains('\u{1b}'));
+        assert!(r.message.chars().count() < 64 + 40);
+        assert!(r.app_version.as_deref().unwrap().chars().count() <= 128);
+        assert!(!r.app_version.as_deref().unwrap().contains('\u{7}'));
+        assert_eq!(clean("a\nb\u{202e}", 10, true), "a\nb");
+        assert_eq!(clean("a\nb", 10, false), "ab");
+        assert_eq!(clean(&"z".repeat(9000), 8192, true).len(), 8192);
+    }
+
+    #[test]
     fn option_looking_exe_is_never_passed_to_rpm() {
         for bad in ["--eval=%(touch /tmp/pwn)", "-qf", "usr/bin/x", "/usr/../etc/x", "/a\nb", "/a\u{1b}b"] {
             let mut e = real_entry();
@@ -2835,6 +2878,7 @@ mod tests {
         );
         assert!(a.contains(&"--since=@5".to_string()));
         assert!(a.contains(&"COREDUMP_UID=1000".to_string()));
+        assert!(a.contains(&"_UID=1000".to_string()));
         assert!(a.contains(&"_COMM=systemd-coredum".to_string()));
         assert_eq!(journal_args(0, None)[0], "--user");
     }
