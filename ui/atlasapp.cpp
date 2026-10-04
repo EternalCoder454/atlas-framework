@@ -104,6 +104,7 @@ AtlasApp::AtlasApp(QObject *parent)
         m_osHomeUrl = home.toString();
     }
 
+#ifdef ATLAS_UI_DEV_PATHS
     // Test hook (tests/visual/run-variant.sh): fixed OS and Qt values, so a
     // picture of the About page does not change with the machine or an update.
     if (qEnvironmentVariable("ATLAS_UI_TEST_FIXED_ENV") == QLatin1String("1")) {
@@ -114,4 +115,10 @@ AtlasApp::AtlasApp(QObject *parent)
         m_osHomeUrl.clear();
         m_qtVersion = QStringLiteral("6.0.0");
     }
+#endif
+}
+
+QString AtlasApp::uiVersion() const
+{
+    return QStringLiteral(ATLAS_UI_VERSION);
 }

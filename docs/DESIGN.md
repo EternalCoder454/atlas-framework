@@ -178,12 +178,15 @@ warning; `Symbols.available(style)` tells. The split saves about 20 MB on disk;
 unused styles never cost memory (a font is only mapped once drawn).
 
 The fonts are installed to `/usr/share/fonts/atlas-symbols`, and found
-through fontconfig. A development build (any
-install prefix but `/usr`) also loads them from `$ATLAS_UI_SYMBOLS_DIR` or
-`ui/symbols/` when they aren't installed. A packaged build does neither: it
-holds no path into the source tree (the spec's `%check` makes sure), and
-since every Atlas app loads it, it never opens a font file its environment
-names.
+through fontconfig. A development build (`-DATLAS_UI_DEV_PATHS=ON`) also
+loads them from `$ATLAS_UI_SYMBOLS_DIR` or `ui/symbols/` when they aren't
+installed, reads translations from the build tree (or
+`$ATLAS_UI_TRANSLATIONS_DIR`) and honours the `ATLAS_UI_TEST_FIXED_ENV` test
+hook. The option defaults to ON for any install prefix but `/usr`, and to OFF
+for `/usr`; `-DATLAS_UI_TESTS=ON` forces it ON. A packaged build has none of
+it: it holds no path into the source tree (the spec's `%check` makes sure),
+and since every Atlas app loads it, it never opens a font or catalogue file
+its environment names.
 
 To update the fonts, download them from fonts.google.com and run
 `ui/symbols/generate.py`, which rewrites `symbolnames.h` and
@@ -217,7 +220,12 @@ older, or the module predates the field, the app shows a plain error window
 naming both versions and exits 1, instead of failing on a missing type. A
 C++ app calls `atlas_app_require_ui("1.3.0")` before `atlas_app_run`. Keep it
 equal to the RPM's `Requires: atlas-ui >=`. Without `ui:` nothing is checked
-and nothing is paid.
+and nothing is paid. `atlas_app_run` runs the check after the single-instance
+registration, so a second launch that only raises the window skips it. The
+probe uses the default QML import paths (the installed module, plus
+`QML_IMPORT_PATH`), and a module that fails to import is reported as "could
+not be loaded", with the first line of the error. `app!` is the only supported
+way to define the app info: the C++ side reads it from the Rust library.
 
 and its `main.cpp` is one call, `atlas_app_run(argc, argv, "<QML module>",
 "Main", atlas_backend_new)`. Corrosion doesn't pass a crate's native
@@ -231,7 +239,15 @@ atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework
 ```
 
 Each release opens a pull request in every app that moves the tag (see
-"Releases").
+"Releases"). Apps build with `cargo build --locked` (or `--frozen`), so a
+moved tag can't change their dependencies.
+
+`Settings` is for Atlas-owned files only (`atlas-<app>rc`, the app's own
+files): it parses and rewrites the whole file, so don't point it at another
+program's configuration.
+
+Atlas.Ui's translation is chosen once per process, from `QLocale` at the first
+load; a language change shows after the app restarts.
 
 Compiled into an app, the crates' file paths (panic locations, debug info)
 come with them: an app's packaged build passes
@@ -254,7 +270,11 @@ notification (it was Atlas Updater's): `Notifier::new(&APP)` once, then
 `send(&conn, &Note::new("eventId", title, text))` over the session bus. It
 sends KDE's hints (`desktop-entry`, `x-kde-appname`, `x-kde-eventId`) so
 Plasma groups them under the app and honours the user's per-event choice in
-System Settings; `popup_enabled(event)` reads that choice. The AtlasOS rules:
+System Settings; `popup_enabled(event)` reads that choice. Calls to the
+server time out after 10 s; no notification service gives "No notification
+service is running"; `send_blocking` refuses inside a Tokio runtime;
+`Note.icon` is a name or an absolute path, anything else becomes the app icon.
+The AtlasOS rules:
 
 - Notify only when the user can act on it, or must know: not for progress or
   success they did not wait for.
@@ -316,6 +336,9 @@ the packaged one inside the app's build container (never on the host):
 cmake -S . -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build && cmake --install build
 ```
+
+That build has `ATLAS_UI_DEV_PATHS` off, like a package; add
+`-DATLAS_UI_DEV_PATHS=ON` to keep the source-tree paths.
 
 ## Compatibility
 

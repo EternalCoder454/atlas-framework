@@ -93,10 +93,23 @@ bool atLeast(std::vector<int> have, std::vector<int> need)
     return !std::lexicographical_compare(have.begin(), have.end(), need.begin(), need.end());
 }
 
-// Reads the installed Atlas.Ui's version the way an app's QML would: a
-// failed import is "not installed", a missing uiVersion (Atlas.Ui before
-// 1.3.0) comes back as an empty string.
-std::optional<QString> installedUi()
+// What the probe found: the installed Atlas.Ui's version, or why it could not
+// be read.
+struct UiProbe {
+    std::optional<QString> version; // empty string: Atlas.Ui before 1.3.0
+    QString error;                  // first line of the engine's error, when no version
+};
+
+QString firstLine(const QString &text)
+{
+    return text.trimmed().section(QLatin1Char('\n'), 0, 0).trimmed();
+}
+
+// Reads the installed Atlas.Ui's version the way an app's QML would, through
+// the default QML import paths (QML_IMPORT_PATH and QML2_IMPORT_PATH
+// included): a failed import is "could not be loaded", whatever the cause. A
+// missing uiVersion (Atlas.Ui before 1.3.0) comes back as an empty string.
+UiProbe installedUi()
 {
     QQmlEngine engine;
     QQmlComponent probe(&engine);
@@ -105,14 +118,14 @@ std::optional<QString> installedUi()
                   QUrl());
     if (probe.isError()) {
         qCWarning(lcUi) << "Atlas.Ui cannot be imported:" << probe.errorString();
-        return std::nullopt;
+        return {std::nullopt, firstLine(probe.errorString())};
     }
     std::unique_ptr<QObject> object(probe.create());
     if (!object) {
         qCWarning(lcUi) << "Atlas.Ui cannot be used:" << probe.errorString();
-        return std::nullopt;
+        return {std::nullopt, firstLine(probe.errorString())};
     }
-    return object->property("v").toString();
+    return {object->property("v").toString(), QString()};
 }
 
 // A plain window, with no Atlas.Ui in it (that is what may be missing), until
@@ -169,7 +182,8 @@ void requireUi()
     }
     QElapsedTimer timer;
     timer.start();
-    const std::optional<QString> have = installedUi();
+    const UiProbe probe = installedUi();
+    const std::optional<QString> &have = probe.version;
     const auto haveParts = have ? parseVersion(*have) : std::nullopt;
     qCDebug(lcUi) << "Atlas.Ui check took" << timer.nsecsElapsed() / 1e6 << "ms";
     if (haveParts && atLeast(*haveParts, *needParts)) {
@@ -180,7 +194,10 @@ void requireUi()
     const QString fix = QStringLiteral("Update AtlasOS, or install atlas-ui %1 or newer.").arg(need);
     QString problem;
     if (!have) {
-        problem = QStringLiteral("%1 needs Atlas.Ui %2 or newer, and Atlas.Ui is not installed.").arg(app, need);
+        problem = QStringLiteral("%1 needs Atlas.Ui %2 or newer, and Atlas.Ui could not be loaded.").arg(app, need);
+        if (!probe.error.isEmpty()) {
+            problem += QStringLiteral("\n\n") + probe.error;
+        }
     } else if (have->isEmpty()) {
         problem = QStringLiteral("%1 needs Atlas.Ui %2 or newer, and this system has an older Atlas.Ui than 1.3.0.").arg(app, need);
     } else {
@@ -229,12 +246,21 @@ extern "C" void atlas_app_init()
     }
 }
 
-extern "C" void atlas_app_ready()
+namespace
+{
+// atlas_app_ready without the Atlas.Ui check.
+void setUpApplication()
 {
     QGuiApplication::setApplicationDisplayName(field(Name));
     QGuiApplication::setWindowIcon(QIcon::fromTheme(field(Id)));
     // Atlas.Ui's AtlasApp reads it for the About page's links.
     qApp->setProperty("atlasRepo", field(Repo));
+}
+}
+
+extern "C" void atlas_app_ready()
+{
+    setUpApplication();
     // Last, before any of the app's QML.
     requireUi();
 }
@@ -248,7 +274,7 @@ extern "C" int atlas_app_run(int argc, char *argv[], const char *qmlModule, cons
 {
     atlas_app_init();
     QApplication app(argc, argv);
-    atlas_app_ready();
+    setUpApplication();
 
     // A second launch asks this one to raise its window, then exits here.
     // Without a session bus (ssh, a bare container) there is nobody to ask:
@@ -257,6 +283,11 @@ extern "C" int atlas_app_run(int argc, char *argv[], const char *qmlModule, cons
     if (!service.isRegistered()) {
         qWarning("No single-instance service, running as a separate instance: %s", qPrintable(service.errorMessage()));
     }
+
+    // After the registration: a second launch that only raises the first
+    // window has exited above and never pays for the check. Still before any
+    // of the app's QML.
+    requireUi();
 
     // Deleted after the engine, which must never own it.
     std::unique_ptr<QObject> backend(makeBackend ? static_cast<QObject *>(makeBackend()) : nullptr);

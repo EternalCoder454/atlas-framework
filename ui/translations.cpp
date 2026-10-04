@@ -3,14 +3,20 @@
 // in the user's language without the app doing anything. The files come from
 // the atlas-ui data directory; a development build also looks in the build
 // tree, and ATLAS_UI_TRANSLATIONS_DIR overrides that.
+//
+// The language is chosen once per process, from QLocale at the first load; a
+// later change of the system language shows after the app restarts.
 #include <QCoreApplication>
 #include <QDir>
 #include <QLocale>
 #include <QLoggingCategory>
 #include <QMetaObject>
 #include <QStringList>
+#include <QThread>
 #include <QTranslator>
 #include <QtGlobal>
+
+#include <atomic>
 
 #ifndef ATLAS_UI_TRANSLATIONS_DIR
 #error "ATLAS_UI_TRANSLATIONS_DIR (the installed translations directory) must be defined by CMake"
@@ -20,14 +26,11 @@ namespace {
 
 Q_LOGGING_CATEGORY(lcTranslations, "atlas.ui.translations")
 
-bool installed = false;
+std::atomic_flag claimed = ATOMIC_FLAG_INIT;
 
-void installTranslations()
+// Runs on the application's thread, which owns the translator.
+void installNow()
 {
-    if (installed || !QCoreApplication::instance()) {
-        return;
-    }
-    installed = true;
     QStringList dirs;
 #ifdef ATLAS_UI_TRANSLATIONS_BUILD_DIR
     // Development builds only: a packaged Atlas.Ui is loaded into every Atlas
@@ -55,8 +58,28 @@ void installTranslations()
     delete translator;
 }
 
-// Runs when the application object exists. Done on the application's thread,
-// which owns the translator.
+// Installs once, on the application's thread, whichever thread asks first (the
+// QML engine may load the plugin off the main thread). Does nothing until the
+// application object exists, and then the first caller does it.
+void installTranslations()
+{
+    QCoreApplication *app = QCoreApplication::instance();
+    if (!app) {
+        return;
+    }
+    // The first caller claims the job; the others return at once rather than
+    // wait (a wait could deadlock against the blocking call below).
+    if (claimed.test_and_set()) {
+        return;
+    }
+    if (QThread::currentThread() == app->thread()) {
+        installNow();
+    } else {
+        QMetaObject::invokeMethod(app, [] { installNow(); }, Qt::BlockingQueuedConnection);
+    }
+}
+
+// Runs when the application object exists.
 void startup()
 {
     QCoreApplication *app = QCoreApplication::instance();

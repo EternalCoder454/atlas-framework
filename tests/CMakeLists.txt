@@ -46,7 +46,7 @@ set_tests_properties(a11y PROPERTIES
 # The translation test: a throwaway atlas-ui_de.qm (tests/i18n) in a directory
 # of its own, found through ATLAS_UI_TRANSLATIONS_DIR (development builds only).
 find_package(Qt6 6.11 QUIET COMPONENTS LinguistTools)
-if(Qt6LinguistTools_FOUND AND NOT CMAKE_INSTALL_PREFIX STREQUAL "/usr")
+if(Qt6LinguistTools_FOUND AND ATLAS_UI_DEV_PATHS)
     qt_add_lrelease(TS_FILES i18n/atlas-ui_de.ts
         QM_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/i18n-qm
         LRELEASE_TARGET atlas-ui_test_translations
