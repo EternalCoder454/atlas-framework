@@ -14,13 +14,15 @@ Atlas.Ui gives it the look and an About page. It builds on its own.
    - QML module URI `net.eterneon.atlas.apptemplate` (CMakeLists.txt, main.cpp)
    - app ID and desktop file `net.eterneon.atlas.apptemplate` (main.cpp,
      src/lib.rs, data/), and the name and repository in `src/lib.rs`'s `app!`
+   - `data/atlas-apptemplate.notifyrc`: named `atlas-` and the last part of
+     the app ID, and its `DesktopEntry=` and `IconName=` are the app ID
    - binary name `atlas-app-template` (CMakeLists.txt, main.cpp)
    - `atlas_backend_new` and the `atlas_app` C++ namespace if you like
 3. In `Cargo.toml`, take `atlas-framework-ui` from git pinned to a commit (the
    comment shows how), and add `atlas-framework-system` or
    `atlas-framework-flatpak` only if the app needs them.
 4. Give the app's RPM `Requires: atlas-ui` and `BuildRequires: atlas-ui`
-   (with `>= <version>` once it uses something newer than 1.0.0).
+   `>= 1.3.0` (or whatever `ui:` in `src/lib.rs` says; keep the two the same).
 5. Add properties and invokables to `src/backend.rs`, pages to `qml/` and to the
    `QML_FILES` list in `CMakeLists.txt`.
 
@@ -48,6 +50,23 @@ QT_QPA_PLATFORM=offscreen ./build/atlas-app-template
   startup code (Corrosion doesn't pass a crate's native libraries on).
 - `AtlasApp` (name, version, OS, links) and `AtlasAboutPage` come from
   Atlas.Ui; `qml/Main.qml` pushes the About page.
+- `ui: "1.3.0"` in `app!` is the oldest Atlas.Ui the app works with. At
+  startup, before any of the app's QML, the framework asks the installed
+  Atlas.Ui (`AtlasApp.uiVersion`); if it is older, or missing, the app shows
+  a plain window saying which version it needs and exits with code 1. Raise
+  it when the app starts using something newer. Leave `ui:` out and nothing is
+  checked. (C++ apps without `app!`: `atlas_app_require_ui("1.3.0")`.)
+- Notifications: `atlas_framework_system::notify` (feature `notify`) sends
+  them the way KNotification does, so Plasma groups them under the app and its
+  notification settings apply. The "Send a Notification" button in
+  `qml/MainPage.qml` calls `sendNotification` in `src/backend.rs`, which sends
+  the `demoAction` event from a worker thread. The events are declared in
+  `data/atlas-apptemplate.notifyrc`, installed to
+  `share/knotifications6/`; every event id you send needs an `[Event/<id>]`
+  there (camelCase, letters and digits). Notify only when the user can act on
+  it: popups only, no sounds, persistent only when ignoring it has
+  consequences, actions short verbs that open the right page, and no
+  notifications from a root service (the user-session app notices and notifies).
 - Settings: `atlas_framework_ui::atlas_framework_core::settings::Settings::for_app`
   reads and writes `~/.config/atlas-<app>rc`. Logging: the `log` crate's
   macros (add `log = "0.4"`) go to the journal (`journalctl -t atlas-<app>`).

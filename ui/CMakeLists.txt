@@ -79,6 +79,8 @@ qt_add_qml_module(atlasui
         atlasapp.h atlasapp.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
 )
+# AtlasApp.uiVersion: the project version in the root CMakeLists.txt.
+target_compile_definitions(atlasui PRIVATE ATLAS_UI_VERSION="${PROJECT_VERSION}")
 # Development builds run from the source tree find the symbol fonts here when
 # the atlas-symbols-fonts package isn't installed. Not in packaged builds
 # (prefix /usr): the path wouldn't exist on the user's machine. Decided when

@@ -19,6 +19,11 @@ pub mod qobject {
         /// Example invokable: does some work on a worker thread.
         #[qinvokable]
         fn refresh(self: Pin<&mut Backend>);
+
+        /// Example invokable: sends one desktop notification.
+        #[qinvokable]
+        #[cxx_name = "sendNotification"]
+        fn send_notification(self: Pin<&mut Backend>);
     }
 
     // Lets worker threads post closures back to the Qt thread.
@@ -37,6 +42,7 @@ pub mod qobject {
 use core::pin::Pin;
 use cxx_qt::Threading;
 use cxx_qt_lib::QString;
+use atlas_framework_system::notify::{Note, Notifier, escape};
 
 pub struct BackendRust {
     status: QString,
@@ -63,6 +69,43 @@ impl qobject::Backend {
         std::thread::spawn(move || {
             // Replace with the app's own work (atlas_framework_* crates, ...).
             let text = format!("Template {}", env!("CARGO_PKG_VERSION"));
+            let _ = qt.queue(move |mut obj| {
+                obj.as_mut().set_status(QString::from(text.as_str()));
+                obj.as_mut().set_busy(false);
+            });
+        });
+    }
+}
+
+impl qobject::Backend {
+    /// A notification, the AtlasOS way: only because the user pressed a button
+    /// (a real app notifies only when the user can act on it), a popup with no
+    /// sound, from the user's session, not persistent. The `demoAction` event
+    /// is declared in data/atlas-apptemplate.notifyrc, which Plasma reads for
+    /// the app's name, icon and settings. See `atlas_framework_system::notify`.
+    pub fn send_notification(mut self: Pin<&mut Self>) {
+        if *self.busy() {
+            return;
+        }
+        self.as_mut().set_busy(true);
+        let qt = self.qt_thread();
+        // D-Bus can take a while (no server, a slow one): never on the GUI thread.
+        std::thread::spawn(move || {
+            let notifier = Notifier::new(atlas_framework_ui::app_info());
+            let note = Note::new(
+                "demoAction",
+                "Hello from Atlas App",
+                // Anything that came from outside goes through `escape`.
+                escape(&format!("Template {}", env!("CARGO_PKG_VERSION"))),
+            );
+            let result = notifier.send_blocking(&note);
+            if let Err(e) = &result {
+                log::warn!("cannot send the notification: {e}");
+            }
+            let text = match result {
+                Ok(()) => "Notification sent".to_string(),
+                Err(_) => "Could not send the notification".to_string(),
+            };
             let _ = qt.queue(move |mut obj| {
                 obj.as_mut().set_status(QString::from(text.as_str()));
                 obj.as_mut().set_busy(false);

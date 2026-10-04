@@ -1,0 +1,2 @@
+{"format":1,"event":"update-applied","time":"2027-01-01T00:00:00Z"}
+{"format":3,"event":"rollback-applied","version":"45.1","time":"2027-02-01T00:00:00Z","unit":"later.service","extra":{"a":[1]}}

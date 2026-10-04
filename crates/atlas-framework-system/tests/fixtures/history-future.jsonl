@@ -1,0 +1,2 @@
+{"format":1,"digest":"sha256:ccc1","first_booted":"2027-01-01T00:00:00Z"}
+{"format":2,"version":"45.1","digest":"sha256:ccc2","image":"x:stable","first_booted":"2027-02-01T00:00:00Z","signature":{"kind":"later","bytes":[1,2,3]}}

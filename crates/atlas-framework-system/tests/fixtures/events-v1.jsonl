@@ -1,0 +1,2 @@
+{"format":1,"event":"rollback-requested","version":"44.20261001","time":"2026-10-01T10:00:00Z"}
+{"format":1,"event":"channel-switch-failed","error":"timeout","time":"2026-10-02T10:00:00Z"}

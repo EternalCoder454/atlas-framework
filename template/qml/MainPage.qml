@@ -23,6 +23,11 @@ AtlasPage {
             enabled: !page.backend.busy
             onClicked: page.backend.refresh()
         }
+        SecondaryButton {
+            text: qsTr("Send a Notification")
+            enabled: !page.backend.busy
+            onClicked: page.backend.sendNotification()
+        }
         TextButton {
             text: qsTr("About")
             onClicked: page.aboutRequested()

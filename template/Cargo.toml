@@ -17,13 +17,16 @@ crate-type = ["staticlib"]
 cxx = "1"
 cxx-qt = "0.10"
 cxx-qt-lib = "0.10"
+log = "0.4"
 # The Atlas framework crates. Here they come from this checkout; a copied app
 # takes them from git, pinned to a commit so a change there can't break the
 # app or slip into its build unreviewed (move the rev forward on purpose):
 #   atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", rev = "<40-character commit>" }
-# Add atlas-framework-system (crash reports, AtlasOS state, polkit) or
-# atlas-framework-flatpak only if the app needs them.
+# Add atlas-framework-system (crash reports, AtlasOS state, polkit,
+# notifications) or atlas-framework-flatpak only if the app needs them. The
+# `notify` feature is what the demo notification in src/backend.rs uses.
 atlas-framework-ui = { path = "../crates/atlas-framework-ui" }
+atlas-framework-system = { path = "../crates/atlas-framework-system", features = ["notify"] }
 
 [build-dependencies]
 cxx-qt-build = "0.10"

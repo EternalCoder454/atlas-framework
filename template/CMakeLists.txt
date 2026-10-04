@@ -48,3 +48,8 @@ target_link_libraries(template-app PRIVATE
 install(TARGETS template-app RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES data/net.eterneon.atlas.apptemplate.desktop
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+# The notification events (see src/backend.rs): Plasma reads this for the
+# app's name, icon and notification settings. Named <short name>.notifyrc,
+# where the short name is "atlas-" and the last part of the app ID.
+install(FILES data/atlas-apptemplate.notifyrc
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/knotifications6)

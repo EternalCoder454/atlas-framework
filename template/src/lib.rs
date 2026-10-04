@@ -12,6 +12,10 @@ atlas_framework_ui::app! {
     // The app's own repository under github.com/EternalCoder454: the About
     // page links to it. Change it in a copied app.
     repo: "atlas-framework",
+    // The oldest Atlas.Ui this app works with. If the installed one is older
+    // (or missing), the app says so in a plain window and exits instead of
+    // failing half-drawn. Raise it when the app starts using a newer Atlas.Ui.
+    ui: "1.3.0",
 }
 
 use std::ffi::c_void;
