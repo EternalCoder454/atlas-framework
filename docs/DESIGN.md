@@ -7,11 +7,13 @@ that copy. It holds:
 - **Atlas.Ui**, the QML module of Atlas controls (`ui/`)
 - **atlas-symbols-fonts**, Google's Material Symbols, which Atlas.Ui draws
   icons with (`ui/symbols/`)
-- **Atlas Symbols**, a gallery of those icons (`ui/gallery/`)
+- **the Atlas Gallery** (`atlas-symbols`), every control live and every
+  symbol, with the QML to copy (`ui/gallery/`)
 - **the app template**, the starting point for a new Atlas app (`template/`)
 - **the Rust crates** (`crates/`), the code every Atlas app shares: startup,
   settings, logging, crash reports, AtlasOS state, polkit checks, Flatpak
-- the design rules below
+- the design rules below, and the checks that enforce them (`tests/`,
+  `tools/`, `api/`, `perf/`, `.github/workflows/`)
 
 The update engine (the root `atlas-system-helper` and its D-Bus protocol)
 stays in the Atlas Updater repository (`EternalCoder454/atlasos-updater`):
@@ -35,7 +37,8 @@ ui/                           Atlas.Ui (URI Atlas.Ui, version 1.0)
   livechart, repaintarea, accessibilitystate   C++ items behind LiveChart and DataTable
   symbols/                    the fonts, and their generated name table
   symbols/generate.py         updates them from a fonts.google.com download
-  gallery/                    Atlas Symbols: browse the symbols, copy the QML
+  gallery/                    the Atlas Gallery: every control (demos/) and symbol, with the QML
+  gallery/demos/              <Type>Demo.qml per control: the gallery, the visual and a11y tests
 Cargo.toml                    the Rust workspace
 crates/atlas-framework-core/    every app: AppInfo, settings, logging, os-release
 crates/atlas-framework-ui/      every GUI app: startup (C++ and Rust), app!
@@ -45,6 +48,12 @@ template/                     minimal Atlas app (Kirigami window, Rust backend, 
 packaging/atlas-framework.spec  the packages below
 packaging/build-rpm.sh        builds them inside fedora:44: build-rpm.sh <out dir>
 packaging/atlas-framework.conf  dnf's protected list
+tests/                        visual (golden pictures) and accessibility tests of every demo
+tools/                        API dump and check, app lint and name check, update pull requests
+api/                          the recorded Atlas.Ui API (atlas-ui.api, symbols.txt)
+perf/                         the template's startup, memory and idle CPU against budget.json
+CHANGELOG.md                  what each release brings to apps
+.github/workflows/            ci.yml, app-checks.yml (for apps), release.yml
 ```
 
 ## Design rules for Atlas apps
@@ -85,7 +94,15 @@ its controls gets them for free.
 6. **Never default QQC2 or Kirigami buttons.** No `QQC2.Button`,
    `QQC2.ToolButton`, `QQC2.Switch` or `Kirigami.Action`-made buttons in an
    app's own pages: use Atlas.Ui's buttons and switch. If Atlas.Ui lacks a
-   control, add it here rather than reach for the default one.
+   control, add it here rather than reach for the default one. The same
+   goes for the controls Atlas.Ui now has (text fields, combo boxes, check
+   boxes, sliders, spin boxes, tooltips, busy indicators): `tools/lint-app.sh`
+   fails an app on default buttons and warns on the others.
+7. **Everyone can use it.** Every control has an accessible role and name
+   (screen readers), takes keyboard focus where it acts and shows
+   `AtlasFocusRing` when focus came from the keyboard, and stops animating
+   while hidden or when Plasma's animation speed is "Instant"
+   (`Kirigami.Units` durations are 0 then). Text a user reads is in `qsTr()`.
 
 Icons are Material Symbols through `Symbol` and the `symbol:` property of
 the buttons, sidebar items and menu items, or theme icons by name where a
@@ -116,16 +133,33 @@ control takes `iconName`.
 | `InfoBanner` | Inline info, warning or error banner with action buttons; slides with `shown`; its close button sets `shown` to false and emits `closed()` (since 1.2.0) |
 | `Toast` | A short message at the bottom centre that goes by itself: `show("Copied")` (since 1.2.0) |
 | `ToolbarButton` | Small icon button for a formatting toolbar that never takes the editor's focus; can be checkable (since 1.2.0) |
-| `Symbol`, `Symbols` | A Material Symbol, and the singleton of every symbol's value |
+| `AtlasTextField`, `AtlasTextArea` | Rounded text fields: placeholder, `errorText` under the field, `clearable`; the area moves focus on Tab (since 1.3.0) |
+| `AtlasComboBox` | Rounded drop-down on a pill, the choices in a ContextMenu-style card; `placeholderText` (since 1.3.0) |
+| `AtlasCheckBox`, `AtlasRadioButton` | Check box (can be `tristate`) and radio button; radios with one parent are a group, arrows move the choice (since 1.3.0) |
+| `AtlasSlider`, `AtlasSpinBox` | Accent pill slider (Page, Home, End keys); number field with minus and plus, `prefix` and `suffix` (since 1.3.0) |
+| `AtlasToolTip` | Hint on a raised card; bind `shown` to hover for the delay (since 1.3.0) |
+| `AtlasSpinner`, `AtlasPlaceholder` | Busy arc; skeleton lines while content loads. Both still when hidden or `animated: false` (since 1.3.0) |
+| `AtlasEmptyState` | What an empty list shows: symbol, title, text, an optional action (since 1.3.0) |
+| `AtlasFocusRing` | The keyboard focus outline every control uses; put it in a custom control's background (since 1.3.0) |
+| `AtlasBreadcrumb` | Path bar; the middle folds into a "…" menu (since 1.3.0) |
+| `AtlasIconGrid` | Grid of icons over names that only makes the cells on screen; `activated`, `contextMenuRequested` (since 1.3.0) |
+| `AtlasAppCard`, `AtlasInstallButton`, `AtlasScreenshotCarousel` | A store's app card; install pill with progress inside and cancel (`installState`); screenshots one at a time, loading only neighbours (since 1.3.0) |
+| `AtlasSearchResults` | A launcher's results with sections and shortcut hints; the search field keeps focus and passes keys with `handleKey(event)` (since 1.3.0) |
+| `Symbol`, `Symbols` | A Material Symbol, and the singleton of every symbol's value; `Symbols.available(style)` (since 1.3.0) |
 | `Appearance` | Singleton: `transparency`, `blurAvailable`, `effective`, `refresh()`, `applyBlur()` |
 | `AccessibilityState` | Singleton: whether a screen reader is active |
-| `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `repo`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`. Set by atlas-framework-ui's startup |
+| `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `repo`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`; `uiVersion`, the version of Atlas.Ui itself (since 1.3.0). Set by atlas-framework-ui's startup |
 | `AtlasAboutPage` | The About page: icon, name, version, `description`, the version and OS rows, `license`, source and issue links; extra content goes below |
 
-Each file's header comment says how to use it.
+Each file's header comment says how to use it; its example becomes the
+gallery's "Copy QML" snippet.
 
-New types that an app might also write itself get an `Atlas` prefix
-(`AtlasAboutPage`, not `AboutPage`: five apps have their own).
+New controls are named `Atlas<Name>` (`AtlasAboutPage`, not `AboutPage`: five
+apps had their own), which keeps them clear of the apps' files and of
+QtQuick.Controls' names. Each new control comes with
+`ui/gallery/demos/<Type>Demo.qml` (it then shows in the gallery and in the
+visual and accessibility tests without more work), its goldens, and its line
+in `api/atlas-ui.api`.
 
 ### Symbols
 
@@ -137,8 +171,14 @@ any weight from 100 to 700. `Symbols.<Name>` is Google's name in PascalCase
 `Symbol { name: "arrow_back" }` takes Google's name as a string and warns at
 run time if there is none.
 
-The fonts are installed to `/usr/share/fonts/atlas-symbols` by
-atlas-symbols-fonts, and found through fontconfig. A development build (any
+atlas-symbols-fonts ships Rounded, the default and the only style Atlas.Ui
+uses. Outlined and Sharp are in atlas-symbols-fonts-extra, which the gallery
+recommends. A Symbol that asks for a missing style draws blank and logs one
+warning; `Symbols.available(style)` tells. The split saves about 20 MB on disk;
+unused styles never cost memory (a font is only mapped once drawn).
+
+The fonts are installed to `/usr/share/fonts/atlas-symbols`, and found
+through fontconfig. A development build (any
 install prefix but `/usr`) also loads them from `$ATLAS_UI_SYMBOLS_DIR` or
 `ui/symbols/` when they aren't installed. A packaged build does neither: it
 holds no path into the source tree (the spec's `%check` makes sure), and
@@ -157,7 +197,7 @@ One Cargo workspace, four crates, so a small app pays only for what it uses:
 |---|---|---|
 | `atlas-framework-core` | every app | `AppInfo` and `app_info!`; `settings` (`~/.config/atlas-<app>rc`, KConfig format, atomic writes); `log` (the `log` crate to the journal, `ATLAS_LOG=debug`); `osrelease`; `fsutil`. No Qt, no async runtime |
 | `atlas-framework-ui` | every GUI app | `app!`, and the startup in `include/atlas/app.h`: `atlas_app_run` (or `atlas_app_init` and `atlas_app_ready` for an app with its own shell) sets the app ID and names, the org.kde.desktop style, one instance per session (KDBusService; a second launch raises the window, with its Wayland activation token), the journal logger, Rust panic and fatal Qt message hooks, and what `AtlasApp` shows |
-| `atlas-framework-system` | system apps | `crash` (opt-in crash reports), `history`, `bootc`, `events`; `polkit` (feature `polkit`: checks a D-Bus caller's authorisation, fail-closed; runs on Tokio with timers enabled) |
+| `atlas-framework-system` | system apps | `crash` (opt-in crash reports), `history`, `bootc`, `events`; `polkit` (feature `polkit`: checks a D-Bus caller's authorisation, fail-closed; runs on Tokio with timers enabled); `notify` (feature `notify`: desktop notifications, see below) |
 | `atlas-framework-flatpak` | the Updater, Atlas Store | Flatpak updates through libflatpak |
 
 An app names itself once in its Rust library:
@@ -167,19 +207,31 @@ atlas_framework_ui::app! {
     name: "Atlas Notepad",
     id: "net.eterneon.atlas.notepad",
     repo: "atlasos-notepad",
+    ui: "1.3.0",
 }
 ```
+
+`ui:` is the oldest Atlas.Ui the app works with. At startup the app reads
+`AtlasApp.uiVersion` from the installed module (about 12 ms); when it is
+older, or the module predates the field, the app shows a plain error window
+naming both versions and exits 1, instead of failing on a missing type. A
+C++ app calls `atlas_app_require_ui("1.3.0")` before `atlas_app_run`. Keep it
+equal to the RPM's `Requires: atlas-ui >=`. Without `ui:` nothing is checked
+and nothing is paid.
 
 and its `main.cpp` is one call, `atlas_app_run(argc, argv, "<QML module>",
 "Main", atlas_backend_new)`. Corrosion doesn't pass a crate's native
 libraries to the executable, so the app's CMake links `KF6::DBusAddons` and
 `KF6::WindowSystem` itself (the template shows it).
 
-Apps take the crates from git pinned to a commit:
+Apps take the crates from git pinned to a release tag:
 
 ```toml
-atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", rev = "<commit>" }
+atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", tag = "v1.3.0" }
 ```
+
+Each release opens a pull request in every app that moves the tag (see
+"Releases").
 
 Compiled into an app, the crates' file paths (panic locations, debug info)
 come with them: an app's packaged build passes
@@ -187,13 +239,48 @@ come with them: an app's packaged build passes
 and `-ffile-prefix-map=<source>=.` so no build path lands in the RPM.
 
 Unlike Atlas.Ui, the crates are compiled into each app: a change reaches an
-app when it moves its `rev` forward and is rebuilt. Shared behaviour that
+app when it moves its tag forward and is rebuilt. Shared behaviour that
 should change everywhere at once (look, layout, the About page) belongs in
 Atlas.Ui.
 
 Build and test the crates in the development container
 (`packaging/Containerfile.dev`, `localhost/atlas-framework-dev:44`): `cargo test --workspace --all-features`
 and `cargo clippy --workspace --all-features --all-targets`.
+
+### Notifications
+
+`atlas_framework_system::notify` is the one way an Atlas app sends a desktop
+notification (it was Atlas Updater's): `Notifier::new(&APP)` once, then
+`send(&conn, &Note::new("eventId", title, text))` over the session bus. It
+sends KDE's hints (`desktop-entry`, `x-kde-appname`, `x-kde-eventId`) so
+Plasma groups them under the app and honours the user's per-event choice in
+System Settings; `popup_enabled(event)` reads that choice. The AtlasOS rules:
+
+- Notify only when the user can act on it, or must know: not for progress or
+  success they did not wait for.
+- Popups only, no sounds. Urgency is low or normal; `Persistent` only when
+  ignoring it has consequences (a restart is due).
+- Actions are short verbs that open the right page (`DEFAULT_ACTION` opens
+  the app).
+- Never from root to a user's session; a system service tells its app, and
+  the app notifies.
+- Do Not Disturb is Plasma's: don't second-guess it.
+- Each app ships `<short name>.notifyrc` (`atlas-` and the last part of the
+  app ID, `Notifier::component()`) in `/usr/share/knotifications6/` with
+  `DesktopEntry=<app id>` and one camelCase `[Event/<eventId>]` per kind of
+  notification (the template has one).
+
+### On-disk formats
+
+Every file an app or a service writes for another to read carries its
+format version: `"format": 1` on each line of `history.jsonl` and
+`events.jsonl` (`history::FORMAT`, `events::FORMAT`; `version` there is the
+OS version), `Format=1` under `[Atlas]` in settings files
+(`settings::FORMAT`). Readers accept a missing format (written before 1.3.0)
+and a higher one (written by a newer program; unknown fields are ignored)
+forever. Raise the number only for a change an old reader would misread.
+`crates/*/tests/fixtures/` holds files written by older versions; tests read
+them, and they are never edited, only added to.
 
 ## How apps use it
 
@@ -215,7 +302,9 @@ An app:
   `CMakeLists.txt` shows how). qmlcachegen and qmllint find it in Qt's QML
   directory on their own, so `<app>_qmllint` checks the app against it;
 - gives its RPM `Requires: atlas-ui` and `BuildRequires: atlas-ui`, with
-  `>= <version>` once it uses something added after 1.0.0.
+  `>= <version>` once it uses something added after 1.0.0, and the same
+  version as `ui:` in `app!`;
+- runs the framework's checks in its CI (`app-checks.yml`, see "Checks").
 
 There is no CMake package and no devel package: an app needs nothing from
 Atlas.Ui but the installed module.
@@ -259,6 +348,10 @@ change that breaks an app breaks it on users' machines.
   functions in `include/atlas/app.h` (only add new ones), and anything on
   disk or on D-Bus (the settings file format, crash report and history
   files, polkit action IDs): read the old form forever.
+- **The version check.** An app that needs something new says so twice:
+  `Requires: atlas-ui >= X.Y.Z` in its spec (dnf), and `ui: "X.Y.Z"` in
+  `app!` (a plain error at startup when an older Atlas.Ui is installed some
+  other way). `AtlasApp.uiVersion` is the project version in `CMakeLists.txt`.
 - **Atlas.Ui is tied to the Qt minor version.** qmlcachegen compiles its
   QML against Qt's private API, so `libatlasui.so` needs the exact Qt minor
   it was built with (rpm records this as `Qt_6.11_PRIVATE_API`). A Qt minor
@@ -268,6 +361,52 @@ change that breaks an app breaks it on users' machines.
 - Updating the fonts can drop or rename symbols upstream: `generate.py`
   keeps Google's older names as aliases for `name:`, but check the diff of
   `symbolnames.h` for removed `Symbols.<Name>` values, which are a break.
+
+## Checks
+
+CI (`.github/workflows/ci.yml`) runs in the development container on every
+push and pull request:
+
+- **Build, qmllint, `cargo test`, clippy** (warnings fail).
+- **Visual tests** (`tests/visual`): every demo, in Breeze Light, Breeze
+  Dark, a custom accent, and with transparency off, compared with
+  `tests/visual/golden/`. A changed picture fails until its new golden is
+  committed (`ATLAS_UPDATE_GOLDENS=1`), so every visible change is approved
+  in review. The failed run uploads the actual and diff pictures.
+- **Accessibility test** (`tests/a11y`): every demo's focusable controls have
+  a role and a name.
+- **API check** (`tools/check-api.sh`): the API of the built module against
+  `api/`. A removed or changed line fails as a break; an added one fails
+  until `tools/update-api.sh` records it and the version is raised.
+- **cargo-semver-checks** for the crates, against the last `v*` tag.
+- **Performance** (`perf/measure.sh`): the template's startup time, RSS, PSS
+  and idle CPU against `perf/budget.json`, with the numbers in the run's
+  summary.
+- **The apps** (`tools/apps.txt`): each is cloned and checked with
+  `lint-app.sh` and `check-app-names.sh`, so a new Atlas.Ui type that would
+  hide an app's file fails here first.
+
+Apps run `lint-app.sh` and `check-app-names.sh` themselves through the
+reusable `app-checks.yml` (`tools/README.md` shows the five lines).
+`// atlas-lint: allow <reason>` on or above a line silences a finding.
+
+## Releases
+
+One version covers the repository: `project(... VERSION)` in
+`CMakeLists.txt`, `Version:` in the spec and `[workspace.package] version`
+in `Cargo.toml` move together. To release:
+
+1. Write the `## X.Y.Z` section of `CHANGELOG.md` (for apps: what they can
+   now use and what they should change) and the spec's `%changelog`.
+2. Raise the three versions, commit, and tag `vX.Y.Z`.
+3. Push the tag. `release.yml` checks the versions match the tag, publishes
+   the GitHub release with the CHANGELOG section, and opens a pull request
+   in every app in `tools/apps.txt` that moves its crates to the tag (this
+   needs the `APP_UPDATE_TOKEN` secret: a fine-grained token with Contents
+   and Pull requests on the app repositories).
+
+Each app reviews its pull request, and raises its `atlas-ui >=` and `ui:`
+when it adopts something new.
 
 ## How a change reaches the apps
 
@@ -291,8 +430,9 @@ light or dark (through `Kirigami.Theme`), and the transparency switch
 | Package | Holds |
 |---|---|
 | `atlas-ui` | The module in `/usr/lib64/qt6/qml/Atlas/Ui`, and `/etc/dnf/protected.d/atlas-framework.conf`. Requires atlas-symbols-fonts, kf6-kirigami and qt6-qtdeclarative |
-| `atlas-symbols-fonts` | The three fonts (noarch, Apache-2.0) |
-| `atlas-symbols` | The gallery, `atlas-symbols`, with its desktop file |
+| `atlas-symbols-fonts` | Material Symbols Rounded (noarch, Apache-2.0) |
+| `atlas-symbols-fonts-extra` | Outlined and Sharp (noarch, Apache-2.0); requires atlas-symbols-fonts of the same release |
+| `atlas-symbols` | The Atlas Gallery, `atlas-symbols`, with its desktop file; recommends atlas-symbols-fonts-extra |
 
 atlas-ui and atlas-symbols-fonts are required parts of AtlasOS:
 `atlas-framework.conf` stops dnf removing them, and the AtlasOS image build
