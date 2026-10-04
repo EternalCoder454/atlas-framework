@@ -24,5 +24,6 @@ fn main() {
             cc.include(format!("{kf6}/KWindowSystem"));
         })
     };
-    builder.build();
+    // export(): dependents link the crate's Qt init (cxx_qt_init_crate_atlas_framework_ui).
+    builder.build().export();
 }
