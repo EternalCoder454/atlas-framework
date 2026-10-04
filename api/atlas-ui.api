@@ -86,6 +86,13 @@ AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property maxContentWidth: double [readonly]
 AtlasPage.property title: QString
 AtlasPage.type
+AtlasPasswordField.method hide(): QVariant
+AtlasPasswordField.method reveal(): QVariant
+AtlasPasswordField.property errorText: QString
+AtlasPasswordField.property hasError: bool [readonly]
+AtlasPasswordField.property revealed: bool [readonly]
+AtlasPasswordField.property rtl: bool [readonly]
+AtlasPasswordField.type
 AtlasPlaceholder.property animated: bool
 AtlasPlaceholder.property lineHeight: double
 AtlasPlaceholder.property lines: int

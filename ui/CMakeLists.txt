@@ -62,6 +62,7 @@ qt_add_qml_module(atlasui
         AtlasInstallButton.qml
         AtlasSearchResults.qml
         AtlasTextField.qml
+        AtlasPasswordField.qml
         AtlasTextArea.qml
         AtlasComboBox.qml
         AtlasCheckBox.qml

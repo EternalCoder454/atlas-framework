@@ -27,7 +27,7 @@ Item {
         },
         {
             title: qsTr("Forms"),
-            types: ["AtlasTextField", "AtlasTextArea", "SearchField", "AtlasCheckBox", "AtlasRadioButton", "AtlasSwitch", "AtlasSlider", "AtlasSpinBox", "AtlasComboBox"]
+            types: ["AtlasTextField", "AtlasPasswordField","AtlasTextArea", "SearchField", "AtlasCheckBox", "AtlasRadioButton", "AtlasSwitch", "AtlasSlider", "AtlasSpinBox", "AtlasComboBox"]
         },
         {
             title: qsTr("Feedback"),

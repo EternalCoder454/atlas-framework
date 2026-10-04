@@ -70,7 +70,8 @@ private:
                 if (iface->role() == QAccessible::NoRole) {
                     problems << QStringLiteral("%1: %2 (%3) is reachable with Tab but has no Accessible.role").arg(demo, type, path);
                 }
-                if (iface->text(QAccessible::Name).trimmed().isEmpty()) {
+                // Qt withholds the name of a password edit on purpose.
+                if (iface->text(QAccessible::Name).trimmed().isEmpty() && !iface->state().passwordEdit) {
                     problems << QStringLiteral("%1: %2 (%3) is reachable with Tab but has no Accessible.name").arg(demo, type, path);
                 }
             }

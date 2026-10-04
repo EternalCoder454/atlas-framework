@@ -6,6 +6,11 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
+## 1.4.0 (unreleased)
+
+- Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
+  that hides the text again when focus leaves.
+
 ## 1.3.0
 
 - Atlas.Ui form controls: AtlasTextField (error text, clear button),

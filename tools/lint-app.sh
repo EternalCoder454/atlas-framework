@@ -10,7 +10,8 @@
 #             unqualified, unless the app has its own Button.qml beside it.
 #   warnings  default controls that Atlas.Ui now has an equivalent for:
 #             TextField, TextArea, ComboBox, CheckBox, RadioButton, Slider,
-#             SpinBox, ToolTip, BusyIndicator.
+#             SpinBox, ToolTip, BusyIndicator; Kirigami.PasswordField and a
+#             TextField with `echoMode: TextInput.Password` (AtlasPasswordField).
 # A finding is silenced by `// atlas-lint: allow <reason>` on its line or the
 # line before.
 set -uo pipefail
@@ -26,6 +27,19 @@ function report(n, level, what, why) {
     if (allowed(n)) return
     printf "%s:%d: %s: %s%s\n", file, n, level, what, why
     if (level == "error") errors++; else warnings++
+}
+# Does the item that opens on line n set `echoMode: ... Password`? Counts braces to find its end.
+function isPassword(n,   i, l, o, c, depth) {
+    depth = 0
+    for (i = n; i <= NR; i++) {
+        l = lines[i]
+        if (l ~ /^[ \t]*\/\//) continue
+        if (l ~ /echoMode[ \t]*:[ \t]*(TextInput\.)?Password([^A-Za-z0-9_]|$)/) return 1
+        o = gsub(/\{/, "{", l); c = gsub(/\}/, "}", l)
+        depth += o - c
+        if (depth <= 0) return 0
+    }
+    return 0
 }
 # Does line s use `Name {` for a type reached through import alias a (a == "" for unqualified)?
 function uses(s, a, name,   re) {
@@ -72,12 +86,17 @@ END {
         for (a in kq) if (uses(s, a, "ActionToolBar")) hit = 1
         if (!hit && kunq && !("ActionToolBar" in isLocal) && uses(s, "", "ActionToolBar")) hit = 1
         if (hit) report(nr, "error", "Kirigami.ActionToolBar (design rule 6)", ": build the bar from Atlas.Ui buttons")
+        hit = 0
+        for (a in kq) if (uses(s, a, "PasswordField")) hit = 1
+        if (!hit && kunq && !("PasswordField" in isLocal) && uses(s, "", "PasswordField")) hit = 1
+        if (hit) report(nr, "warning", "default Kirigami.PasswordField", ": use AtlasPasswordField from Atlas.Ui")
         for (i in W) {
             name = W[i]
             hit = 0
             for (a in qq) if (uses(s, a, name)) hit = 1
             if (!hit && unq && !(name in isLocal) && uses(s, "", name)) hit = 1
-            if (hit) report(nr, "warning", "default " name, ": check whether Atlas.Ui has an equivalent")
+            if (hit && name == "TextField" && isPassword(nr)) report(nr, "warning", "default TextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
+            else if (hit) report(nr, "warning", "default " name, ": check whether Atlas.Ui has an equivalent")
         }
     }
     exit (errors > 0 ? 1 : 0)

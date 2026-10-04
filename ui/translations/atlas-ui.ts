@@ -152,6 +152,26 @@
     </message>
 </context>
 <context>
+    <name>AtlasPasswordField</name>
+    <message>
+        <location filename="../AtlasPasswordField.qml" line="84"/>
+        <source>Password</source>
+        <extracomment>Spoken name of a password field that has no placeholder or label of its own</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../AtlasPasswordField.qml" line="136"/>
+        <source>Hide password</source>
+        <extracomment>Spoken name of the button that shows the text of a password field (when the text is hidden) or hides it again (when it is shown)</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../AtlasPasswordField.qml" line="136"/>
+        <source>Show password</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>AtlasPlaceholder</name>
     <message>
         <location filename="../AtlasPlaceholder.qml" line="35"/>
