@@ -469,6 +469,53 @@ int runPortal(int argc, char **argv, const QString &readyFile)
     return AtlasVariant::runFakePortal(readyFile, kPortalSeconds);
 }
 
+bool writeFile(const QString &path, const QByteArray &data)
+{
+    const QFileInfo info(path);
+    QString problem;
+    if (!saveAtomic(info.absolutePath(), info.fileName(), data, &problem)) {
+        say(QStringLiteral("error: %1").arg(problem));
+        return false;
+    }
+    return true;
+}
+
+// The variant's directories and files: its colour scheme, its settings, the
+// bus config. The host makes them as its first step, after it has armed
+// PDEATHSIG and the signal handlers: a variant that never started leaves
+// nothing, and one whose parent died is cleaned up by its own host.
+bool setupScratch(const QString &base, const QString &variant, QString *problem)
+{
+    const QString config = base + QStringLiteral("/config");
+    if (!QDir().mkpath(config) || !QDir().mkpath(base + QStringLiteral("/data")) || !QDir().mkpath(base + QStringLiteral("/cache"))) {
+        *problem = QStringLiteral("cannot make %1").arg(base);
+        return false;
+    }
+    const QByteArray scheme = AtlasVariant::kdeglobals(variant);
+    if (scheme.isEmpty() || !writeFile(config + QStringLiteral("/kdeglobals"), scheme)) {
+        *problem = QStringLiteral("cannot write the colour scheme of the %1 variant").arg(variant);
+        return false;
+    }
+    if (AtlasVariant::transparencyOff(variant) && !writeFile(config + QStringLiteral("/atlasrc"), "[Appearance]\nTransparency=false\n")) {
+        *problem = QStringLiteral("cannot write atlasrc");
+        return false;
+    }
+    const QString busConfig = base + QStringLiteral("/bus.conf");
+    const QByteArray busXml = QByteArrayLiteral(
+                                  "<!DOCTYPE busconfig PUBLIC \"-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN\" "
+                                  "\"http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd\">\n"
+                                  "<busconfig>\n  <type>session</type>\n  <listen>unix:dir=")
+        + base.toHtmlEscaped().toUtf8()
+        + QByteArrayLiteral("</listen>\n  <auth>EXTERNAL</auth>\n  <policy context=\"default\">\n"
+                            "    <allow send_destination=\"*\" eavesdrop=\"true\"/>\n    <allow eavesdrop=\"true\"/>\n"
+                            "    <allow own=\"*\"/>\n  </policy>\n</busconfig>\n");
+    if (!writeFile(busConfig, busXml)) {
+        *problem = QStringLiteral("cannot write %1").arg(busConfig);
+        return false;
+    }
+    return true;
+}
+
 // The helper of every variant: starts the private session bus (dbus-daemon
 // with the parent's config, so no service can be activated on it), the settings
 // portal stand-in for the contrast variant, and the render process; then stops
@@ -507,6 +554,17 @@ int runHost(int argc, char **argv, const QStringList &renderArgs)
         QDir(scratch).removeRecursively();
         return result;
     };
+
+    QString problem;
+    const bool madeScratch = setupScratch(scratch, renderArgs.at(1), &problem);
+    // A signal that came meanwhile was held back by catchSignals.
+    QCoreApplication::processEvents();
+    if (!madeScratch || interrupted) {
+        if (!madeScratch) {
+            say(QStringLiteral("error: %1").arg(problem));
+        }
+        return finish(kExitError);
+    }
 
     hardenChild(daemon);
     daemon.setProcessChannelMode(QProcess::ForwardedErrorChannel);
@@ -587,17 +645,6 @@ struct Job
     bool done = false;
 };
 
-bool writeFile(const QString &path, const QByteArray &data)
-{
-    const QFileInfo info(path);
-    QString problem;
-    if (!saveAtomic(info.absolutePath(), info.fileName(), data, &problem)) {
-        say(QStringLiteral("error: %1").arg(problem));
-        return false;
-    }
-    return true;
-}
-
 // A private environment for one variant, the way tests/visual/run-variant.sh
 // makes it: its own XDG directories and colour scheme, the software renderer,
 // scale 1, the org.kde.desktop style.
@@ -605,18 +652,8 @@ bool prepare(Job &job, const QString &root, const QStringList &renderArgs, QProc
 {
     const QString base = QDir(root).filePath(job.variant);
     const QString config = base + QStringLiteral("/config");
-    if (!QDir().mkpath(config) || !QDir().mkpath(base + QStringLiteral("/data")) || !QDir().mkpath(base + QStringLiteral("/cache"))) {
-        *problem = QStringLiteral("cannot make %1").arg(base);
-        return false;
-    }
-    const QByteArray scheme = AtlasVariant::kdeglobals(job.variant);
-    if (scheme.isEmpty() || !writeFile(config + QStringLiteral("/kdeglobals"), scheme)) {
-        *problem = QStringLiteral("cannot write the colour scheme of the %1 variant").arg(job.variant);
-        return false;
-    }
-    if (AtlasVariant::transparencyOff(job.variant)
-        && !writeFile(config + QStringLiteral("/atlasrc"), "[Appearance]\nTransparency=false\n")) {
-        *problem = QStringLiteral("cannot write atlasrc");
+    if (AtlasVariant::kdeglobals(job.variant).isEmpty()) {
+        *problem = QStringLiteral("no colour scheme for the %1 variant").arg(job.variant);
         return false;
     }
     env.insert(QStringLiteral("XDG_CONFIG_HOME"), config);
@@ -643,19 +680,6 @@ bool prepare(Job &job, const QString &root, const QStringList &renderArgs, QProc
     // started on it (no service directories), and nothing on the user's bus is
     // reachable, whether a notification, a global shortcut or the real
     // portal's colour scheme.
-    const QString busConfig = base + QStringLiteral("/bus.conf");
-    const QByteArray busXml = QByteArrayLiteral(
-                                  "<!DOCTYPE busconfig PUBLIC \"-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN\" "
-                                  "\"http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd\">\n"
-                                  "<busconfig>\n  <type>session</type>\n  <listen>unix:dir=")
-        + base.toHtmlEscaped().toUtf8()
-        + QByteArrayLiteral("</listen>\n  <auth>EXTERNAL</auth>\n  <policy context=\"default\">\n"
-                            "    <allow send_destination=\"*\" eavesdrop=\"true\"/>\n    <allow eavesdrop=\"true\"/>\n"
-                            "    <allow own=\"*\"/>\n  </policy>\n</busconfig>\n");
-    if (!writeFile(busConfig, busXml)) {
-        *problem = QStringLiteral("cannot write %1").arg(busConfig);
-        return false;
-    }
     env.insert(QString::fromLatin1(kScratchVariable), base);
 
     job.process = std::make_unique<QProcess>();
