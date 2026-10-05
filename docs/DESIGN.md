@@ -345,7 +345,7 @@ libraries to the executable, so the app's CMake links `KF6::DBusAddons` and
 Apps take the crates from git pinned to a release tag:
 
 ```toml
-atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", tag = "v1.3.0" }
+atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", tag = "v1.4.0" }
 ```
 
 Each release opens a pull request in every app that moves the tag (see
@@ -382,13 +382,16 @@ sends KDE's hints (`desktop-entry`, `x-kde-appname`, `x-kde-eventId`) so
 Plasma groups them under the app and honours the user's per-event choice in
 System Settings; `popup_enabled(event)` reads that choice. Calls to the
 server time out after 10 s; no notification service gives "No notification
-service is running"; `send_blocking` refuses inside a Tokio runtime;
+service is running"; `send_blocking` blocks (for a worker thread or
+`spawn_blocking`, never the UI thread) and runs on a thread and runtime of
+its own, so it also works when called from inside a Tokio runtime;
 `Note.icon` is a name or an absolute path, anything else becomes the app icon.
 The AtlasOS rules:
 
 - Notify only when the user can act on it, or must know: not for progress or
   success they did not wait for.
-- Popups only, no sounds. Urgency is low or normal; `Persistent` only when
+- Popups only, no sounds. Urgency is `Normal` (`High` at most, never
+  `Critical`); `Persistent` only when
   ignoring it has consequences (a restart is due).
 - Actions are short verbs that open the right page (`DEFAULT_ACTION` opens
   the app).
