@@ -55,12 +55,12 @@ Item {
         return v !== undefined && v >= 0 ? v : fallback;
     }
     function _isRepeater(item) {
-        return item.delegate !== undefined && item.count !== undefined && item.model !== undefined;
+        return typeof item.itemAt === "function" && item.delegate !== undefined && item.model !== undefined;
     }
     function _schedule() {
         if (!_pending) {
             _pending = true;
-            Qt.callLater(_relayout);
+            Qt.callLater(() => root._relayout());
         }
     }
     function _watch() {

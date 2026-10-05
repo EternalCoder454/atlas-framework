@@ -57,6 +57,7 @@ Item {
             keyClick("r");
             tryVerify(() => f.popupOpen);
             keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Down);
             keyClick(Qt.Key_Return);
             compare(f.text, "Bern");
             compare(acceptedSpy.count, 1);
@@ -65,10 +66,31 @@ Item {
             verify(f._field.activeFocus, "the field keeps the focus");
         }
 
+        function test_return_without_moving_the_highlight_submits_the_typed_text() {
+            const f = make();
+            keyClick("B");
+            keyClick("e");
+            keyClick("r");
+            tryVerify(() => f.popupOpen);
+            keyClick(Qt.Key_Return);
+            compare(f.text, "Ber");
+            compare(acceptedSpy.count, 1);
+            compare(acceptedSpy.signalArguments[0][0], "Ber");
+        }
+
+        function test_fast_return_acts_on_the_typed_text() {
+            const f = make();
+            keyClick("p");
+            keyClick("a");
+            keyClick(Qt.Key_Return); // inside the 60 ms debounce
+            compare(acceptedSpy.signalArguments[0][0], "pa");
+        }
+
         function test_tab_takes_the_first_suggestion() {
             const f = make();
             keyClick("p");
             tryVerify(() => f.popupOpen);
+            keyClick(Qt.Key_Down);
             keyClick(Qt.Key_Tab);
             compare(f.text, "Paris");
             verify(f._field.activeFocus);
@@ -90,6 +112,7 @@ Item {
             keyClick("e");
             keyClick("m");
             tryVerify(() => f.popupOpen);
+            keyClick(Qt.Key_Down);
             keyClick(Qt.Key_Return);
             compare(f.text, "Bremen");
             f.text = "";
@@ -128,6 +151,7 @@ Item {
             keyClick("o");
             tryVerify(() => f.popupOpen);
             keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Down);
             keyClick(Qt.Key_Return);
             compare(f.text, "Rome");
         }
@@ -136,6 +160,7 @@ Item {
             const f = make({ model: ["a<b>c", "a&b"] });
             keyClick("a");
             tryVerify(() => f.popupOpen);
+            keyClick(Qt.Key_Down);
             keyClick(Qt.Key_Return);
             compare(f.text, "a<b>c");
         }

@@ -25,8 +25,9 @@ T.AbstractButton {
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.5)
-    leftPadding: AtlasStyle.spacingLarge
-    rightPadding: closable ? AtlasStyle.spacingSmall : AtlasStyle.spacingLarge
+    leftPadding: mirrored ? _endPadding : AtlasStyle.spacingLarge
+    rightPadding: mirrored ? AtlasStyle.spacingLarge : _endPadding
+    readonly property real _endPadding: closable ? AtlasStyle.spacingSmall : AtlasStyle.spacingLarge
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     scale: control.down && control.enabled ? 0.97 : 1

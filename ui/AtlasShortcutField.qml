@@ -13,7 +13,9 @@ import org.kde.kirigami as Kirigami
 // names the registered AtlasAction that already has the same shortcut (not
 // `ignoreAction`, the one being edited), and shows under the field; it is
 // empty when there is none. The field only reports: the app decides whether to
-// accept the shortcut, in `onEdited`.
+// accept the shortcut, in `onEdited`. `sequence` already holds the new value
+// when `edited` fires: to reject it, the app assigns the old (or another)
+// value to `sequence` there.
 //
 //   AtlasShortcutField {
 //       sequence: saveAction.shortcut
@@ -170,6 +172,11 @@ T.Control {
         }
     }
     Keys.onPressed: event => {
+        // A held key repeats: it neither starts a recording nor ends one.
+        if (event.isAutoRepeat) {
+            event.accepted = internals.recording || event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter;
+            return;
+        }
         if (!internals.recording) {
             if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 control.startRecording();

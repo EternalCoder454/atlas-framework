@@ -172,10 +172,16 @@ T.AbstractButton {
             familyList.positionViewAtIndex(internals.current, ListView.Contain);
             searchField.forceActiveFocus(Qt.PopupFocusReason);
         }
+        property bool _hadFocus: false
+        onAboutToHide: _hadFocus = popup.contentItem.activeFocus
         onClosed: {
             searchField.clear();
             internals.search = "";
-            control.forceActiveFocus(Qt.PopupFocusReason);
+            const item = control.Window.activeFocusItem;
+            if (popup._hadFocus && (!item || popup.contentItem.contains(item))) {
+                control.forceActiveFocus(Qt.PopupFocusReason);
+            }
+            popup._hadFocus = false;
         }
 
         contentItem: ColumnLayout {

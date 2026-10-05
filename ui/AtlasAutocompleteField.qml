@@ -7,7 +7,7 @@ import org.kde.kirigami as Kirigami
 // strings or a model with `textRole`. The popup lists up to `maxSuggestions`
 // choices that contain what was typed (`filter: "contains"`, the default) or
 // start with it (`"startsWith"`), any case, with the matching part in bold.
-// Up and Down move among them, Return or Tab takes the highlighted one, Escape
+// Up and Down move among them (nothing is highlighted until you do), Return or Tab takes the highlighted one, Escape
 // closes the list (a second Escape goes on to whoever is behind). The focus
 // stays in the field. `accepted(text)` is emitted when a suggestion is taken, or
 // when Return is pressed with no list open. A model of ten thousand strings
@@ -122,7 +122,9 @@ FocusScope {
                 }
             }
             matches = found;
-            current = found.length > 0 ? 0 : -1;
+            // The highlight starts on nothing: Return submits the typed text until
+            // the user moves it (Down or the pointer). Down on a closed list starts on row 0.
+            current = forceAll && found.length > 0 ? 0 : -1;
             if (found.length > 0 && field.activeFocus && !control.readOnly) {
                 popup.open();
             } else {
@@ -138,6 +140,14 @@ FocusScope {
                 return esc(s);
             }
             return esc(s.slice(0, at)) + "<b>" + esc(s.slice(at, at + n.length)) + "</b>" + esc(s.slice(at + n.length));
+        }
+        // Applies a pending (debounced) filter now, so a fast Return or Tab acts
+        // on what is typed, not on the list for the text before.
+        function flush(): void {
+            if (debounce.running) {
+                debounce.stop();
+                refresh();
+            }
         }
         function take(index: int): void {
             if (index < 0 || index >= matches.length) {
@@ -207,7 +217,12 @@ FocusScope {
                 } else {
                     event.accepted = false;
                 }
-            } else if (event.key === Qt.Key_Tab && popup.visible && internals.current >= 0) {
+            } else if (event.key === Qt.Key_Tab && (debounce.running || popup.visible)) {
+                internals.flush();
+                if (!popup.visible || internals.current < 0) {
+                    event.accepted = false;
+                    return;
+                }
                 // Tab takes the suggestion instead of moving on.
                 internals.take(internals.current);
                 event.accepted = true;
@@ -235,6 +250,7 @@ FocusScope {
         Keys.onEnterPressed: event => handleReturn(event)
 
         function handleReturn(event: var): void {
+            internals.flush();
             if (popup.visible && internals.current >= 0) {
                 internals.take(internals.current);
             } else {

@@ -175,11 +175,28 @@ T.Control {
             popupCalendar.showDate(control._hasDate ? control.selectedDate : control.today);
         }
         onOpened: popupCalendar.forceActiveFocus(Qt.PopupFocusReason)
-        onClosed: control.forceActiveFocus(Qt.PopupFocusReason)
+        onAboutToHide: _hadFocus = popupCalendar.activeFocus
+        onClosed: {
+            // Give focus back only if it was in the popup and nothing else took it
+            // (a click into another field keeps its caret).
+            const item = control.Window.activeFocusItem;
+            if (_hadFocus && (!item || popupCalendar.contains(item))) {
+                control.forceActiveFocus(Qt.PopupFocusReason);
+            }
+            _hadFocus = false;
+        }
+        property bool _hadFocus: false
+
+        // A Binding, not a plain binding: the calendar assigns selectedDate itself
+        // when a day is picked, which would break a plain one.
+        readonly property Binding _sync: Binding {
+            target: popupCalendar
+            property: "selectedDate"
+            value: control.selectedDate
+        }
 
         contentItem: AtlasCalendar {
             id: popupCalendar
-            selectedDate: control.selectedDate
             minimumDate: control.minimumDate
             maximumDate: control.maximumDate
             locale: control.locale

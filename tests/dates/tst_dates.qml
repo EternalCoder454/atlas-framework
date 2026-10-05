@@ -137,6 +137,32 @@ TestCase {
         compare(day(c.selectedDate), 20260320);
     }
 
+    function test_picker_popup_reflects_picker_after_pick_and_clear() {
+        const p = createTemporaryObject(pickerComp, this, {
+            selectedDate: new Date(NaN),
+            clearable: true
+        });
+        verify(p !== null);
+        p.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        tryVerify(() => p.opened && p._popup.contentItem.activeFocus);
+        keyClick(Qt.Key_Return);
+        tryVerify(() => !p.opened);
+        compare(day(p.selectedDate), 20260312);
+        keyClick(Qt.Key_Delete);
+        verify(isNaN(p.selectedDate.getTime()));
+        keyClick(Qt.Key_Space);
+        tryVerify(() => p.opened);
+        verify(isNaN(p._popup.contentItem.selectedDate.getTime()));
+        p.close();
+        tryVerify(() => !p.opened);
+        // Set from the app, then reopen: the popup shows that day.
+        p.selectedDate = new Date(2026, 5, 2);
+        p.open();
+        tryVerify(() => p.opened);
+        compare(day(p._popup.contentItem.selectedDate), 20260602);
+    }
+
     function test_picker_popup_and_edit() {
         const p = createTemporaryObject(pickerComp, this, {
             selectedDate: new Date(NaN),

@@ -8,6 +8,14 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui fixes: ConfirmDialog no longer runs a destructive (or Cancel-first)
+  accept when Return is pressed in a field of the body; the date picker's popup
+  follows the picker after a pick or clear; pickers give the focus back after
+  closing only if it was inside them; AtlasDropZone no longer sticks in the
+  error state after an unacceptable drag; AtlasAutocompleteField acts on the
+  typed text on a fast Return or Tab and starts with nothing highlighted;
+  AtlasShortcutField ignores key repeat; AtlasToolbar keeps its overflow menu
+  while it is open.
 - Atlas.Ui: AtlasSettings (an app's settings file, shared with the Rust
   `settings` module, same lock; typed values, batched atomic writes,
   `changed(key)` from other writers), AtlasWindow.stateKey (saves and restores
