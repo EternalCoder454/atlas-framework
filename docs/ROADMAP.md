@@ -183,11 +183,11 @@ Non-blocking findings (Medium and Low) filed while shipping 1.4.0.
 ### Look
 - Stock Qt Quick/Kirigami controls used directly by apps still take Breeze's highlight: set Kirigami.Theme highlight/focus from AtlasStyle at the AtlasWindow root.
 
-## 1.4.1 (from the R gate, data controls)
+### R gate, data controls
 - AtlasListView: drag-reorder auto-scroll in long lists.
 - AtlasCodeView: wrapped lines vs line numbers over 5000 lines.
 - Selection API shapes: contextMenuRequested signatures differ (ListView/Tree point vs DataTable x,y); textRole default "text" vs "display".
-## 1.4.1 (S gate 2)
+### S gate 2
 - Settings: GUI-thread flock wait (now 1 s); consider a worker thread.
 - Settings symlink policy differs from Rust (documented).
 - AtlasSettings: new files briefly exist with default mode before fchmod 0600 (KConfig save); create with umask 077 around sync.
