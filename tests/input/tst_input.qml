@@ -349,7 +349,27 @@ Item {
                 m.addItem(last);
             }
             verify(last.implicitWidth > 400);
-            verify(m.implicitWidth >= last.implicitWidth, "the menu is as wide as its widest row");
+            tryVerify(() => m.implicitWidth >= last.implicitWidth, 1000, "the menu is as wide as its widest row");
+        }
+
+        // takeItem() changes count while the item is half removed; a width
+        // binding that read itemAt() then crashed (AtlasToolbar's overflow).
+        function test_context_menu_take_item_while_measuring_does_not_crash() {
+            const m = createTemporaryObject(menuComp, root);
+            const wide = createTemporaryObject(menuItemComp, root, {
+                text: "x".repeat(200)
+            });
+            m.addItem(wide);
+            m.addItem(createTemporaryObject(menuItemComp, root, { text: "A" }));
+            m.addItem(createTemporaryObject(menuItemComp, root, { text: "B" }));
+            tryVerify(() => m.implicitWidth >= wide.implicitWidth, 1000);
+            const taken = m.takeItem(0);
+            compare(taken, wide);
+            compare(m.count, 2);
+            tryVerify(() => m.implicitWidth < wide.implicitWidth, 1000, "the width follows the rows left");
+            while (m.count > 0)
+                m.takeItem(0);
+            tryCompare(m.contentItem, "implicitWidth", 0, 1000);
         }
 
         function test_tooltip_with_no_text_never_opens() {
@@ -610,7 +630,7 @@ Item {
         function test_enter_in_the_replace_field_with_no_match_replaces_nothing() {
             const f = createTemporaryObject(findBarComp, root);
             tryCompare(f, "height", f.fullHeight);
-            const field = findAll(f, "", []).find(c => c.objectName === "replaceField");
+            const field = findAll(f, "replaceField", [])[0];
             verify(field);
             field.forceActiveFocus();
             keyClick(Qt.Key_Return);

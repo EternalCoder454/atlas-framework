@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
@@ -55,8 +57,8 @@ T.AbstractButton {
     }
     onVisibleChanged: {
         // The parent is the bar's row; the bar is above it.
-        const bar = parent ? parent.parent : null;
-        if (bar && typeof bar.refresh === "function") {
+        const bar = (control.parent ? control.parent.parent : null) as StatusBar;
+        if (bar) {
             bar.refresh();
         }
     }

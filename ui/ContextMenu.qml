@@ -33,11 +33,26 @@ T.Menu {
     contentItem: ListView {
         id: list
         readonly property real windowHeight: Window.window ? Window.window.height : Number.POSITIVE_INFINITY
+        // The menu's item count once a change is over. Menu.takeItem() reports
+        // the new count while the item is still being removed, and itemAt()
+        // then returns an object that is no longer valid (a crash), so the
+        // width is measured one turn later, never during the removal.
+        property int _rows: 0
+        function _settle(): void {
+            list._rows = control.count;
+        }
+        Connections {
+            target: control
+            function onCountChanged(): void {
+                Qt.callLater(list._settle);
+            }
+        }
+        Component.onCompleted: list._settle()
         implicitWidth: {
             let w = 0;
             // The menu's own items, not the list's delegates: the list makes
             // only the rows in view, so a long label further down would elide.
-            for (let i = 0; i < control.count; ++i) {
+            for (let i = 0; i < list._rows; ++i) {
                 const item = control.itemAt(i);
                 if (item) {
                     w = Math.max(w, item.implicitWidth);
