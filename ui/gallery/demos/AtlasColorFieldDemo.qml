@@ -24,10 +24,10 @@ Item {
         spacing: Kirigami.Units.largeSpacing
 
         Caption { text: "Default" }
-        AtlasColorField { color: "#3daee9" }
+        AtlasColorField { color: "#3daee9" } // atlas-lint: allow-raw sample colour
         Caption { text: "Not opaque (showAlpha)" }
-        AtlasColorField { color: "#803daee9"; showAlpha: true }
+        AtlasColorField { color: "#803daee9"; showAlpha: true } // atlas-lint: allow-raw sample colour
         Caption { text: "Disabled" }
-        AtlasColorField { color: "#da4453"; enabled: false }
+        AtlasColorField { color: "#da4453"; enabled: false } // atlas-lint: allow-raw sample colour
     }
 }

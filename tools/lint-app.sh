@@ -1,11 +1,12 @@
 #!/bin/bash
 # Design rule 6 (docs/DESIGN.md): never default QQC2 or Kirigami buttons.
 #
-#   tools/lint-app.sh [--allow-empty] <app-dir>...
+#   tools/lint-app.sh [--allow-empty] [--strict] <app-dir>...
 #
 # Output is file:line: error|warning: message. Exit 1 when there is an error
 # or an app directory holds no QML file (a wrong path must not pass; an app
-# that really has none passes --allow-empty). Exit 2 on a usage error.
+# that really has none passes --allow-empty), and with --strict also when there
+# is a warning (for code that is ours). Exit 2 on a usage error.
 # Directories named build, build-*, _build, target, node_modules and .git
 # are skipped.
 #   errors    QQC2 (QtQuick.Controls and its style modules, such as
@@ -41,12 +42,13 @@
 set -uo pipefail
 
 allow_empty=0
-if [ "${1:-}" = "--allow-empty" ]; then
-    allow_empty=1
+strict=0
+while [ "${1:-}" = "--allow-empty" ] || [ "${1:-}" = "--strict" ]; do
+    if [ "$1" = "--strict" ]; then strict=1; else allow_empty=1; fi
     shift
-fi
+done
 if [ "$#" -eq 0 ]; then
-    echo "usage: lint-app.sh [--allow-empty] <app-dir>..." >&2
+    echo "usage: lint-app.sh [--allow-empty] [--strict] <app-dir>..." >&2
     exit 2
 fi
 
@@ -356,4 +358,5 @@ for app in "$@"; do
     fi
 done
 echo "lint-app: $total_errors error(s), $total_warnings warning(s)"
+[ "$strict" -eq 1 ] && [ "$total_warnings" -gt 0 ] && status=1
 exit "$status"

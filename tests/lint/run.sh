@@ -121,3 +121,11 @@ grep -q 'AtlasStyle.error' <<<"$out" || fail "a raw red names no token"
 grep -q 'AtlasStyle.durationShort' <<<"$out" || fail "a 90 ms duration names no token"
 grep -q 'AtlasStyle.radius (6)' <<<"$out" || fail "a radius of 6 names no token"
 echo "lint raw-value rules ok ($n findings)"
+
+# --strict: a warning fails too.
+mkdir "$tmp/strict"
+printf 'import QtQuick\nRectangle { radius: 6 }\n' >"$tmp/strict/A.qml"
+expect 0 "a warning without --strict" "$tmp/strict"
+expect 1 "a warning with --strict" --strict "$tmp/strict"
+expect 0 "--strict on a clean app" --strict "$tmp/c1/../impl"
+echo "lint --strict ok"
