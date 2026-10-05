@@ -21,6 +21,16 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 key=$(printf '%s' "$root" | cksum | cut -d' ' -f1)
 build=${ATLAS_DEV_BUILD_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/atlas-framework-dev/$(basename "$root" | tr -c 'A-Za-z0-9_.\n-' '_')-$key}
 image=${ATLAS_DEV_IMAGE:-localhost/atlas-framework-dev:44}
+# podman reads "-v src:dst:opts" by splitting on ":" and ",": a path holding
+# either could add mount options.
+for p in "$root" "$build"; do
+    case $p in
+    *[:,]*)
+        echo "dev-check: ':' and ',' are not allowed in $p (podman would read them as mount options)" >&2
+        exit 2
+        ;;
+    esac
+done
 # A relative path would be read by podman as a named volume.
 case $build in
 /*) ;;
@@ -85,7 +95,7 @@ mode=ro
 rc=0
 podman run --rm --init --name "atlas-dev-check-$key-$$" --security-opt label=disable \
     -v "$root:/src:$mode" -v "$build:/b" "${gitmount[@]}" -w /src \
-    -e ATLAS_DEMO_FILTER="$filter" -e TRANSLATIONS="$translations" \
+    -e PYTHONDONTWRITEBYTECODE=1 -e ATLAS_DEMO_FILTER="$filter" -e TRANSLATIONS="$translations" \
     "$image" bash -euo pipefail -c '
 step() { printf "\n== %s\n" "$1"; }
 [ -f /b/build/build.ninja ] || cmake -S /src -B /b/build -G Ninja -DATLAS_UI_TESTS=ON >/dev/null
@@ -99,6 +109,7 @@ step qmllint
 cmake --build /b/build --target all_qmllint >/b/qmllint.log 2>&1 || { tail -n 40 /b/qmllint.log; exit 1; }
 echo "ok ($(grep -c "^Warning" /b/qmllint.log || true) warnings, /b/qmllint.log)"
 step tests
+rm -rf /b/build/visual-out
 [ -z "$ATLAS_DEMO_FILTER" ] || echo "demos: $ATLAS_DEMO_FILTER"
 ctest --test-dir /b/build -j "$(nproc)" --output-on-failure >/b/ctest.log 2>&1 || { grep -E "FAIL!|Failed|tests passed" /b/ctest.log; exit 1; }
 grep "tests passed" /b/ctest.log
@@ -114,7 +125,7 @@ step docs
 python3 tools/test_docs.py 2>&1 | tail -n 3
 python3 tools/docs.py check
 ' || rc=$?
-if [ "$rc" -ne 0 ] && [ -n "$(find "$build/build/visual-out" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-    echo "dev-check: failed pictures, if any, are in $build/build/visual-out" >&2
+if [ "$rc" -ne 0 ] && grep -qE "FAIL|Failed" "$build/ctest.log" 2>/dev/null; then
+    echo "dev-check: pictures of the failed tests are in $build/build/visual-out; the log is $build/ctest.log" >&2
 fi
 exit "$rc"

@@ -57,4 +57,16 @@ expect 1 "alias followed by a comment" "$tmp/alias"
 mkdir "$tmp/impl"
 printf 'import QtQuick.Controls.impl\nItem {\n    Button {}\n}\n' >"$tmp/impl/A.qml"
 expect 0 "QtQuick.Controls.impl exports no Button" "$tmp/impl"
+mkdir "$tmp/blockc"
+printf 'import QtQuick.Controls /* the defaults */\nItem {\n    Button {}\n}\n' >"$tmp/blockc/A.qml"
+expect 1 "block comment after an import" "$tmp/blockc"
+# Braces that never close: must finish fast (scans are capped).
+mkdir "$tmp/hostile"
+{ echo 'import QtQuick'; for _ in $(seq 1 3000); do echo 'Rectangle {'; done; } >"$tmp/hostile/A.qml"
+timeout 20 "$lint" "$tmp/hostile" >/dev/null 2>&1
+[ $? -ne 124 ] || fail "unbalanced braces made the lint run away"
+names="$here/../../tools/check-app-names.sh"
+"$names" "$tmp/empty" >/dev/null 2>&1
+[ $? -eq 1 ] || fail "check-app-names: no QML files must exit 1"
+"$names" --allow-empty "$tmp/empty" >/dev/null 2>&1 || fail "check-app-names --allow-empty"
 echo "lint error paths ok"

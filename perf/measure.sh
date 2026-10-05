@@ -136,7 +136,8 @@ if [ "$(id -u)" -eq 0 ] && { [ -e /run/.containerenv ] || [ -e /.dockerenv ] || 
 elif [ ! -f "$qml_dir/Atlas/Ui/qmldir" ]; then
     echo "measure: Atlas.Ui is not installed in $qml_dir; run as root in the dev container (or install it yourself)" >&2
     exit 2
-elif ! cmp -s "$build/Atlas/Ui/qmldir" "$qml_dir/Atlas/Ui/qmldir"; then
+elif ! cmp -s "$build/Atlas/Ui/qmldir" "$qml_dir/Atlas/Ui/qmldir" ||
+    ! cmp -s "$build/Atlas/Ui/libatlasui.so" "$qml_dir/Atlas/Ui/libatlasui.so"; then
     echo "measure: the Atlas.Ui in $qml_dir is not the one built in $build; install the build, or run as root in the dev container" >&2
     exit 2
 fi

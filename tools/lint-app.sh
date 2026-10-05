@@ -54,7 +54,8 @@ function report(n, level, what, why) {
 # a child item? Counts braces to find its end.
 function setsOwn(n, re,   i, l, depth) {
     depth = 0
-    for (i = n; i <= NR; i++) {
+    # Capped: braces that never balance must not make every line scan to EOF.
+    for (i = n; i <= NR && i < n + SCAN_LINES; i++) {
         l = lines[i]
         if (l ~ /^[ \t]*\/\//) continue
         sub(/[ \t]\/\/.*$/, "", l)
@@ -72,7 +73,7 @@ function setsOwn(n, re,   i, l, depth) {
 # Does the item that opens on line n contain, anywhere inside, a line matching re?
 function blockHas(n, re,   i, l, depth) {
     depth = 0
-    for (i = n; i <= NR; i++) {
+    for (i = n; i <= NR && i < n + SCAN_LINES; i++) {
         l = lines[i]
         if (l ~ /^[ \t]*\/\//) continue
         sub(/[ \t]\/\/.*$/, "", l)
@@ -89,6 +90,7 @@ function uses(s, a, name,   re) {
 }
 BEGIN {
     # From the environment, not -v: awk would read backslashes in them as escapes.
+    SCAN_LINES = 200
     file = ENVIRON["LINT_FILE"]
     n = split(ENVIRON["LINT_LOCALS"], L, "\n"); for (i = 1; i <= n; i++) isLocal[L[i]] = 1
     split("Button ToolButton RoundButton DelayButton Switch", E, " ")
@@ -111,7 +113,7 @@ END {
     for (nr = 1; nr <= NR; nr++) {
         s = lines[nr]
         # A trailing comment must not hide an `as` alias.
-        if (s ~ /^[ \t]*import[ \t]/) sub(/[ \t]*\/\/.*$/, "", s)
+        if (s ~ /^[ \t]*import[ \t]/) { sub(/\/\*.*\*\//, "", s); sub(/[ \t]*\/[\/*].*$/, "", s) }
         # QtQuick.Controls and every style module (.Basic, .Material,
         # .Universal, .Fusion, ...) export the QQC2 Button and friends;
         # only .impl (internal types) does not.
