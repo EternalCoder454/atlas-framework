@@ -250,6 +250,14 @@ Item {
             item.checked = Qt.binding(() => md.checked === true);
         }
     }
+    // A checkable row toggles itself when chosen, which breaks the binding;
+    // choosing only emits modelActivated, so the Action decides.
+    function _refollow(item): void {
+        const md = item.rowData;
+        if (md !== null && typeof md === "object" && typeof md.trigger === "function" && md.checkable !== undefined) {
+            item.checked = Qt.binding(() => md.checked === true);
+        }
+    }
     function _tooDeep(): void {
         if (!_warned) {
             _warned = true;
@@ -301,7 +309,10 @@ Item {
             property string rowId
             property var rowData
             property int rowIndex: -1
-            onTriggered: root.modelActivated(row.rowId, row.rowData, row.rowIndex)
+            onTriggered: {
+                root._refollow(row);
+                root.modelActivated(row.rowId, row.rowData, row.rowIndex);
+            }
         }
     }
     Component {
@@ -454,7 +465,10 @@ Item {
                     property string rowId
                     property var rowData
                     property int rowIndex: -1
-                    onTriggered: root.modelActivated(nr.rowId, nr.rowData, nr.rowIndex)
+                    onTriggered: {
+                        root._refollow(nr);
+                        root.modelActivated(nr.rowId, nr.rowData, nr.rowIndex);
+                    }
                 }
             }
             Component {
