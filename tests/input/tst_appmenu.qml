@@ -266,18 +266,24 @@ Item {
         }
 
         function test_native_refresh_does_not_leak_objects() {
+            const inner = Qt.createQmlObject('import QtQuick; ListModel { ListElement { n: "i1" } ListElement { n: "i2" } }', root);
+            const spec = () => [{ title: "File", actions: [{ id: "o", title: "Outer", model: files, textRole: "path", lead: [{ id: "i", title: "Inner", model: inner, textRole: "n" }], trail: [{ title: "Trail", actions: [saveA] }] }] }];
             const m = createTemporaryObject(menuComp, root, {
                 _forceNative: true,
-                menus: [{ title: "File", actions: [{ id: "o", title: "Outer", model: files, textRole: "path", lead: [{ title: "Lead", actions: [openA] }], trail: [{ title: "Trail", actions: [saveA] }] }] }]
+                menus: spec()
             });
-            const file = m._nativeBar.menus[0];
-            file.aboutToShow();
-            const before = m._nativeBar._watched[0].objs.length;
-            for (let k = 0; k < 20; ++k) {
-                file.aboutToShow();
+            m._nativeBar.menus[0].aboutToShow();
+            wait(20);
+            const base = m._alive;
+            verify(base > 0);
+            for (let k = 0; k < 10; ++k) {
+                m._nativeBar.menus[0].aboutToShow();
+                m.menus = spec();
+                wait(20);
+                m._nativeBar.menus[0].aboutToShow();
             }
-            compare(m._nativeBar._watched[0].objs.length, before);
-            compare(m._nativeBar._objs.length, m._nativeBar._objs.filter(o => o).length);
+            wait(50);
+            tryCompare(m, "_alive", base);
         }
 
         function test_model_not_loaded_yet_shows_disabled_with_empty_text() {

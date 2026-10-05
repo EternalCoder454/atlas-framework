@@ -169,5 +169,22 @@ Item {
             compare(escaped, 1);
             compare(root.appEscapes, 1);
         }
+
+        function test_escape_passes_on_when_the_target_already_has_the_focus() {
+            const first = null;
+            const b = createTemporaryObject(barComp, root, {
+                focusable: true
+            });
+            const btn = find(b, a1);
+            b.returnFocus = btn;
+            btn.forceActiveFocus(Qt.TabFocusReason);
+            tryVerify(() => btn.activeFocus);
+            let escaped = 0;
+            b.escaped.connect(() => ++escaped);
+            root.appEscapes = 0;
+            keyClick(Qt.Key_Escape);
+            compare(escaped, 1);
+            compare(root.appEscapes, 1);
+        }
     }
 }

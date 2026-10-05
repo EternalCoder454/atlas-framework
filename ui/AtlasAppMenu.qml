@@ -70,6 +70,8 @@ Item {
 
     property bool _warned: false
     property bool _warnedShape: false
+    // Tests: how many native menu objects exist.
+    property int _alive: 0
     function _isAction(e): bool {
         return e !== null && e !== undefined && typeof e.trigger === "function";
     }
@@ -87,7 +89,12 @@ Item {
     }
     // The rows of a model, read once: a throwaway Instantiator gives modelData
     // for any kind of model (a list of strings, a ListModel, a C++ model).
-    function _plain(md): var {
+    function _plain(md, always): var {
+        // A QObject row (an Action) outlives the reader and stays live; a
+        // ListModel row is a view of the model, so it is always copied.
+        if (always !== true && md !== null && typeof md === "object" && typeof md.destroy === "function") {
+            return md;
+        }
         // What the model hands out is live or dies with the reader: keep a plain copy.
         if (md !== null && typeof md === "object" && !Array.isArray(md)) {
             const copy = {};
@@ -106,7 +113,7 @@ Item {
         // A ListModel gives objects with every role.
         if (typeof model.get === "function" && typeof model.count === "number") {
             for (let i = 0; i < model.count; ++i) {
-                rows.push(_plain(model.get(i)));
+                rows.push(_plain(model.get(i), true));
             }
             return rows;
         }
@@ -409,6 +416,8 @@ Item {
                 id: nItem
                 Platform.MenuItem {
                     id: it
+                    Component.onCompleted: root._alive++
+                    Component.onDestruction: root._alive--
                     property var act
                     property var sc
                     text: act ? act.text : ""
@@ -425,6 +434,8 @@ Item {
                 id: nRow
                 Platform.MenuItem {
                     id: nr
+                    Component.onCompleted: root._alive++
+                    Component.onDestruction: root._alive--
                     property string rowId
                     property var rowData
                     property int rowIndex: -1
@@ -435,17 +446,25 @@ Item {
                 id: nCall
                 Platform.MenuItem {
                     id: nc
+                    Component.onCompleted: root._alive++
+                    Component.onDestruction: root._alive--
                     property var fn
                     onTriggered: nc.fn()
                 }
             }
             Component {
                 id: nSep
-                Platform.MenuSeparator {}
+                Platform.MenuSeparator {
+                    Component.onCompleted: root._alive++
+                    Component.onDestruction: root._alive--
+                }
             }
             Component {
                 id: nMenu
-                Platform.Menu {}
+                Platform.Menu {
+                    Component.onCompleted: root._alive++
+                    Component.onDestruction: root._alive--
+                }
             }
             function _track(o) {
                 if (menuBar._curRec) {
@@ -465,7 +484,20 @@ Item {
                     // gone
                 }
             }
-            function _unwatch(rec): void {
+            // Lets go of a record: its signal links, the records inside it and
+            // the objects its rows made, which are parented to the bar and would pile up.
+            function _release(rec): void {
+                _disconnect(rec);
+                for (const k of rec.kids) {
+                    _release(k);
+                }
+                rec.kids = [];
+                for (const o of rec.objs) {
+                    _kill(o);
+                }
+                rec.objs = [];
+            }
+            function _disconnect(rec): void {
                 for (const c of rec.conns) {
                     try {
                         c.model[c.sig].disconnect(root._scheduleNative);
@@ -474,10 +506,6 @@ Item {
                     }
                 }
                 rec.conns = [];
-                for (const k of rec.kids) {
-                    _unwatch(k);
-                }
-                rec.kids = [];
             }
             function _watchModel(rec): void {
                 const m = rec.e.model;
@@ -548,11 +576,7 @@ Item {
                 for (const w of _watched.slice()) {
                     const prev = menuBar._curRec;
                     // What the last fill made, and the records inside it, go first.
-                    _unwatch(w);
-                    for (const o of w.objs) {
-                        _kill(o);
-                    }
-                    w.objs = [];
+                    _release(w);
                     // clear() takes the old rows out and deletes them.
                     w.sub.clear();
                     menuBar._curRec = w;
@@ -571,11 +595,11 @@ Item {
             function rebuild(): void {
                 root._warned = false;
                 root._warnedShape = false;
-                for (const w of _watched) {
-                    _unwatch(w);
-                }
                 menuBar._curRec = null;
                 menuBar.clear();
+                for (const w of _watched) {
+                    _release(w);
+                }
                 for (const o of _objs) {
                     _kill(o);
                 }
@@ -594,7 +618,7 @@ Item {
             Component.onCompleted: menuBar.rebuild()
             Component.onDestruction: {
                 for (const w of _watched) {
-                    _unwatch(w);
+                    _release(w);
                 }
             }
             Connections {

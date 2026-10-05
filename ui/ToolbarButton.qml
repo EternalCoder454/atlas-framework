@@ -118,7 +118,7 @@ T.AbstractButton {
             }
         }
         onCanceled: control._wasOpen = false
-        onClicked: control._open()
+        onClicked: control._open(true)
     }
     Binding {
         target: control
@@ -205,9 +205,10 @@ T.AbstractButton {
     }
     // The menu or popover was open when the press began.
     property bool _wasOpen: false
-    function _open(): void {
+    // `fromClick`: the press that began this click found it open (a key never does).
+    function _open(fromClick: bool): void {
         const o = control._opener;
-        if (o && (control._wasOpen || control._opened)) {
+        if (o && ((fromClick === true && control._wasOpen) || control._opened)) {
             // Opening again would only reopen what this click closes.
             control._wasOpen = false;
             o.close();

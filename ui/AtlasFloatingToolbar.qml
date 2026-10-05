@@ -175,8 +175,8 @@ Item {
             Keys.onEscapePressed: event => {
                 root.escaped();
                 const to = root.returnFocus ? root.returnFocus : root._last;
-                // Taken only when focus moved; otherwise Escape goes on to the app.
-                if (to && to.visible) {
+                // Taken only when focus moves; otherwise Escape goes on to the app.
+                if (to && to.visible && !to.activeFocus) {
                     to.forceActiveFocus(Qt.OtherFocusReason);
                     event.accepted = true;
                 } else {

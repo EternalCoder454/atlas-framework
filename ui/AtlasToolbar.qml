@@ -145,7 +145,8 @@ Item {
     property double _wheelAt: 0
     // Adds a wheel movement: a pause, or the other direction, starts the sum
     // again; every 120 steps one button.
-    function _wheelBy(d: real): void {
+    function _wheelBy(delta: real, inverted: bool): void {
+        const d = inverted ? -delta : delta;
         const now = Date.now();
         if (now - root._wheelAt > 300 || (root._wheel !== 0 && (d > 0) !== (root._wheel > 0))) {
             root._wheel = 0;
@@ -399,7 +400,7 @@ Item {
             WheelHandler {
                 enabled: root._scrolling
                 onWheel: event => {
-                    root._wheelBy((event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x) * (event.inverted ? -1 : 1));
+                    root._wheelBy(event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x, event.inverted);
                 }
             }
         }

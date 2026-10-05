@@ -268,15 +268,65 @@ Item {
             // 60 down then 60 up must not add to a step.
             bar._wheel = 60;
             bar._wheelAt = Date.now();
-            bar._wheelBy(-60);
+            bar._wheelBy(-60, false);
             compare(bar._wheel, -60);
             bar._wheel = 100;
             bar._wheelAt = Date.now() - 1000;
-            bar._wheelBy(60);
+            bar._wheelBy(60, false);
             compare(bar._wheel, 60);
             // The same direction within a gesture adds up.
-            bar._wheelBy(30);
+            bar._wheelBy(30, false);
             compare(bar._wheel, 90);
+        }
+
+        function test_wheel_inverted_flips_the_direction() {
+            const bar = createTemporaryObject(barComp, root, {
+                actions: [a1, a2, a3, a4, a5, a6],
+                overflow: AtlasToolbar.Scroll,
+                width: 100
+            });
+            bar._wheelBy(60, true);
+            compare(bar._wheel, -60);
+            // The other direction starts the sum again.
+            bar._wheelBy(-60, true);
+            compare(bar._wheel, 60);
+        }
+
+        function test_wheel_event_scrolls_one_button() {
+            const bar = createTemporaryObject(barComp, root, {
+                actions: [a1, a2, a3, a4, a5, a6],
+                overflow: AtlasToolbar.Scroll,
+                width: 100
+            });
+            verify(bar._scrolling);
+            const i = bar._index;
+            mouseWheel(bar, bar.width / 2, bar.height / 2, 0, -120);
+            tryVerify(() => bar._index === i + 1);
+            // The other way, straight after, goes back one: no leftover sum.
+            mouseWheel(bar, bar.width / 2, bar.height / 2, 0, 120);
+            tryVerify(() => bar._index === i);
+        }
+
+        function test_overflow_row_follows_a_menu_that_appears() {
+            const act = Qt.createQmlObject('import Atlas.Ui; AtlasAction { text: "Late" }', root);
+            const bar = createTemporaryObject(barComp, root, {
+                actions: [a1, a2, act],
+                width: 70
+            });
+            const rowOf = t => {
+                for (let i = 0; i < bar.moreMenu.count; ++i) {
+                    const it = bar.moreMenu.itemAt(i);
+                    if (it && it.text === t) return it;
+                }
+                return null;
+            };
+            verify(rowOf("Late"));
+            verify(!rowOf("Late").subMenu);
+            act.menu = Qt.createQmlObject('import Atlas.Ui; ContextMenu { ContextMenuItem { text: "In" } }', root);
+            let sub = null;
+            tryVerify(() => (sub = rowOf("Late")) && sub.subMenu);
+            act.menu = null;
+            tryVerify(() => rowOf("Late") && !rowOf("Late").subMenu);
         }
     }
 }

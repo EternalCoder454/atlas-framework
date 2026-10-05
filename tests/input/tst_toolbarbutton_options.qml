@@ -161,5 +161,18 @@ Item {
             withMenu.menu.close();
             tryVerify(() => b.activeFocus);
         }
+
+        function test_a_key_after_a_press_that_was_dragged_off_opens() {
+            const b = createTemporaryObject(buttonComp, root, {
+                action: withMenu,
+                focusable: true
+            });
+            // A press that found it open, released elsewhere: no click.
+            b._wasOpen = true;
+            b.forceActiveFocus();
+            keyClick(Qt.Key_Space);
+            tryVerify(() => withMenu.menu.visible);
+            withMenu.menu.close();
+        }
     }
 }
