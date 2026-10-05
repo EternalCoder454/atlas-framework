@@ -9,7 +9,7 @@ RUN dnf -y -q --setopt=install_weak_deps=False install \
         qt6-qtbase-devel qt6-qttools-devel qt6-linguist qt6-qtbase-private-devel qt6-qtbase-gui qt6-qtdeclarative-devel \
         kf6-kirigami-devel kf6-kconfig-devel kf6-kwindowsystem-devel kf6-kdbusaddons-devel \
         kf6-qqc2-desktop-style plasma-breeze breeze-icon-theme google-noto-sans-fonts ibm-plex-sans-fonts jetbrains-mono-fonts \
-        cargo corrosion clippy rustfmt flatpak-devel glib2-devel \
+        cargo corrosion clippy rustfmt lld flatpak-devel glib2-devel \
         xorg-x11-server-Xvfb xdotool xwd ImageMagick dbus-daemon \
         jq procps-ng diffutils which openssl-devel \
     && dnf clean all
