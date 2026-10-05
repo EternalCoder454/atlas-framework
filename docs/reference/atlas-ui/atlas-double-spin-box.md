@@ -5,7 +5,7 @@ section: Fields and pickers
 since: "1.4.0"
 ---
 
-AtlasDoubleSpinBox is [AtlasSpinBox](atlas-spin-box.md) for numbers with decimals: the same pill with a minus and a plus button, `prefix`, `suffix` and `showButtons`, and the same keys. `from`, `to`, `value`, `stepSize` and `editable` are reals, and `decimals` (default 2) says how many digits follow the decimal separator.
+AtlasDoubleSpinBox is [AtlasSpinBox](atlas-spin-box.md) for numbers with decimals: the same small rounded field with a minus and a plus button, `prefix`, `suffix` and `showButtons`, and the same keys. `from`, `to`, `value`, `stepSize` and `editable` are reals, and `decimals` (default 2) says how many digits follow the decimal separator.
 
 The text is written in the field's locale ("1,5" in German). Typed text the field cannot read is dropped and the old value comes back. Without `prefix` and `suffix`, the field also refuses characters that cannot be part of a number as they are typed.
 

@@ -5,7 +5,7 @@ section: Layout
 since: "1.4.0"
 ---
 
-AtlasCard has Section's look: rounded, with a hairline border. It has an optional header (`title`, `subtitle` and `headerTrailing`, items at the far edge such as a button or a badge), then whatever you put inside, then an optional `footer` row. To list rows in a grouped card, see [Section](section.md).
+AtlasCard has Section's look: rounded corners and a hairline border. It has an optional header (`title`, `subtitle` and `headerTrailing`, items at the far edge such as a button or a badge), then whatever you put inside, then an optional `footer` row. To list rows in a grouped card, see [Section](section.md).
 
 AtlasCard is a Qt Quick Templates `Control`; its inherited properties work as usual. See <https://doc.qt.io/qt-6/qml-qtquick-controls-control.html>.
 
