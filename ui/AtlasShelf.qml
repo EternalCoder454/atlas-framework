@@ -20,8 +20,9 @@ import org.kde.kirigami as Kirigami
 // from each model entry, and emits `activated(index)` when pressed. A custom
 // `delegate` gets the usual `index`, `model` and `modelData` and sets its own
 // width (`control.cardWidth` is the one the default card uses). The row is as
-// high as the tallest card made so far (its implicit or its set height). A delegate must not size itself from the list's
-// height, or the row could never shrink.
+// high as the tallest card made so far (its implicit or its set height). A
+// delegate must not size itself from the list's height, or the row could
+// never shrink.
 //
 // The cards are Tab stops, and the Left and Right arrows (Home, End) move
 // between them and scroll the next one into view. In a right-to-left layout
