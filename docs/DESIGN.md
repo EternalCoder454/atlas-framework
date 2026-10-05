@@ -122,6 +122,7 @@ control takes `iconName`.
 | `AtlasPage` | A scrolling page with a large bold title and centred margins; `headerTrailing` puts items at the end of the title row, `maxContentWidth` is writable (since 1.4.0) |
 | `PrimaryButton`, `SecondaryButton`, `TextButton`, `MenuButton` | Buttons (`AtlasButton` is their shared base) |
 | `AtlasSwitch` | Pill switch |
+| `AtlasTransparencySwitch` | A settings row (`SectionRow`) with a switch for the shared "Transparency and blur" setting (`Appearance.transparency`, writable; atlasrc `[Appearance] Transparency`). Disabled with the reason when the compositor has no blur. Menus, tooltips, popovers, dialogs, toasts and the command palette are tinted translucent (alpha 0.88 to 0.92) over the blurred window when `Appearance.effective`, solid otherwise (since 1.4.0) |
 | `AtlasSegmentedControl` | Joined pill segments, one selected (`model` of strings or `{ text, symbol, toolTip }`, `currentIndex`, `activated(index)`); one Tab stop, arrows, Home/End; a tab list for screen readers (since 1.4.0) |
 | `AtlasSplitButton` | A main pill button joined to an arrow that opens a menu (`items` of `ContextMenuItem`, `action`, `prominent`); two Tab stops, Alt+Down or Menu opens the menu (since 1.4.0) |
 | `AtlasChip`, `AtlasChipGroup` | A small pill (`text`, `symbol`, `checkable`, `closable` with `closeRequested()`), and a wrapping group of them (`exclusive`, roving Tab stop, focus moves to the neighbour of a removed chip) (since 1.4.0) |

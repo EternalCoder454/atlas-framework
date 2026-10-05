@@ -149,7 +149,7 @@ QQC2.Popup {
 
     background: Rectangle {
         radius: AtlasStyle.radiusLarge + 4
-        color: Kirigami.Theme.backgroundColor
+        color: Appearance.effective ? Qt.alpha(Kirigami.Theme.backgroundColor, 0.85) : Kirigami.Theme.backgroundColor
         border.width: 1
         border.color: AtlasStyle.separator
     }

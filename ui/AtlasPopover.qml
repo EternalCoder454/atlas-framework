@@ -21,6 +21,9 @@ import Atlas.Ui
 T.Popup {
     id: control
 
+    // Solid fallback is the surface; tinted translucent over the blurred window when transparency is effective.
+    readonly property color _surface: Appearance.effective ? Qt.alpha(AtlasStyle.surface, 0.85) : AtlasStyle.surface
+
     // The item the popover belongs to and points at; set it before opening.
     property Item target
     property bool showArrow: true
@@ -133,7 +136,7 @@ T.Popup {
             width: parent.width
             height: parent.height - control.topInset - control.bottomInset
             radius: AtlasStyle.radiusLarge
-            color: AtlasStyle.surface
+            color: control._surface
             border.width: 1
             border.color: AtlasStyle.separator
         }
@@ -151,7 +154,7 @@ T.Popup {
                 x: control._arrowSize - width / 2
                 y: (control._above ? 1 : control._arrowSize) - height / 2
                 rotation: 45
-                color: AtlasStyle.surface
+                color: control._surface
                 border.width: 1
                 border.color: AtlasStyle.separator
             }

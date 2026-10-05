@@ -42,6 +42,7 @@ qt_add_qml_module(atlasui
         StepItem.qml
         AtlasPage.qml
         AtlasSwitch.qml
+        AtlasTransparencySwitch.qml
         AtlasProgressBar.qml
         ConfirmDialog.qml
         NotesText.qml
