@@ -7,14 +7,17 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QFile>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QRegularExpression>
 #include <QSet>
 #include <QThread>
 
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace
@@ -23,7 +26,9 @@ constexpr int kWriteDelayMs = 400;
 constexpr int kWatchDelayMs = 100;
 // A writer waits this long for the lock before giving up (and keeping the
 // change for the next flush).
-constexpr int kLockWaitMs = 3000;
+constexpr int kLockWaitMs = 1000;
+// A settings file larger than this is not read (a real one is a few KB).
+constexpr qint64 kMaxFileBytes = 4 * 1024 * 1024;
 constexpr int kMaxNameLength = 200;
 
 bool hasControl(const QString &s)
@@ -61,6 +66,14 @@ public:
         }
         if (m_fd < 0) {
             m_error = QString::fromLocal8Bit(strerror(errno));
+            return;
+        }
+        // A fifo or device planted as the lock file must not be used.
+        struct stat st;
+        if (::fstat(m_fd, &st) != 0 || !S_ISREG(st.st_mode)) {
+            m_error = QStringLiteral("the lock file is not a regular file");
+            ::close(m_fd);
+            m_fd = -1;
             return;
         }
         for (int waited = 0;; waited += 10) {
@@ -227,11 +240,44 @@ QVariant coerce(const QVariant &def, const QVariant &v)
     }
 }
 
-QVariant readTyped(const KConfigGroup &g, const QString &key, const QVariant &def)
+// KConfig's list format: items split at a comma, a backslash quotes the next
+// character (the same as KConfigGroup's own reader).
+QStringList splitList(const QString &data)
+{
+    if (data.isEmpty()) {
+        return {};
+    }
+    if (data == QLatin1String("\\0")) {
+        return {QString()};
+    }
+    QStringList out;
+    QString item;
+    bool quoted = false;
+    for (const QChar c : data) {
+        if (quoted) {
+            item += c;
+            quoted = false;
+        } else if (c == QLatin1Char('\\')) {
+            quoted = true;
+        } else if (c == QLatin1Char(',')) {
+            out << item;
+            item.clear();
+        } else {
+            item += c;
+        }
+    }
+    out << item;
+    return out;
+}
+
+// From the raw text of the file (the snapshot): KConfig's own readEntry would
+// also expand $VARIABLES in a value marked [$e], which would let a settings
+// file leak an environment variable into the app.
+QVariant readTyped(const QString &raw, const QVariant &def)
 {
     switch (def.typeId()) {
     case QMetaType::Bool: {
-        const QString s = g.readEntry(key, QString()).trimmed().toLower();
+        const QString s = raw.trimmed().toLower();
         if (s == QLatin1String("true") || s == QLatin1String("1") || s == QLatin1String("yes") || s == QLatin1String("on")) {
             return true;
         }
@@ -245,7 +291,7 @@ QVariant readTyped(const KConfigGroup &g, const QString &key, const QVariant &de
     case QMetaType::LongLong:
     case QMetaType::ULongLong: {
         bool ok = false;
-        const qlonglong n = g.readEntry(key, QString()).trimmed().toLongLong(&ok);
+        const qlonglong n = raw.trimmed().toLongLong(&ok);
         if (!ok) {
             return def;
         }
@@ -254,15 +300,62 @@ QVariant readTyped(const KConfigGroup &g, const QString &key, const QVariant &de
     case QMetaType::Double:
     case QMetaType::Float: {
         bool ok = false;
-        const double d = g.readEntry(key, QString()).trimmed().toDouble(&ok);
+        const double d = raw.trimmed().toDouble(&ok);
         return (ok && qIsFinite(d)) ? QVariant(d) : def;
     }
     case QMetaType::QStringList:
     case QMetaType::QVariantList:
-        return typedList(g.readEntry(key, QStringList()), def);
+        return typedList(splitList(raw), def);
     default:
-        return g.readEntry(key, QString());
+        return raw;
     }
+}
+
+// Keys the file marks `[$e]` (value expansion). KConfig expands them when it
+// parses, so such a key cannot be read as written: it is refused instead.
+QSet<QString> expandingKeys(const QString &file)
+{
+    QSet<QString> keys;
+    QFile f(file);
+    if (!f.open(QIODevice::ReadOnly)) {
+        return keys;
+    }
+    static const QRegularExpression flag(QStringLiteral("\\[\\$[a-zA-Z]*e[a-zA-Z]*\\]"));
+    while (!f.atEnd()) {
+        const QString line = QString::fromUtf8(f.readLine(64 * 1024));
+        if (line.isEmpty() || line.at(0) == QLatin1Char('[') || line.at(0) == QLatin1Char('#')) {
+            continue;
+        }
+        const int eq = line.indexOf(QLatin1Char('='));
+        if (eq <= 0) {
+            continue;
+        }
+        const QString left = line.left(eq);
+        if (flag.match(left).hasMatch()) {
+            keys.insert(left.left(left.indexOf(QLatin1Char('['))).trimmed());
+        }
+    }
+    return keys;
+}
+
+// A file KConfig may be given: absent (defaults), or a regular file of a sane
+// size. Anything else (a fifo would block the reader, a huge file would fill
+// memory) is refused with a warning.
+bool readableFile(const QString &file)
+{
+    const QFileInfo info(file);
+    if (!info.exists()) {
+        return true;
+    }
+    if (!info.isFile()) {
+        qWarning("AtlasSettings: %s is not a regular file; using defaults", qPrintable(file));
+        return false;
+    }
+    if (info.size() > kMaxFileBytes) {
+        qWarning("AtlasSettings: %s is larger than 4 MB; using defaults", qPrintable(file));
+        return false;
+    }
+    return true;
 }
 }
 
@@ -409,7 +502,7 @@ void AtlasSettings::setGroup(const QString &group)
     if (group == m_group) {
         return;
     }
-    flush();
+    dropPending();
     m_group = group;
     if (!group.isEmpty() && !validGroup(group)) {
         qWarning("AtlasSettings: %s is not a valid group name", qPrintable(group));
@@ -425,7 +518,7 @@ void AtlasSettings::setFileName(const QString &fileName)
     if (fileName == m_fileName) {
         return;
     }
-    flush();
+    dropPending();
     m_fileName = fileName;
     if (!fileName.isEmpty() && !validFileName(fileName)) {
         qWarning("AtlasSettings: %s is not a plain file name", qPrintable(fileName));
@@ -435,6 +528,17 @@ void AtlasSettings::setFileName(const QString &fileName)
         rewatch();
     }
     Q_EMIT fileNameChanged();
+}
+
+// Before the group or file changes: write what is waiting; what could not be
+// written is dropped (with a warning) and never carried over to the new group
+// or file.
+void AtlasSettings::dropPending()
+{
+    if (!flush() && !m_pending.isEmpty()) {
+        qWarning("AtlasSettings: %s/%s: %lld unsaved change(s) dropped", qPrintable(m_fileName), qPrintable(m_group), qint64(m_pending.size()));
+        m_pending.clear();
+    }
 }
 
 void AtlasSettings::componentComplete()
@@ -450,11 +554,16 @@ void AtlasSettings::reload(bool announce)
     m_snapshot.clear();
     m_cfg.reset();
     const QString file = path();
-    if (!file.isEmpty()) {
+    if (!file.isEmpty() && readableFile(file)) {
         m_cfg = std::make_unique<KConfig>(file, KConfig::SimpleConfig);
         const QMap<QString, QString> entries = m_cfg->entryMap(m_group);
         for (auto it = entries.cbegin(); it != entries.cend(); ++it) {
             m_snapshot.insert(it.key(), it.value());
+        }
+        for (const QString &key : expandingKeys(file)) {
+            if (m_snapshot.remove(key)) {
+                qWarning("AtlasSettings: %s: %s/%s is marked [$e] (variable expansion); ignored", qPrintable(file), qPrintable(m_group), qPrintable(key));
+            }
         }
     }
     if (!announce) {
@@ -486,12 +595,15 @@ void AtlasSettings::rewatch()
     if (file.isEmpty()) {
         return;
     }
+    // The file while it is there; the directory only while it is missing (to
+    // see it appear), so a busy config directory does not wake us.
+    if (QFileInfo::exists(file)) {
+        m_watcher.addPath(file);
+        return;
+    }
     const QString dir = QFileInfo(file).absolutePath();
     if (QFileInfo(dir).isDir()) {
         m_watcher.addPath(dir);
-    }
-    if (QFileInfo::exists(file)) {
-        m_watcher.addPath(file);
     }
 }
 
@@ -513,7 +625,7 @@ QVariant AtlasSettings::value(const QString &key, const QVariant &defaultValue) 
     if (!m_cfg || !m_snapshot.contains(key)) {
         return defaultValue;
     }
-    return readTyped(m_cfg->group(m_group), key, defaultValue);
+    return readTyped(m_snapshot.value(key), defaultValue);
 }
 
 bool AtlasSettings::contains(const QString &key) const
@@ -587,6 +699,26 @@ bool AtlasSettings::flush()
             qWarning("AtlasSettings: %s: cannot lock it: %s", qPrintable(file), qPrintable(lock.error()));
             return false;
         }
+        if (!readableFile(file)) {
+            qWarning("AtlasSettings: %s: not written", qPrintable(file));
+            return false;
+        }
+        // A new file is created private (0600), like the Rust crate's; KConfig's
+        // save keeps the mode of the file that is there.
+        const bool created = !QFileInfo::exists(file);
+        // A private file (new, or already without group and other access)
+        // stays private.
+        const QFileDevice::Permissions others = QFileDevice::ReadGroup | QFileDevice::WriteGroup | QFileDevice::ExeGroup | QFileDevice::ReadOther | QFileDevice::WriteOther | QFileDevice::ExeOther;
+        const bool keepPrivate = created || !(QFileInfo(file).permissions() & others);
+        if (created) {
+            const int fd = ::open(QFile::encodeName(file).constData(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+            if (fd >= 0) {
+                ::close(fd);
+            } else if (errno != EEXIST) {
+                qWarning("AtlasSettings: %s: cannot create it: %s", qPrintable(file), strerror(errno));
+                return false;
+            }
+        }
         // Read under the lock: another writer may have just changed it.
         KConfig cfg(file, KConfig::SimpleConfig);
         KConfigGroup g = cfg.group(m_group);
@@ -629,6 +761,16 @@ bool AtlasSettings::flush()
             atlas.writeEntry("Format", 1);
         }
         ok = cfg.sync();
+        if (ok && keepPrivate) {
+            // KConfig's own save does not keep the mode; make it private again.
+            const int fd = ::open(QFile::encodeName(file).constData(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+            if (fd >= 0) {
+                if (::fchmod(fd, 0600) != 0) {
+                    qWarning("AtlasSettings: %s: cannot set its mode to 0600: %s", qPrintable(file), strerror(errno));
+                }
+                ::close(fd);
+            }
+        }
     }
     if (!ok) {
         qWarning("AtlasSettings: %s: cannot write it (kept; tried again at the next change or on exit)", qPrintable(file));

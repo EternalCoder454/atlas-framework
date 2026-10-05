@@ -11,12 +11,14 @@
 #include <QFile>
 #include <QGuiApplication>
 #include <QSignalSpy>
+#include <QUrlQuery>
 #include <QTemporaryDir>
 #include <QtTest>
 
 #include <thread>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/file.h>
 #include <unistd.h>
 
@@ -473,6 +475,150 @@ private Q_SLOTS:
         writeAll(m_dir.filePath(QStringLiteral("atlas-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n\n[Event/loud]\nAction=Popup\n"));
         AtlasPortal portal;
         QCOMPARE(portal.notify(QStringLiteral("t"), QStringLiteral("b"), {}, {{QStringLiteral("eventId"), QStringLiteral("quiet")}}), QString());
+    }
+    // Fix-sec: AtlasSettings
+    void failedFlushDoesNotCarryOver()
+    {
+        QVERIFY(make(QStringLiteral("A"))->setValue(QStringLiteral("Seed"), 1));
+        auto s = make(QStringLiteral("A"));
+        QVERIFY(s->setValue(QStringLiteral("K"), 1));
+        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock")));
+        const int fd = ::open(lockPath.constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+        QVERIFY(fd >= 0);
+        QCOMPARE(::flock(fd, LOCK_EX), 0);
+        s->setGroup(QStringLiteral("B")); // the flush fails: the lock is held
+        QVERIFY(!s->contains(QStringLiteral("K")));
+        ::close(fd);
+        QVERIFY(s->flush());
+        const KConfig cfg(rc(), KConfig::SimpleConfig);
+        QVERIFY(!cfg.group(QStringLiteral("B")).hasKey("K"));
+        QVERIFY(!cfg.group(QStringLiteral("A")).hasKey("K"));
+    }
+    void lockWaitIsShort()
+    {
+        auto s = make(QStringLiteral("A"));
+        QVERIFY(s->setValue(QStringLiteral("K"), 1));
+        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock")));
+        const int fd = ::open(lockPath.constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+        QVERIFY(fd >= 0);
+        QCOMPARE(::flock(fd, LOCK_EX), 0);
+        QElapsedTimer t;
+        t.start();
+        QVERIFY(!s->flush());
+        const qint64 ms = t.elapsed();
+        ::close(fd);
+        QVERIFY2(ms < 2000, "waited longer than about 1 s");
+        QVERIFY(s->flush());
+    }
+    void lockFileMustBeRegular()
+    {
+        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock")));
+        QCOMPARE(::mkfifo(lockPath.constData(), 0600), 0);
+        auto s = make(QStringLiteral("A"));
+        QVERIFY(s->setValue(QStringLiteral("K"), 1));
+        QVERIFY(!s->flush()); // open(O_RDWR) on a fifo succeeds: fstat refuses it
+        ::unlink(lockPath.constData());
+    }
+    void oversizeOrIrregularFileIsIgnored()
+    {
+        QFile f(rc());
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("[A]\nK=big\n");
+        f.write(QByteArray(5 * 1024 * 1024, '#'));
+        f.close();
+        QCOMPARE(make(QStringLiteral("A"))->value(QStringLiteral("K"), QStringLiteral("def")).toString(), QStringLiteral("def"));
+        QVERIFY(QFile::remove(rc()));
+        QCOMPARE(::mkfifo(QFile::encodeName(rc()).constData(), 0600), 0);
+        QCOMPARE(make(QStringLiteral("A"))->value(QStringLiteral("K"), QStringLiteral("def")).toString(), QStringLiteral("def"));
+        QVERIFY(QFile::remove(rc()));
+    }
+    void noVariableExpansion()
+    {
+        qputenv("ATLAS_TEST_SECRET", "hunter2");
+        writeAll(rc(), QStringLiteral("[A]\nK[$e]=$ATLAS_TEST_SECRET\nL=plain\nList[$e]=$ATLAS_TEST_SECRET,x\n"));
+        auto s = make(QStringLiteral("A"));
+        // A key marked [$e] is refused (the default comes back), never expanded.
+        QCOMPARE(s->value(QStringLiteral("K"), QStringLiteral("none")).toString(), QStringLiteral("none"));
+        QVERIFY(!s->contains(QStringLiteral("K")));
+        QCOMPARE(s->value(QStringLiteral("L"), QStringLiteral("")).toString(), QStringLiteral("plain"));
+        QVERIFY(!s->contains(QStringLiteral("List")));
+        qunsetenv("ATLAS_TEST_SECRET");
+    }
+    void newFileIsPrivate()
+    {
+        const QString other = m_dir.filePath(QStringLiteral("atlas-privaterc"));
+        const mode_t old = ::umask(0);
+        auto s = make(QStringLiteral("A"), QStringLiteral("atlas-privaterc"));
+        QVERIFY(s->setValue(QStringLiteral("K"), 1));
+        QVERIFY(s->flush());
+        ::umask(old);
+        QVERIFY(QFileInfo::exists(other));
+        QCOMPARE(int(QFileInfo(other).permissions() & ~(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadUser | QFileDevice::WriteUser)), 0);
+        // A second write keeps the mode.
+        QVERIFY(s->setValue(QStringLiteral("K"), 2));
+        QVERIFY(s->flush());
+        QCOMPARE(int(QFileInfo(other).permissions() & ~(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadUser | QFileDevice::WriteUser)), 0);
+    }
+    void watchesDirectoryOnlyWhileMissing()
+    {
+        auto s = make(QStringLiteral("A"));
+        QSignalSpy spy(s.get(), &AtlasSettings::changed);
+        writeAll(rc(), QStringLiteral("[A]\nK=1\n")); // appears: seen through the directory
+        QVERIFY(spy.wait(3000));
+        spy.clear();
+        writeAll(rc(), QStringLiteral("[A]\nK=2\n")); // changes: seen through the file
+        QVERIFY(spy.wait(3000));
+    }
+
+    // Fix-sec: AtlasPortal
+    void openUrlRefusesPrograms()
+    {
+        const QString dir = m_files.path();
+        const QString desktop = QStringLiteral("[Desktop Entry]\nType=Application\nName=x\nExec=/bin/true\n");
+        writeAll(dir + QStringLiteral("/real.desktop"), desktop);
+        QVERIFY(QFile::link(dir + QStringLiteral("/real.desktop"), dir + QStringLiteral("/looks-like.txt")));
+        writeAll(dir + QStringLiteral("/noext"), desktop);
+        writeAll(dir + QStringLiteral("/script.txt"), QStringLiteral("#!/bin/sh\necho hi\n"));
+        QVERIFY(QFile::setPermissions(dir + QStringLiteral("/script.txt"), QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
+        writeAll(dir + QStringLiteral("/plain-script"), QStringLiteral("#!/bin/sh\necho hi\n")); // no exec bit: sniffed
+        writeAll(dir + QStringLiteral("/ok.txt"), QStringLiteral("hello\n"));
+        QVERIFY(QFile::link(dir + QStringLiteral("/ok.txt"), dir + QStringLiteral("/ok-link.txt")));
+        QCOMPARE(::mkfifo(QFile::encodeName(dir + QStringLiteral("/pipe")).constData(), 0600), 0);
+        for (const char *name : {"looks-like.txt", "noext", "script.txt", "plain-script", "pipe"}) {
+            QString why;
+            QVERIFY2(!AtlasPortal::isOpenable(QUrl::fromLocalFile(dir + QLatin1Char('/') + QLatin1String(name)), {}, &why), name);
+            QVERIFY2(!why.isEmpty(), name);
+        }
+        QVERIFY(AtlasPortal::isOpenable(QUrl::fromLocalFile(dir + QStringLiteral("/ok.txt"))));
+        QVERIFY(AtlasPortal::isOpenable(QUrl::fromLocalFile(dir + QStringLiteral("/ok-link.txt"))));
+        QVERIFY(AtlasPortal::isOpenable(QUrl::fromLocalFile(dir)));
+        // A control character in the decoded URL.
+        QVERIFY(!AtlasPortal::isOpenable(QUrl(QStringLiteral("https://example.com/a%0Ab"))));
+        QVERIFY(!AtlasPortal::isOpenable(QUrl(QStringLiteral("file://%1/ok.txt%0A").arg(dir))));
+    }
+    void mailtoKeepsSubjectAndBodyOnly()
+    {
+        QStringList dropped;
+        const QUrl in(QStringLiteral("mailto:a@example.com?subject=Hi%20there&attach=/etc/passwd&BCC=x@y.z&body=Hello&cc=c@d.e&Subject=dup"));
+        const QUrl out = AtlasPortal::cleanMailto(in, &dropped);
+        QCOMPARE(out.path(), QStringLiteral("a@example.com"));
+        const QUrlQuery q(out);
+        QCOMPARE(q.queryItemValue(QStringLiteral("subject"), QUrl::FullyDecoded), QStringLiteral("Hi there"));
+        QCOMPARE(q.queryItemValue(QStringLiteral("body"), QUrl::FullyDecoded), QStringLiteral("Hello"));
+        QCOMPARE(q.queryItems().size(), 2);
+        QVERIFY(dropped.contains(QStringLiteral("attach")) && dropped.contains(QStringLiteral("BCC")) && dropped.contains(QStringLiteral("cc")));
+        QCOMPARE(AtlasPortal::cleanMailto(QUrl(QStringLiteral("mailto:a@example.com?cc=x@y.z"))).toString(), QStringLiteral("mailto:a@example.com"));
+        const QUrl web(QStringLiteral("https://example.com/?attach=1"));
+        QCOMPARE(AtlasPortal::cleanMailto(web), web);
+    }
+    void notifyBodyIsPlainByDefault()
+    {
+        // No D-Bus here: the call is checked through the rules that run first.
+        AtlasPortal portal;
+        QCOMPARE(portal.escape(QStringLiteral("<b>x</b>")), QStringLiteral("&lt;b&gt;x&lt;/b&gt;"));
+        // An event switched off returns before anything is sent, with markup either way.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n"));
+        QCOMPARE(portal.notify(QStringLiteral("t"), QStringLiteral("<b>x</b>"), {}, {{QStringLiteral("eventId"), QStringLiteral("quiet")}, {QStringLiteral("markup"), true}}), QString());
     }
 };
 

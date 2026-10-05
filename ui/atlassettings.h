@@ -23,6 +23,13 @@
 // process (the Rust crate, KDE tools, a text editor) changed a key of the
 // group.
 //
+// A change that cannot be written when the group or file name changes is
+// dropped with a warning, never moved into the other group or file. A file
+// that is not a regular file, or is over 4 MB, is not read (defaults) and not
+// written. Values are read as written: `$VARIABLE` expansion (`[$e]`) is not
+// done. A new file is created with mode 0600. The lock is waited for at most
+// 1 s.
+//
 // `group` is required; a name with brackets or control characters is refused.
 // `fileName` is empty for the app's own file, or a bare file name in the
 // config directory (no path). A settings file that is a symlink pointing out
@@ -111,6 +118,7 @@ private:
     void reload(bool announce);
     void rewatch();
     void fileTouched();
+    void dropPending();
     QString m_group, m_fileName;
     bool m_complete = false;
     // What the file held at the last read: raw entries of the group.

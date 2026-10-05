@@ -39,4 +39,11 @@ Item {
     OldThing { } // atlas-lint: allow fixture
     Item { }
     Item { oldProp: 1 } // WANT
+    Component.onCompleted: {
+        AtlasPortal.notify("t", body, [], { markup: true }) // WANT
+        AtlasPortal.notify("t", AtlasPortal.escape(body), [], { markup: true })
+        AtlasPortal.notify(qsTr("t"), qsTr("<b>fixed</b>"), [], { markup: true })
+        AtlasPortal.notify("t", body, [], { eventId: "x" })
+        AtlasPortal.notify("t", body, [], { markup: true }) // atlas-lint: allow fixture
+    }
 }
