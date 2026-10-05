@@ -51,7 +51,7 @@ Selection works by row index. It is cleared when `model` changes, resets or move
 
 ## Status
 
-`status` swaps the rows for one of four things; `Ready` (the default) shows them. **Loading** shows an [AtlasSpinner](atlas-spinner.md) only after 300 ms, so a fast load never flashes, and announces nothing. **Empty**, **NoResults** and **Error** show an [AtlasEmptyState](atlas-empty-state.md) with the title, text, symbol and action; **Error** is announced to screen readers once, when the status becomes Error (the heading and the text). The rows are hidden and the list's own `header` stays. While a status shows, the list's keys do nothing. A Ready list with no rows still shows `placeholderText`.
+`status` swaps the rows for one of four things; `Ready` (the default) shows them. **Loading** shows an [AtlasSpinner](atlas-spinner.md) only after 300 ms, so a fast load never flashes, and announces nothing. **Empty**, **NoResults** and **Error** show an [AtlasEmptyState](atlas-empty-state.md) with the title, text, symbol and action; **Error** is announced to screen readers once, when the status becomes Error (the heading and the text). The rows are hidden and the list's own `header` stays; `section` headings are not hidden, so clear the model or the section property when a status should stand alone. While a status shows, the list's keys do nothing. A Ready list with no rows still shows `placeholderText`.
 
 ## Signals
 
