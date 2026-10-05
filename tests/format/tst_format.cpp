@@ -35,6 +35,10 @@ private Q_SLOTS:
         QVERIFY(!f.bytes(1e300, 1, en).isEmpty());
         QCOMPARE(f.bytes(kNaN), "");
         QCOMPARE(f.bytes(kInf), "");
+        // 1023.5 up rounds to 1024: that is KiB, never "1,024 B".
+        QVERIFY(f.bytes(1023.5, 1, en).endsWith(" KiB"));
+        QVERIFY(f.bytes(1023.99, 1, en).startsWith("1"));
+        QCOMPARE(f.bytes(1023.4, 1, en), "1,023 B");
         QCOMPARE(f.bytes(1536, -5, en), "2 KiB"); // precision clamps to 0
         QCOMPARE(f.bytes(1536, 999, en).startsWith("1.5"), true);
     }
@@ -76,6 +80,19 @@ private Q_SLOTS:
         QCOMPARE(f.number(kNaN), "");
         QCOMPARE(f.number(-kInf), "");
         QVERIFY(f.number(1e300, -1, en).size() > 300);
+        // The shortest form trims the locale's own zero digit.
+        const QString ar = QStringLiteral("ar_EG");
+        const QLocale arLocale(ar);
+        QCOMPARE(f.number(2, -1, ar), arLocale.toString(2.0, 'f', 0));
+        QVERIFY(!f.number(1.5, -1, ar).endsWith(arLocale.zeroDigit()));
+        QCOMPARE(f.number(10, -1, ar), arLocale.toString(10.0, 'f', 0));
+    }
+
+    void durationHugeIsClampedNotMisspelled()
+    {
+        QCOMPARE(f.duration(1e18, "long", en), "1000000000 days");
+        QCOMPARE(f.duration(86400.0 * 1e9, "long", en), "1000000000 days");
+        QCOMPARE(f.duration(86400.0 * 123456789, "long", en), "123456789 days");
     }
 
     void durationShort()

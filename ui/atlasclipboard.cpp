@@ -11,9 +11,8 @@
 
 namespace {
 // Reads a local image file within the size caps; a null image otherwise.
-QImage loadLocalImage(const QString &spec)
+QImage loadLocalImage(const QUrl &url)
 {
-    const QUrl url = QUrl::fromUserInput(spec, QString(), QUrl::AssumeLocalFile);
     if (!url.isLocalFile()) {
         qWarning("AtlasClipboard.setImage: only local files are accepted");
         return {};
@@ -108,9 +107,9 @@ bool AtlasClipboard::setImage(const QVariant &value)
     if (value.metaType() == QMetaType::fromType<QImage>()) {
         image = value.value<QImage>();
     } else if (value.metaType() == QMetaType::fromType<QUrl>()) {
-        image = loadLocalImage(value.toUrl().toString());
+        image = loadLocalImage(value.toUrl());
     } else if (value.metaType() == QMetaType::fromType<QString>()) {
-        image = loadLocalImage(value.toString());
+        image = loadLocalImage(QUrl::fromUserInput(value.toString(), QString(), QUrl::AssumeLocalFile));
     } else if (const auto *object = value.value<QObject *>()) {
         // A QQuickItemGrabResult handed over whole.
         image = object->property("image").value<QImage>();

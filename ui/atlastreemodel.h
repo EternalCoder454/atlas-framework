@@ -19,6 +19,7 @@
 #pragma once
 
 #include <QAbstractItemModel>
+#include <QItemSelection>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
@@ -45,6 +46,10 @@ public:
     int columnCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
+
+    // One selection for the given indexes (the view's rows in view order),
+    // so a range of n rows is selected in a single call, not n.
+    Q_INVOKABLE QItemSelection selectionOf(const QVariantList &indexes) const;
 
 Q_SIGNALS:
     void itemsChanged();

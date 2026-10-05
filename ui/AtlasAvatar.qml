@@ -14,7 +14,8 @@ import org.kde.kirigami as Kirigami
 //
 // The colours are a fixed set that white text reads on (WCAG AA). The picture
 // is cropped to a circle with a mask, which needs a GPU backend; on Qt
-// Quick's software backend it stays square. The accessible name is `name`.
+// Quick's software backend it stays square. The accessible name is
+// `accessibleName`: `name`, or "Profile picture" when there is none.
 Item {
     id: root
 
@@ -23,6 +24,8 @@ Item {
     // Shown when there is no image and no name (Symbols.Person by default).
     property int symbol: Symbols.Person
     property real size: Kirigami.Units.gridUnit * 2
+    // What a screen reader says; set it for an avatar that has no name.
+    property string accessibleName: name.trim().length > 0 ? name : qsTr("Profile picture")
 
     readonly property var _palette: ["#1f6fbf", "#7a4cc2", "#1e7a45", "#b0501c", "#b02a61", "#0e7482", "#5a5fc7", "#8a6100"]
     readonly property bool _hasImage: image.status === Image.Ready
@@ -48,7 +51,7 @@ Item {
     opacity: enabled ? 1 : 0.6
 
     Accessible.role: Accessible.Graphic
-    Accessible.name: name
+    Accessible.name: root.accessibleName
 
     Rectangle {
         id: disc

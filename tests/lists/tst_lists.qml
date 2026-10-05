@@ -144,8 +144,9 @@ Item {
             const l = make({model: ["a", "b", "c", "d"]});
             keyClick(Qt.Key_A, Qt.ControlModifier);
             compare(l.selectedIndexes.length, 4);
+            // A new model starts with nothing selected.
             l.model = ["a", "b"];
-            compare(l.selectedIndexes, [0, 1]);
+            compare(l.selectedIndexes, []);
         }
         function test_big_list_select_all() {
             const l = createTemporaryObject(bigComp, root, {selectionMode: AtlasListView.MultiSelection});
@@ -157,5 +158,68 @@ Item {
             compare(l.currentIndex, 9999);
             verify(Date.now() - t0 < 3000);
         }
+
+        function test_enum_values() {
+            compare(AtlasListView.SingleSelection, 0);
+            compare(AtlasListView.MultiSelection, 1);
+            compare(AtlasListView.NoSelection, 2);
+        }
+        function test_select_api() {
+            const l = make();
+            l.selectRows([1, 3, 99, -2]);
+            compare(l.selectedRows, [1, 3]);
+            compare(l.selectedIndexes, [1, 3]);
+            l.selectAll();
+            compare(l.selectedRows.length, 7);
+            l.clearSelection();
+            compare(l.selectedRows, []);
+            const s = make({selectionMode: AtlasListView.SingleSelection});
+            s.selectRows([99, 4, 2]);
+            compare(s.selectedRows, [4]);
+            s.selectAll();
+            compare(s.selectedRows, [4]);
+            const n = make({selectionMode: AtlasListView.NoSelection});
+            n.selectRows([1]);
+            compare(n.selectedRows, []);
+        }
+        function test_model_change_clears_selection() {
+            const l = make();
+            l.selectRows([1, 2]);
+            l.model = ["x", "y", "z"];
+            compare(l.selectedRows, []);
+        }
+        function test_selection_follows_list_model() {
+            const l = make({model: lm});
+            lm.clear();
+            for (const t of ["a", "b", "c", "d", "e"]) {
+                lm.append({text: t});
+            }
+            l.selectRows([1, 3]);
+            lm.insert(0, {text: "new"});
+            compare(l.selectedRows, [2, 4]);
+            lm.remove(2, 1);
+            compare(l.selectedRows, [3]);
+            lm.remove(0, 1);
+            compare(l.selectedRows, [2]);
+            lm.clear();
+            compare(l.selectedRows, []);
+        }
+        function test_ctrl_shift_click_adds_range() {
+            const l = make();
+            mouseClick(l, 50, rowY(l, 1));
+            mouseClick(l, 50, rowY(l, 5), Qt.LeftButton, Qt.ControlModifier);
+            compare(l.selectedRows, [1, 5]);
+            // Anchor is row 5 now: Ctrl+Shift to row 3 keeps 1 and adds 3..5.
+            mouseClick(l, 50, rowY(l, 3), Qt.LeftButton, Qt.ControlModifier | Qt.ShiftModifier);
+            compare(l.selectedRows, [1, 3, 4, 5]);
+        }
+        function test_menu_key_uses_row_item() {
+            const l = make();
+            keyClick(Qt.Key_Menu);
+            compare(menuSpy.count, 1);
+            const p = menuSpy.signalArguments[0][1];
+            verify(Math.abs(p.y - rowY(l, 0)) < 2);
+        }
     }
+    ListModel { id: lm }
 }

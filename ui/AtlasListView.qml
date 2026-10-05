@@ -29,7 +29,11 @@ import org.kde.kirigami as Kirigami
 // clicking, selecting, the keyboard and the context menu; draw the selection
 // with `list.isSelected(index)` (it re-evaluates when the selection changes).
 //
-// Selection works by row index. Click selects; Ctrl-click toggles and
+// Selection works by row index; it is cleared when `model` changes, resets or
+// moves rows, and follows the rows when a QAbstractItemModel or ListModel
+// inserts or removes some (a JS array just drops indexes past its end).
+// selectedRows (the same as selectedIndexes), select(), selectRows(list),
+// selectAll() and clearSelection() read and set it from code. Click selects; Ctrl-click toggles and
 // Shift-click extends (MultiSelection); Shift+arrows extend, Ctrl+A selects
 // all, Space toggles. Double click or Return emits `activated`; a right
 // click (it selects an unselected row first), the Menu key or Shift+F10
@@ -45,9 +49,9 @@ ListView {
     id: control
 
     enum SelectionMode {
-        NoSelection,
         SingleSelection,
-        MultiSelection
+        MultiSelection,
+        NoSelection
     }
 
     property string textRole: "text"
@@ -63,6 +67,8 @@ ListView {
         control._rev;
         return Object.keys(control._sel).map(Number).sort((a, b) => a - b);
     }
+    // The same list, named as in DataTable.
+    readonly property list<int> selectedRows: control.selectedIndexes
 
     signal activated(int index)
     signal contextMenuRequested(int index, point pos)
@@ -74,6 +80,45 @@ ListView {
         }
         control.currentIndex = index;
         control._setOnly(index);
+    }
+    // Multi selection: selects every row. Other modes: no effect.
+    function selectAll(): void {
+        if (!control._multi) {
+            return;
+        }
+        const s = {};
+        for (let i = 0; i < control.count; ++i) {
+            s[i] = true;
+        }
+        control._sel = s;
+        control._rev++;
+    }
+    // Selects exactly these rows (out-of-range ones are ignored). Single
+    // selection takes the first valid one; NoSelection ignores the call.
+    function selectRows(rows: list<int>): void {
+        if (!control._selectable) {
+            return;
+        }
+        if (!control._multi) {
+            for (const r of rows) {
+                if (r >= 0 && r < control.count) {
+                    control.select(r);
+                    return;
+                }
+            }
+            return;
+        }
+        const s = {};
+        let last = -1;
+        for (const r of rows) {
+            if (r >= 0 && r < control.count) {
+                s[r] = true;
+                last = r;
+            }
+        }
+        control._sel = s;
+        control._anchor = last;
+        control._rev++;
     }
     function clearSelection(): void {
         control._sel = ({});
@@ -112,6 +157,8 @@ ListView {
     readonly property real _rowH: control.subtitleRole.length > 0 ? Math.round(AtlasStyle.rowHeight * 1.4) : AtlasStyle.rowHeight
     readonly property bool _multi: control.selectionMode === AtlasListView.MultiSelection
     readonly property bool _selectable: control.selectionMode !== AtlasListView.NoSelection
+    // Selection follows a model that reports its row changes.
+    readonly property bool _tracked: control.model !== null && control.model !== undefined && control.model.rowsInserted !== undefined
     readonly property int _dropIndex: control._dragFrom < 0 ? -1 : Math.max(0, Math.min(control.count - 1, Math.floor((control._dragFrom + 0.5) + control._dragDelta / control._rowH)))
 
     function _setOnly(index: int): void {
@@ -135,30 +182,19 @@ ListView {
         control._anchor = index;
         control._rev++;
     }
-    // The rows from the anchor to `index`, and only those.
-    function _extend(index: int): void {
+    // The rows from the anchor to `index`; `add` keeps the selection too.
+    function _extend(index: int, add: bool): void {
         if (!control._multi) {
             control._setOnly(index);
             return;
         }
         const from = control._anchor >= 0 ? control._anchor : Math.max(0, control.currentIndex);
-        const s = {};
+        const s = add ? Object.assign({}, control._sel) : {};
         for (let i = Math.min(from, index); i <= Math.max(from, index); ++i) {
             s[i] = true;
         }
         control._sel = s;
         control._anchor = from;
-        control._rev++;
-    }
-    function _selectAll(): void {
-        if (!control._multi) {
-            return;
-        }
-        const s = {};
-        for (let i = 0; i < control.count; ++i) {
-            s[i] = true;
-        }
-        control._sel = s;
         control._rev++;
     }
     // Moves the current row; Shift extends the selection, Ctrl only moves.
@@ -172,7 +208,7 @@ ListView {
             return;
         }
         if (modifiers & Qt.ShiftModifier) {
-            control._extend(i);
+            control._extend(i, false);
         } else {
             control._setOnly(i);
         }
@@ -188,7 +224,7 @@ ListView {
             return;
         }
         if (modifiers & Qt.ShiftModifier) {
-            control._extend(index);
+            control._extend(index, (modifiers & Qt.ControlModifier) !== 0);
         } else if (modifiers & Qt.ControlModifier) {
             control._toggle(index);
         } else {
@@ -205,7 +241,8 @@ ListView {
             return;
         }
         // From the row's place: its delegate may not be made after a jump.
-        const p = control.contentItem.mapToItem(control, control.width / 2, i * control._rowH + control._rowH / 2);
+        const it = control.itemAtIndex(i);
+        const p = it ? it.mapToItem(control, control.width / 2, it.height / 2) : control.contentItem.mapToItem(control, control.width / 2, i * control._rowH + control._rowH / 2);
         control.contextMenuRequested(i, Qt.point(p.x, Math.max(0, Math.min(control.height, p.y))));
     }
     function _move(delta: int): void {
@@ -268,8 +305,52 @@ ListView {
         onTriggered: control._typed = ""
     }
 
+    function _shiftSelection(first: int, delta: int, last: int): void {
+        // delta > 0: rows inserted at `first`; delta < 0: rows first..last removed.
+        const s = {};
+        for (const k of Object.keys(control._sel)) {
+            const n = Number(k);
+            if (delta < 0 && n >= first && n <= last) {
+                continue;
+            }
+            s[n >= first ? n + delta : n] = true;
+        }
+        control._sel = s;
+        control._anchor = control._anchor >= first ? (delta < 0 && control._anchor <= last ? -1 : control._anchor + delta) : control._anchor;
+        control._rev++;
+    }
+    onModelChanged: control.clearSelection()
+
+    Connections {
+        target: control._tracked ? control.model : null
+        ignoreUnknownSignals: true
+        function onRowsInserted(parent, first, last) {
+            if (!parent.valid) {
+                control._shiftSelection(first, last - first + 1, last);
+            }
+        }
+        function onRowsRemoved(parent, first, last) {
+            if (!parent.valid) {
+                control._shiftSelection(first, -(last - first + 1), last);
+            }
+        }
+        function onModelReset() {
+            control.clearSelection();
+        }
+        function onRowsMoved() {
+            control.clearSelection();
+        }
+        function onLayoutChanged() {
+            control.clearSelection();
+        }
+    }
+
     onCountChanged: {
-        // Rows that are gone drop out of the selection.
+        // Rows that are gone drop out of the selection (a tracked model
+        // shifts it itself, and does so before the count is final).
+        if (control._tracked) {
+            return;
+        }
         let changed = false;
         for (const k of Object.keys(control._sel)) {
             if (Number(k) >= control.count) {
@@ -361,7 +442,7 @@ ListView {
             break;
         case Qt.Key_A:
             if (mods & Qt.ControlModifier) {
-                control._selectAll();
+                control.selectAll();
                 break;
             }
             if (!control._typeKey(event)) {
@@ -435,6 +516,10 @@ ListView {
         onTapped: point => control._clickAt(control.indexAt(point.position.x, point.position.y), Qt.ShiftModifier)
     }
     TapHandler {
+        acceptedModifiers: Qt.ControlModifier | Qt.ShiftModifier
+        onTapped: point => control._clickAt(control.indexAt(point.position.x, point.position.y), Qt.ControlModifier | Qt.ShiftModifier)
+    }
+    TapHandler {
         acceptedButtons: Qt.RightButton
         acceptedModifiers: Qt.KeyboardModifierMask
         onTapped: point => {
@@ -458,7 +543,14 @@ ListView {
         visible: control._dragFrom >= 0 && control._dropIndex !== control._dragFrom
         x: AtlasStyle.spacing
         width: control.contentItem.width - 2 * AtlasStyle.spacing
-        y: (control._dropIndex > control._dragFrom ? control._dropIndex + 1 : control._dropIndex) * control._rowH - 1
+        y: {
+            const it = control.itemAtIndex(control._dropIndex);
+            const below = control._dropIndex > control._dragFrom;
+            if (it) {
+                return (below ? it.y + it.height : it.y) - 1;
+            }
+            return (below ? control._dropIndex + 1 : control._dropIndex) * control._rowH - 1;
+        }
         height: 2
         radius: 1
         color: Kirigami.Theme.highlightColor

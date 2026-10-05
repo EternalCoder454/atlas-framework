@@ -217,7 +217,7 @@ FocusScope {
 
     function selectRows(rows) {
         if (!_multi) {
-            if (selectionMode === DataTable.SingleSelection && rows.length > 0) {
+            if (selectionMode === DataTable.SingleSelection && rows.length > 0 && rows[0] >= 0 && rows[0] < list.count) {
                 list.currentIndex = rows[0];
             }
             return;
@@ -500,6 +500,10 @@ FocusScope {
     readonly property string collapsedText: qsTr("Collapsed")
 
     function openMenuAtCurrent() {
+        // Bring the row on screen first: off screen it has no item.
+        if (list.currentIndex >= 0 && list.currentIndex < list.count) {
+            list.positionViewAtIndex(list.currentIndex, ListView.Contain);
+        }
         const item = list.currentItem;
         if (!item) {
             return false;
