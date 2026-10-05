@@ -1,7 +1,7 @@
 ---
 title: AtlasTextView
 summary: A virtualized text view for very large text such as logs and files, with selection, copy, line numbers and follow mode.
-section: Text
+section: Text and code
 since: "1.5.0"
 ---
 
@@ -62,6 +62,17 @@ AtlasTextView {
 | `textColor` | `color` | theme text | The text colour. |
 | `selectionColor` | `color` | theme accent | The selection colour. |
 | `lineNumberColor` | `color` | theme muted | The gutter's number colour. |
+
+## Enumerations
+
+The values of `lineEnding`:
+
+| Name | Description |
+|---|---|
+| `LF` | Lines end with `\n`. |
+| `CRLF` | Lines end with `\r\n`. |
+| `CR` | Lines end with `\r`. |
+| `Mixed` | More than one kind. |
 
 ## Methods
 
