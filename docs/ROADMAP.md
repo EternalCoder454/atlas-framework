@@ -365,6 +365,14 @@ Candidates for 1.6.0 (new API; the scope is the user's call):
   while another process holds the lock, and AtlasWindow.stateKey flushes on
   resize. (Updater)
 
+- [x] AtlasWindow's resize handles were 4 px and hard to hit on KWin (the
+  header comment still said 6): 6 px sides, 16 px L-shaped corners. (Notepad,
+  from the AtlasOS VM check)
+- [ ] AtlasWindow: a grab area outside the visible edge like KWin's own
+  decorations (a transparent margin with an input region, or xdg-shell
+  window geometry), so a drag from 1 px outside the hairline resizes too.
+  (Notepad)
+
 ### B2: study findings (F and R), whole framework
 
 Studies 1-3 (fields and buttons; lists and data; dialogs, popups and the

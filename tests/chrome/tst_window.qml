@@ -139,6 +139,29 @@ Item {
             compare(resizeAt(w, W / 2, H / 2), []);
         }
 
+        // The handles reach 6 px in; a corner runs 16 px along both edges (an
+        // L, so the square inside it is the content's).
+        function test_handles_are_easy_to_grab() {
+            const w = createTemporaryObject(framelessComp, root);
+            w.show();
+            tryVerify(() => w.visible && w.visibility === Window.Windowed);
+            const W = w.width;
+            const H = w.height;
+            compare(resizeAt(w, 5, H / 2), [Qt.LeftEdge]);
+            compare(resizeAt(w, W - 6, H / 2), [Qt.RightEdge]);
+            compare(resizeAt(w, W / 2, H - 6), [Qt.BottomEdge]);
+            compare(resizeAt(w, 7, H / 2), []);
+            compare(resizeAt(w, 14, H - 2), [Qt.BottomEdge | Qt.LeftEdge]);
+            compare(resizeAt(w, 2, H - 14), [Qt.BottomEdge | Qt.LeftEdge]);
+            compare(resizeAt(w, W - 14, H - 2), [Qt.BottomEdge | Qt.RightEdge]);
+            compare(resizeAt(w, W - 2, H - 14), [Qt.BottomEdge | Qt.RightEdge]);
+            compare(resizeAt(w, 2, 14), [Qt.TopEdge | Qt.LeftEdge]);
+            compare(resizeAt(w, W - 2, 14), [Qt.TopEdge | Qt.RightEdge]);
+            compare(resizeAt(w, W - 14, 2), [Qt.TopEdge | Qt.RightEdge]);
+            compare(resizeAt(w, 10, H - 10), []);
+            compare(resizeAt(w, W - 10, 10), []);
+        }
+
         function test_handle_cursors() {
             const w = createTemporaryObject(framelessComp, root);
             const want = {};
@@ -150,7 +173,7 @@ Item {
             want[Qt.BottomEdge] = Qt.SizeVerCursor;
             want[Qt.LeftEdge] = Qt.SizeHorCursor;
             want[Qt.RightEdge] = Qt.SizeHorCursor;
-            compare(w._handles.length, 8);
+            compare(w._handles.length, 12);
             for (const h of w._handles) {
                 compare(h.cursor, want[h.edges]);
             }

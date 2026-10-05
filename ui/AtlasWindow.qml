@@ -40,8 +40,9 @@ import org.kde.kirigami as Kirigami
 //   }
 //
 // Then the window has the Qt.FramelessWindowHint, a hairline border (none when
-// maximised or full screen), and 4 px invisible handles around it that resize
-// it through the compositor (startSystemResize), with the right cursors. The
+// maximised or full screen), and invisible handles along its edges (6 px deep,
+// with 16 px L-shaped corners) that resize it through the compositor
+// (startSystemResize), with the right cursors. The
 // header moves the window and maximises it on a double click. The header sits
 // above the content, as with any ApplicationWindow `header`, so it composes
 // with Kirigami page stacks inside (their global toolbars are separate).
@@ -94,42 +95,27 @@ QQC2.ApplicationWindow {
             root.startSystemResize(edges);
         }
     }
-    // The handles: the edges each one resizes and its cursor.
+    // The handles: the edges each one resizes and its cursor. A corner is two
+    // strips (`axis` "h" along the top or bottom edge, "v" along the side), an
+    // L that is easy to grab without reaching into the header's buttons.
     readonly property var _handles: [
-        {
-            edges: Qt.TopEdge | Qt.LeftEdge,
-            cursor: Qt.SizeFDiagCursor
-        },
-        {
-            edges: Qt.TopEdge,
-            cursor: Qt.SizeVerCursor
-        },
-        {
-            edges: Qt.TopEdge | Qt.RightEdge,
-            cursor: Qt.SizeBDiagCursor
-        },
-        {
-            edges: Qt.LeftEdge,
-            cursor: Qt.SizeHorCursor
-        },
-        {
-            edges: Qt.RightEdge,
-            cursor: Qt.SizeHorCursor
-        },
-        {
-            edges: Qt.BottomEdge | Qt.LeftEdge,
-            cursor: Qt.SizeBDiagCursor
-        },
-        {
-            edges: Qt.BottomEdge,
-            cursor: Qt.SizeVerCursor
-        },
-        {
-            edges: Qt.BottomEdge | Qt.RightEdge,
-            cursor: Qt.SizeFDiagCursor
-        }
+        { edges: Qt.TopEdge | Qt.LeftEdge, axis: "h", cursor: Qt.SizeFDiagCursor },
+        { edges: Qt.TopEdge | Qt.LeftEdge, axis: "v", cursor: Qt.SizeFDiagCursor },
+        { edges: Qt.TopEdge, axis: "", cursor: Qt.SizeVerCursor },
+        { edges: Qt.TopEdge | Qt.RightEdge, axis: "h", cursor: Qt.SizeBDiagCursor },
+        { edges: Qt.TopEdge | Qt.RightEdge, axis: "v", cursor: Qt.SizeBDiagCursor },
+        { edges: Qt.LeftEdge, axis: "", cursor: Qt.SizeHorCursor },
+        { edges: Qt.RightEdge, axis: "", cursor: Qt.SizeHorCursor },
+        { edges: Qt.BottomEdge | Qt.LeftEdge, axis: "h", cursor: Qt.SizeBDiagCursor },
+        { edges: Qt.BottomEdge | Qt.LeftEdge, axis: "v", cursor: Qt.SizeBDiagCursor },
+        { edges: Qt.BottomEdge, axis: "", cursor: Qt.SizeVerCursor },
+        { edges: Qt.BottomEdge | Qt.RightEdge, axis: "h", cursor: Qt.SizeFDiagCursor },
+        { edges: Qt.BottomEdge | Qt.RightEdge, axis: "v", cursor: Qt.SizeFDiagCursor }
     ]
-    readonly property real _grip: 4
+    // How deep the handles reach in from the edge, and how far a corner runs
+    // along each edge.
+    readonly property real _grip: 6
+    readonly property real _cornerGrip: 16
 
     // An alpha surface only while blurred: an opaque window otherwise, as before.
     color: root.blurred ? "transparent" : AtlasStyle.base
@@ -156,16 +142,18 @@ QQC2.ApplicationWindow {
             readonly property bool _bottom: (_edges & Qt.BottomEdge) !== 0
             readonly property bool _corner: (_left || _right) && (_top || _bottom)
 
-            // Corners are grip x grip squares; sides run between them.
-            // The top side stops short of the header's window buttons and menu
-            // button, so the handle never covers the top pixels of a button.
+            // Sides run between the corners. The top side stops short of the
+            // header's window buttons and menu button, so the handle never
+            // covers the top pixels of a button.
+            readonly property bool _alongTop: handle._corner ? handle.modelData.axis === "h" : handle._top || handle._bottom
+            readonly property real _len: root._cornerGrip
             readonly property bool _topSide: handle._top && !handle._corner
-            readonly property real _from: _topSide && root._atlasHeader ? Math.max(root._grip, root._atlasHeader._freeStart) : root._grip
-            readonly property real _to: _topSide && root._atlasHeader ? Math.max(_from, root.width - Math.max(root._grip, root._atlasHeader._freeEnd)) : root.width - root._grip
-            x: handle._left ? 0 : handle._right ? root.width - root._grip : handle._from
-            y: handle._top ? 0 : handle._bottom ? root.height - root._grip : root._grip
-            width: handle._left || handle._right ? root._grip : handle._to - handle._from
-            height: handle._top || handle._bottom ? root._grip : root.height - 2 * root._grip
+            readonly property real _from: _topSide && root._atlasHeader ? Math.max(_len, root._atlasHeader._freeStart) : _len
+            readonly property real _to: _topSide && root._atlasHeader ? Math.max(_from, root.width - Math.max(_len, root._atlasHeader._freeEnd)) : root.width - _len
+            x: handle._left ? 0 : handle._right ? root.width - (handle._corner && handle._alongTop ? _len : root._grip) : handle._from
+            y: handle._top ? 0 : handle._bottom ? root.height - (handle._corner && !handle._alongTop ? _len : root._grip) : _len
+            width: handle._corner ? (handle._alongTop ? _len : root._grip) : handle._left || handle._right ? root._grip : handle._to - handle._from
+            height: handle._corner ? (handle._alongTop ? root._grip : _len) : handle._top || handle._bottom ? root._grip : root.height - 2 * _len
             z: 1000
             acceptedButtons: Qt.LeftButton
             hoverEnabled: true

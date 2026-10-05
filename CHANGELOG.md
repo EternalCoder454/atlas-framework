@@ -42,6 +42,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   longer repeats its title under the header (its `headerTrailing` items
   stay); the header's title is heading-sized (it took the point size as
   pixels and came out small).
+- Fix: a frameless `AtlasWindow` is easier to resize: its edge handles reach
+  6 px in (4 before) and each corner is an L running 16 px along both edges.
+  The header's buttons stay clear of them.
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call
   (60 s by default) and an overall deadline) returning `ListOutcome`
