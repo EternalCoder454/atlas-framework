@@ -109,7 +109,7 @@ T.AbstractButton {
     contentItem: Text {
         text: priv.label
         font: Kirigami.Theme.defaultFont
-        color: priv.filled && control.enabled ? Kirigami.Theme.highlightedTextColor : priv.tint
+        color: priv.filled && control.enabled ? AtlasStyle.accentText : priv.tint
         opacity: control.enabled ? 1 : 0.75
         textFormat: Text.PlainText // no mnemonics
         horizontalAlignment: Text.AlignHCenter
@@ -123,7 +123,7 @@ T.AbstractButton {
             anchors.fill: parent
             radius: AtlasStyle.radiusPill
             color: {
-                const accent = Kirigami.Theme.highlightColor;
+                const accent = AtlasStyle.accent;
                 if (priv.filled) {
                     if (!control.enabled) {
                         return Qt.alpha(Kirigami.Theme.textColor, 0.12);
@@ -151,7 +151,7 @@ T.AbstractButton {
                 height: parent.height
                 radius: AtlasStyle.radiusPill
                 width: priv.fraction > 0 ? Math.min(parent.width, Math.max(height, parent.width * priv.fraction)) : 0
-                color: Qt.alpha(Kirigami.Theme.highlightColor, 0.55)
+                color: Qt.alpha(AtlasStyle.accent, 0.55)
                 Behavior on width {
                     NumberAnimation {
                         duration: AtlasStyle.duration
@@ -166,7 +166,7 @@ T.AbstractButton {
                 height: parent.height
                 radius: AtlasStyle.radiusPill
                 width: Math.min(parent.width, parent.width * 0.35)
-                color: Qt.alpha(Kirigami.Theme.highlightColor, 0.55)
+                color: Qt.alpha(AtlasStyle.accent, 0.55)
                 SequentialAnimation on x {
                     running: priv.indeterminate && control.visible && AtlasStyle.duration > 0
                     loops: Animation.Infinite

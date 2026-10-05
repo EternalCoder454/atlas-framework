@@ -64,7 +64,7 @@ T.MenuItem {
 
     background: Rectangle {
         radius: AtlasStyle.radiusSmall
-        color: control.highlighted ? Qt.alpha(control.destructive ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor, control.down ? 0.28 : 0.18) : "transparent"
+        color: control.highlighted ? Qt.alpha(control.destructive ? Kirigami.Theme.negativeTextColor : AtlasStyle.accent, control.down ? 0.28 : 0.18) : "transparent"
     }
 
     contentItem: RowLayout {

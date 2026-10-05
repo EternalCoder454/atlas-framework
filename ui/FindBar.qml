@@ -91,8 +91,8 @@ Item {
         verticalAlignment: TextInput.AlignVCenter
         placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
         color: Kirigami.Theme.textColor
-        selectionColor: Kirigami.Theme.highlightColor
-        selectedTextColor: Kirigami.Theme.highlightedTextColor
+        selectionColor: AtlasStyle.accent
+        selectedTextColor: AtlasStyle.accentText
         font: Kirigami.Theme.defaultFont
         selectByMouse: true
         inputMethodHints: Qt.ImhNoPredictiveText
@@ -104,7 +104,7 @@ Item {
             radius: AtlasStyle.radiusPill
             color: Qt.alpha(Kirigami.Theme.textColor, field.hovered && !field.activeFocus ? 0.09 : 0.06)
             border.width: field.activeFocus ? 2 : 1
-            border.color: field.activeFocus ? Qt.alpha(field.invalid ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+            border.color: field.activeFocus ? Qt.alpha(field.invalid ? Kirigami.Theme.negativeTextColor : AtlasStyle.accent, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
         }
 
         // A template field draws no placeholder of its own.

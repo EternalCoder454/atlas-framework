@@ -43,7 +43,7 @@ T.AbstractButton {
         const raw = a && a.toolTip !== undefined && String(a.toolTip).length > 0 ? String(a.toolTip) : a && a.text ? String(a.text) : control.text;
         return raw.replace(/&(.)/g, "$1");
     }
-    readonly property color _iconColor: control.checked ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
+    readonly property color _iconColor: control.checked ? AtlasStyle.accent : Kirigami.Theme.textColor
 
     implicitWidth: Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
@@ -80,7 +80,7 @@ T.AbstractButton {
 
     background: Rectangle {
         radius: AtlasStyle.radiusSmall
-        color: control.checked ? Qt.alpha(Kirigami.Theme.highlightColor, control.down ? 0.28 : 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.12 : control.hovered ? 0.07 : 0)
+        color: control.checked ? Qt.alpha(AtlasStyle.accent, control.down ? 0.28 : 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.12 : control.hovered ? 0.07 : 0)
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort

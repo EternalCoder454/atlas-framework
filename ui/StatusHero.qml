@@ -16,7 +16,7 @@ ColumnLayout {
     property bool busy: false
     // 0..1 draws a progress ring; negative means none.
     property real progress: -1
-    property color tint: Kirigami.Theme.highlightColor
+    property color tint: AtlasStyle.accent
     // The badge's diameter in grid units, and its ring's stroke width.
     property real badgeUnits: 5
     property real ringWidth: 4
@@ -80,7 +80,7 @@ ColumnLayout {
             anchors.bottom: parent.bottom
             anchors.rightMargin: Math.round(badge.size * 0.04)
             anchors.bottomMargin: Math.round(badge.size * 0.04)
-            color: Kirigami.Theme.highlightColor
+            color: AtlasStyle.accent
             border.width: ringWidth
             border.color: Kirigami.Theme.backgroundColor
             Kirigami.Icon {

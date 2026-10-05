@@ -93,8 +93,8 @@ T.TextField {
     verticalAlignment: TextInput.AlignVCenter
     placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
     color: Kirigami.Theme.textColor
-    selectionColor: Kirigami.Theme.highlightColor
-    selectedTextColor: Kirigami.Theme.highlightedTextColor
+    selectionColor: AtlasStyle.accent
+    selectedTextColor: AtlasStyle.accentText
     font: Kirigami.Theme.defaultFont
     selectByMouse: true
     hoverEnabled: true
@@ -124,7 +124,7 @@ T.TextField {
         radius: AtlasStyle.radiusPill
         color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
         border.width: control.activeFocus || control.hasError ? 2 : 1
-        border.color: control.hasError ? Kirigami.Theme.negativeTextColor : control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        border.color: control.hasError ? Kirigami.Theme.negativeTextColor : control.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
         AtlasFocusRing {
             radius: parent.radius + gap
             shown: control.activeFocus && (control.focusReason === Qt.TabFocusReason || control.focusReason === Qt.BacktabFocusReason || control.focusReason === Qt.ShortcutFocusReason)

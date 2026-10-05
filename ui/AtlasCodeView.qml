@@ -101,7 +101,8 @@ Item {
                 width: visible ? implicitWidth : 0
                 horizontalAlignment: Text.AlignRight
                 text: control._numbers
-                font: Kirigami.Theme.fixedWidthFont
+                font.family: AtlasStyle.monoFamily
+                font.pointSize: Kirigami.Theme.fixedWidthFont.pointSize
                 color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
                 Accessible.ignored: true
@@ -116,10 +117,11 @@ Item {
                 text: control.text
                 textFormat: TextEdit.PlainText
                 wrapMode: control.wrap ? TextEdit.Wrap : TextEdit.NoWrap
-                font: Kirigami.Theme.fixedWidthFont
+                font.family: AtlasStyle.monoFamily
+                font.pointSize: Kirigami.Theme.fixedWidthFont.pointSize
                 color: Kirigami.Theme.textColor
-                selectionColor: Kirigami.Theme.highlightColor
-                selectedTextColor: Kirigami.Theme.highlightedTextColor
+                selectionColor: AtlasStyle.accent
+                selectedTextColor: AtlasStyle.accentText
 
                 Accessible.role: Accessible.EditableText
                 Accessible.name: control.Accessible.name

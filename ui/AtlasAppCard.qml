@@ -160,7 +160,7 @@ T.AbstractButton {
             Layout.preferredHeight: priv.iconSide
             Layout.alignment: Qt.AlignVCenter
             radius: Math.round(priv.iconSide * 0.225)
-            color: priv.hasIcon ? "transparent" : Qt.alpha(Kirigami.Theme.highlightColor, 0.14)
+            color: priv.hasIcon ? "transparent" : Qt.alpha(AtlasStyle.accent, 0.14)
             Kirigami.Icon {
                 anchors.fill: parent
                 visible: priv.hasIcon
@@ -174,7 +174,7 @@ T.AbstractButton {
                 sourceComponent: Symbol {
                     icon: control.symbol !== 0 ? control.symbol : Symbols.Apps
                     size: Math.round(priv.iconSide * 0.55)
-                    color: Kirigami.Theme.highlightColor
+                    color: AtlasStyle.accent
                 }
             }
         }

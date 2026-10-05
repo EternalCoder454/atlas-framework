@@ -553,7 +553,7 @@ ListView {
         }
         height: 2
         radius: 1
-        color: Kirigami.Theme.highlightColor
+        color: AtlasStyle.accent
         z: 3
         Accessible.ignored: true
     }
@@ -602,7 +602,7 @@ ListView {
                 anchors.topMargin: 2
                 anchors.bottomMargin: 2
                 radius: AtlasStyle.radiusSmall
-                color: row.dragging ? Qt.alpha(Kirigami.Theme.highlightColor, 0.3) : row.selected ? Qt.alpha(Kirigami.Theme.highlightColor, control.activeFocus ? 0.24 : 0.16) : Qt.alpha(Kirigami.Theme.textColor, control._hover === row.index ? 0.06 : 0)
+                color: row.dragging ? Qt.alpha(AtlasStyle.accent, 0.3) : row.selected ? Qt.alpha(AtlasStyle.accent, control.activeFocus ? 0.24 : 0.16) : Qt.alpha(Kirigami.Theme.textColor, control._hover === row.index ? 0.06 : 0)
                 AtlasFocusRing {
                     gap: 1
                     radius: pill.radius + gap
@@ -662,7 +662,7 @@ ListView {
                     sourceComponent: Symbol {
                         icon: row.symbolValue
                         size: Kirigami.Units.iconSizes.smallMedium
-                        color: Kirigami.Theme.highlightColor
+                        color: AtlasStyle.accent
                     }
                 }
                 ColumnLayout {

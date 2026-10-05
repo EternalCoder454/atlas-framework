@@ -186,7 +186,7 @@ QQC2.Popup {
             AtlasButton {
                 id: acceptButton
                 // The error colour replaces the accent for this button only.
-                Kirigami.Theme.highlightColor: dialog.destructive ? titleLabel.Kirigami.Theme.negativeTextColor : titleLabel.Kirigami.Theme.highlightColor
+                Kirigami.Theme.highlightColor: dialog.destructive ? titleLabel.Kirigami.Theme.negativeTextColor : AtlasStyle.accent
                 prominent: internals.defaultName === "accept" || dialog.destructive
                 text: dialog.acceptText
                 onClicked: {

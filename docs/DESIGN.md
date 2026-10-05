@@ -87,10 +87,21 @@ its controls gets them for free.
    `iconName` set to the logo (`LOGO=` from os-release, then
    `distributor-logo`), `iconIsMask: false`, `showTintCircle: false` and
    `cornerBadgeIcon: "checkmark"`. Atlas Updater's Updates page is the model.
-5. **Follow the Plasma theme.** Every colour comes from `Kirigami.Theme`
-   (the accent is `highlightColor`), every size from `Kirigami.Units`, every
-   font from the theme's fonts. No hard-coded colours, so light, dark and the
-   user's accent all work. The Qt Quick Controls style is `org.kde.desktop`.
+5. **The Atlas look, on the Plasma theme.** Calm and precise, Light and Dark
+   equally. Violet is the accent (`AtlasStyle.accent`: #6858E2 in Light,
+   #8A7AF4 in Dark) for buttons and selection; pink (`AtlasStyle.focus`:
+   #C8326F in Light, #F07AB0 in Dark, each 3:1 or more against the window)
+   is for focus rings and decoration. When the user has chosen an accent in
+   Plasma, that accent wins, as in other KDE apps. Fonts are IBM Plex Sans
+   (the application font's family; its size stays the user's) and JetBrains
+   Mono for code (`AtlasStyle.fontFamily`, `monoFamily`), falling back to
+   the system fonts when not installed. Corners are small (4, 6 and 8) and
+   motion is quick and subtle (100, 150 and 250 ms). Every colour comes from
+   `AtlasStyle` or `Kirigami.Theme` (Atlas.Ui puts the violet in the
+   application palette, so `Kirigami.Theme.highlightColor` is the accent
+   too), every size from `Kirigami.Units`. No hard-coded colours, so light,
+   dark and the user's accent all work. The Qt Quick Controls style is
+   `org.kde.desktop`.
 6. **Never default QQC2 or Kirigami buttons.** No `QQC2.Button`,
    `QQC2.ToolButton`, `QQC2.Switch` or `Kirigami.Action`-made buttons in an
    app's own pages: use Atlas.Ui's buttons and switch. If Atlas.Ui lacks a
@@ -102,7 +113,7 @@ its controls gets them for free.
    (screen readers), takes keyboard focus where it acts and shows
    `AtlasFocusRing` when focus came from the keyboard, and stops animating
    while hidden or when Plasma's animation speed is "Instant"
-   (`Kirigami.Units` durations are 0 then). Text a user reads is in `qsTr()`.
+   (`AtlasStyle` durations are 0 then). Text a user reads is in `qsTr()`.
 
 Icons are Material Symbols through `Symbol` and the `symbol:` property of
 the buttons, sidebar items and menu items, or theme icons by name where a
@@ -145,7 +156,7 @@ control takes `iconName`.
 | `AtlasSplitView` | Panes with a thin Atlas divider and a wider grab area; `stateKey` remembers the sizes in the app's settings, `saveSizes()`/`restoreSizes()` for the app's own storage (since 1.4.0) |
 | `AtlasNavigationStack` | Pages pushed over each other with a header (Back button, page `title`); `push()`, `pop()`, `depth`, `canGoBack`, `showHeader`, `wentBack()`; Alt+Left and the mouse Back button go back (since 1.4.0) |
 | `AtlasViewSwitcher` | Page tabs for a window top: `model` of `{ text, symbol, badge }`, `currentIndex`, `activated(index)`, `narrow` puts the text under the symbol; one Tab stop, arrows, Home and End (since 1.4.0) |
-| `AtlasStyle` | Singleton of design tokens: colours by role, spacing, radii, font sizes, durations (0 when `reducedMotion`), `density` (`Normal` or `Compact`) with `rowHeight`. Controls follow `density` (SectionRow, TabBar, StatusBar and SidebarItem also have a local `density`) and `reducedMotion`. `Appearance` also reports `colorScheme`, `darkMode`, `highContrast`, `reducedMotion` and `textScale` (since 1.4.0) |
+| `AtlasStyle` | Singleton of design tokens: colours by role (`accent` violet, `focus` pink; a Plasma accent wins), spacing, radii (4, 6, 8), `fontFamily` and `monoFamily` (IBM Plex Sans, JetBrains Mono, with fallback), font sizes, durations (100, 150, 250 ms; 0 when `reducedMotion`), `density` (`Normal` or `Compact`) with `rowHeight`. Controls follow `density` (SectionRow, TabBar, StatusBar and SidebarItem also have a local `density`) and `reducedMotion`. `Appearance` also reports `colorScheme`, `darkMode`, `highContrast`, `reducedMotion`, `textScale`, `accentFromSystem`, `fontFamily` and `monoFamily` (since 1.4.0) |
 | `AtlasPopover` | Raised card (surface, shadow, border) that opens next to `target`, below it or above when there is no room, with an optional arrow (`showArrow`); Escape or an outside click closes it and the focus returns to the target (since 1.4.0) |
 | `AtlasScrollBar` | Thin rounded scroll bar: the thumb widens on hover and fades out when nothing scrolls; always drawn while hovered or when a screen reader is active; no fade under reduced motion. Attach with `ScrollBar.vertical: AtlasScrollBar {}` (since 1.4.0) |
 | `AtlasDialog` | General modal dialog on `T.Dialog`: `title`, `showBack` with `backRequested()`, `showClose`, `headerTrailing`, a scrolling body capped to the window, `footerContent` buttons right-aligned in KDE order, `preferredWidth` (since 1.4.0) |

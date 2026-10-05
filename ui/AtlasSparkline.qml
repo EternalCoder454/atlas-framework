@@ -24,7 +24,7 @@ AtlasSparklineItem {
     implicitWidth: Kirigami.Units.gridUnit * 6
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.6)
 
-    color: Kirigami.Theme.highlightColor
+    color: AtlasStyle.accent
     opacity: enabled ? 1 : 0.6
 
     Accessible.role: Accessible.Chart

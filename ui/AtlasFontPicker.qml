@@ -239,7 +239,7 @@ T.AbstractButton {
                     Accessible.name: modelData
                     background: Rectangle {
                         radius: AtlasStyle.radiusSmall
-                        color: row.highlighted ? Qt.alpha(Kirigami.Theme.highlightColor, row.down ? 0.28 : 0.18) : "transparent"
+                        color: row.highlighted ? Qt.alpha(AtlasStyle.accent, row.down ? 0.28 : 0.18) : "transparent"
                     }
                     contentItem: Text {
                         text: row.modelData

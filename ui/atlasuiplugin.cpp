@@ -6,6 +6,8 @@
 #include <QtQml/qqmlengine.h>
 #include <QtQml/qqmlextensionplugin.h>
 
+#include "appearance.h"
+
 extern void qml_register_types_Atlas_Ui();
 bool atlasUiInstallTranslations();
 bool atlasUiTranslationsDone();
@@ -43,6 +45,8 @@ public:
         if (!engine) {
             return;
         }
+        // The violet and the UI font, before any item reads them.
+        atlasUiApplyBrand();
         // Before the engine evaluates any qsTr(), then once more so that an
         // engine that cached translations earlier looks again.
         if (atlasUiInstallTranslations()) {

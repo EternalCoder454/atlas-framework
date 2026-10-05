@@ -21,6 +21,15 @@
 //                  ATLAS_REDUCED_MOTION=1. Missing kdeglobals means false.
 //   textScale      the application font's point size over 10 (Plasma's
 //                  default), so 1.0 is the default size, 1.2 is 20% larger.
+//
+// The Atlas brand (since 1.4.0), set once when Atlas.Ui loads:
+//   accentFromSystem  the user chose an accent colour in Plasma (AccentColor
+//                  in kdeglobals [General]). Then that accent is used; if not,
+//                  the Atlas violet (and pink focus ring) is, by putting it
+//                  in the application palette as the highlight colour.
+//   fontFamily     "IBM Plex Sans" when installed, else the system font's
+//                  family. It is also the application font's family.
+//   monoFamily     "JetBrains Mono" when installed, else the system fixed font.
 #pragma once
 
 #include <KConfigWatcher>
@@ -45,6 +54,9 @@ class Appearance : public QObject
     Q_PROPERTY(bool highContrast READ highContrast NOTIFY highContrastChanged)
     Q_PROPERTY(bool reducedMotion READ reducedMotion NOTIFY reducedMotionChanged)
     Q_PROPERTY(qreal textScale READ textScale NOTIFY textScaleChanged)
+    Q_PROPERTY(bool accentFromSystem READ accentFromSystem CONSTANT)
+    Q_PROPERTY(QString fontFamily READ fontFamily CONSTANT)
+    Q_PROPERTY(QString monoFamily READ monoFamily CONSTANT)
 
 public:
     enum ColorScheme {
@@ -66,6 +78,9 @@ public:
     bool highContrast() const { return m_highContrast; }
     bool reducedMotion() const { return m_reducedMotion; }
     qreal textScale() const { return m_textScale; }
+    bool accentFromSystem() const;
+    QString fontFamily() const;
+    QString monoFamily() const;
 
     // Ask the compositor again whether blur is on.
     Q_INVOKABLE void refresh();
@@ -104,3 +119,8 @@ private:
     bool m_transparency = true;
     bool m_blurAvailable = false;
 };
+
+// Puts the Atlas brand into the application: the violet highlight (unless the
+// user has chosen a Plasma accent) and the UI font family. Safe to call more
+// than once; the Atlas.Ui plugin calls it when the module loads.
+void atlasUiApplyBrand();

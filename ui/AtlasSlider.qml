@@ -63,7 +63,7 @@ T.Slider {
             width: control.horizontal ? control.position * parent.width : parent.width
             height: control.horizontal ? parent.height : control.position * parent.height
             radius: parent.radius
-            color: control.enabled ? Kirigami.Theme.highlightColor : control.palette.active.highlight
+            color: control.enabled ? AtlasStyle.accent : control.palette.active.highlight
         }
     }
 
@@ -75,7 +75,7 @@ T.Slider {
         radius: width / 2
         color: Kirigami.Theme.backgroundColor
         border.width: 2
-        border.color: Qt.alpha(Kirigami.Theme.highlightColor, control.pressed ? 1 : 0.8)
+        border.color: Qt.alpha(AtlasStyle.accent, control.pressed ? 1 : 0.8)
         scale: control.pressed ? 1.1 : 1
         Behavior on scale {
             NumberAnimation {

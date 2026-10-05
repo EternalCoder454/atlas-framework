@@ -104,12 +104,9 @@ T.ComboBox {
 
         Accessible.name: text
 
-        background: Item {
-            Rectangle {
-                anchors.fill: parent
-                radius: AtlasStyle.radiusSmall
-                color: row.highlighted ? Qt.alpha(Kirigami.Theme.highlightColor, row.down ? 0.28 : 0.18) : "transparent"
-            }
+        background: Rectangle {
+            radius: AtlasStyle.radiusSmall
+            color: row.highlighted ? Qt.alpha(AtlasStyle.accent, row.down ? 0.28 : 0.18) : "transparent"
         }
         contentItem: Row {
             spacing: AtlasStyle.spacingLarge

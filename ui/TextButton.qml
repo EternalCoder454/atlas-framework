@@ -31,7 +31,7 @@ T.AbstractButton {
         text: control.text
         font: Kirigami.Theme.defaultFont
         textFormat: Text.PlainText
-        color: control.down ? Qt.darker(Kirigami.Theme.highlightColor, 1.2) : control.hovered ? Qt.lighter(Kirigami.Theme.highlightColor, 1.15) : Kirigami.Theme.highlightColor
+        color: control.down ? Qt.darker(AtlasStyle.accent, 1.2) : control.hovered ? Qt.lighter(AtlasStyle.accent, 1.15) : AtlasStyle.accent
         opacity: control.enabled ? 1 : 0.45
         Behavior on color {
             ColorAnimation {
@@ -43,6 +43,6 @@ T.AbstractButton {
         radius: AtlasStyle.radiusSmall
         color: "transparent"
         border.width: control.visualFocus ? 2 : 0
-        border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
+        border.color: Qt.alpha(AtlasStyle.focus, 0.85)
     }
 }

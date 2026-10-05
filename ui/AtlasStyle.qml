@@ -15,7 +15,12 @@ import Atlas.Ui
 //   }
 //
 // Colours (follow the system colour scheme and accent, light or dark):
-//   accent, accentText      the accent colour, and text readable on it
+//   accent, accentText      the accent colour, and text readable on it. Atlas
+//                           violet (#6858E2 light, #8A7AF4 dark) unless the user
+//                           chose an accent in Plasma, which then wins.
+//   focus                   the keyboard focus ring and decoration colour: Atlas
+//                           pink (#C8326F light, #F07AB0 dark, 3:1 or more on
+//                           the window), or the user's Plasma accent
 //   surface                 a raised card over the page (Section's card)
 //   surfaceAlt              the alternate row colour of the colour scheme
 //   text, textMuted         body text, and secondary text (65% of text)
@@ -25,18 +30,22 @@ import Atlas.Ui
 // Spacing: spacingSmall, spacing, spacingLarge (Kirigami.Units small, medium
 // and large spacing, in pixels).
 //
-// Radii: radiusSmall 6 (checkboxes, small buttons, menu items), radius 8
-// (list items, steps, tooltips), radiusLarge 10 (cards, menus, banners),
+// Radii: radiusSmall 4 (checkboxes, small buttons, menu items), radius 6
+// (list items, steps, tooltips), radiusLarge 8 (cards, menus, banners),
 // radiusPill (any height: the button and text field rule, radius = height / 2
 // is the same look; use `height / 2` when the exact value matters).
+//
+// Fonts: fontFamily is IBM Plex Sans and monoFamily is JetBrains Mono when
+// installed, else the system font and the system fixed font. Atlas apps already
+// use fontFamily as the application font; set `font.family: AtlasStyle.monoFamily`
+// on code.
 //
 // Font sizes, in points, from the application font: fontSizeCaption (footers,
 // 0.92 of body), fontSizeBody, fontSizeHeading (dialog titles, 1.15),
 // fontSizeTitle (page titles, 1.6).
 //
-// Motion: durationShort, duration, durationLong (Kirigami.Units short, long
-// and very long duration, in ms). They
-// are all 0 when `reducedMotion` is true, and `reducedMotion` follows
+// Motion: durationShort 100, duration 150, durationLong 250 ms (quick and
+// subtle). They are all 0 when `reducedMotion` is true, and `reducedMotion` follows
 // Appearance.reducedMotion (Plasma's animation speed set to instant, or
 // ATLAS_REDUCED_MOTION=1). A running animation or Behavior reads one of the
 // durations; an animation that has no duration (a spinner) checks
@@ -69,8 +78,11 @@ QtObject {
     }
     readonly property Item _theme: probe
 
-    readonly property color accent: _theme.Kirigami.Theme.highlightColor
-    readonly property color accentText: _theme.Kirigami.Theme.highlightedTextColor
+    // Atlas violet, unless the user chose an accent in Plasma: then theirs.
+    readonly property bool _dark: _theme.Kirigami.Theme.backgroundColor.hslLightness < 0.5
+    readonly property color accent: Appearance.accentFromSystem ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#8A7AF4" : "#6858E2")
+    readonly property color accentText: Appearance.accentFromSystem ? _theme.Kirigami.Theme.highlightedTextColor : (_dark ? "#14121F" : "#FFFFFF")
+    readonly property color focus: Appearance.accentFromSystem ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#F07AB0" : "#C8326F")
     readonly property color surface: {
         const bg = _theme.Kirigami.Theme.backgroundColor;
         return bg.hslLightness > 0.5 ? Qt.lighter(bg, 1.5) : Qt.tint(bg, Qt.rgba(1, 1, 1, 0.06));
@@ -87,10 +99,13 @@ QtObject {
     readonly property real spacing: Kirigami.Units.mediumSpacing
     readonly property real spacingLarge: Kirigami.Units.largeSpacing
 
-    readonly property real radiusSmall: 6
-    readonly property real radius: 8
-    readonly property real radiusLarge: 10
+    readonly property real radiusSmall: 4
+    readonly property real radius: 6
+    readonly property real radiusLarge: 8
     readonly property real radiusPill: 1000
+
+    readonly property string fontFamily: Appearance.fontFamily
+    readonly property string monoFamily: Appearance.monoFamily
 
     readonly property real fontSizeCaption: _theme.Kirigami.Theme.defaultFont.pointSize * 0.92
     readonly property real fontSizeBody: _theme.Kirigami.Theme.defaultFont.pointSize
@@ -98,9 +113,9 @@ QtObject {
     readonly property real fontSizeTitle: _theme.Kirigami.Theme.defaultFont.pointSize * 1.6
 
     readonly property bool reducedMotion: Appearance.reducedMotion
-    readonly property int durationShort: reducedMotion ? 0 : Kirigami.Units.shortDuration
-    readonly property int duration: reducedMotion ? 0 : Kirigami.Units.longDuration
-    readonly property int durationLong: reducedMotion ? 0 : Kirigami.Units.veryLongDuration
+    readonly property int durationShort: reducedMotion ? 0 : 100
+    readonly property int duration: reducedMotion ? 0 : 150
+    readonly property int durationLong: reducedMotion ? 0 : 250
 
     property int density: AtlasStyle.Normal
     readonly property bool compact: density === AtlasStyle.Compact

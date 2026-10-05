@@ -125,7 +125,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 3
                         radius: 10
-                        color: root.selected === cell.modelData ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18) : Qt.alpha(Kirigami.Theme.textColor, cell.hovered ? 0.06 : 0)
+                        color: root.selected === cell.modelData ? Qt.alpha(AtlasStyle.accent, 0.18) : Qt.alpha(Kirigami.Theme.textColor, cell.hovered ? 0.06 : 0)
                     }
                     contentItem: ColumnLayout {
                         spacing: Kirigami.Units.smallSpacing
@@ -171,7 +171,7 @@ Item {
                     style: root.style
                     filled: root.filled
                     weight: root.weight
-                    color: Kirigami.Theme.highlightColor
+                    color: AtlasStyle.accent
                 }
                 // atlas-lint: allow the gallery shows Kirigami.Heading as is
                 Kirigami.Heading {

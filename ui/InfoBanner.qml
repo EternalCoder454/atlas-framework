@@ -26,7 +26,7 @@ Item {
 
     signal closed
 
-    readonly property color tint: type === "error" ? Kirigami.Theme.negativeTextColor : type === "warning" ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.highlightColor
+    readonly property color tint: type === "error" ? Kirigami.Theme.negativeTextColor : type === "warning" ? Kirigami.Theme.neutralTextColor : AtlasStyle.accent
     readonly property string iconName: type === "error" ? "dialog-error" : type === "warning" ? "dialog-warning" : "dialog-information"
     implicitWidth: Kirigami.Units.gridUnit * 20
     implicitHeight: Math.round(card.implicitHeight * card.progress)

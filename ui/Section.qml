@@ -76,7 +76,7 @@ ColumnLayout {
             radius: AtlasStyle.radiusSmall
             color: Qt.alpha(Kirigami.Theme.textColor, fold.pressed ? 0.1 : fold.hovered ? 0.05 : 0)
             border.width: fold.visualFocus ? 2 : 0
-            border.color: Kirigami.Theme.focusColor
+            border.color: AtlasStyle.focus
         }
 
         contentItem: RowLayout {

@@ -31,7 +31,7 @@ QQC2.Label {
     textFormat: Text.PlainText
     font.pointSize: textStyle === AtlasLabel.Title ? AtlasStyle.fontSizeTitle : textStyle === AtlasLabel.Caption ? AtlasStyle.fontSizeCaption : AtlasStyle.fontSizeBody
     font.bold: _heading
-    font.family: textStyle === AtlasLabel.Mono ? Kirigami.Theme.fixedWidthFont.family : Kirigami.Theme.defaultFont.family
+    font.family: textStyle === AtlasLabel.Mono ? AtlasStyle.monoFamily : AtlasStyle.fontFamily
     color: textStyle === AtlasLabel.Heading || textStyle === AtlasLabel.Caption ? AtlasStyle.textMuted : AtlasStyle.text
 
     Accessible.role: _heading ? Accessible.Heading : Accessible.StaticText

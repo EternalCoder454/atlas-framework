@@ -212,7 +212,7 @@ Item {
 
                 background: Rectangle {
                     radius: AtlasStyle.radius
-                    color: tab.current ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18) : Qt.alpha(Kirigami.Theme.textColor, tab.down ? 0.1 : tab.hovered ? 0.06 : 0)
+                    color: tab.current ? Qt.alpha(AtlasStyle.accent, 0.18) : Qt.alpha(Kirigami.Theme.textColor, tab.down ? 0.1 : tab.hovered ? 0.06 : 0)
                     Behavior on color {
                         ColorAnimation {
                             duration: AtlasStyle.durationShort
@@ -235,7 +235,7 @@ Item {
                         width: 2
                         height: parent.height - 8
                         radius: 1
-                        color: Kirigami.Theme.highlightColor
+                        color: AtlasStyle.accent
                     }
                 }
 

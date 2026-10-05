@@ -23,7 +23,7 @@ ColumnLayout {
     // The whole bar. 0 means the sum of `values`.
     property real total: 0
     // One colour per part; parts past the list get the last colour faded.
-    property list<color> colors: [Kirigami.Theme.highlightColor, Qt.alpha(Kirigami.Theme.highlightColor, 0.45)]
+    property list<color> colors: [AtlasStyle.accent, Qt.alpha(AtlasStyle.accent, 0.45)]
     property list<string> labels
     // What the legend shows after each label, already formatted.
     property list<string> texts
@@ -47,7 +47,7 @@ ColumnLayout {
         if (i < colors.length) {
             return colors[i];
         }
-        return Qt.alpha(colors.length > 0 ? colors[colors.length - 1] : Kirigami.Theme.highlightColor, 0.25);
+        return Qt.alpha(colors.length > 0 ? colors[colors.length - 1] : AtlasStyle.accent, 0.25);
     }
 
     spacing: AtlasStyle.spacingSmall
