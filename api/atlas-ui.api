@@ -48,9 +48,10 @@ AtlasAction.property toolTip: QString
 AtlasAction.type
 AtlasActionCollection.base QObject
 AtlasActionCollection.method action(QString name): QVariant
+AtlasActionCollection.method declaredConflict(QString name): QString
 AtlasActionCollection.method hasCustomShortcut(QString name): bool
-AtlasActionCollection.method resetShortcut(QString name): QVariant
-AtlasActionCollection.method resetShortcuts(): QVariant
+AtlasActionCollection.method resetShortcut(QString name): bool
+AtlasActionCollection.method resetShortcuts(): bool
 AtlasActionCollection.method setShortcut(QString name, QString sequence): bool
 AtlasActionCollection.property actions: QQmlListProperty<QQuickAction> [readonly]
 AtlasActionCollection.property settings: AtlasSettings*

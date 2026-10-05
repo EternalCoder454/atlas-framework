@@ -29,7 +29,7 @@ AtlasAction {
 
 ## Changing shortcuts
 
-When the collection's `shortcutsEditable` is set, each row of an action that is in the collection and has an `objectName` gets a Change button. It shows an [AtlasShortcutField](atlas-shortcut-field.md): press the new keys. A shortcut another action already has is refused, and the dialog says which action has it ("Already used by “Save”. Choose another shortcut."); the field then records again. Escape cancels. A changed shortcut shows a Reset button for that row, and Reset all in the footer puts every declared shortcut back. Changes apply at once everywhere and are kept in the collection's `settings`.
+When the collection's `shortcutsEditable` is set, each row of an action that is in the collection and has an `objectName` gets a Change button. It shows an [AtlasShortcutField](atlas-shortcut-field.md): press the new keys. A shortcut another action already has is refused, and the dialog says which action has it ("Already used by “Save”. Choose another shortcut."); the field then records again. Escape cancels. A changed shortcut shows a Reset button for that row, Reset puts the declared shortcut back unless another action has it now (the dialog then says which); Reset all in the footer puts every declared shortcut back. Escape while recording cancels the recording and leaves the dialog open. If a change cannot be used or saved, the dialog says so under the list. The conflict check covers every registered enabled action of the app, which is wider than the warning in [AtlasShortcuts](atlas-shortcuts.md). Shortcuts need Ctrl, Alt or Meta with a key, or are an F key. The scroll position stays when a shortcut changes. Changes apply at once everywhere and are kept in the collection's `settings`.
 
 ## Keyboard
 

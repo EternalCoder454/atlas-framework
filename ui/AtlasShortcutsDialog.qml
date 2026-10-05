@@ -40,6 +40,12 @@ QQC2.Popup {
         // The action being given a new shortcut, and what went wrong last.
         property var editing: null
         property string message
+        // Leaves edit mode a moment after a recording ended without a
+        // shortcut (Escape, focus lost): the key release must not close the dialog.
+        readonly property Timer idle: Timer {
+            interval: 250
+            onTriggered: priv.stop()
+        }
 
         // `conflicts` and `overrides` are only dependencies: `conflicts` changes
         // (after each change of an action's shortcut, text or enabled) so the
@@ -90,6 +96,7 @@ QQC2.Popup {
             return dialog._editable && row.name.length > 0 && dialog.collection.action(row.name) === row.action;
         }
         function stop(): void {
+            priv.idle.stop();
             priv.editing = null;
             priv.message = "";
         }
@@ -106,11 +113,25 @@ QQC2.Popup {
                 return false;
             }
             if (!dialog.collection.setShortcut(row.name, text)) {
-                priv.message = qsTr("That is not a shortcut.");
+                priv.message = qsTr("That shortcut cannot be used or saved. Use Ctrl, Alt or Meta with a key, or an F key.");
                 return false;
             }
             priv.stop();
             return true;
+        }
+        // Back to the declared shortcut, unless another action has it now.
+        function reset(row: var): void {
+            const other = dialog.collection.declaredConflict(row.name);
+            if (other.length > 0) {
+                //: %1 is the name of the action that has the shortcut this one would go back to
+                priv.message = qsTr("Already used by “%1”. Change that shortcut first.").arg(other);
+                return;
+            }
+            if (dialog.collection.resetShortcut(row.name)) {
+                priv.stop();
+            } else {
+                priv.message = qsTr("The shortcut could not be reset.");
+            }
         }
     }
 
@@ -118,7 +139,8 @@ QQC2.Popup {
     anchors.centerIn: parent
     modal: true
     focus: true
-    closePolicy: QQC2.Popup.CloseOnEscape | QQC2.Popup.CloseOnPressOutside
+    // Escape while a shortcut is being recorded cancels the recording only.
+    closePolicy: priv.editing !== null ? QQC2.Popup.CloseOnPressOutside : (QQC2.Popup.CloseOnEscape | QQC2.Popup.CloseOnPressOutside)
     width: Math.min(parent ? parent.width - Kirigami.Units.gridUnit * 2 : 0, Kirigami.Units.gridUnit * 30)
     padding: Math.round(Kirigami.Units.gridUnit * 1.3)
     height: Math.min(implicitHeight, parent ? parent.height - Kirigami.Units.gridUnit * 2 : implicitHeight)
@@ -192,6 +214,28 @@ QQC2.Popup {
                 model: priv.entries
                 boundsBehavior: Flickable.StopAtBounds
                 activeFocusOnTab: false
+                // The model is rebuilt after every change; the scroll position
+                // is kept unless the search changed.
+                property real _y: 0
+                property string _yQuery: ""
+                property bool _restoring: false
+                onContentYChanged: {
+                    if (!list._restoring) {
+                        list._y = list.contentY;
+                        list._yQuery = search.query;
+                    }
+                }
+                onModelChanged: {
+                    if (list._y > 0 && search.query === list._yQuery) {
+                        list._restoring = true;
+                        Qt.callLater(list._restore);
+                    }
+                }
+                function _restore(): void {
+                    list.forceLayout();
+                    list.contentY = Math.min(list._y, Math.max(0, list.contentHeight - list.height));
+                    list._restoring = false;
+                }
                 spacing: 0
                 QQC2.ScrollBar.vertical: QQC2.ScrollBar {
                     id: bar
@@ -248,30 +292,30 @@ QQC2.Popup {
                             Layout.preferredWidth: Kirigami.Units.gridUnit * 9
                             ignoreAction: row.modelData.action
                             Accessible.name: qsTr("New shortcut for %1").arg(row.modelData.text)
-                            // The recorded text is held for one turn, so a binding
-                            // on `sequence` is kept (the edit rule of the controls).
-                            property string _edit
-                            property bool _editing: false
-                            readonly property Binding _hold: Binding {
-                                target: field
-                                property: "sequence"
-                                value: field._edit
-                                when: field._editing
-                                restoreMode: Binding.RestoreBinding
+                            // Set when onEdited ran, so the end of the recording that
+                            // caused it is not taken for a cancel.
+                            property bool _handled: false
+                            function _checkIdle(): void {
+                                if (!field._handled && !field.recording && row.isEditing) {
+                                    priv.idle.restart();
+                                }
+                                field._handled = false;
                             }
-                            function _release(): void {
-                                field._editing = false;
+                            onRecordingChanged: if (!field.recording) Qt.callLater(field._checkIdle)
+                            Keys.onReleased: event => {
+                                if (event.key === Qt.Key_Escape && row.isEditing) {
+                                    event.accepted = true;
+                                }
                             }
                             sequence: AtlasShortcuts.portable(row.modelData.sequence)
                             onVisibleChanged: if (visible) startRecording()
+                            Component.onCompleted: if (visible) startRecording()
                             onEdited: {
+                                field._handled = true;
                                 const wanted = field.sequence;
-                                const accepted = priv.accept(row.modelData, wanted, field.conflictText);
-                                // Back to the action's own shortcut when refused.
-                                field._edit = accepted ? wanted : AtlasShortcuts.portable(row.modelData.sequence);
-                                field._editing = true;
-                                Qt.callLater(field._release);
-                                if (!accepted) {
+                                if (!priv.accept(row.modelData, wanted, field.conflictText)) {
+                                    // Back to the action's own shortcut, and record again.
+                                    field.sequence = AtlasShortcuts.portable(row.modelData.sequence);
                                     Qt.callLater(field.startRecording);
                                 }
                             }
@@ -290,8 +334,7 @@ QQC2.Popup {
                             text: qsTr("Reset")
                             Accessible.name: qsTr("Reset shortcut for %1").arg(row.modelData.text)
                             onClicked: {
-                                priv.stop();
-                                dialog.collection.resetShortcut(row.modelData.name);
+                                priv.reset(row.modelData);
                             }
                         }
                     }
@@ -327,7 +370,9 @@ QQC2.Popup {
                 text: qsTr("Reset all")
                 onClicked: {
                     priv.stop();
-                    dialog.collection.resetShortcuts();
+                    if (!dialog.collection.resetShortcuts()) {
+                        priv.message = qsTr("Some shortcuts could not be reset.");
+                    }
                 }
             }
             Item {

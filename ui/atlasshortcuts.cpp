@@ -13,6 +13,24 @@
 Q_LOGGING_CATEGORY(lcShortcuts, "atlas.ui.shortcuts")
 
 namespace {
+// A name from a file or an app, safe for a log line: control, bidi and other
+// format characters become \uXXXX, and a long one is cut.
+QString logSafe(const QString &text)
+{
+    QString out;
+    for (qsizetype i = 0; i < text.size() && out.size() < 120; ++i) {
+        const QChar c = text[i];
+        const auto cat = c.category();
+        if (cat == QChar::Other_Control || cat == QChar::Other_Format || cat == QChar::Other_Surrogate || cat == QChar::Separator_Line
+            || cat == QChar::Separator_Paragraph) {
+            out += QStringLiteral("\\u%1").arg(c.unicode(), 4, 16, QLatin1Char('0'));
+        } else {
+            out += c;
+        }
+    }
+    return out;
+}
+
 // Reads an action's property; an invalid variant when it has none.
 QVariant read(QObject *action, const char *name)
 {
@@ -295,7 +313,7 @@ void AtlasShortcuts::recompute()
         const QString id = key + QLatin1Char('\n') + sorted.join(QLatin1Char('\n'));
         now.insert(id);
         if (!m_warned.contains(id)) {
-            qCWarning(lcShortcuts).noquote() << "Shortcut conflict:" << key << "is used by" << texts.join(QStringLiteral(", "));
+            qCWarning(lcShortcuts).noquote() << "Shortcut conflict:" << logSafe(key) << "is used by" << logSafe(texts.join(QStringLiteral(", ")));
         }
     }
     // A conflict that went away and comes back is a new one.
