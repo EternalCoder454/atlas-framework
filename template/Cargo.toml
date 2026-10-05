@@ -22,7 +22,7 @@ log = "0.4"
 # takes them from git, pinned to a release tag so a change there can't break
 # the app or slip into its build unreviewed. Each release opens a pull request
 # in every app that moves the tag forward (CHANGELOG.md says what changed):
-#   atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", tag = "v1.3.0" }
+#   atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", tag = "v1.4.0" }
 # Add atlas-framework-system (crash reports, AtlasOS state, polkit,
 # notifications) or atlas-framework-flatpak only if the app needs them. The
 # `notify` feature is what the demo notification in src/backend.rs uses.
