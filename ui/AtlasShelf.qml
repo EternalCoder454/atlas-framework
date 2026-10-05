@@ -152,16 +152,21 @@ T.Control {
             if (priv.ordering) {
                 return;
             }
+            // One child per index: a card on its way out (a transition)
+            // can sit where another is, and two of the same index would
+            // never count as sorted, so each pass would queue another.
             const cards = [];
+            const seen = {};
             for (const c of list.contentItem.children) {
                 const i = c === list.highlightItem ? -1 : priv.indexOfCard(c);
-                if (i >= 0) {
+                if (i >= 0 && !seen[i]) {
+                    seen[i] = true;
                     cards.push({ card: c, index: i });
                 }
             }
             let sorted = true;
             for (let k = 1; k < cards.length && sorted; ++k) {
-                sorted = cards[k - 1].index < cards[k].index;
+                sorted = cards[k - 1].index <= cards[k].index;
             }
             if (sorted) {
                 return;
@@ -218,6 +223,10 @@ T.Control {
             clip: true
             model: control.model
             boundsBehavior: Flickable.StopAtBounds
+            // At least the next card on each side exists, so Tab from the
+            // last stop of the card in view reaches the next one (the
+            // default buffer is platform-dependent and can be narrower).
+            cacheBuffer: Math.ceil(control.cardWidth + list.spacing)
             delegate: control.delegate
             // The row takes the height of the tallest card; cards come and
             // go as it scrolls, so measure again when the content changes.
