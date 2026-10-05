@@ -353,7 +353,7 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   benchmarks against Notepad++. Design page before code. Requirements:
   docs/textview-1.5.md. Design (draft, with Notepad for review):
   docs/textview-design-1.5.md.
-- [ ] 39 One software-rendering flag in AtlasStyle (the software adaptation,
+- [x] 39 One software-rendering flag in AtlasStyle (the software adaptation,
   or llvmpipe by GL_RENDERER) for the controls and apps; AtlasEdgeGlow static
   or throttled under it.
 - [ ] 40 atlas-framework-flatpak for the Store, Settings and the Updater
