@@ -142,9 +142,10 @@ elif ! cmp -s "$build/Atlas/Ui/qmldir" "$qml_dir/Atlas/Ui/qmldir" ||
     exit 2
 fi
 
-# The template, in Release, with its own target directory. CI keeps the
-# build tree between runs (ATLAS_PERF_TEMPLATE_BUILD) so it only rebuilds what
-# changed; by default it is temporary.
+# The template, in Release. ATLAS_PERF_TEMPLATE_BUILD fixes the CMake tree's
+# path (CI uses a fixed one, built fresh each run, with only its cargo/
+# subdirectory kept between runs: Corrosion builds the crate there, whatever
+# CARGO_TARGET_DIR says); by default the tree is temporary.
 tbuild=${ATLAS_PERF_TEMPLATE_BUILD:-$work/template}
 export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$tbuild/target}
 cmake -S "$root/template" -B "$tbuild" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null

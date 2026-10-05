@@ -104,7 +104,14 @@ jobs:
         run: |
           # Another tag pushed while CI ran (two close together) is known only
           # now; the older of the two must not release. Public repo, no auth.
-          git fetch --tags --force origin
+          fetched=0
+          for wait in 5 15 45 0; do
+            if git fetch --tags --force origin; then fetched=1; break; fi
+            [ "$wait" = 0 ] || { echo "::warning::git fetch failed, trying again in ${wait}s"; sleep "$wait"; }
+          done
+          if [ "$fetched" != 1 ]; then
+            echo "::error::could not fetch the tags after 4 tries: cannot tell whether $TAG is the newest release; re-run this workflow"; exit 1
+          fi
           v=${TAG#v}
           newest=$(git tag --list 'v*' | grep -vxF "$TAG" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)
           if [ -n "$newest" ] && [ "$(printf '%s\n%s\n' "${newest#v}" "$v" | sort -V | tail -n1)" != "$v" ]; then

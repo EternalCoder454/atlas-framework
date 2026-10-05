@@ -59,7 +59,9 @@ jobs:
         run: |
           $RUN bash -o pipefail -c 'cmake --build build --target all_qmllint 2>&1 | tee build/qmllint.log'
           n=$(grep -c '^Warning' build/qmllint.log || true)
-          echo "qmllint: $n warnings (budget $QMLLINT_MAX)"
+          # The count depends on the Qt in the image: print it beside the number.
+          qt=$($RUN qmake6 -query QT_VERSION || echo unknown)
+          echo "qmllint: $n warnings (budget $QMLLINT_MAX), Qt $qt"
           if [ "$n" -gt "$QMLLINT_MAX" ]; then
             echo "::error::qmllint has $n warnings, over the budget of $QMLLINT_MAX: fix the new ones (grep -A2 '^Warning' build/qmllint.log)"
             exit 1
@@ -92,6 +94,7 @@ jobs:
       - name: Own the compiler cache
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
         run: |
+          [ -n "$(ls -A .ccache 2>/dev/null)" ] || echo "::warning::.ccache is empty or missing: nothing useful is cached"
           mkdir -p .ccache
           sudo chown -R "$(id -u):$(id -g)" .ccache
           du -sh .ccache
@@ -170,6 +173,9 @@ jobs:
       - name: Own and trim the cargo cache
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
         run: |
+          for d in .cargo-registry target; do
+            [ -n "$(ls -A "$d" 2>/dev/null)" ] || echo "::warning::$d is empty or missing: nothing useful is cached"
+          done
           mkdir -p .cargo-registry target
           sudo chown -R "$(id -u):$(id -g)" .cargo-registry target
           # Incremental state and the semver baseline's build are large and
@@ -192,12 +198,14 @@ jobs:
     timeout-minutes: 45
     env:
       # Startup time on a shared runner is noisy: over budget it only warns.
-      # Only the template's cargo target is kept (CARGO_TARGET_DIR, which
-      # perf/measure.sh honours); its CMake tree is built fresh every run,
-      # because qmlcachegen compiles the template's QML against the installed
-      # Atlas.Ui, which Ninja does not track: a restored tree would pass
-      # against stale compiled QML.
-      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e QMAKE=/usr/bin/qmake6 -e CARGO_TARGET_DIR=/src/.perf-target -e PERF_WARN_ONLY=startup_ms atlas-framework-dev:ci
+      # The template's CMake tree is built fresh every run, at a fixed path in
+      # the container (ATLAS_PERF_TEMPLATE_BUILD), because qmlcachegen compiles
+      # the template's QML against the installed Atlas.Ui, which Ninja does not
+      # track: a restored tree would pass against stale compiled QML. Only
+      # Corrosion's cargo directory is kept: it ignores CARGO_TARGET_DIR and
+      # always builds in <cmake tree>/cargo, so the host's .perf-target is
+      # mounted there. The fixed path keeps cargo's fingerprints valid.
+      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -v ${{ github.workspace }}/.perf-target:/tmp/perf-template/cargo -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e QMAKE=/usr/bin/qmake6 -e ATLAS_PERF_TEMPLATE_BUILD=/tmp/perf-template -e PERF_WARN_ONLY=startup_ms atlas-framework-dev:ci
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -209,7 +217,7 @@ jobs:
         id: cache
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
-          # Atlas.Ui's objects, the downloaded crates and the template's cargo target.
+          # Atlas.Ui's objects, the downloaded crates and the template's cargo directory.
           path: |
             .ccache
             .cargo-registry
@@ -219,7 +227,9 @@ jobs:
           restore-keys: perf-${{ hashFiles('packaging/Containerfile.dev') }}-
 
       - name: Build Atlas.Ui
-        run: $RUN bash -c 'cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build'
+        run: |
+          mkdir -p .perf-target
+          $RUN bash -c 'cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build'
 
       - name: Performance
         run: $RUN bash -c 'perf/measure.sh build'
@@ -249,9 +259,12 @@ jobs:
       - name: Own and trim the build caches
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
         run: |
+          for d in .ccache .cargo-registry .perf-target; do
+            [ -n "$(ls -A "$d" 2>/dev/null)" ] || echo "::warning::$d is empty or missing: nothing useful is cached"
+          done
           mkdir -p .ccache .cargo-registry .perf-target
           sudo chown -R "$(id -u):$(id -g)" .ccache .cargo-registry .perf-target
-          rm -rf .perf-target/debug/incremental .perf-target/release/incremental
+          find .perf-target -type d -name incremental -prune -exec rm -rf {} +
           du -sh .ccache .cargo-registry .perf-target
 
       - name: Save the build caches
