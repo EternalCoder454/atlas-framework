@@ -52,10 +52,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `checked` binding survives. `AtlasProgressBar` fills its height again when it
   has no `text` (the thin centred track only beside a label), no longer
   overflows when narrower than its label room, follows `LayoutMirroring` for
-  the fill side, and warns once about an unknown `status`. `AtlasNumberValidator.decimals` now defaults to 15 (was
-  0, which rejected "1.5"); `fixup()` drops a trailing decimal point and clamps
-  to `bottom`/`top`. `AtlasShortcuts` no longer counts an action whose Item has
-  no window yet as a conflict, and `conflicts` is a plain read.
+  the fill side, and warns once about an unknown `status`.
 - Atlas.Ui fixes: ConfirmDialog no longer runs a destructive (or Cancel-first)
   accept when Return is pressed in a field of the body; the date picker's popup
   follows the picker after a pick or clear; pickers give the focus back after
