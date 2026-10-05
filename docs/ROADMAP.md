@@ -351,7 +351,8 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   in the background, word wrap as a mode. Read-only first (AtlasCodeView
   moves onto it), then editing. Acceptance numbers from Notepad's 1–10 MB
   benchmarks against Notepad++. Design page before code. Requirements:
-  docs/textview-1.5.md.
+  docs/textview-1.5.md. Design (draft, with Notepad for review):
+  docs/textview-design-1.5.md.
 - [ ] 39 One software-rendering flag in AtlasStyle (the software adaptation,
   or llvmpipe by GL_RENDERER) for the controls and apps; AtlasEdgeGlow static
   or throttled under it.

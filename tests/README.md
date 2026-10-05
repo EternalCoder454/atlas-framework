@@ -50,6 +50,17 @@ its goldens, nothing else. A window demo (`AtlasWindowDemo`) has an
 - `visual/schemes/` holds the Breeze colour schemes the variants start from, so
   the pictures do not follow the distribution's copy.
 
+## qmllint budget
+
+CI counts the `Warning` lines of `all_qmllint` and compares them with
+`QMLLINT_MAX` in `.github/workflows/ci.yml`: more fails, and so does fewer
+(lower the number to the new count). The Qt and qmllint in the dev container
+set the count, so an image update can change it: re-count and set
+`QMLLINT_MAX` in the same commit as the update (CI prints the Qt version
+beside the count). A change that fixes warnings lowers `QMLLINT_MAX` in the
+same commit; when two such changes are open, the second one rebases and
+lowers it again.
+
 ## Accessibility and translation tests
 
 - `a11y/`: loads every demo and fails on any visible, enabled item that Tab

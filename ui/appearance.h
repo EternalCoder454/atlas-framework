@@ -15,10 +15,11 @@
 //   darkMode       colorScheme is Dark; when it is Unknown, whether the
 //                  palette's window colour is dark.
 //   highContrast   the system asks for high contrast (QStyleHints
-//                  accessibility, Qt 6.10+).
+//                  accessibility, Qt 6.10+, or the portal's `contrast`).
 //   reducedMotion  Plasma's AnimationDurationFactor in kdeglobals [KDE] is 0
 //                  (animations off), or the environment has
-//                  ATLAS_REDUCED_MOTION=1. Missing kdeglobals means false.
+//                  ATLAS_REDUCED_MOTION=1, or the portal's `reduced-motion`
+//                  (since 1.5.0). Missing kdeglobals means false.
 //   textScale      the application font's point size over 10 (Plasma's
 //                  default), so 1.0 is the default size, 1.2 is 20% larger. Kept
 //                  between 0.5 and 4.
@@ -33,11 +34,14 @@
 //   monoFamily     "JetBrains Mono" when installed, else the system fixed font.
 #pragma once
 
+#include "portalappearance.h"
+
 #include <KConfigWatcher>
 #include <KSharedConfig>
 
 #include <QFont>
 #include <QObject>
+#include <QPointer>
 #include <QWindow>
 #include <QtQml/qqmlregistration.h>
 
@@ -107,6 +111,7 @@ private:
     void readSystem();
     void readMotion();
 
+    QPointer<PortalAppearance> m_portal;
     KSharedConfig::Ptr m_globals;
     KConfigWatcher::Ptr m_globalsWatcher;
     int m_colorScheme = UnknownScheme;
