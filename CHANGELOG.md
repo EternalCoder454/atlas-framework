@@ -15,6 +15,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   from QML), AtlasCodeView (read-only monospace text with copy button, line
   numbers and a height cap), AtlasCopyButton and AtlasCommandPalette (a
   Ctrl+K search over the app's AtlasActions).
+- Atlas.Ui: AtlasListView, a ListView in the Atlas look with single or multiple
+  selection, a default row (symbol, text, subtitle), type-ahead, a placeholder,
+  `contextMenuRequested` and drag or Alt+arrow reordering (`moveRequested`).
 - Atlas.Ui: AtlasUrlValidator, AtlasEmailValidator, AtlasPathValidator and
   AtlasNumberValidator, validators for an AtlasTextField; AtlasDoubleSpinBox
   (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,
