@@ -321,35 +321,31 @@ In 1.5.0 (robustness, performance and accessibility; no large new API):
 - [ ] InfoBanner covers the four severities (colour, icon and accessible
   role together) and one action, like WinUI's InfoBar.
 
-Candidates for 1.6.0 (new API; the scope is the user's call):
+New API from the research, also in 1.5.0 (the user, 2026-10-05: no 1.6.0
+split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
 
-- Form, FormGroup and FormEntry that wrap any control with label, help,
-  `errorText`, validators and a form-level `valid` (Kirigami Forms), read
-  through attached properties.
-- Settings rows that save themselves (`settingKey` bound to AtlasSettings)
-  in a searchable preferences dialog (libadwaita).
-- An action registry: AtlasActions declared once feed menus, the command
-  palette, AtlasShortcutsDialog and hover shortcut hints (KDE
-  ActionCollection).
-- A `status` (loading, empty, error, no results, ready) on AtlasListView,
-  DataTable and AtlasPage that shows AtlasEmptyState or AtlasSpinner.
-- An adaptive scaffold on `widthClass`: sidebar or tab bar, split or stack.
-- `toast(text, {action})` with a queue, and `confirm()` with a callback.
-- Token-only lint for apps (no raw colours, durations or radii).
-- A GlobalShortcuts portal wrapper (KDE: active only after BindShortcuts).
-- An app preview runner over the golden matrix (light, dark, accent, RTL,
-  text 200 %, compact).
-- `popupType: Popup.Window` for menus, the command palette and tooltips
-  (test on KWin); RectangularShadow for card shadows.
-- Crates: cxx-qt 0.10 on a branch; one async helper (tokio thread,
-  `queue(...).ok()`, cancellation and timeouts); portal Settings
-  (color-scheme, accent, contrast, reduced motion) in one place; crash
-  minidumps out of process with signature dedupe; settings watched by
-  directory with `schema_version` migrations.
-- Qt 6.12 (released 2026-09-30) once Fedora ships it: `motionPreference`,
-  hot reload with `qt_add_qml_preview()`, ToolTip `policy`, MenuItem
-  shortcuts. Qt's Rust bridge (beta) is not a fit while the crates mix Rust
-  and C++.
+- [ ] 24 AtlasStyle `alpha()` and `mix()`, and the module moved to them.
+- [ ] 25 AtlasForm and AtlasFormEntry (label, help, errors, required,
+  `valid`, `validate()`).
+- [ ] 26 `settingKey`: entries that load and save their control's value.
+- [ ] 27 AtlasPreferencesDialog and AtlasPreferencesPage (searchable).
+- [ ] 28 AtlasActionCollection; `AtlasAction.category`; `collection` on the
+  palette, the shortcuts dialog and the app menu; user-changed shortcuts.
+- [ ] 29 AtlasStatus and `status` on AtlasListView, DataTable, AtlasTreeView
+  and AtlasPage.
+- [ ] 30 AtlasSplitView `collapsible` (one pane at a time when narrow).
+- [ ] 31 AtlasWindow `toast()` and `confirm()`.
+- [ ] 32 AtlasGlobalShortcut (GlobalShortcuts portal).
+- [ ] 33 Token-only lint in lint-app.sh.
+- [ ] 34 atlas-preview: an app's pages through the golden matrix.
+- [ ] 35 Popups as windows where supported; RectangularShadow.
+- [ ] 36 Platform contrast, reduced motion and accent (QStyleHints and the
+  portal); `Accessible.announce()` where the A2 list above says.
+- [ ] 37 Crates: cxx-qt 0.10, the task helper, settings `schema_version`
+  migrations and directory watching. Crash minidumps wait for the crash.rs
+  work in another session.
+- Waits for Fedora's Qt 6.12 (Fedora 44 and 45 ship 6.11.2):
+  `motionPreference`, QML hot reload, ToolTip `policy`, MenuItem shortcuts.
 
 ### B1: bugs other apps reported
 
