@@ -30,6 +30,13 @@ Item {
         text: "Above"
     }
 
+    SecondaryButton {
+        id: beside
+        x: 20
+        y: 232
+        text: "End"
+    }
+
     AtlasPopover {
         parent: root
         target: below
@@ -47,6 +54,15 @@ Item {
         Component.onCompleted: open()
         QQC2.Label {
             text: "No room below: opens above."
+        }
+    }
+    AtlasPopover {
+        parent: root
+        target: beside
+        side: AtlasPopover.End
+        Component.onCompleted: open()
+        QQC2.Label {
+            text: "Beside it."
         }
     }
 }

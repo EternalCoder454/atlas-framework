@@ -436,9 +436,16 @@ AtlasPlaceholder.property lineHeight: double
 AtlasPlaceholder.property lines: int
 AtlasPlaceholder.type
 AtlasPopover.base QQuickPopup
+AtlasPopover.enum Side: Above = 2
+AtlasPopover.enum Side: Auto = 0
+AtlasPopover.enum Side: Below = 1
+AtlasPopover.enum Side: End = 4
+AtlasPopover.enum Side: Start = 3
 AtlasPopover.property above: bool [readonly]
 AtlasPopover.property content: QQmlListProperty<QObject> [readonly]
+AtlasPopover.property placedSide: int [readonly]
 AtlasPopover.property showArrow: bool
+AtlasPopover.property side: int
 AtlasPopover.property target: QQuickItem*
 AtlasPopover.type
 AtlasPortal.base QObject
