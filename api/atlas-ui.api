@@ -68,7 +68,9 @@ AtlasAppCard.type
 AtlasAppMenu.base QQuickItem
 AtlasAppMenu.method open(): QVariant
 AtlasAppMenu.property accessibleName: QString
+AtlasAppMenu.property exportShortcuts: bool
 AtlasAppMenu.property menus: QVariant
+AtlasAppMenu.signal modelActivated(QString id, QVariant modelData, int index)
 AtlasAppMenu.type
 AtlasAutocompleteField.base QQuickFocusScope
 AtlasAutocompleteField.property clearable: bool

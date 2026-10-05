@@ -7,6 +7,26 @@ since: "1.4.0"
 
 AtlasAppMenu goes in [AtlasHeaderBar](atlas-header-bar.md)'s `leading`. With a global menu on the desktop (Plasma's app menu widget; see [AtlasWindowChrome](atlas-window-chrome.md)'s `globalMenu`), the menus are exported through DBusMenu and the item shows nothing. Without one, it is a menu button in the header that opens the same menus as submenus.
 
+## Entries
+
+`menus` is a list of groups, each `{ title, actions }`. An entry of `actions` may be:
+
+| Entry | Meaning |
+|---|---|
+| an [AtlasAction](atlas-action.md) or Qt `Action` | The action. An action with a `menu` shows here as a submenu (its `popover` is ignored). |
+| `null` | A separator. |
+| `{ action, shortcut }` | An action with the key sequence to export (a string or a `StandardKey`). |
+| `{ title, actions }` | A nested submenu, to eight levels. A deeper one is ignored, with one warning. |
+| `{ id, title, model, textRole, lead, trail, emptyText }` | A submenu whose rows come from `model`, between the `lead` and `trail` lists of actions and `null`s. |
+
+Both the button's menus and the exported global menu nest to the same depth. The arrow keys follow [ContextMenu](context-menu.md): Right opens a submenu (Left in a right-to-left layout), the opposite key closes it.
+
+**Model-driven rows.** A row's text is `modelData` for a model of strings, else `modelData[textRole]` (a `ListModel` is read through `textRole`). Choosing a row emits `modelActivated(id, modelData, index)` and does nothing else. With no rows and `emptyText` set, one disabled row shows it. The submenu's entry is disabled when it has no rows and no enabled action in `lead` or `trail`. The rows are read when the menu opens (for the global menu, when its group is about to show), so a change of the model while the menu is open takes effect when it closes.
+
+**Shortcuts in the export.** Without `exportShortcuts` nothing changes. With it, the global menu's items hold each `{ action, shortcut }` entry's `shortcut` (the global-menu protocol shows it) and the button's rows show it as text. The action must then leave its own `shortcut` empty, or the key has two owners and neither fires: [AtlasShortcuts](atlas-shortcuts.md)' duplicate warning covers a mistake.
+
+A menu taller than the window already scrolls (ContextMenu caps its height at the window's), so long groups need no workaround. Text of entries, `title` and `emptyText` is plain, never HTML.
+
 ## Example
 
 ```qml
@@ -33,10 +53,17 @@ AtlasHeaderBar {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `accessibleName` | `string` | `qsTr("Main menu")` | The name of the menu button for screen readers, and its tooltip. |
-| `menus` | `var` | `[]` | A list of groups, each `{title, actions}`. `actions` holds [AtlasAction](atlas-action.md) or Qt `Action` items, and `null` for a separator. The item is hidden while the list is empty. |
+| `exportShortcuts` | `bool` | `false` | Shows each `{ action, shortcut }` entry's `shortcut` in the global menu, and in the button's rows. |
+| `menus` | `var` | `[]` | A list of groups, each `{title, actions}`. See Entries above for what `actions` may hold. The item is hidden while the list is empty. |
 
 ## Methods
 
 | Signature | Description |
 |---|---|
 | `open(): QVariant` | Opens the button's menu. No effect with a global menu. |
+
+## Signals
+
+| Signature | Description |
+|---|---|
+| `modelActivated(string id, var modelData, int index)` | A row of a model-driven submenu was chosen. |
