@@ -8,7 +8,8 @@ import org.kde.kirigami as Kirigami
 // optionally a live value on the right ("42%", "1.2 MB/s"). A `sub` entry is
 // indented under a SidebarGroup's header; a `disclosure` entry is that header.
 // A `badge` icon flags something on the entry's page that needs attention:
-// after the label, or on the icon's corner when compact.
+// after the label, or on the icon's corner when compact. When compact, hover
+// or the keyboard focus shows the title (and value) as a tooltip.
 T.AbstractButton {
     id: control
 
@@ -52,6 +53,11 @@ T.AbstractButton {
         if (!event.isAutoRepeat) {
             control.clicked();
         }
+    }
+
+    AtlasToolTip {
+        text: control.value.length > 0 ? control.text + ": " + control.value : control.text
+        shown: control.compact && control.text.length > 0 && (control.hovered || control.visualFocus)
     }
 
     background: Rectangle {

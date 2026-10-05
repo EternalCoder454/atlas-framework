@@ -29,6 +29,18 @@ Item {
         AtlasTextField { text: "Ada Lovelace"; clearable: true; placeholderText: qsTr("Name") }
         Caption { text: "Error" }
         AtlasTextField { text: "ada@"; placeholderText: qsTr("Email"); errorText: qsTr("Enter a full email address, like ada@example.org") }
+        Caption { text: "Counter (at the limit)" }
+        AtlasTextField { text: "Ada Lovelace, Countess"; maximumLength: 22; showCounter: true; placeholderText: qsTr("Name") }
+        Caption { text: "Prefix and suffix" }
+        AtlasTextField { text: "12.5"; prefix: "$"; suffix: "kg"; placeholderText: qsTr("Weight") }
+        Caption { text: "Invalid (typing)" }
+        AtlasTextField {
+            text: "ada@"
+            validateOn: "typing"
+            validator: RegularExpressionValidator { regularExpression: /[^@\s]+@[^@\s]+\.[a-z]+/ }
+            invalidText: qsTr("Enter a full email address")
+            Component.onCompleted: textEdited()
+        }
         Caption { text: "Disabled" }
         AtlasTextField { text: "Read only value"; enabled: false }
         Caption { text: "Long text" }

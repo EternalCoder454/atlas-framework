@@ -117,11 +117,11 @@ control takes `iconName`.
 | `PrimaryButton`, `SecondaryButton`, `TextButton`, `MenuButton` | Buttons (`AtlasButton` is their shared base) |
 | `AtlasSwitch` | Pill switch |
 | `Section`, `SectionRow` | A rounded card of rows; a row has a title, subtitle, value, and a checkmark, switch or chevron. A section can fold |
-| `SidebarItem`, `SidebarGroup` | Sidebar entries, with a live value, a badge, and sub-entries |
+| `SidebarItem`, `SidebarGroup` | Sidebar entries, with a live value, a badge, and sub-entries; a compact item shows its title (and value) as a tooltip on hover or keyboard focus (since 1.4.0) |
 | `StepItem` | One step in a setup sidebar (done, current or to come) |
 | `StatusHero` | Big centred status: an icon badge with a busy or progress ring, a headline, a subtitle, actions |
 | `AtlasProgressBar` | Rounded accent progress bar, or an indeterminate one |
-| `ConfirmDialog` | Modal dialog with pill buttons |
+| `ConfirmDialog` | Modal dialog with pill buttons; `alternativeText` adds a third button (`alternative()`), `defaultButton` ("accept", "reject", "alternative") takes the focus and Return, `destructive` draws accept in the error colour, and a long body scrolls instead of outgrowing the window (since 1.4.0) |
 | `NotesText` | Release notes from a safe HTML fragment |
 | `LiveChart`, `UsageBar`, `MiniBars` | A live chart, a stacked usage bar, a row of small bars |
 | `DataTable` | A sortable table in the Section style that only makes the rows on screen |
@@ -134,15 +134,15 @@ control takes `iconName`.
 | `AtlasStyle` | Singleton of design tokens: colours by role, spacing, radii, font sizes, durations (0 when `reducedMotion`), `density` (`Normal` or `Compact`) with `rowHeight`. `Appearance` also reports `colorScheme`, `darkMode`, `highContrast`, `reducedMotion` and `textScale` (since 1.4.0) |
 | `Toast` | A short message at the bottom centre that goes by itself: `show("Copied")` (since 1.2.0) |
 | `ToolbarButton` | Small icon button for a formatting toolbar that never takes the editor's focus; can be checkable (since 1.2.0) |
-| `AtlasTextField`, `AtlasTextArea` | Rounded text fields: placeholder, `errorText` under the field, `clearable`; the area moves focus on Tab (since 1.3.0) |
+| `AtlasTextField`, `AtlasTextArea` | Rounded text fields: placeholder, `errorText` under the field, `clearable`; `showCounter`, `prefix`, `suffix`, and `invalidText` with `validateOn` ("leaving" or "typing") since 1.4.0; the area moves focus on Tab (since 1.3.0) |
 | `AtlasPasswordField` | Rounded password field like `AtlasTextField` (placeholder, `errorText`) with an eye that shows the text; it hides again when focus leaves, the window goes to the background, or the field is hidden or disabled (`revealed`, `reveal()` only while focused); copy and cut are off while hidden. No `clearable`; don't set `echoMode` or `inputMethodHints` (since 1.4.0) |
 | `AtlasAction` | Qt's `Action` plus `symbol` (`Symbols.<Name>`, 0 none), `toolTip` (the text without its `&` unless set) and `section` (its group in `AtlasShortcutsDialog`). Registers itself with `AtlasShortcuts`; declare it inside an Item so the window is known (since 1.4.0) |
 | `AtlasShortcuts` | Singleton: `actions` (every registered `AtlasAction`), `conflicts` (`[{ shortcut, texts }]`: enabled actions sharing a shortcut in one window, or of unknown window), `conflictsChanged()`; each new conflict is logged with `qWarning`. Helpers `readable()`, `keys()`, `portable()`, `plainText()` (since 1.4.0) |
 | `AtlasShortcutLabel` | A shortcut (`sequence`: "Ctrl+S" or a `StandardKey` number) as keycaps in the platform's spelling; no size when empty, follows RTL (since 1.4.0) |
 | `AtlasShortcutsDialog` | Modal list of the registered shortcuts grouped by `section`, with search, scrolling, an empty state and a Close button; `title` (since 1.4.0) |
-| `AtlasComboBox` | Rounded drop-down on a pill, the choices in a ContextMenu-style card; `placeholderText` (since 1.3.0) |
+| `AtlasComboBox` | Rounded drop-down on a pill, the choices in a ContextMenu-style card; `placeholderText` (since 1.3.0); `filterable` adds a filter field to the list (since 1.4.0) |
 | `AtlasCheckBox`, `AtlasRadioButton` | Check box (can be `tristate`) and radio button; radios with one parent are a group, arrows move the choice (since 1.3.0) |
-| `AtlasSlider`, `AtlasSpinBox` | Accent pill slider (Page, Home, End keys); number field with minus and plus, `prefix` and `suffix` (since 1.3.0) |
+| `AtlasSlider`, `AtlasSpinBox` | Accent pill slider (Page, Home, End keys); number field with minus and plus, `prefix` and `suffix` (since 1.3.0); narrower by default and `showButtons: false` for a plain number field (since 1.4.0) |
 | `AtlasToolTip` | Hint on a raised card; bind `shown` to hover for the delay (since 1.3.0) |
 | `AtlasSpinner`, `AtlasPlaceholder` | Busy arc; skeleton lines while content loads. Both still when hidden or `animated: false` (since 1.3.0) |
 | `AtlasEmptyState` | What an empty list shows: symbol, title, text, an optional action (since 1.3.0) |

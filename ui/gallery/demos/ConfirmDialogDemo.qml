@@ -21,6 +21,9 @@ Item {
         text: "It can not be restored."
         acceptText: "Remove"
         rejectText: "Keep"
+        alternativeText: "Archive"
+        defaultButton: "reject"
+        destructive: true
         Component.onCompleted: open()
     }
 }

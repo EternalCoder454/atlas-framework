@@ -33,6 +33,8 @@ Item {
         AtlasSpinBox { from: 0; to: 10; value: 10 }
         Caption { text: "Disabled" }
         AtlasSpinBox { value: 5; enabled: false }
+        Caption { text: "Without buttons" }
+        AtlasSpinBox { from: 0; to: 100; value: 42; editable: true; showButtons: false; suffix: " %" }
         Caption { text: "Long number" }
         AtlasSpinBox { from: 0; to: 2000000000; value: 1234567890 }
     }

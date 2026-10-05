@@ -11,7 +11,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 260
-    implicitHeight: 290
+    implicitHeight: 330
     width: implicitWidth
     height: implicitHeight
 
@@ -24,6 +24,7 @@ Item {
         SidebarItem { Layout.fillWidth: true; text: "Disk"; icon.name: "drive-harddisk"; value: "62%" }
         SidebarItem { Layout.fillWidth: true; text: "Sub item"; sub: true }
         SidebarItem { Layout.fillWidth: true; text: "Symbol"; symbol: Symbols.codepoint("settings") }
+        SidebarItem { text: "Compact"; icon.name: "drive-harddisk"; value: "62%"; compact: true }
         SidebarItem { Layout.fillWidth: true; text: "Off"; icon.name: "dialog-error"; enabled: false }
     }
 }

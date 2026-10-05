@@ -21,6 +21,14 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `Appearance` (`colorScheme`, `darkMode`, `highContrast`, `reducedMotion`,
   `textScale`), live. Durations are 0 when animations are off in Plasma or
   `ATLAS_REDUCED_MOTION=1`.
+- Atlas.Ui: ConfirmDialog gains `alternativeText` and `alternative()` (a third
+  button), `defaultButton` and `destructive`; its text and body now wrap to the
+  card and scroll when taller than the window. AtlasSpinBox is as wide as its
+  widest value instead of a fixed size, gains `showButtons`, and PageUp and
+  PageDown move ten steps. AtlasComboBox gains `filterable` (type to narrow the
+  choices). AtlasTextField gains `showCounter`, `prefix`, `suffix`,
+  `invalidText` and `validateOn`. A compact SidebarItem shows its title and
+  value as a tooltip.
 
 ## 1.3.0
 
