@@ -156,7 +156,8 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - CI: the apps job skips an app repository with no commits yet (with a
   notice), like the release workflow; an unreachable one still fails.
 - CI: actions moved to their Node 24 releases (checkout 7.0.1, cache 6.1.0,
-  upload-artifact 7.0.1, download-artifact 8.0.1), in the template too;
+  upload-artifact 7.0.1, download-artifact 8.0.1, setup-buildx 4.4.1,
+  build-push 7.4.0), in the template too;
   Node 20 actions are deprecated on GitHub's runners.
 - Release: the tag format, version and newest-release checks run before the
   CI wait and again after it.
