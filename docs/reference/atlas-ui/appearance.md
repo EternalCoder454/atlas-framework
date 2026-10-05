@@ -4,7 +4,7 @@ summary: A singleton with the look switches every Atlas app shares: transparency
 section: Style and motion
 ---
 
-Appearance holds the shared "Transparency effects" setting (`Transparency` under `[Appearance]` in `atlasrc`, default on) and follows the desktop's preferences live. A `KConfigWatcher` keeps every open Atlas app in step when one of them, or the user, changes the file. Most apps read it through [AtlasStyle](atlas-style.md) and [AtlasWindow](atlas-window.md) rather than directly.
+Appearance holds the shared "Transparency and blur" setting (`Transparency` under `[Appearance]` in `atlasrc`, default on) and follows the desktop's preferences live. A `KConfigWatcher` keeps every open Atlas app in step when one of them, or the user, changes the file. Most apps read it through [AtlasStyle](atlas-style.md) and [AtlasWindow](atlas-window.md) rather than directly.
 
 ## Example
 
@@ -40,7 +40,7 @@ The read-only system preferences each have a change signal, so a binding on them
 | `monoFamily` | `string` (read-only) | — | `"JetBrains Mono"` when installed, else the system fixed font. Constant, but computed on each read. Since 1.4.0. |
 | `reducedMotion` | `bool` (read-only) | `false` | `true` when Plasma's `AnimationDurationFactor` in kdeglobals `[KDE]` is 0 (animations off), or the environment has `ATLAS_REDUCED_MOTION=1`. A missing kdeglobals means `false`. |
 | `textScale` | `real` (read-only) | `1.0` | The application font's point size over 10 (Plasma's default). 1.0 is the default size, 1.2 is 20% larger. |
-| `transparency` | `bool` | `true` | The shared "Transparency effects" setting. Writable; the change is saved to `atlasrc` and reaches every open Atlas app. |
+| `transparency` | `bool` | `true` | The shared "Transparency and blur" setting. Writable; the change is saved to `atlasrc` and reaches every open Atlas app. |
 
 ## Methods
 

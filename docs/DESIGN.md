@@ -79,7 +79,7 @@ its controls gets them for free.
    matched to that decoration and KWin's button layout. Apps never make a
    window frameless any other way.
 3. **One blur switch for every app.** The window is `AtlasWindow`. With
-   "Transparency effects" on, and a compositor that blurs, its background is
+   "Transparency and blur" on, and a compositor that blurs, its background is
    the theme's background, partly see-through over the blurred desktop
    (Mica style). With it off, the window is opaque. The switch is
    `Transparency` under `[Appearance]` in `~/.config/atlasrc` (default on),
@@ -94,7 +94,7 @@ its controls gets them for free.
    `cornerBadgeIcon: "checkmark"`. Atlas Updater's Updates page is the model.
 5. **The Atlas look, on the Plasma theme.** Calm and precise, Light and Dark
    equally. Violet is the accent (`AtlasStyle.accent`: #6858E2 in Light,
-   #8A7AF4 in Dark) for buttons and selection; pink (`AtlasStyle.focus`:
+   #8A7AF4 in Dark) for buttons and selection; magenta-violet (`AtlasStyle.focus`:
    #A62A8C in Light, #E28BE0 in Dark, each 3:1 or more against the window)
    is for focus rings and decoration. When the user has chosen an accent in
    Plasma, that accent wins, as in other KDE apps. Fonts are IBM Plex Sans
