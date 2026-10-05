@@ -22,7 +22,7 @@ AtlasTextField {
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `schemes` | `list<string>` | `["https"]` | The accepted URL schemes, without the colon. |
+| `schemes` | `list<string>` | `["https"]` | The accepted URL schemes, without the colon, matched without regard to case. An empty list makes every non-empty text Invalid. |
 
 > [!NOTE]
-> Acceptable text is still not safe to splice into a URL or header unencoded. `fixup()` trims surrounding whitespace.
+> Acceptable text is still not safe to splice into a URL or header unencoded. Text with spaces around it is Intermediate until `fixup()` trims it. Text over 2048 characters is Invalid.

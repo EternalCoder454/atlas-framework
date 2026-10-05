@@ -37,5 +37,5 @@ All properties are constant. `uiVersion` is the version of Atlas.Ui itself, from
 | `qtVersion` | `string` (read-only) | — | The Qt version in use. |
 | `repo` | `string` (read-only) | — | The repository name under github.com/EternalCoder454/, from `atlasRepo`. |
 | `sourceUrl` | `string` (read-only) | — | The repository's URL; empty without `atlasRepo`. |
-| `uiVersion` | `string` (read-only) | — | The version of Atlas.Ui itself, such as `"1.4.0"`. |
+| `uiVersion` | `string` (read-only) | — | The version of Atlas.Ui itself, such as `"1.4.0"`. Since 1.3.0. |
 | `version` | `string` (read-only) | — | The application's version. |

@@ -5,7 +5,7 @@ section: Validators
 since: "1.4.0"
 ---
 
-AtlasEmailValidator is a Qt `QValidator` for a field's `validator`, with Acceptable, Intermediate and Invalid as Qt defines them. It checks a pragmatic address: one `@`, a local part, and a domain with a dot, at most 254 characters. The local part may not contain `,;<>"()[]\:?&%#` or format characters. It uses no regular expressions. Pair it with `AtlasTextField.invalidText`, see [AtlasTextField](atlas-text-field.md).
+AtlasEmailValidator is a Qt `QValidator` for a field's `validator`, with Acceptable, Intermediate and Invalid as Qt defines them. It checks a pragmatic address: one `@`, a local part, and a domain with a dot, at most 254 characters. The local part is at most 64 characters, may not start or end with a dot or hold two dots in a row, and may not contain `,;<>"()[]\:?&%#` or format characters. The domain holds only letters, digits, `-` and `.`, and no label of it may be empty or start or end with a hyphen. Whitespace anywhere inside is Invalid. Text with spaces around it is Intermediate until `fixup()` trims it. It uses no regular expressions. Pair it with `AtlasTextField.invalidText`, see [AtlasTextField](atlas-text-field.md).
 
 ## Example
 

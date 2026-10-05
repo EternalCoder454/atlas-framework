@@ -24,4 +24,4 @@ Row {
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `content` | `list<var>` | `[]` | What the area shows, e.g. the row's values. Each change repaints the whole area. |
+| `content` | `list<var>` | `[]` | What the area shows, e.g. the row's values. A change repaints the whole area, but only on the software backend; on the GPU backends it does nothing visible. Setting an equal value (a `NaN` equals a `NaN`) does nothing. |

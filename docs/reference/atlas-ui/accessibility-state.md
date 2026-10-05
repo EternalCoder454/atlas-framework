@@ -24,3 +24,9 @@ Label {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `active` | `bool` (read-only) | — | `true` while an assistive technology is listening. A binding on it updates when that changes. |
+
+## Signals
+
+| Name | Description |
+|---|---|
+| `activeChanged()` | `active` changed. |

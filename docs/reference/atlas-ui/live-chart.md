@@ -26,7 +26,7 @@ LiveChart {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `captions` | `bool` | `true` | Draws the caption texts (`label`, `valueText`, `topText`, `spanText` and a 0 at the bottom right). |
-| `color2` | `color` | `LiveChart`: the theme's neutral colour; the item itself `#f67400` | The colour of the second series. |
+| `color2` | `color` | `LiveChart`: `Kirigami.Theme.neutralTextColor` (an amber in Plasma); the item itself `#f67400` | The colour of the second series. |
 | `color` | `color` | `LiveChart`: `AtlasStyle.accent`; the item itself `#3daee9` | The colour of the first series. |
 | `font` | `QFont` | `LiveChart`: the Atlas caption font; the item itself the application font | The font of the captions. |
 | `label` | `string` | `""` | The caption at the top left; also the chart's accessible name in `LiveChart`. |

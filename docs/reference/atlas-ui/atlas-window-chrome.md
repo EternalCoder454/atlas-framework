@@ -22,4 +22,4 @@ Component.onCompleted: console.log(AtlasWindowChrome.buttonsOnRight, AtlasWindow
 | `globalMenu` | `bool` (read-only) | `false` | True when the desktop has a global menu (an owner of the D-Bus name `com.canonical.AppMenu.Registrar`) and the Qt platform theme is KDE's, so the native menu export can work. False until the first answer arrives, which is asynchronous. |
 
 > [!NOTE]
-> A layout with none of minimise, maximise and close falls back to the default, so a window can always be closed. A stalled bus never blocks the UI: the global-menu check has a one second timeout.
+> A layout with none of minimise, maximise and close on either side resets the right-hand list to the default (`minimize`, `maximize`, `close`) and leaves the left one as it is, so a window can always be closed. A stalled bus never blocks the UI: the global-menu check has a one second timeout.

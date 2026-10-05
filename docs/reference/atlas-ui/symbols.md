@@ -1,6 +1,6 @@
 ---
 title: Symbols
-summary: The singleton that holds every Material Symbol's value as Symbols.<Name>, and looks symbols up by name.
+summary: The singleton that holds every Material Symbol's value as Symbols.Name, and looks symbols up by name.
 section: Icons
 since: "1.3.0"
 ---
@@ -26,8 +26,8 @@ Row {
 | Signature | Description |
 |---|---|
 | `available(int style): bool` | Returns whether the font of a `Symbol.Style` (0 Outlined, 1 Rounded, 2 Sharp) is installed. No warning if not. |
-| `codepoint(string name): int` | Returns the codepoint for a name (`"arrow_back"`, `"arrow-back"`, `"ArrowBack"` or an older name such as `"check_circle_outline"`); 0, with a warning, for none. |
-| `family(int style): string` | Returns the font family of a `Symbol.Style` (0 Outlined, 1 Rounded, 2 Sharp). |
+| `codepoint(string name): int` | Returns the codepoint for a name (`"arrow_back"`, `"arrow-back"`, `"ArrowBack"` or an older name such as `"check_circle_outline"`), in any case and with spaces or hyphens for underscores. Returns 0 with a warning for an unknown name, and 0 without one for an empty name. |
+| `family(int style): string` | Returns the font family of a `Symbol.Style` (0 Outlined, 1 Rounded, 2 Sharp); an out-of-range style gives Rounded. It returns the name even when the font is not installed, and then logs one warning per style (Rounded warns when the fonts load). Use `available()` for a silent check. |
 | `key(int codepoint): string` | Returns the QML name for a codepoint (`"ArrowBack"`, for `Symbols.ArrowBack`); empty for none. |
 | `name(int codepoint): string` | Returns Google's name for a codepoint (`"arrow_back"`); empty for none. |
 | `names(): list<string>` | Returns every symbol's name, sorted, without the older names. |

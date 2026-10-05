@@ -22,7 +22,7 @@ Item {
 ```
 
 > [!NOTE]
-> An image from a file must be a local file of at most 64 MB (and at most 64 MB of pixels once decoded). Anything else is refused and `setImage()` returns `false`.
+> An image from a file must be a local file of at most 64 MB, and at most 64 MB of pixels once decoded. Its format must be PNG, JPEG, WebP, GIF or BMP, found from the content, not the name. Anything else (SVG, for one) is refused with a warning and `setImage()` returns `false`. A `QImage` or grab result is checked only against the 64 MB decoded cap.
 
 ## Properties
 

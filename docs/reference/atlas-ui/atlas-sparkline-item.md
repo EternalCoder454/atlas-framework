@@ -27,7 +27,7 @@ AtlasSparklineItem {
 | `color` | `color` | `#3daee9` | The line's colour. |
 | `fill` | `bool` | `false` | Adds a soft area under the line. |
 | `lineWidth` | `real` | `1.5` | The line's width. |
-| `maximum` | `real` | `NaN` | The value at the top of the item. `NaN` scales to the samples. |
-| `minimum` | `real` | `NaN` | The value at the bottom of the item. `NaN` scales to the samples. |
+| `maximum` | `real` | `NaN` | The value at the top of the item. `NaN` or an infinite value scales to the samples. Samples above it are drawn at the top edge. |
+| `minimum` | `real` | `NaN` | The value at the bottom of the item. `NaN` or an infinite value scales to the samples. Samples below it are drawn at the bottom edge. |
 | `minimumRange` | `real` | `0` | The least span an automatic scale shows, so a nearly flat series is not blown up. |
-| `values` | `list<real>` | `[]` | The samples, oldest first, spread over the full width. A `NaN` is a gap: the line breaks there. |
+| `values` | `list<real>` | `[]` | The samples, oldest first, spread over the full width. Any value that is not finite (`NaN` or infinity) is a gap: the line breaks there. A single sample between gaps, or alone, is drawn as a dot. |

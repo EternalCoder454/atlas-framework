@@ -29,22 +29,22 @@ Each method can be called with fewer arguments; the later ones take the defaults
 
 | Signature | Description |
 |---|---|
-| `bytes(double n): QString` | Formats a byte count with IEC units: `"0 B"`, `"512 B"`, `"1.5 KiB"`, `"3.2 GiB"`. `precision` is 0 to 10 (default 1). |
+| `bytes(double n): QString` | Formats a byte count with IEC units: `"0 B"`, `"512 B"`, `"1.5 KiB"`, `"3.2 GiB"`. `precision` is 0 to 10 (default 1); other values are clamped. |
 | `bytes(double n, int precision): QString` | Same, with the extra argument set. |
 | `bytes(double n, int precision, QString locale): QString` | Same, with the extra argument set. |
-| `bytesPerSecond(double n): QString` | Like `bytes`, as a speed: `"1.5 MiB/s"`. |
+| `bytesPerSecond(double n): QString` | Like `bytes`, as a speed: `"1.5 MiB/s"`. `precision` is clamped to 0 to 10 the same way. |
 | `bytesPerSecond(double n, int precision): QString` | Same, with the extra argument set. |
 | `bytesPerSecond(double n, int precision, QString locale): QString` | Same, with the extra argument set. |
-| `date(QDateTime d): QString` | Formats a date. `style` is `"short"` (default), `"long"`, `"dateTime"`, `"time"`, `"atTime"` ("today at 14:05") or `"relative"` ("just now", "3 hours ago", "yesterday", "in 5 minutes"; a date a week or more away shows its short form). `atTime` and `relative` compare with `now` (default: the current time). An invalid date gives `""`. |
+| `date(QDateTime d): QString` | Formats a date. `style` is `"short"` (default), `"long"`, `"dateTime"`, `"time"`, `"atTime"` ("today at 14:05") or `"relative"` ("just now", "3 hours ago", "yesterday", "in 5 minutes"; a date a week or more away shows its short form). `atTime` gives "yesterday at 14:05" for the previous day and "the short date, then \"at\" and the time" for any other day. `atTime` and `relative` compare with `now` (default: the current time). An invalid date gives `""`. |
 | `date(QDateTime d, QString style): QString` | Same, with the extra argument set. |
 | `date(QDateTime d, QString style, QString locale): QString` | Same, with the extra argument set. |
 | `date(QDateTime d, QString style, QString locale, QDateTime now): QString` | Same, with the extra argument set. |
-| `duration(double seconds): QString` | Formats a number of seconds. `style` is `"short"` (default; "1 h 5 min", the two largest units), `"long"` ("1 hour 5 minutes") or `"clock"` ("1:05:09", "05:09"). The input is clamped. A negative duration keeps its sign. |
+| `duration(double seconds): QString` | Formats a number of seconds. `style` is `"short"` (default; "1 h 5 min"), `"long"` ("1 hour 5 minutes") or `"clock"` ("1:05:09", "05:09"). The largest non-zero unit is shown, plus the next one only when it is not zero, in both `short` and `long`: 3605 s gives "1 h" and 65 s gives "1 min 5 s". The input is clamped. A negative duration keeps its sign. |
 | `duration(double seconds, QString style): QString` | Same, with the extra argument set. |
 | `duration(double seconds, QString style, QString locale): QString` | Same, with the extra argument set. |
-| `number(double n): QString` | Formats a number grouped by the locale. `precision` -1 (default) is the shortest exact form, up to 6 decimals. Keep `n` at or below a billion. |
+| `number(double n): QString` | Formats a number grouped by the locale. `precision` -1 (default; any negative value) is the shortest exact form, up to 6 decimals; otherwise 0 to 10, clamped. |
 | `number(double n, int precision): QString` | Same, with the extra argument set. |
 | `number(double n, int precision, QString locale): QString` | Same, with the extra argument set. |
-| `percent(double fraction): QString` | Formats a fraction as a percentage: 0.423 gives `"42%"` (en) or `"42 %"` (de). `precision` defaults to 0. |
+| `percent(double fraction): QString` | Formats a fraction as a percentage: 0.423 gives `"42%"` (en) or `"42 %"` (de). `precision` defaults to 0 and is clamped to 0 to 10. |
 | `percent(double fraction, int precision): QString` | Same, with the extra argument set. |
 | `percent(double fraction, int precision, QString locale): QString` | Same, with the extra argument set. |

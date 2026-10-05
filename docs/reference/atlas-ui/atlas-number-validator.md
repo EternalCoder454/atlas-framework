@@ -5,7 +5,7 @@ section: Validators
 since: "1.4.0"
 ---
 
-A validator for a text field's `validator`: a number between `bottom` and `top` with at most `decimals` decimals, written the way the validator's locale writes numbers (group separators are accepted). Text over a fixed length is Invalid, and it uses no regular expressions. `fixup()` drops a trailing decimal point and clamps a number to `bottom` and `top`.
+A validator for a text field's `validator`: a number between `bottom` and `top` with at most `decimals` decimals, written the way the validator's locale writes numbers (group separators are accepted). Only standard notation is accepted (no exponent, so `1e3` is Invalid). A trailing decimal point (`"1."`) is Intermediate while the user types. Text over 64 characters is Invalid, and it uses no regular expressions. `fixup()` drops a trailing decimal point and clamps a number to `bottom` and `top`.
 
 Pair it with `invalidText` on [AtlasTextField](atlas-text-field.md#properties) so the field says what is wrong. For a number in a spin box, see [AtlasSpinBox](atlas-spin-box.md). It is a Qt `QValidator`, so its results are Acceptable, Intermediate or Invalid as Qt defines them.
 
