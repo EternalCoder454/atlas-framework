@@ -7,7 +7,7 @@
 
 #include <limits>
 
-static const double nan = std::numeric_limits<double>::quiet_NaN();
+static const double kNaN = std::numeric_limits<double>::quiet_NaN();
 
 static bool near(const QColor &c, double r, double g, double b, double a)
 {
@@ -43,7 +43,7 @@ private Q_SLOTS:
     void alphaNaN()
     {
         AtlasColorsPrivate h;
-        QVERIFY(near(h.alpha(QColor(255, 255, 255), nan), 1, 1, 1, 0));
+        QVERIFY(near(h.alpha(QColor(255, 255, 255), kNaN), 1, 1, 1, 0));
     }
     void alphaInvalid()
     {
@@ -78,7 +78,7 @@ private Q_SLOTS:
         const QColor b(0, 0, 255);
         QVERIFY(near(h.mix(a, b, 7), 0, 0, 1, 1));
         QVERIFY(near(h.mix(a, b, -7), 1, 0, 0, 1));
-        QVERIFY(near(h.mix(a, b, nan), 1, 0, 0, 1));
+        QVERIFY(near(h.mix(a, b, kNaN), 1, 0, 0, 1));
     }
     void mixOtherSpec()
     {
