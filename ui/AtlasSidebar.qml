@@ -117,7 +117,7 @@ FocusScope {
             const found = findSelected();
             if (found === null) {
                 if (target !== null) {
-                    Qt.callLater(clearTarget);
+                    Qt.callLater(() => priv?.clearTarget());
                 }
                 return;
             }
@@ -219,17 +219,18 @@ FocusScope {
             watched.push(e);
             if (isGroup(e)) {
                 e._entries.childrenChanged.connect(schedule);
-                e._header.selectedChanged.connect(updateTarget);
+                e._header.selectedChanged.connect(() => priv?.updateTarget());
+                e.visibleChanged.connect(() => priv?.updateTarget());
                 e.expandedChanged.connect(schedule);
                 return;
             }
             e.selectedChanged.connect(() => {
-                updateTarget();
+                priv?.updateTarget();
                 if (e.selected) {
                     reveal(e);
                 }
             });
-            e.visibleChanged.connect(updateTarget);
+            e.visibleChanged.connect(() => priv?.updateTarget());
             e.activeFocusChanged.connect(() => {
                 if (e.activeFocus) {
                     reveal(e);
@@ -426,13 +427,21 @@ FocusScope {
             contentWidth: width
             contentHeight: column.implicitHeight + control.padding * 2
             boundsBehavior: Flickable.StopAtBounds
-            QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
+            QQC2.ScrollBar.vertical: AtlasScrollBar {
+                id: vbar
+                // Icons-only mode is too narrow for a bar; the wheel and keys still scroll.
+                policy: control.compact ? QQC2.ScrollBar.AlwaysOff : QQC2.ScrollBar.AsNeeded
+            }
 
             ColumnLayout {
                 id: column
-                x: control.padding
+                // The bar's width is kept free on its side (the trailing edge:
+                // right in LTR, left in RTL) while it is shown, so it never
+                // covers labels or values.
+                readonly property real barSpace: !control.compact && flick.contentHeight > flick.height ? vbar.implicitWidth : 0
+                x: control.padding + (control.LayoutMirroring.enabled ? barSpace : 0)
                 y: control.padding
-                width: flick.width - control.padding * 2
+                width: flick.width - control.padding * 2 - barSpace
                 spacing: control.spacing
                 onChildrenChanged: priv.schedule()
 

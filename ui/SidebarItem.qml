@@ -62,7 +62,10 @@ T.AbstractButton {
     }
 
     AtlasToolTip {
-        text: control.value.length > 0 ? control.text + ": " + control.value : control.text
+        text: {
+            const t = control.value.length > 0 ? control.text + ": " + control.value : control.text;
+            return control.badge.length > 0 && control.badgeText.length > 0 ? t + " \u2014 " + control.badgeText : t;
+        }
         shown: control.compact && control.text.length > 0 && (control.hovered || control.visualFocus)
     }
 
@@ -129,6 +132,8 @@ T.AbstractButton {
         Text {
             visible: !control.compact
             Layout.fillWidth: true
+            // Explicit, so the label sits next to the icon when mirrored.
+            horizontalAlignment: Text.AlignLeft
             text: control.text
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody

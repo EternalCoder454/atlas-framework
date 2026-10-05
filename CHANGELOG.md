@@ -11,6 +11,15 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Fix: `ConfirmDialog` with `destructive: true` draws the accept button in
   AtlasButton's Destructive look again (error text and border on a faint
   error fill); since 1.4.0 it was drawn in the accent.
+- Fix: `AtlasSidebar` no longer logs "TypeError: Property 'findSelected' of
+  object [null]"; the selection highlight follows when the selected entry or
+  group is hidden or a group header is selected.
+- Fix: `AtlasSidebar` uses `AtlasScrollBar`, hides it when `compact`, and
+  keeps its width free on its side (also in right-to-left) so it no longer
+  covers labels and values.
+- Fix: a compact `SidebarItem`'s tooltip includes `badgeText`.
+- Fix: in right-to-left a `SidebarItem` without a value keeps its label next
+  to its icon instead of at the far edge.
 
 ## 1.4.0
 

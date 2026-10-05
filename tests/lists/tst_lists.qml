@@ -235,6 +235,37 @@ Item {
         }
     }
     Component {
+        id: groupSidebarComp
+        AtlasSidebar {
+            width: 240
+            height: 300
+            property alias one: itemOne
+            property alias group: grp
+            property alias inGroup: itemIn
+            SidebarItem { id: itemOne; Layout.fillWidth: true; text: "One"; badge: "3"; badgeText: "3 unread" }
+            SidebarGroup {
+                id: grp
+                Layout.fillWidth: true
+                text: "Group"
+                SidebarItem { id: itemIn; Layout.fillWidth: true; text: "Inner" }
+            }
+        }
+    }
+    Component {
+        id: tallSidebarComp
+        AtlasSidebar {
+            width: 240
+            height: 120
+            property bool rtl: false
+            LayoutMirroring.enabled: rtl
+            LayoutMirroring.childrenInherit: true
+            Repeater {
+                model: 12
+                SidebarItem { Layout.fillWidth: true; text: "Entry " + index }
+            }
+        }
+    }
+    Component {
         id: ringComp
         Rectangle {
             width: 100
@@ -295,6 +326,86 @@ Item {
             wait(40);
             verify(r.ring.scale > 0.96 && r.ring.scale < 1, "scale mid-flight: " + r.ring.scale);
             tryVerify(() => Math.abs(r.ring.scale - 1) < 0.002, 2000);
+        }
+    }
+
+    TestCase {
+        name: "SidebarWatch"
+        when: windowShown
+
+        function findHighlight(item) {
+            for (const c of item.children) {
+                if (c instanceof Rectangle && c.z === -1 && Qt.colorEqual(c.color, AtlasStyle.selection)) {
+                    return c;
+                }
+                const f = findHighlight(c);
+                if (f) {
+                    return f;
+                }
+            }
+            return null;
+        }
+        // A handler that ran without its scope logs a TypeError; any warning fails.
+        function test_hiding_and_group_header_follow_without_warnings() {
+            failOnWarning();
+            const sb = createTemporaryObject(groupSidebarComp, root);
+            verify(sb !== null);
+            const hl = findHighlight(sb);
+            verify(hl !== null);
+            sb.one.selected = true;
+            tryVerify(() => hl.visible && hl.height > 0);
+            // Hiding the selected entry takes the highlight away.
+            sb.one.visible = false;
+            tryVerify(() => !hl.visible);
+            sb.one.visible = true;
+            tryVerify(() => hl.visible);
+            // A group header selection moves it; so does hiding the group.
+            sb.group._header.selected = true;
+            sb.one.selected = false;
+            tryVerify(() => hl.visible && Math.abs(hl.y - sb.group._header.mapToItem(hl.parent, 0, 0).y) < 1, 3000);
+            sb.group.visible = false;
+            tryVerify(() => !hl.visible);
+            sb.group.visible = true;
+            sb.group._header.selected = false;
+            tryVerify(() => !hl.visible);
+        }
+        function test_compact_tooltip_has_badge_text() {
+            const sb = createTemporaryObject(groupSidebarComp, root);
+            verify(sb !== null);
+            sb.compact = true;
+            let tip = null;
+            const find = it => { for (const c of (it.data || [])) { if (c && c.shown !== undefined && typeof c.text === "string" && c.text.indexOf("One") === 0) tip = c; find(c); } };
+            find(sb.one);
+            verify(tip !== null, "tooltip found");
+            verify(tip.text.indexOf("3 unread") >= 0, tip.text);
+        }
+    }
+
+    TestCase {
+        name: "SidebarScrollBar"
+        when: windowShown
+
+        function column(sb) {
+            let col = null;
+            const find = it => { for (const c of it.children) { if (c instanceof ColumnLayout && c.barSpace !== undefined) col = c; else find(c); } };
+            find(sb);
+            return col;
+        }
+        function test_bar_space_follows_direction_and_compact() {
+            failOnWarning();
+            const sb = createTemporaryObject(tallSidebarComp, root);
+            verify(sb !== null);
+            const col = column(sb);
+            verify(col !== null);
+            tryVerify(() => col.barSpace > 0);
+            // LTR: the bar is on the right, the column stays at the padding.
+            compare(col.x, sb.padding);
+            verify(col.x + col.width <= sb.width - col.barSpace);
+            sb.rtl = true;
+            tryVerify(() => Math.abs(col.x - (sb.padding + col.barSpace)) < 0.5, 2000, "x=" + col.x + "" + " bar=" + col.barSpace);
+            sb.compact = true;
+            tryVerify(() => col.barSpace === 0);
+            compare(col.x, sb.padding);
         }
     }
 }

@@ -8,6 +8,7 @@ since: "1.4.0"
 A scrolling sidebar column for `SidebarItem` and `SidebarGroup` entries. Put them inside (give each `Layout.fillWidth: true`), or set `model` and a `delegate` whose root is a `SidebarItem` or `SidebarGroup`. Its background follows `AtlasWindow.sidebarColor()`. For pages pushed over each other, use [AtlasNavigationStack](atlas-navigation-stack.md).
 
 It also:
+- scrolls with an `AtlasScrollBar`, shown only when the content overflows and never when `compact` (the wheel and keys still scroll); the entries leave its width free on its side, also under right-to-left;
 - scrolls the selected entry into view when `currentIndex` or an entry's `selected` changes, and any entry that gets keyboard focus;
 - filters entries by title with `filterText` (a case-insensitive "contains"; a group stays while it or one of its entries matches), with a search field on top when `showFilter` is `true`;
 - shows `placeholderText` and `placeholderSymbol` when nothing is visible;

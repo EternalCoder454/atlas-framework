@@ -26,7 +26,7 @@ SidebarItem {
 |---|---|---|---|
 | `badge` | `string` | `""` | An icon name such as `"dialog-warning"`; empty for none. Drawn in its own colours. |
 | `badgeText` | `string` | `""` | What the badge means, for screen readers ("2 problems"). |
-| `compact` | `bool` | `false` | Icon only (narrow windows); the text becomes the tooltip and accessible name. Hover or keyboard focus shows the title and value as a tooltip. |
+| `compact` | `bool` | `false` | Icon only (narrow windows); the text becomes the tooltip and accessible name. Hover or keyboard focus shows the title, value and `badgeText` (when a `badge` is set) as a tooltip. |
 | `density` | `int` | `AtlasStyle.density` | `AtlasStyle.Normal` or `AtlasStyle.Compact`; Compact shrinks the height and padding to about 75%. |
 | `disclosure` | `bool` | `false` | Makes the entry a group header with a chevron that turns down when `expanded`. |
 | `expanded` | `bool` | `false` | Whether a disclosure entry is open. |
