@@ -89,9 +89,10 @@ QString sized(double n, int precision, const QLocale &l, bool si)
     for (double v = size; v >= base && unit < 6; v /= base) {
         ++unit;
     }
-    const double scale = std::pow(10.0, precision);
-    const double inUnit = size / std::pow(base, unit);
-    if (unit < 6 && std::round(inUnit * scale) / scale >= base) {
+    // Decided from the number as the locale prints it, so the check and the output agree.
+    bool ok = false;
+    const double printed = l.toDouble(l.toString(size / std::pow(base, unit), 'f', precision), &ok);
+    if (unit < 6 && ok && printed >= base) {
         size = std::pow(base, unit + 1);
     }
     return sign + l.formattedDataSize(qint64(size), precision, si ? QLocale::DataSizeSIFormat : QLocale::DataSizeIecFormat);

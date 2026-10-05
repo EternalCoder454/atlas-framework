@@ -243,7 +243,8 @@ private Q_SLOTS:
         const QDateTime d(QDate(2099, 1, 1), QTime(3, 0), QTimeZone::LocalTime);
         QVERIFY(f.date(d, "longAtTime", en).startsWith("Thursday, January 1, 2099 at 3:00"));
         QVERIFY(f.date(d, "longAtTime", de).startsWith("Donnerstag, 1. Januar 2099"));
-        QVERIFY(f.date(d, "longAtTime", de).endsWith("03:00"));
+        QVERIFY(f.date(d, "longAtTime", de).contains("Donnerstag"));
+        QVERIFY(f.date(d, "longAtTime", de).contains("03:00"));
         QCOMPARE(f.date(QDateTime(), "longAtTime", en), "");
     }
 

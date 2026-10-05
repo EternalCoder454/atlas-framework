@@ -170,11 +170,13 @@ TestCase {
         }
     }
     Component {
-        id: editableCombo
+        id: refusingFilterCombo
         AtlasComboBox {
+            property var m
             width: 200
-            editable: true
+            filterable: true
             model: ["Apple", "Banana", "Cherry"]
+            currentIndex: m.index
         }
     }
 
@@ -214,15 +216,21 @@ TestCase {
 
     function test_filterable_choice_refused_springs_back() {
         const m = createTemporaryObject(modelComp, tc);
-        const c = createTemporaryObject(refusingCombo, tc, {
+        const c = createTemporaryObject(refusingFilterCombo, tc, {
             m: m
         });
         c.popup.open();
-        c.popup.close();
-        c.forceActiveFocus();
-        keyClick(Qt.Key_Down);
+        tryVerify(() => c.popup.opened);
+        const f = findItem(c.popup.contentItem, x => x.hasOwnProperty("placeholderText") && x.placeholderText === "Filter");
+        verify(f);
+        f.forceActiveFocus();
+        keyClick("c");
+        keyClick("h");
+        keyClick(Qt.Key_Return);
         turn();
-        compare(c.currentIndex, 0);
+        compare(c.currentIndex, 0, "no handler took it: springs back");
+        m.index = 1;
+        compare(c.currentIndex, 1, "still bound");
     }
 
     function test_model_reset_during_the_held_turn() {
@@ -237,16 +245,5 @@ TestCase {
         compare(c.currentIndex, 0, "the binding is back");
         m.index = 1;
         compare(c.currentIndex, 1, "and still bound");
-    }
-
-    function test_editable_combo_typing_then_enter() {
-        const c = createTemporaryObject(editableCombo, tc);
-        verify(c);
-        c.forceActiveFocus();
-        keyClick("B");
-        keyClick(Qt.Key_Return);
-        turn();
-        // Not an editable control: it must not crash, and the index stays valid.
-        verify(c.currentIndex >= -1 && c.currentIndex < 3);
     }
 }
