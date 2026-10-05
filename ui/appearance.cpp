@@ -236,7 +236,7 @@ void Appearance::watchWindow(QQuickWindow *window)
         // window that is gone drops the call.
         QMetaObject::invokeMethod(window, [self, result, api, device] {
             if (self) {
-                self->applyRendering(result, api, device);
+                self->applyRendering(window, result, api, device);
             }
         }, Qt::QueuedConnection);
     };
@@ -278,26 +278,53 @@ void Appearance::watchWindow(QQuickWindow *window)
             report(result, api, device);
         }
     }, Qt::DirectConnection);
-    m_probes.insert(window, connection);
-    connect(window, &QObject::destroyed, this, [this, window] { m_probes.remove(window); });
+    const QMetaObject::Connection destroyed = connect(window, &QObject::destroyed, this, [this, window] { m_probes.remove(window); });
+    m_probes.insert(window, Probe{connection, destroyed});
 }
 
-// GUI thread only. `result` is empty when the probe gave up.
-void Appearance::applyRendering(std::optional<bool> result, int api, const QString &device)
+// Stops probing one window.
+void Appearance::dropProbe(QQuickWindow *window)
+{
+    const auto it = m_probes.find(window);
+    if (it != m_probes.end()) {
+        QObject::disconnect(it->frames);
+        QObject::disconnect(it->destroyed);
+        m_probes.erase(it);
+    }
+}
+
+Appearance::~Appearance()
+{
+    // The frame connections have the window as their context, not this.
+    for (auto it = m_probes.begin(); it != m_probes.end(); ++it) {
+        QObject::disconnect(it->frames);
+        QObject::disconnect(it->destroyed);
+    }
+}
+
+// GUI thread only. `result` is empty when the window's probe gave up: that
+// does not latch, so another window can still find the answer.
+void Appearance::applyRendering(QQuickWindow *window, std::optional<bool> result, int api, const QString &device)
 {
     if (m_renderingKnown) {
         return;
     }
-    m_renderingKnown = true;
-    for (auto it = m_probes.begin(); it != m_probes.end(); ++it) {
-        QObject::disconnect(it.value());
+    if (!result) {
+        qWarning("Atlas.Ui: could not tell the rendering mode (graphics API %d, device \"%s\"): assuming hardware; set ATLAS_SOFTWARE_RENDERING=1 to force", api,
+                 device.toUtf8().constData());
+        if (window) {
+            dropProbe(window);
+        }
+        return;
     }
-    m_probes.clear();
-    qInfo("Atlas.Ui: graphics API %d, device \"%s\": software rendering %s", api, device.toUtf8().constData(),
-          result ? (*result ? "yes" : "no") : "unknown (probe failed, assuming no)");
-    const bool software = result.value_or(false);
-    if (software != m_softwareRendering) {
-        m_softwareRendering = software;
+    m_renderingKnown = true;
+    const auto windows = m_probes.keys();
+    for (QQuickWindow *w : windows) {
+        dropProbe(w);
+    }
+    qInfo("Atlas.Ui: graphics API %d, device \"%s\": software rendering %s", api, device.toUtf8().constData(), *result ? "yes" : "no");
+    if (*result != m_softwareRendering) {
+        m_softwareRendering = *result;
         Q_EMIT softwareRenderingChanged();
     }
 }

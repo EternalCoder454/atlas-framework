@@ -65,10 +65,26 @@ private Q_SLOTS:
         QVERIFY(Appearance::isSoftwareRasterizer("softpipe"));
         QVERIFY(Appearance::isSoftwareRasterizer("SwiftShader Device (Subzero)"));
         QVERIFY(Appearance::isSoftwareRasterizer("Lavapipe"));
-        QVERIFY(!Appearance::isSoftwareRasterizer("AMD Radeon RX 7900 XTX (radeonsi, navi31)"));
         QVERIFY(Appearance::isSoftwareRasterizer("Mesa Software Rasterizer"));
         QVERIFY(!Appearance::isSoftwareRasterizer("AMD Radeon RX 7900 XTX (radeonsi, navi31)"));
         QVERIFY(!Appearance::isSoftwareRasterizer(QString()));
+    }
+
+    // A probe that gives up does not latch: a later real result still counts.
+    void giveUpDoesNotLatch()
+    {
+        qunsetenv("ATLAS_SOFTWARE_RENDERING");
+        Appearance a;
+        QSignalSpy spy(&a, &Appearance::softwareRenderingChanged);
+        QTest::ignoreMessage(QtWarningMsg, QRegularExpression("could not tell the rendering mode"));
+        a.applyRendering(nullptr, std::nullopt, 1, QString());
+        QCOMPARE(a.softwareRendering(), false);
+        a.applyRendering(nullptr, true, 1, QStringLiteral("llvmpipe"));
+        QCOMPARE(a.softwareRendering(), true);
+        QCOMPARE(spy.count(), 1);
+        // A real result latches.
+        a.applyRendering(nullptr, false, 1, QStringLiteral("hardware"));
+        QCOMPARE(a.softwareRendering(), true);
     }
 
     // The probe's decision: a failed probe (empty string) is "unknown", never

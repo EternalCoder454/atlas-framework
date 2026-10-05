@@ -84,6 +84,7 @@ public:
     Q_ENUM(ColorScheme)
 
     explicit Appearance(QObject *parent = nullptr);
+    ~Appearance() override;
 
     bool transparency() const { return m_transparency; }
     void setTransparency(bool on);
@@ -106,6 +107,10 @@ public:
     // GraphicsApi), the GL_RENDERER string and the Vulkan device name: empty
     // while the answer is unknown (no usable string yet).
     static std::optional<bool> decideRendering(int api, const QString &glRenderer, const QString &vulkanDevice);
+
+    // The probe's answer for `window` (internal; public for the tests). An
+    // empty result is a probe that gave up: logged, not latched.
+    void applyRendering(QQuickWindow *window, std::optional<bool> result, int api, const QString &device);
 
     // Ask the compositor again whether blur is on.
     Q_INVOKABLE void refresh();
@@ -132,7 +137,7 @@ private:
     void readSystem();
     void readMotion();
     void watchWindow(QQuickWindow *window);
-    void applyRendering(std::optional<bool> result, int api, const QString &device);
+    void dropProbe(QQuickWindow *window);
 
     QPointer<PortalAppearance> m_portal;
     KSharedConfig::Ptr m_globals;
@@ -145,7 +150,11 @@ private:
     // The environment forced the value, or the first window has been checked.
     bool m_renderingKnown = false;
     // Windows whose first frames are being probed, with their connection.
-    QHash<QQuickWindow *, QMetaObject::Connection> m_probes;
+    struct Probe {
+        QMetaObject::Connection frames; // beforeRendering
+        QMetaObject::Connection destroyed;
+    };
+    QHash<QQuickWindow *, Probe> m_probes;
     qreal m_textScale = 1.0;
 
     KSharedConfig::Ptr m_config;
