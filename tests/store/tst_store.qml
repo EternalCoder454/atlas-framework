@@ -71,6 +71,20 @@ Item {
         return null;
     }
 
+    // The first visible item with `objectName` under `item`.
+    function findVisible(item, name) {
+        if (item.objectName === name && item.visible) {
+            return item;
+        }
+        for (const c of item.children) {
+            const f = findVisible(c, name);
+            if (f) {
+                return f;
+            }
+        }
+        return null;
+    }
+
     Component {
         id: customShelfComp
         AtlasShelf {
@@ -190,10 +204,12 @@ Item {
         }
 
         function viewerSource(c) {
-            c.expanded = true;
             const top = root.Window.window.contentItem;
-            tryVerify(() => { const v = root.findItem(top, "viewer"); return v !== null && v.visible; });
-            const img = root.findItem(top, "viewerImage");
+            // A viewer still closing from the last carousel must be gone.
+            tryVerify(() => root.findVisible(top, "viewer") === null, 3000);
+            c.expanded = true;
+            tryVerify(() => root.findVisible(top, "viewer") !== null);
+            const img = root.findItem(root.findVisible(top, "viewer"), "viewerImage");
             verify(img !== null, "the viewer image exists");
             const url = img.source.toString();
             c.expanded = false;

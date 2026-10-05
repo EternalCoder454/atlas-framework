@@ -20,7 +20,8 @@ import org.kde.kirigami as Kirigami
 // from each model entry, and emits `activated(index)` when pressed. A custom
 // `delegate` gets the usual `index`, `model` and `modelData` and sets its own
 // width (`control.cardWidth` is the one the default card uses). The row is as
-// high as the tallest card made so far (its implicit or its set height).
+// high as the tallest card made so far (its implicit or its set height). A delegate must not size itself from the list's
+// height, or the row could never shrink.
 //
 // The cards are Tab stops, and the Left and Right arrows (Home, End) move
 // between them and scroll the next one into view. In a right-to-left layout
@@ -65,15 +66,23 @@ T.Control {
         id: priv
         // As high as the tallest card made so far.
         property real rowHeight: 0
-        function measure() {
+        // The tallest of the cards made so far.
+        function tallest() {
             let h = 0;
             for (const c of list.contentItem.children) {
                 // A delegate that sets a height of its own has no implicit one.
                 h = Math.max(h, c.implicitHeight, c.height);
             }
-            if (h > priv.rowHeight) {
-                priv.rowHeight = h;
-            }
+            return h;
+        }
+        // Grows the row to the tallest card.
+        function measure() {
+            priv.rowHeight = Math.max(priv.rowHeight, priv.tallest());
+        }
+        // After a new model: the row may shrink, but only once its new cards
+        // exist, so it does not collapse in between.
+        function remeasure() {
+            priv.rowHeight = priv.tallest();
         }
         // How far a button press scrolls: most of what is shown.
         readonly property real stepWidth: Math.max(control.cardWidth, list.width - control.cardWidth * 0.5)
@@ -165,10 +174,7 @@ T.Control {
             // A drag or a wheel takes over from a running button scroll.
             onMovementStarted: scrollAnim.stop()
             // A new model may hold shorter cards.
-            onModelChanged: {
-                priv.rowHeight = 0;
-                Qt.callLater(priv.measure);
-            }
+            onModelChanged: Qt.callLater(priv.remeasure)
             Component.onCompleted: Qt.callLater(priv.measure)
 
             Keys.onPressed: event => {

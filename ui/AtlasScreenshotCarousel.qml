@@ -66,6 +66,8 @@ T.Control {
 
     QtObject {
         id: priv
+        // Set once the carousel is made.
+        property bool completed: false
         // Slides to `currentIndex`; a Behavior on it animates the move.
         property real position: control.currentIndex
         readonly property bool many: control.count > 12
@@ -121,48 +123,53 @@ T.Control {
         }
     }
 
+    // While the carousel is being made its properties arrive in any order
+    // (`expanded` before `sources`), so nothing is vetoed until it is done.
     onCountChanged: {
         currentIndex = Math.max(0, Math.min(count - 1, currentIndex));
-        if (count === 0) {
+        if (count === 0 && priv.completed) {
             expanded = false;
         }
     }
     onExpandableChanged: {
-        if (!expandable) {
+        if (!expandable && priv.completed) {
             expanded = false;
         }
     }
     // The viewer is a popup and needs a window. `expanded: true` at creation
-    // waits for the window; with none by then, or set later with none, it
-    // goes back to false instead of staying true with nothing shown.
-    property bool _completed: false
+    // waits for the window; with none once the carousel is made, or when it
+    // loses its window, it goes back to false instead of staying true with
+    // nothing shown.
     function _openViewer() {
-        if (viewer.visible) {
+        if (viewer.visible || !expandable || count === 0) {
             return;
         }
         viewer.open();
         opened(currentIndex);
     }
     onExpandedChanged: {
-        if (expanded) {
-            if (!expandable || count === 0) {
-                expanded = false;
-            } else if (control.Window.window) {
-                _openViewer();
-            } else if (_completed) {
-                expanded = false;
-            }
-        } else {
+        if (!expanded) {
             viewer.close();
+        } else if (priv.completed) {
+            if (!expandable || count === 0 || !control.Window.window) {
+                expanded = false;
+            } else {
+                _openViewer();
+            }
         }
     }
     Window.onWindowChanged: {
-        if (expanded && control.Window.window) {
+        if (!expanded || !priv.completed) {
+            return;
+        }
+        if (control.Window.window) {
             _openViewer();
+        } else {
+            expanded = false;
         }
     }
     Component.onCompleted: {
-        _completed = true;
+        priv.completed = true;
         if (expanded) {
             if (control.Window.window && expandable && count > 0) {
                 _openViewer();
@@ -522,7 +529,7 @@ T.Control {
                 Accessible.description: qsTr("%1 of %2").arg(zoom.shown + 1).arg(control.count)
                 onShownChanged: zoom.actual = false
                 // A large image at 1:1 starts centred, not at its corner.
-                onActualChanged: Qt.callLater(() => {
+                onActualChanged: if (zoom.actual) Qt.callLater(() => {
                     flick.contentX = Math.max(0, (flick.contentWidth - flick.width) / 2);
                     flick.contentY = Math.max(0, (flick.contentHeight - flick.height) / 2);
                 })
