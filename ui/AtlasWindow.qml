@@ -132,9 +132,9 @@ QQC2.ApplicationWindow {
     readonly property real _grip: 4
 
     // An alpha surface only while blurred: an opaque window otherwise, as before.
-    color: root.blurred ? "transparent" : Kirigami.Theme.backgroundColor
+    color: root.blurred ? "transparent" : AtlasStyle.base
     background: Rectangle {
-        color: root.tinted(Kirigami.Theme.backgroundColor, 1)
+        color: root.tinted(AtlasStyle.base, 1)
         border.width: root._resizable ? 1 : 0
         border.color: AtlasStyle.separator
     }

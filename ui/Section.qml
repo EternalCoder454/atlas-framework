@@ -110,11 +110,11 @@ ColumnLayout {
         visible: !root.folded
         Layout.fillWidth: true
         implicitHeight: col.implicitHeight + 2
-        radius: AtlasStyle.radiusLarge
-        // Slightly raised over the page in both light and dark.
-        color: Qt.alpha(Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06)), root.Window.window && root.Window.window.blurred === true ? 0.94 : 1)
+        radius: AtlasStyle.radius
+        // A solid card over the page: dense forms stay readable.
+        color: AtlasStyle.surface
         border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
+        border.color: AtlasStyle.separator
 
         ColumnLayout {
             id: col
@@ -133,7 +133,7 @@ ColumnLayout {
         wrapMode: Text.Wrap
         font.family: Kirigami.Theme.defaultFont.family
         font.pointSize: AtlasStyle.fontSizeCaption
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
+        color: AtlasStyle.textMuted
         textFormat: Text.PlainText
     }
 }

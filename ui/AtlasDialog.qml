@@ -98,11 +98,11 @@ T.Dialog {
     }
 
     background: Rectangle {
-        radius: 14
-        // Solid fallback; tinted translucent over the blurred window when transparency is effective.
-        color: Appearance.effective ? Qt.alpha(Kirigami.Theme.backgroundColor, 0.92) : Kirigami.Theme.backgroundColor
+        radius: AtlasStyle.radiusLarge
+        // Raised, strongly tinted over the blur; solid without it (floatingBackground switches).
+        color: AtlasStyle.floatingBackground
         border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
+        border.color: AtlasStyle.separator
     }
 
     header: Item {
@@ -131,6 +131,7 @@ T.Dialog {
                 text: control.title
                 font.bold: true
                 font.pointSize: AtlasStyle.fontSizeHeading
+                color: AtlasStyle.text
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
                 Accessible.role: Accessible.Heading

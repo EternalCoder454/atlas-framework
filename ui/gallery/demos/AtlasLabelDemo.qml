@@ -24,5 +24,7 @@ Item {
         AtlasLabel { Layout.fillWidth: true; text: "Body style, the default"; textStyle: AtlasLabel.Body }
         AtlasLabel { Layout.fillWidth: true; text: "Caption style, small and muted"; textStyle: AtlasLabel.Caption }
         AtlasLabel { Layout.fillWidth: true; text: "Mono style: v1.4.0 /usr/bin/atlas"; textStyle: AtlasLabel.Mono; elide: Text.ElideRight }
+        AtlasLabel { Layout.fillWidth: true; text: "Window title style"; textStyle: AtlasLabel.WindowTitle }
+        AtlasLabel { Layout.fillWidth: true; text: "Code style: git commit -m fix"; textStyle: AtlasLabel.Code; elide: Text.ElideRight }
     }
 }

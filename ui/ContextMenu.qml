@@ -61,7 +61,7 @@ T.Menu {
             anchors.margins: -1
             anchors.topMargin: 0
             anchors.bottomMargin: -3
-            radius: AtlasStyle.radiusLarge + 1
+            radius: AtlasStyle.radius + 1
             color: Qt.alpha("black", 0.04)
         }
         Rectangle {
@@ -69,15 +69,14 @@ T.Menu {
             anchors.margins: -2
             anchors.topMargin: -1
             anchors.bottomMargin: -5
-            radius: AtlasStyle.radiusLarge + 2
+            radius: AtlasStyle.radius + 2
             color: Qt.alpha("black", 0.025)
         }
         Rectangle {
             anchors.fill: parent
-            radius: AtlasStyle.radiusLarge
-            // Solid fallback; tinted translucent over the blurred window when transparency is effective.
-            readonly property color _solid: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
-            color: Appearance.effective ? Qt.alpha(_solid, 0.85) : _solid
+            radius: AtlasStyle.radius
+            // floatingBackground is tinted translucent over the blurred window, solid without it.
+            color: AtlasStyle.floatingBackground
             border.width: 1
             border.color: AtlasStyle.separator
         }

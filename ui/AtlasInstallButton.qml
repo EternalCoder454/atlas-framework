@@ -3,8 +3,8 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A pill button for installing an app, with its progress inside the pill:
-// the accent fills it from the left as the download goes. Its `installState` says
+// A button for installing an app, with its progress inside it:
+// a thin bar along its bottom edge fills as the download goes. Its `installState` says
 // what it offers and what a press means:
 //
 //   "install"     Install, in the accent colour
@@ -39,6 +39,9 @@ T.AbstractButton {
     property string updateText: qsTr("Update")
     //: Button that tries a failed install again (a verb)
     property string errorText: qsTr("Retry")
+
+    // False holds the progress shimmer still (a screenshot).
+    property bool animated: true
 
     signal cancelRequested
 
@@ -106,10 +109,32 @@ T.AbstractButton {
 
     text: priv.label
 
+    // A bright band, violet to sakura, across its parent (the progress fill).
+    component Shimmer: Rectangle {
+        property real phase: 0.5
+        visible: !AtlasStyle.reducedMotion
+        width: Math.max(parent.width * 0.6, Kirigami.Units.gridUnit * 2)
+        height: parent.height
+        x: -width + (parent.width + width) * phase
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: Qt.alpha(AtlasStyle.sakura, 0) }
+            GradientStop { position: 0.5; color: Qt.alpha(AtlasStyle.sakura, 0.6) }
+            GradientStop { position: 1; color: Qt.alpha(AtlasStyle.accent, 0) }
+        }
+        NumberAnimation on phase {
+            running: priv.installing && control.animated && control.visible && !AtlasStyle.reducedMotion
+            from: 0
+            to: 1
+            duration: AtlasStyle.durationLong * 7
+            loops: Animation.Infinite
+        }
+    }
+
     contentItem: Text {
         text: priv.label
         font: Kirigami.Theme.defaultFont
-        color: priv.filled && control.enabled ? AtlasStyle.accentText : priv.tint
+        color: priv.filled && control.enabled ? AtlasStyle.accentStrongText : priv.tint
         opacity: control.enabled ? 1 : 0.75
         textFormat: Text.PlainText // no mnemonics
         horizontalAlignment: Text.AlignHCenter
@@ -121,9 +146,9 @@ T.AbstractButton {
         Rectangle {
             id: bg
             anchors.fill: parent
-            radius: AtlasStyle.radiusPill
+            radius: AtlasStyle.radiusSmall
             color: {
-                const accent = AtlasStyle.accent;
+                const accent = AtlasStyle.accentStrong;
                 if (priv.filled) {
                     if (!control.enabled) {
                         return Qt.alpha(Kirigami.Theme.textColor, 0.12);
@@ -133,7 +158,7 @@ T.AbstractButton {
                 if (priv.failed) {
                     return Qt.alpha(priv.tint, control.down ? 0.28 : control.hovered ? 0.2 : 0.14);
                 }
-                return Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.2 : control.hovered ? 0.12 : 0.07);
+                return control.down ? AtlasStyle.pressed : control.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control;
             }
             Behavior on color {
                 ColorAnimation {
@@ -141,46 +166,66 @@ T.AbstractButton {
                 }
             }
 
-            // The progress, inside the pill: a pill of its own, as in AtlasProgressBar.
-            // Known progress grows from the left; unknown progress slides a second
-            // pill to and fro. Both stay within the pill's bounds.
+            // The progress: a thin bar along the bottom edge, inside the button, so
+            // the label stays readable. Known progress grows from the leading
+            // side; unknown progress slides a short segment to and fro. The
+            // working part carries the violet-to-sakura shimmer (flat accent
+            // under reduced motion).
             Rectangle {
-                id: fill
-                visible: priv.installing && !priv.indeterminate
-                x: 0
-                height: parent.height
+                id: track
+                visible: priv.installing
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: AtlasStyle.radiusSmall
+                anchors.rightMargin: AtlasStyle.radiusSmall
+                anchors.bottomMargin: AtlasStyle.spacingXSmall
+                height: AtlasStyle.spacingSmall - 1
                 radius: AtlasStyle.radiusPill
-                width: priv.fraction > 0 ? Math.min(parent.width, Math.max(height, parent.width * priv.fraction)) : 0
-                color: Qt.alpha(AtlasStyle.accent, 0.55)
-                Behavior on width {
-                    NumberAnimation {
-                        duration: AtlasStyle.duration
-                        easing.type: Easing.OutCubic
+                color: Qt.alpha(Kirigami.Theme.textColor, 0.15)
+                clip: true
+
+                Rectangle {
+                    id: fill
+                    visible: !priv.indeterminate
+                    height: parent.height
+                    radius: AtlasStyle.radiusPill
+                    x: control.mirrored ? parent.width - width : 0
+                    width: priv.fraction > 0 ? Math.min(parent.width, Math.max(height, parent.width * priv.fraction)) : 0
+                    color: AtlasStyle.accent
+                    clip: true
+                    Shimmer {}
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: AtlasStyle.duration
+                            easing.type: Easing.OutCubic
+                        }
                     }
                 }
-            }
-            Rectangle {
-                id: slider
-                visible: priv.indeterminate
-                x: 0
-                height: parent.height
-                radius: AtlasStyle.radiusPill
-                width: Math.min(parent.width, parent.width * 0.35)
-                color: Qt.alpha(AtlasStyle.accent, 0.55)
-                SequentialAnimation on x {
-                    running: priv.indeterminate && control.visible && AtlasStyle.duration > 0
-                    loops: Animation.Infinite
-                    NumberAnimation {
-                        from: 0
-                        to: Math.max(0, bg.width - slider.width)
-                        duration: AtlasStyle.durationLong * 2
-                        easing.type: Easing.InOutQuad
-                    }
-                    NumberAnimation {
-                        from: Math.max(0, bg.width - slider.width)
-                        to: 0
-                        duration: AtlasStyle.durationLong * 2
-                        easing.type: Easing.InOutQuad
+                Rectangle {
+                    id: slider
+                    visible: priv.indeterminate
+                    height: parent.height
+                    radius: AtlasStyle.radiusPill
+                    width: parent.width * 0.35
+                    color: AtlasStyle.accent
+                    clip: true
+                    Shimmer {}
+                    SequentialAnimation on x {
+                        running: priv.indeterminate && control.visible && control.animated && AtlasStyle.duration > 0
+                        loops: Animation.Infinite
+                        NumberAnimation {
+                            from: 0
+                            to: Math.max(0, track.width - slider.width)
+                            duration: AtlasStyle.durationLong * 2
+                            easing.type: Easing.InOutQuad
+                        }
+                        NumberAnimation {
+                            from: Math.max(0, track.width - slider.width)
+                            to: 0
+                            duration: AtlasStyle.durationLong * 2
+                            easing.type: Easing.InOutQuad
+                        }
                     }
                 }
             }
@@ -189,7 +234,7 @@ T.AbstractButton {
                 radius: parent.radius
                 color: "transparent"
                 border.width: 1
-                border.color: Qt.alpha(Kirigami.Theme.textColor, priv.filled ? 0 : 0.14)
+                border.color: priv.filled ? "transparent" : AtlasStyle.controlBorder
             }
         }
         AtlasFocusRing {

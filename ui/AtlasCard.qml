@@ -61,7 +61,7 @@ T.Control {
     Keys.onSpacePressed: event => control._activate(event)
 
     background: Rectangle {
-        radius: AtlasStyle.radiusLarge
+        radius: AtlasStyle.radius
         color: AtlasStyle.surface
         border.width: 1
         border.color: AtlasStyle.separator
@@ -70,7 +70,7 @@ T.Control {
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            color: Qt.alpha(Kirigami.Theme.textColor, press.pressed ? 0.1 : control.hovered ? 0.05 : 0)
+            color: press.pressed ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
             Behavior on color {
                 ColorAnimation {
                     duration: AtlasStyle.durationShort

@@ -120,8 +120,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: {
-            const w = Window.window as AtlasWindow;
-            return w ? w.tinted(Kirigami.Theme.backgroundColor, 1) : Kirigami.Theme.backgroundColor;
+            return AtlasStyle.chromeBackground;
         }
         Rectangle {
             anchors.left: parent.left
@@ -290,8 +289,10 @@ Item {
         width: Math.max(0, Math.min(implicitWidth, _maxWidth))
         text: root.title
         elide: Text.ElideRight
-        font.pointSize: AtlasStyle.fontSizeBody
-        color: Kirigami.Theme.textColor
+        font.pointSize: AtlasStyle.fontSizeWindowTitle
+        font.weight: AtlasStyle.fontWeightWindowTitle
+        font.family: AtlasStyle.fontFamily
+        color: AtlasStyle.text
         Accessible.ignored: true
     }
 

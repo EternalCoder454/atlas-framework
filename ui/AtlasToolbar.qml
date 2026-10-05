@@ -139,8 +139,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         visible: !root.flat
-        radius: AtlasStyle.radiusLarge
-        color: AtlasStyle.surface
+        radius: AtlasStyle.radius
+        color: AtlasStyle.chromeBackground
         border.width: 1
         border.color: AtlasStyle.separator
     }
