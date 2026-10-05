@@ -81,7 +81,8 @@ QT_QPA_PLATFORM=offscreen ./build/atlas-app-template
 
 ## Icons
 
-Atlas.Ui draws Google's Material Symbols, about 4,000 icons in three styles:
+Atlas.Ui draws Google's Material Symbols, about 4,000 icons (Rounded; Outlined
+and Sharp with the `atlas-symbols-fonts-extra` package):
 
 ```qml
 Symbol { icon: Symbols.Settings }
@@ -95,5 +96,6 @@ PrimaryButton { text: qsTr("Share"); symbol: Symbols.Share }
 a leading number is spelled out, `10k` is `TenK`), and the `<app>_qmllint`
 target flags a misspelled one. To find one, run the gallery, Atlas Symbols
 (`atlas-symbols`, from the atlas-symbols package): search, pick a style, fill
-and weight, and copy the QML. The fonts come from the `atlas-symbols-fonts`
-package, which atlas-ui requires.
+and weight, and copy the QML. The Rounded font comes from the
+`atlas-symbols-fonts` package, which atlas-ui requires; Outlined and Sharp from
+`atlas-symbols-fonts-extra`.

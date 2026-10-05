@@ -71,8 +71,11 @@ its controls gets them for free.
    AtlasOS's Aurorae themes draw minimize, maximize and close as rounded
    squares on the right, tinted at rest, accent on hover, red for close (see
    "Window title bars" in the AtlasOS repository's DEV.md). Apps never draw
-   their own title bar or caption buttons, and never ask for a frameless
-   window.
+   their own title bar or caption buttons. The one exception is the merged
+   header (since 1.4.0): an `AtlasWindow` with an `AtlasHeaderBar` as its
+   `header` is frameless and draws the title row and `AtlasWindowButtons`,
+   matched to that decoration and KWin's button layout. Apps never make a
+   window frameless any other way.
 3. **One blur switch for every app.** The window is `AtlasWindow`. With
    "Transparency effects" on, and a compositor that blurs, its background is
    the theme's background, partly see-through over the blurred desktop
