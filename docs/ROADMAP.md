@@ -387,6 +387,16 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   hover rings; exclusive in a group). AtlasAccentPicker (round swatches from
   a model of colours, exclusive, arrow keys, accessible names).
   AtlasWindow `kiosk` (full screen, no close; a close request is refused).
+- [ ] 43 Atlas Updater (2026-10-05): AtlasScreenGlow, the edge glow on every
+  monitor's edges rather than inside the window, for "the system is being
+  changed" (Updater, Store installs). Four layer-shell strip windows per
+  screen (LayerOverlay, no exclusive zone, no keyboard, input-transparent)
+  through an Instantiator over the screens; it shares AtlasEdgeGlow's edge
+  look; 30 fps timer pulse, static under reduced motion and
+  softwareRendering; no window while inactive. layer-shell-qt is optional
+  (loaded through a Loader, Recommends in the spec); without it, X11 tool
+  windows or the in-window glow. The Updater builds it first and hands over
+  the file with measured costs.
 - Waits for Fedora's Qt 6.12 (Fedora 44 and 45 ship 6.11.2):
   `motionPreference`, QML hot reload, ToolTip `policy`, MenuItem shortcuts.
 
