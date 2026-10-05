@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QStyleHints>
 #include <QVariant>
 
 class Clipboard : public QObject
@@ -16,6 +17,20 @@ class Clipboard : public QObject
 public:
     using QObject::QObject;
     Q_INVOKABLE void copy(const QString &text) { QGuiApplication::clipboard()->setText(text); }
+};
+
+// Lets the header switch the colour scheme at run time (Qt 6.8+ override;
+// 0 follows the system, 1 light, 2 dark).
+class Theme : public QObject
+{
+    Q_OBJECT
+public:
+    using QObject::QObject;
+    Q_INVOKABLE void setScheme(int scheme)
+    {
+        const auto value = scheme == 1 ? Qt::ColorScheme::Light : scheme == 2 ? Qt::ColorScheme::Dark : Qt::ColorScheme::Unknown;
+        QGuiApplication::styleHints()->setColorScheme(value);
+    }
 };
 
 int main(int argc, char *argv[])
@@ -43,9 +58,11 @@ int main(int argc, char *argv[])
     }
 
     Clipboard clipboard;
+    Theme theme;
     QQmlApplicationEngine engine;
     engine.setInitialProperties({
         {QStringLiteral("clipboard"), QVariant::fromValue(&clipboard)},
+        {QStringLiteral("theme"), QVariant::fromValue(&theme)},
         {QStringLiteral("catalog"), catalog.object().toVariantMap()},
     });
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
