@@ -50,7 +50,9 @@ T.Control {
     QtObject {
         id: internals
         property bool recording: false
-        readonly property real fieldHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+        readonly property real fieldHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(label.implicitHeight) + AtlasStyle.spacing)
+        readonly property real iconSize: Kirigami.Units.iconSizes.small
+        readonly property real errorSpace: hasConflict ? iconSize + AtlasStyle.spacingSmall : 0
         readonly property string wanted: AtlasShortcuts.portable(control.sequence)
         readonly property string conflictText: {
             if (wanted.length === 0) {
@@ -142,12 +144,11 @@ T.Control {
     implicitWidth: Kirigami.Units.gridUnit * 12
     implicitHeight: internals.fieldHeight + internals.messageHeight
     topPadding: 0
-    leftPadding: AtlasStyle.spacingLarge
-    rightPadding: AtlasStyle.spacingLarge
+    leftPadding: AtlasStyle.spacingLarge + (mirrored ? internals.errorSpace : 0)
+    rightPadding: AtlasStyle.spacingLarge + (mirrored ? 0 : internals.errorSpace)
     bottomPadding: internals.messageHeight
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.Button
     Accessible.name: internals.recording ? qsTr("Press keys…") : control.sequence.length > 0 ? AtlasShortcuts.readable(control.sequence) : control.placeholderText
@@ -220,13 +221,14 @@ T.Control {
         Rectangle {
             width: parent.width
             height: internals.fieldHeight
-            radius: AtlasStyle.radiusPill
-            color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
-            border.width: internals.recording || control.activeFocus || internals.hasConflict ? 2 : 1
-            border.color: internals.hasConflict ? Kirigami.Theme.negativeTextColor
+            radius: AtlasStyle.radiusSmall
+            color: internals.hasConflict ? AtlasStyle.errorFill : control.hovered && !control.activeFocus && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+            border.width: 1
+            border.color: internals.hasConflict ? AtlasStyle.error
                 : internals.recording ? AtlasStyle.accent
-                : control.activeFocus ? Qt.alpha(AtlasStyle.accent, 0.7)
-                : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+                : control.activeFocus ? AtlasStyle.focus
+                : AtlasStyle.controlBorder
+            opacity: control.enabled ? 1 : 0.6
             AtlasFocusRing {
                 radius: parent.radius + gap
                 shown: control.visualFocus
@@ -242,7 +244,7 @@ T.Control {
             visible: internals.recording || control.sequence.length === 0
             text: internals.recording ? qsTr("Press keys…") : control.placeholderText
             font: Kirigami.Theme.defaultFont
-            color: internals.recording ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, 0.5)
+            color: !control.enabled ? AtlasStyle.textDisabled : internals.recording ? AtlasStyle.accent : AtlasStyle.textMuted
             elide: Text.ElideRight
             textFormat: Text.PlainText
             Accessible.ignored: true
@@ -277,21 +279,30 @@ T.Control {
             contentItem: Kirigami.Icon {
                 source: "edit-clear"
                 isMask: true
-                color: Kirigami.Theme.textColor
-                opacity: 0.6
+                color: AtlasStyle.textMuted
             }
         }
+    }
+
+    // The error symbol, at the trailing edge (mirrored in RTL).
+    Symbol {
+        x: control.mirrored ? AtlasStyle.spacingLarge : control.width - width - AtlasStyle.spacingLarge
+        y: Math.round((internals.fieldHeight - height) / 2)
+        visible: internals.hasConflict
+        icon: Symbols.Error
+        size: internals.iconSize
+        color: AtlasStyle.error
     }
 
     Text {
         id: message
         x: AtlasStyle.spacingLarge
-        y: internals.fieldHeight + AtlasStyle.spacingSmall
+        y: internals.fieldHeight + AtlasStyle.spacing
         width: control.width - AtlasStyle.spacingLarge * 2
         visible: internals.hasConflict
         text: internals.conflictText
         font: Kirigami.Theme.smallFont
-        color: Kirigami.Theme.negativeTextColor
+        color: AtlasStyle.error
         wrapMode: Text.Wrap
         textFormat: Text.PlainText
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft

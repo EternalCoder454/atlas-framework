@@ -52,10 +52,10 @@ Rectangle {
 
         // Grab again until the picture holds still (animations end), at most 8 times.
         function settle(item) {
-            let prev = States.grab(item, 12);
+            let prev = States.grab(item, 24);
             for (let i = 0; i < 8; ++i) {
                 wait(30);
-                const now = States.grab(item, 12);
+                const now = States.grab(item, 24);
                 if (!States.differs(prev, now))
                     return now;
                 prev = now;

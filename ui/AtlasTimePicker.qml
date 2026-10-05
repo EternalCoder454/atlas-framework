@@ -156,7 +156,7 @@ T.Control {
             visible: !control.use24Hour
             Layout.leftMargin: AtlasStyle.spacingSmall
             implicitWidth: Math.max(Math.round(Kirigami.Units.gridUnit * 3), amMetrics.advanceWidth + AtlasStyle.spacingLarge * 2, pmMetrics.advanceWidth + AtlasStyle.spacingLarge * 2)
-            implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+            implicitHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(amMetrics.height) + AtlasStyle.spacing)
             hoverEnabled: true
             focusPolicy: Qt.StrongFocus
             text: internals.pm ? pmMetrics.text : amMetrics.text
@@ -195,10 +195,10 @@ T.Control {
                 Accessible.ignored: true
             }
             background: Rectangle {
-                radius: AtlasStyle.radiusPill
-                color: Qt.alpha(AtlasStyle.text, ampm.down ? 0.14 : ampm.hovered ? 0.12 : 0.07)
+                radius: AtlasStyle.radiusSmall
+                color: ampm.down ? Qt.tint(AtlasStyle.control, AtlasStyle.pressed) : ampm.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
                 border.width: 1
-                border.color: Qt.alpha(AtlasStyle.text, 0.14)
+                border.color: AtlasStyle.controlBorder
                 AtlasFocusRing {
                     radius: parent.radius + gap
                     shown: ampm.visualFocus

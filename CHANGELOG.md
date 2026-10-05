@@ -8,6 +8,16 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Design pass, fields: text fields, password, text area, search, combo box,
+  spin boxes, date, time, colour, font and shortcut fields use small corners
+  (`radiusSmall`), `controlHeight` (growing with large text), `control` fill,
+  `controlBorder` edge and grey hover. An error shows a red border, a faint
+  red fill, an error symbol at the trailing edge and the message a full
+  `spacing` below. `AtlasTextField` validator errors appear after the field
+  loses focus or on Return, then follow live (`errorText` shows at once).
+  `AtlasFocusRing` is a 2 px `focus` ring with a 2 px gap that grows into
+  place. `AtlasColorField` shows and accepts `rgba(r, g, b, a)`.
+  `AtlasDropZone` swells slightly for an acceptable drag.
 - Atlas.Ui fixes to 1.3.0 controls: `ToolbarButton` with `focusable` now takes
   Return/Enter through the normal click path, so a bound `action` fires and a
   `checked` binding survives. `AtlasProgressBar` fills its height again when it

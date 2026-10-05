@@ -58,12 +58,11 @@ T.Control {
     }
 
     implicitWidth: Kirigami.Units.gridUnit * 12
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-    leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
-    rightPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+    implicitHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(contentItem.implicitHeight) + AtlasStyle.spacing)
+    leftPadding: AtlasStyle.spacingLarge
+    rightPadding: AtlasStyle.spacingLarge
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.ComboBox
     Accessible.name: control._hasDate ? control._text : control.placeholderText
@@ -83,7 +82,7 @@ T.Control {
     contentItem: Text {
         text: control._hasDate ? control._text : control.placeholderText
         font: Kirigami.Theme.defaultFont
-        color: control._hasDate ? AtlasStyle.text : Qt.alpha(AtlasStyle.text, 0.5)
+        color: !control.enabled ? AtlasStyle.textDisabled : control._hasDate ? AtlasStyle.text : AtlasStyle.textMuted
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft
         elide: Text.ElideRight
@@ -130,8 +129,7 @@ T.Control {
         Symbol {
             name: "calendar_month"
             size: Kirigami.Units.iconSizes.small
-            color: AtlasStyle.text
-            opacity: 0.6
+            color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
         }
     }
 
@@ -147,10 +145,11 @@ T.Control {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusPill
-        color: Qt.alpha(AtlasStyle.text, control._popup.visible ? 0.14 : control.hovered ? 0.12 : 0.07)
+        radius: AtlasStyle.radiusSmall
+        color: control._popup.visible ? Qt.tint(AtlasStyle.control, AtlasStyle.pressed) : control.hovered && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
         border.width: 1
-        border.color: Qt.alpha(AtlasStyle.text, 0.14)
+        border.color: AtlasStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
