@@ -217,8 +217,8 @@ T.Control {
             color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
             border.width: internals.recording || control.activeFocus || internals.hasConflict ? 2 : 1
             border.color: internals.hasConflict ? Kirigami.Theme.negativeTextColor
-                : internals.recording ? Kirigami.Theme.highlightColor
-                : control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7)
+                : internals.recording ? AtlasStyle.accent
+                : control.activeFocus ? Qt.alpha(AtlasStyle.accent, 0.7)
                 : Qt.alpha(Kirigami.Theme.textColor, 0.1)
             AtlasFocusRing {
                 radius: parent.radius + gap
@@ -235,7 +235,7 @@ T.Control {
             visible: internals.recording || control.sequence.length === 0
             text: internals.recording ? qsTr("Press keys…") : control.placeholderText
             font: Kirigami.Theme.defaultFont
-            color: internals.recording ? Kirigami.Theme.highlightColor : Qt.alpha(Kirigami.Theme.textColor, 0.5)
+            color: internals.recording ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, 0.5)
             elide: Text.ElideRight
             textFormat: Text.PlainText
             Accessible.ignored: true

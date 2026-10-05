@@ -9,7 +9,7 @@ T.AbstractButton {
     property bool prominent: false
     // A Material Symbol (Symbols.<Name>) to draw instead of icon.name.
     property int symbol: 0
-    readonly property color accent: Kirigami.Theme.highlightColor
+    readonly property color accent: AtlasStyle.accent
     readonly property color textTint: Kirigami.Theme.textColor
 
     implicitWidth: Math.max(Math.round(Kirigami.Units.gridUnit * 4.5), contentItem.implicitWidth + leftPadding + rightPadding)
@@ -74,7 +74,7 @@ T.AbstractButton {
                 anchors.verticalCenter: parent.verticalCenter
                 text: control.text
                 font: Kirigami.Theme.defaultFont
-                color: control.prominent && control.enabled ? Kirigami.Theme.highlightedTextColor : control.textTint
+                color: control.prominent && control.enabled ? AtlasStyle.accentText : control.textTint
                 opacity: control.enabled ? 1 : 0.75
                 textFormat: Text.PlainText // no mnemonics
             }

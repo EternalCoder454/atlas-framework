@@ -16,7 +16,7 @@ Flow {
     property list<real> values
     property real maximum: 100
     property bool numbered: true
-    property color color: Kirigami.Theme.highlightColor
+    property color color: AtlasStyle.accent
     property real barWidth: Math.round(Kirigami.Units.gridUnit * 0.9)
     property real barHeight: Kirigami.Units.gridUnit * 2.5
     // What a screen reader says for bar i, e.g. "Core 3".

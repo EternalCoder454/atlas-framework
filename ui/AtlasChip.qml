@@ -84,12 +84,12 @@ T.AbstractButton {
         radius: AtlasStyle.radiusPill
         color: {
             if (control.showsCheck) {
-                return Qt.alpha(Kirigami.Theme.highlightColor, control.down ? 0.34 : control.hovered ? 0.28 : 0.22);
+                return Qt.alpha(AtlasStyle.accent, control.down ? 0.34 : control.hovered ? 0.28 : 0.22);
             }
             return Qt.alpha(control.tint, control.down ? 0.2 : control.hovered ? 0.12 : 0.07);
         }
         border.width: 1
-        border.color: control.showsCheck ? Qt.alpha(Kirigami.Theme.highlightColor, 0.6) : Qt.alpha(control.tint, 0.14)
+        border.color: control.showsCheck ? Qt.alpha(AtlasStyle.accent, 0.6) : Qt.alpha(control.tint, 0.14)
         opacity: control.enabled ? 1 : 0.6
         Behavior on color {
             ColorAnimation {

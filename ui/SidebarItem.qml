@@ -68,9 +68,9 @@ T.AbstractButton {
 
     background: Rectangle {
         radius: AtlasStyle.radius
-        color: control.selected ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.06 : 0)
+        color: control.selected ? Qt.alpha(AtlasStyle.accent, 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.06 : 0)
         border.width: control.visualFocus ? 2 : 0
-        border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
+        border.color: Qt.alpha(AtlasStyle.focus, 0.85)
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
@@ -96,7 +96,7 @@ T.AbstractButton {
                 visible: control.symbol === 0
                 source: control.icon.name
                 isMask: control.tintIcon
-                color: Kirigami.Theme.highlightColor
+                color: AtlasStyle.accent
             }
             // Made only when used, so entries without one never load the fonts.
             Loader {
@@ -108,7 +108,7 @@ T.AbstractButton {
                     // matches a theme icon of the same slot.
                     size: Math.round(iconSlot.side * 1.2)
                     filled: control.selected
-                    color: control.tintIcon ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
+                    color: control.tintIcon ? AtlasStyle.accent : Kirigami.Theme.textColor
                 }
             }
 

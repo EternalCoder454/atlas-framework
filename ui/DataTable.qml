@@ -206,7 +206,7 @@ FocusScope {
         radius: 10
         color: Qt.alpha(Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06)), root.Window.window && root.Window.window.blurred === true ? 0.94 : 1)
         border.width: 1
-        border.color: root.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.6) : Qt.alpha(Kirigami.Theme.textColor, 0.12)
+        border.color: root.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.12)
     }
 
     Row {
@@ -396,7 +396,7 @@ FocusScope {
                 anchors.topMargin: 1
                 anchors.bottomMargin: 1
                 radius: 6
-                color: row.selected ? Qt.alpha(Kirigami.Theme.highlightColor, root.activeFocus ? 0.22 : 0.14) : Qt.alpha(Kirigami.Theme.textColor, rowMouse.pressed ? 0.08 : rowMouse.containsMouse ? 0.045 : 0)
+                color: row.selected ? Qt.alpha(AtlasStyle.accent, root.activeFocus ? 0.22 : 0.14) : Qt.alpha(Kirigami.Theme.textColor, rowMouse.pressed ? 0.08 : rowMouse.containsMouse ? 0.045 : 0)
             }
 
             Row {

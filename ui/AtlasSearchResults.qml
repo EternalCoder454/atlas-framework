@@ -189,7 +189,7 @@ T.Control {
                     anchors.leftMargin: AtlasStyle.spacingSmall
                     anchors.rightMargin: AtlasStyle.spacingSmall
                     radius: AtlasStyle.radiusLarge
-                    color: Qt.alpha(Kirigami.Theme.highlightColor, 0.2)
+                    color: Qt.alpha(AtlasStyle.accent, 0.2)
                     AtlasFocusRing {
                         radius: pill.radius + gap
                         shown: control.visualFocus
@@ -257,7 +257,7 @@ T.Control {
                         sourceComponent: Symbol {
                             icon: row.symbolValue
                             size: Math.round(iconBox.width * 0.8)
-                            color: Kirigami.Theme.highlightColor
+                            color: AtlasStyle.accent
                         }
                     }
                 }

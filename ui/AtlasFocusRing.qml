@@ -1,7 +1,7 @@
 import QtQuick
-import org.kde.kirigami as Kirigami
+import Atlas.Ui
 
-// The keyboard focus ring every Atlas control shows: an accent outline just
+// The keyboard focus ring every Atlas control shows: a pink (AtlasStyle.focus) outline just
 // outside the control's shape, only when focus came from the keyboard. Put
 // it inside the control's background and give it the shape's radius:
 //
@@ -22,7 +22,7 @@ Rectangle {
     radius: 0
     color: "transparent"
     border.width: 2
-    border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
+    border.color: Qt.alpha(AtlasStyle.focus, 0.85)
     visible: shown
     z: 1
     Accessible.ignored: true

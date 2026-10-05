@@ -35,8 +35,8 @@ Item {
             width: 800
             height: 600
             gradient: Gradient {
-                GradientStop { position: 0; color: Qt.alpha(Kirigami.Theme.highlightColor, 0.35) }
-                GradientStop { position: 1; color: Qt.alpha(Kirigami.Theme.highlightColor, 0.05) }
+                GradientStop { position: 0; color: Qt.alpha(AtlasStyle.accent, 0.35) }
+                GradientStop { position: 1; color: Qt.alpha(AtlasStyle.accent, 0.05) }
             }
             QQC2.Label {
                 x: 16

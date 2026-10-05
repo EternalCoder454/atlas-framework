@@ -20,7 +20,7 @@ LiveChartItem {
     implicitWidth: Kirigami.Units.gridUnit * 20
     implicitHeight: Kirigami.Units.gridUnit * 8
 
-    color: Kirigami.Theme.highlightColor
+    color: AtlasStyle.accent
     color2: Kirigami.Theme.neutralTextColor
     textColor: Kirigami.Theme.textColor
     font: Kirigami.Theme.smallFont

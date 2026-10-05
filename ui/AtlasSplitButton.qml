@@ -34,8 +34,8 @@ Item {
 
     readonly property string _text: text.length > 0 || !action ? text : action.text.replace(/&(&|.)/g, "$1")
     readonly property int _symbol: symbol !== 0 || !action ? symbol : ((action as AtlasAction)?.symbol ?? 0)
-    readonly property color _fill: prominent ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
-    readonly property color _fg: prominent && enabled ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+    readonly property color _fill: prominent ? AtlasStyle.accent : Kirigami.Theme.textColor
+    readonly property color _fg: prominent && enabled ? AtlasStyle.accentText : Kirigami.Theme.textColor
 
     implicitWidth: mainPart.implicitWidth + arrowPart.implicitWidth
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
@@ -86,7 +86,7 @@ Item {
                 width: 1
                 height: parent.height - 8
                 y: 4
-                color: part.owner.prominent ? Qt.alpha(Kirigami.Theme.highlightedTextColor, 0.35) : Qt.alpha(Kirigami.Theme.textColor, 0.18)
+                color: part.owner.prominent ? Qt.alpha(AtlasStyle.accentText, 0.35) : Qt.alpha(Kirigami.Theme.textColor, 0.18)
             }
             AtlasFocusRing {
                 radius: shape.height / 2
@@ -98,7 +98,7 @@ Item {
                 if (!enabled) {
                     return Qt.alpha(Kirigami.Theme.textColor, 0.12);
                 }
-                return down ? Qt.darker(Kirigami.Theme.highlightColor, 1.2) : hovered ? Qt.lighter(Kirigami.Theme.highlightColor, 1.12) : Kirigami.Theme.highlightColor;
+                return down ? Qt.darker(AtlasStyle.accent, 1.2) : hovered ? Qt.lighter(AtlasStyle.accent, 1.12) : AtlasStyle.accent;
             }
             return Qt.alpha(Kirigami.Theme.textColor, down ? 0.2 : hovered ? 0.12 : 0.07);
         }

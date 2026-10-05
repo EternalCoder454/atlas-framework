@@ -182,7 +182,7 @@ FocusScope {
         radius: 7
         color: "transparent"
         border.width: 2
-        border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
+        border.color: Qt.alpha(AtlasStyle.focus, 0.85)
         visible: root._ownFocus && root.clickable && !root.byMouse
     }
 
@@ -278,7 +278,7 @@ FocusScope {
             visible: root.checkmark
             source: "checkmark"
             isMask: true
-            color: Kirigami.Theme.highlightColor
+            color: AtlasStyle.accent
             Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
             Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
         }

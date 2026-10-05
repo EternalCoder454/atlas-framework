@@ -8,6 +8,12 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: the Atlas look. Violet accent (and pink focus rings,
+  `AtlasStyle.focus`) unless the user chose a Plasma accent; IBM Plex Sans as
+  the application font and JetBrains Mono in code (`AtlasStyle.fontFamily`,
+  `monoFamily`, with fallback to the system fonts; the `atlas-ui` package
+  requires both fonts); smaller corners (4, 6, 8) and quicker motion
+  (100, 150, 250 ms). Every picture of a control changes.
 - Atlas.Ui: AtlasTreeView, a tree on Qt Quick's TreeView in the Atlas list
   look (single or multi selection, keyboard, type-ahead, RTL), and
   AtlasTreeModel, a tree model built from nested JS objects.

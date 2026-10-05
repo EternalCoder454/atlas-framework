@@ -105,7 +105,7 @@ T.Control {
                 Rectangle {
                     anchors.fill: parent
                     radius: AtlasStyle.radius
-                    color: tab.current ? Qt.alpha(Kirigami.Theme.highlightColor, press.pressed ? 0.28 : 0.18) : Qt.alpha(Kirigami.Theme.textColor, press.pressed ? 0.12 : hover.hovered ? 0.07 : 0)
+                    color: tab.current ? Qt.alpha(AtlasStyle.accent, press.pressed ? 0.28 : 0.18) : Qt.alpha(Kirigami.Theme.textColor, press.pressed ? 0.12 : hover.hovered ? 0.07 : 0)
                     Behavior on color {
                         ColorAnimation {
                             duration: AtlasStyle.durationShort
@@ -136,7 +136,7 @@ T.Control {
                             id: glyphItem
                             icon: tab.glyph
                             size: Kirigami.Units.iconSizes.smallMedium
-                            color: tab.current ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
+                            color: tab.current ? AtlasStyle.accent : Kirigami.Theme.textColor
                         }
                         Rectangle {
                             visible: tab.badge > 0
@@ -160,7 +160,7 @@ T.Control {
                         text: tab.label
                         font.pixelSize: control.narrow ? AtlasStyle.fontSizeCaption : AtlasStyle.fontSizeBody
                         font.weight: tab.current ? Font.DemiBold : Font.Normal
-                        color: tab.current ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
+                        color: tab.current ? AtlasStyle.accent : Kirigami.Theme.textColor
                         Accessible.ignored: true
                     }
                 }

@@ -89,7 +89,7 @@ T.RadioButton {
         x: control.mirrored ? control.width - width : 0
         y: Math.round((control.height - height) / 2)
         radius: AtlasStyle.radiusPill
-        color: control.checked ? (control.enabled ? Kirigami.Theme.highlightColor : control.palette.active.highlight) : Qt.alpha(Kirigami.Theme.textColor, control.hovered ? 0.12 : 0.07)
+        color: control.checked ? (control.enabled ? AtlasStyle.accent : control.palette.active.highlight) : Qt.alpha(Kirigami.Theme.textColor, control.hovered ? 0.12 : 0.07)
         border.width: 1
         border.color: control.checked ? "transparent" : Qt.alpha(Kirigami.Theme.textColor, 0.3)
         Behavior on color {
@@ -102,7 +102,7 @@ T.RadioButton {
             width: Math.round(parent.width * 0.4)
             height: width
             radius: width / 2
-            color: Kirigami.Theme.highlightedTextColor
+            color: AtlasStyle.accentText
             opacity: control.checked ? 1 : 0
             scale: control.checked ? 1 : 0.4
             Behavior on opacity {

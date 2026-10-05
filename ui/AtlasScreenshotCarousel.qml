@@ -324,7 +324,7 @@ T.Control {
                         width: Math.round(Kirigami.Units.gridUnit * (dot.current ? 0.5 : 0.4))
                         height: width
                         radius: width / 2
-                        color: dot.current ? Kirigami.Theme.highlightColor : Qt.alpha(Kirigami.Theme.textColor, 0.3)
+                        color: dot.current ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, 0.3)
                         Behavior on color {
                             ColorAnimation {
                                 duration: AtlasStyle.durationShort

@@ -43,9 +43,9 @@ T.AbstractButton {
 
     background: Rectangle {
         radius: AtlasStyle.radius
-        color: control.current ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.06 : 0)
+        color: control.current ? Qt.alpha(AtlasStyle.accent, 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.06 : 0)
         border.width: control.visualFocus ? 2 : 0
-        border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
+        border.color: Qt.alpha(AtlasStyle.focus, 0.85)
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
@@ -62,7 +62,7 @@ T.AbstractButton {
             Layout.preferredWidth: size
             Layout.preferredHeight: size
             radius: size / 2
-            color: control.current || control.done ? Kirigami.Theme.highlightColor : "transparent"
+            color: control.current || control.done ? AtlasStyle.accent : "transparent"
             border.width: control.current || control.done ? 0 : 1
             border.color: Qt.alpha(Kirigami.Theme.textColor, 0.35)
             Text {
@@ -72,7 +72,7 @@ T.AbstractButton {
                 font.family: Kirigami.Theme.defaultFont.family
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
                 font.weight: Font.DemiBold
-                color: control.current ? Kirigami.Theme.highlightedTextColor : Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                color: control.current ? AtlasStyle.accentText : Qt.alpha(Kirigami.Theme.textColor, 0.6)
             }
             Kirigami.Icon {
                 anchors.centerIn: parent
@@ -81,7 +81,7 @@ T.AbstractButton {
                 height: width
                 source: "checkmark"
                 isMask: true
-                color: Kirigami.Theme.highlightedTextColor
+                color: AtlasStyle.accentText
             }
         }
         Text {

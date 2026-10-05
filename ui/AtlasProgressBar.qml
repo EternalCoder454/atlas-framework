@@ -19,7 +19,7 @@ Item {
     // "normal" | "paused" | "error"
     property string status: "normal"
 
-    readonly property color _fillColor: status === "error" ? AtlasStyle.error : status === "paused" ? Qt.alpha(Kirigami.Theme.textColor, 0.4) : Kirigami.Theme.highlightColor
+    readonly property color _fillColor: status === "error" ? AtlasStyle.error : status === "paused" ? Qt.alpha(Kirigami.Theme.textColor, 0.4) : AtlasStyle.accent
 
     implicitWidth: Kirigami.Units.gridUnit * 16
     implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 0.45), label.visible ? label.implicitHeight : 0)

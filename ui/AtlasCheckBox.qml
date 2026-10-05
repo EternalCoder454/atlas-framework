@@ -36,7 +36,7 @@ T.CheckBox {
         x: control.mirrored ? control.width - width : 0
         y: Math.round((control.height - height) / 2)
         radius: AtlasStyle.radiusSmall
-        color: control.checkState !== Qt.Unchecked ? (control.enabled ? Kirigami.Theme.highlightColor : control.palette.active.highlight) : Qt.alpha(Kirigami.Theme.textColor, control.hovered ? 0.12 : 0.07)
+        color: control.checkState !== Qt.Unchecked ? (control.enabled ? AtlasStyle.accent : control.palette.active.highlight) : Qt.alpha(Kirigami.Theme.textColor, control.hovered ? 0.12 : 0.07)
         border.width: 1
         border.color: control.checkState !== Qt.Unchecked ? "transparent" : Qt.alpha(Kirigami.Theme.textColor, 0.3)
         Behavior on color {
@@ -51,7 +51,7 @@ T.CheckBox {
                 name: "check"
                 weight: 600
                 size: Math.round(Kirigami.Units.gridUnit * 1.2 * 0.9)
-                color: Kirigami.Theme.highlightedTextColor
+                color: AtlasStyle.accentText
             }
         }
         Rectangle {
@@ -60,7 +60,7 @@ T.CheckBox {
             width: Math.round(parent.width * 0.5)
             height: 2
             radius: 1
-            color: Kirigami.Theme.highlightedTextColor
+            color: AtlasStyle.accentText
         }
         AtlasFocusRing {
             radius: parent.radius + gap

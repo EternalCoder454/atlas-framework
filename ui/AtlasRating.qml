@@ -127,7 +127,7 @@ T.Control {
                             icon: star.fillAmount >= 1 ? Symbols.Star : Symbols.StarHalf
                             filled: true
                             size: control.starSize
-                            color: control.readOnly || !control._editable || control._hover === 0 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.highlightColor
+                            color: control.readOnly || !control._editable || control._hover === 0 ? Kirigami.Theme.neutralTextColor : AtlasStyle.accent
                             // The half star is drawn filled on its left: turn it round in right-to-left.
                             transform: Scale {
                                 origin.x: star.width / 2

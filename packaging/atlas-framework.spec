@@ -49,6 +49,10 @@ Requires:       atlas-symbols-fonts = %{version}-%{release}
 # QML modules Atlas.Ui imports (the plugin doesn't link them)
 Requires:       kf6-kirigami
 Requires:       qt6-qtdeclarative
+# The Atlas look: IBM Plex Sans for the UI, JetBrains Mono for code (without
+# them Atlas.Ui falls back to the system fonts).
+Requires:       ibm-plex-sans-fonts
+Requires:       jetbrains-mono-fonts
 
 %description -n atlas-ui
 Atlas.Ui gives Atlas apps their shared look: pill buttons, grouped sections,

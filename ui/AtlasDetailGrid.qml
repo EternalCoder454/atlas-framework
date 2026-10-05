@@ -100,8 +100,8 @@ Item {
                     textFormat: TextEdit.PlainText
                     font: cell.entry.mono === true ? Kirigami.Theme.fixedWidthFont : Kirigami.Theme.defaultFont
                     color: Kirigami.Theme.textColor
-                    selectionColor: Kirigami.Theme.highlightColor
-                    selectedTextColor: Kirigami.Theme.highlightedTextColor
+                    selectionColor: AtlasStyle.accent
+                    selectedTextColor: AtlasStyle.accentText
                     Accessible.role: Accessible.StaticText
                     Accessible.name: (cell.labelText) + ": " + cell.text
                 }

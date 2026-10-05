@@ -94,7 +94,7 @@ T.Control {
             width: cell
             height: parent.height - 4
             radius: AtlasStyle.radiusPill
-            color: control.enabled ? Kirigami.Theme.highlightColor : Qt.alpha(Kirigami.Theme.textColor, 0.2)
+            color: control.enabled ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, 0.2)
             Behavior on x {
                 NumberAnimation {
                     duration: AtlasStyle.duration
@@ -123,7 +123,7 @@ T.Control {
                 readonly property bool selected: seg.index === ctl.currentIndex
                 readonly property string label: ctl._text(seg.index)
                 readonly property AtlasSegmentedControl ctl: control
-                readonly property color tint: !ctl.enabled ? Qt.alpha(Kirigami.Theme.textColor, 0.5) : selected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+                readonly property color tint: !ctl.enabled ? Qt.alpha(Kirigami.Theme.textColor, 0.5) : selected ? AtlasStyle.accentText : Kirigami.Theme.textColor
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true

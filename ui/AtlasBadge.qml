@@ -28,7 +28,7 @@ Rectangle {
     readonly property color _tint: {
         switch (type) {
         case "accent":
-            return Kirigami.Theme.highlightColor;
+            return AtlasStyle.accent;
         case "success":
             return Kirigami.Theme.positiveTextColor;
         case "warning":

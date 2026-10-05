@@ -187,7 +187,7 @@ T.AbstractButton {
                             radius: width / 2
                             color: Qt.color(swatch.modelData)
                             border.width: swatch.current || swatch.hovered ? 2 : 1
-                            border.color: swatch.current ? Kirigami.Theme.highlightColor : Qt.alpha(Kirigami.Theme.textColor, swatch.hovered ? 0.5 : 0.25)
+                            border.color: swatch.current ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, swatch.hovered ? 0.5 : 0.25)
                             AtlasFocusRing {
                                 radius: parent.radius + gap
                                 shown: swatch.visualFocus

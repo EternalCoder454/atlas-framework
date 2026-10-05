@@ -58,7 +58,7 @@ T.BusyIndicator {
             }
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: Kirigami.Theme.highlightColor
+                strokeColor: AtlasStyle.accent
                 strokeWidth: internals.stroke
                 capStyle: ShapePath.RoundCap
                 PathAngleArc {

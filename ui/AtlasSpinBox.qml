@@ -86,8 +86,8 @@ T.SpinBox {
         text: control.displayText
         font: Kirigami.Theme.defaultFont
         color: Kirigami.Theme.textColor
-        selectionColor: Kirigami.Theme.highlightColor
-        selectedTextColor: Kirigami.Theme.highlightedTextColor
+        selectionColor: AtlasStyle.accent
+        selectedTextColor: AtlasStyle.accentText
         horizontalAlignment: Qt.AlignHCenter
         verticalAlignment: Qt.AlignVCenter
         readOnly: !control.editable
@@ -153,7 +153,7 @@ T.SpinBox {
         radius: AtlasStyle.radiusPill
         color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
         border.width: control.activeFocus ? 2 : 1
-        border.color: control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        border.color: control.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
         AtlasFocusRing {
             radius: parent.radius + gap
             shown: control.visualFocus

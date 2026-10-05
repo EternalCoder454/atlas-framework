@@ -201,7 +201,7 @@ T.Control {
                     anchors.fill: parent
                     anchors.margins: AtlasStyle.spacingSmall
                     radius: 12
-                    color: cell.current ? Qt.alpha(Kirigami.Theme.highlightColor, control.activeFocus ? 0.22 : 0.14) : Qt.alpha(Kirigami.Theme.textColor, hover.hovered ? 0.06 : 0)
+                    color: cell.current ? Qt.alpha(AtlasStyle.accent, control.activeFocus ? 0.22 : 0.14) : Qt.alpha(Kirigami.Theme.textColor, hover.hovered ? 0.06 : 0)
                     AtlasFocusRing {
                         radius: pill.radius + gap
                         shown: cell.current && control.visualFocus
@@ -227,7 +227,7 @@ T.Control {
                         sourceComponent: Symbol {
                             icon: cell.symbolValue !== 0 ? cell.symbolValue : Symbols.Description
                             size: Math.round(control.iconSize * 0.75)
-                            color: Kirigami.Theme.highlightColor
+                            color: AtlasStyle.accent
                         }
                     }
                 }

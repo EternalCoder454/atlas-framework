@@ -344,9 +344,9 @@ FocusScope {
                 visible: control.dropEnabled && priv.dropItem !== null
                 z: 2
                 radius: AtlasStyle.radius
-                color: Qt.alpha(Kirigami.Theme.highlightColor, 0.18)
+                color: Qt.alpha(AtlasStyle.accent, 0.18)
                 border.width: 2
-                border.color: Kirigami.Theme.highlightColor
+                border.color: AtlasStyle.accent
             }
         }
     }
