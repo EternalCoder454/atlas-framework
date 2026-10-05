@@ -40,9 +40,9 @@ FocusScope {
     // control (a text area, a list).
     property bool stacked: entry._autoStacked
 
-    // No error of any kind. An entry that is disabled or not visible (a hidden
-    // page, say) has none.
-    readonly property bool valid: !entry.enabled || !entry.visible || (entry.errorText.length === 0 && !entry._missing && !entry._unacceptable)
+    // No error of any kind. An entry that is disabled or that the app hid
+    // has none. (One on a page that is not shown still counts.)
+    readonly property bool valid: !entry.enabled || entry._selfHidden || (entry.errorText.length === 0 && !entry._missing && !entry._unacceptable)
     // The error on screen, or "".
     readonly property string shownError: {
         if (entry.errorText.length > 0) {
@@ -63,6 +63,24 @@ FocusScope {
     // Narrow: below 22 grid units, and not wide again until 24 (no flapping at
     // the threshold).
     property bool _narrow: false
+    // Hidden by the app (its own `visible`, or a container's), as opposed to
+    // by a page that is not shown: it went invisible while the form was visible.
+    property bool _selfHidden: false
+    // Latched: a field that has been a password never saves, even when a
+    // "show" toggle turns the text to Normal.
+    property bool _wasSecret: false
+    on_SecretChanged: if (entry._secret) {
+        entry._wasSecret = true;
+    }
+    onVisibleChanged: entry._noteVisible()
+    function _noteVisible(): void {
+        const ref = entry._form ? entry._form : entry.parent;
+        if (entry.visible) {
+            entry._selfHidden = false;
+        } else if (ref && ref.visible) {
+            entry._selfHidden = true;
+        }
+    }
     onWidthChanged: {
         if (entry.width > 0 && entry.width < Kirigami.Units.gridUnit * 22) {
             entry._narrow = true;
@@ -84,9 +102,17 @@ FocusScope {
             return Qt.rect(0, 0, 0, 0);
         }
         // Read so that the rectangle follows every layout change.
-        const follow = [entry.width, entry.height, grid.x, grid.y, grid.width, grid.height, host.x, host.y, host.width, host.height, c.x, c.y, c.width, c.height];
+        // Every item between the control and the entry: any of them moving or
+        // resizing moves the control.
+        const follow = [entry.width, entry.height, grid.x, grid.y, grid.width, grid.height];
+        for (let i = c; i && i !== entry; i = i.parent) {
+            follow.push(i.x, i.y, i.width, i.height);
+        }
+        if (follow.length === 0) {
+            return Qt.rect(0, 0, 0, 0);
+        }
         const p = c.mapToItem(entry, 0, 0);
-        return Qt.rect(p.x, p.y, c.width + follow.length * 0, c.height);
+        return Qt.rect(p.x, p.y, c.width, c.height);
     }
     // The user has left the control once / validate() asked to show errors.
     property bool _leftOnce: false
@@ -112,7 +138,7 @@ FocusScope {
     // rule as a user edit, docs/api-1.5.0.md Part 1).
     readonly property var _store: entry._form ? entry._form._settings : null
     readonly property string _prop: entry._propOf(entry._control, entry.settingProperty)
-    readonly property bool _keyed: entry.settingKey.length > 0 && entry._prop.length > 0 && !entry._secret
+    readonly property bool _keyed: entry.settingKey.length > 0 && entry._prop.length > 0 && !entry._secret && !entry._wasSecret
     property bool _ready: false
     property var _wiredTo: null
     property var _applyValue: null
@@ -149,6 +175,7 @@ FocusScope {
     onHelpChanged: entry._syncA11y()
     on_ControlChanged: if (entry._ready) {
         entry._attach();
+        entry._load();
     }
     on_StoreChanged: if (entry._ready) {
         entry._load();
@@ -163,6 +190,10 @@ FocusScope {
         if (entry._form) {
             entry._form._register(entry);
         }
+        if (entry._secret) {
+            entry._wasSecret = true;
+        }
+        entry._noteVisible();
         entry._attach();
         entry._ready = true;
         entry._load();
@@ -329,7 +360,7 @@ FocusScope {
             try {
                 l.sig.disconnect(entry, l.fn);
             } catch (e) {
-                // the old control is already gone
+                console.debug("AtlasFormEntry: the old control was already gone");
             }
         }
         entry._links = [];
@@ -419,8 +450,9 @@ FocusScope {
     }
 
     function _warnOnce(text: string): void {
-        if (entry._warned[text] !== true) {
-            entry._warned[text] = true;
+        const id = entry.settingKey + "\u0000" + text;
+        if (entry._warned[id] !== true) {
+            entry._warned[id] = true;
             entry._warn(text);
         }
     }
@@ -507,7 +539,7 @@ FocusScope {
             entry._warnOnce("this is not a valid settings key");
             return;
         }
-        if (entry._secret) {
+        if (entry._secret || entry._wasSecret) {
             entry._warnOnce("a password is not a setting, so it is neither loaded nor saved");
             return;
         }
@@ -550,7 +582,7 @@ FocusScope {
 
     // The control's edit signal: write the new value.
     function _userEdited(): void {
-        if (entry._applying || entry._guard || !entry._keyed) {
+        if (entry._applying || entry._guard || !entry._keyed || !entry._validKey(entry.settingKey)) {
             return;
         }
         const s = entry._store;
@@ -699,7 +731,7 @@ FocusScope {
         width: entry._controlRect.width
         height: entry._controlRect.height
         z: 10
-        visible: entry.shownError.length > 0 && entry._control !== null && entry._control["hasError"] !== true
+        visible: entry.shownError.length > 0 && entry._control !== null && entry._control.visible && entry._control.width > 0 && entry._control["hasError"] !== true
         radius: AtlasStyle.radiusSmall
         color: "transparent"
         border.width: 1

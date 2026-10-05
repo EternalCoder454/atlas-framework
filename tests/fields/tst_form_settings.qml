@@ -232,7 +232,7 @@ TestCase {
             {tag: "noecho", src: "AtlasTextField { echoMode: TextInput.NoEcho }", props: "", type: true},
             {tag: "echoonedit", src: "AtlasTextField { echoMode: TextInput.PasswordEchoOnEdit }", props: "", type: true},
             {tag: "sensitive", src: "AtlasTextField { inputMethodHints: Qt.ImhSensitiveData }", props: "", type: true},
-            {tag: "wrapped", src: "Item { implicitWidth: 100; implicitHeight: 20; AtlasPasswordField { } }", props: "settingProperty: \"implicitWidth\"", type: false}
+            {tag: "wrapped", src: "Item { implicitWidth: 100; implicitHeight: 20; AtlasPasswordField { } }", props: "settingProperty: \"implicitWidth\"", type: true, inner: true}
         ];
     }
     function test_a_secret_is_never_saved(row) {
@@ -243,12 +243,61 @@ TestCase {
         const c = f.entry._control;
         wait(50);
         if (row.type) {
-            compare(c.text, "", "not loaded");
-            c.forceActiveFocus();
+            const t = row.inner ? c.children[0] : c;
+            compare(t.text, "", "not loaded");
+            t.forceActiveFocus();
             keyClick("p");
         }
         wait(30);
         compare(st.value("K", ""), "secret", "not saved");
+    }
+
+    function test_a_required_empty_entry_is_not_saved() {
+        const st = newStore();
+        const f = makeForm("AtlasTextField { }", st, "required: true");
+        const c = f.entry._control;
+        wait(30);
+        c.forceActiveFocus();
+        keyClick("a");
+        keyClick("Backspace");
+        compare(c.text, "");
+        wait(30);
+        compare(st.contains("K") ? st.value("K", "x") : "", "", "empty is not written as a value that fails the rule");
+    }
+
+    function test_a_password_that_is_shown_is_still_never_saved() {
+        const st = newStore();
+        ignoreWarning(/a password is not a setting/);
+        const f = makeForm("AtlasPasswordField { }", st, "settingProperty: \"text\"");
+        const c = f.entry._control;
+        wait(50);
+        c.echoMode = TextInput.Normal;
+        c.forceActiveFocus();
+        keyClick("p");
+        wait(30);
+        verify(!st.contains("K"), "Password to Normal does not start saving");
+    }
+
+    function test_a_text_field_made_a_password_stops_saving() {
+        const st = newStore();
+        ignoreWarning(/a password is not a setting/);
+        const f = makeForm("AtlasTextField { }", st);
+        const c = f.entry._control;
+        wait(30);
+        c.forceActiveFocus();
+        keyClick("a");
+        compare(st.value("K", ""), "a");
+        c.echoMode = TextInput.Password;
+        keyClick("b");
+        wait(30);
+        compare(st.value("K", ""), "a", "Normal to Password stops saving");
+    }
+
+    function test_a_retry_ends_cleanly_when_the_form_is_destroyed() {
+        const f = makeForm("AtlasSwitch { }", null);
+        f.destroy();
+        wait(100);
+        verify(true);
     }
 
     function test_text_over_64_KiB_is_not_saved() {

@@ -84,9 +84,8 @@ AtlasDialog {
         for (let i = 0; i < control.pages.length; ++i) {
             const page = control.pages[i];
             for (const e of page.entries) {
-                // Not an entry that is disabled or hidden by its app. (One on a page
-                // that is not shown is invisible too, and is found.)
-                if (!e.enabled || (page.visible && !e.visible)) {
+                // Not an entry that is disabled or that the app hid.
+                if (!e.enabled || e._selfHidden) {
                     continue;
                 }
                 if (e.label.toLowerCase().includes(q) || e.help.toLowerCase().includes(q)) {

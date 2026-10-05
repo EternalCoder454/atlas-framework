@@ -34,6 +34,7 @@ TestCase {
             property alias hidden: hidden
             property alias port: port
             property alias portEntry: portEntry
+            property alias needed: needed
             property alias pageB: pageB
             property alias pageA: pageA
             AtlasPreferencesPage {
@@ -47,6 +48,12 @@ TestCase {
                         settingKey: "Hidden"
                         AtlasSwitch {
                             id: hidden
+                        }
+                    }
+                    AtlasFormEntry {
+                        label: "Thing hidden by the app"
+                        visible: false
+                        AtlasSwitch {
                         }
                     }
                     AtlasFormEntry {
@@ -69,6 +76,19 @@ TestCase {
                             id: port
                             from: 1
                             to: 65535
+                        }
+                    }
+                    AtlasFormEntry {
+                        label: "Thing hidden on another page"
+                        visible: false
+                        AtlasSwitch {
+                        }
+                    }
+                    AtlasFormEntry {
+                        id: needed
+                        label: "Needed on another page"
+                        required: true
+                        AtlasTextField {
                         }
                     }
                 }
@@ -183,6 +203,22 @@ TestCase {
         search(d).text = "thing";
         tryVerify(() => d._searching);
         compare(d._results.length, 0);
+    }
+
+    function test_search_skips_entries_the_app_hid() {
+        const d = open(dialogComp);
+        search(d).text = "hidden";
+        tryVerify(() => d._searching);
+        tryVerify(() => d._results.length === 1);
+        compare(d._results[0].text, "Show hidden files", "neither hidden entry is found, on this page or another");
+        search(d).text = "Thing hidden";
+        tryVerify(() => d._results.length === 0);
+    }
+
+    function test_a_required_entry_on_another_page_still_counts() {
+        const d = open(dialogComp);
+        verify(d.pageB.visible === false || d.currentIndex === 0);
+        verify(!d.needed.valid, "a page that is not shown does not make an entry valid");
     }
 
     function test_search_with_no_match_shows_the_empty_state() {

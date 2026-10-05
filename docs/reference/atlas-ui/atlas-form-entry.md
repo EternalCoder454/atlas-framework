@@ -39,7 +39,7 @@ AtlasFormEntry {
 | `required` | `bool` | `false` | An empty control is invalid. |
 | `requiredText` | `string` | `qsTr("Required")` | Shown when `required` fails. |
 | `invalidText` | `string` | `qsTr("Check this value")` | Shown when the control's `acceptableInput` is false. |
-| `valid` | `bool` (read-only) | — | No error of any kind, shown or not. An entry that is disabled or not visible (on a page that is not shown, say) is valid, so it never blocks a form. |
+| `valid` | `bool` (read-only) | — | No error of any kind, shown or not. An entry that is disabled, or that the app hid with `visible: false`, is valid, so it never blocks a form. One on a page that is not shown still counts. |
 | `shownError` | `string` (read-only) | — | The error on screen, or `""`. |
 | `stacked` | `bool` | automatic | The control under the label. On in a narrow row and for a tall control; set it to force either. |
 | `settingKey` | `string` | `""` | The key in the form's `settings` the control is bound to; see below. |

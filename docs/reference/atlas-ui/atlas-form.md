@@ -44,7 +44,7 @@ Bind a primary button to `enabled: form.valid`, or leave it enabled and call `fo
 |---|---|---|---|
 | `entries` | `var` (read-only) | `[]` | The entries inside, as an array, in the order they were created. |
 | `settings` | `AtlasSettings` | `null` | Where the entries with a `settingKey` save. On a page of an AtlasPreferencesDialog the dialog's `settings` are used when the page has none. |
-| `valid` | `bool` (read-only) | — | True when every entry is valid. An entry that is disabled or not visible counts as valid (so does one on a page that is not shown), and `validate()` never focuses it. |
+| `valid` | `bool` (read-only) | — | True when every entry is valid. An entry that is disabled or hidden by the app counts as valid, and `validate()` never focuses it; one on a page that is not shown still counts. |
 
 ## Signals
 

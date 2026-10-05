@@ -125,7 +125,17 @@ TestCase {
         return f;
     }
 
+    // Focus changes only count in an active window.
+    function activate() {
+        const w = tc.Window.window;
+        if (w) {
+            w.requestActivate();
+            tryVerify(() => w.active, 3000);
+        }
+    }
+
     function test_error_shows_only_after_leaving() {
+        activate();
         const f = make();
         const other = createTemporaryObject(otherComp, tc, {y: 300});
         verify(!f.eName.valid);
@@ -261,6 +271,9 @@ TestCase {
         verify(!f.eName.valid);
         f.eName.visible = false;
         verify(f.eName.valid);
+        f.eName.visible = true;
+        verify(!f.eName.valid);
+        f.eName.visible = false;
         verify(!f.fName.activeFocus, "a hidden entry takes no focus");
     }
 
