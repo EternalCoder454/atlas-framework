@@ -112,7 +112,7 @@ control takes `iconName`.
 
 | Type | What it is |
 |---|---|
-| `AtlasWindow` | The application window: blur or opaque, following `Appearance`; `sidebarColor()` for a sidebar |
+| `AtlasWindow` | The application window: blur or opaque, following `Appearance`; `sidebarColor()` for a sidebar; `widthClass` (Compact < 30 gridUnits, Wide >= 60) and `sidebarCollapsed` (true in Compact) so every app collapses its sidebar alike (since 1.4.0) |
 | `AtlasPage` | A scrolling page with a large bold title and centred margins |
 | `PrimaryButton`, `SecondaryButton`, `TextButton`, `MenuButton` | Buttons (`AtlasButton` is their shared base) |
 | `AtlasSwitch` | Pill switch |
@@ -121,6 +121,7 @@ control takes `iconName`.
 | `AtlasChip`, `AtlasChipGroup` | A small pill (`text`, `symbol`, `checkable`, `closable` with `closeRequested()`), and a wrapping group of them (`exclusive`, roving Tab stop, focus moves to the neighbour of a removed chip) (since 1.4.0) |
 | `Section`, `SectionRow` | A rounded card of rows; a row has a title, subtitle, value, and a checkmark, switch or chevron. A section can fold |
 | `SidebarItem`, `SidebarGroup` | Sidebar entries, with a live value, a badge, and sub-entries; a compact item shows its title (and value) as a tooltip on hover or keyboard focus (since 1.4.0) |
+| `AtlasSidebar` | A scrolling sidebar for SidebarItem/SidebarGroup (or a model): keeps the selected and focused entry in view, `filterText` with an optional search field and a placeholder, `contextMenuRequested`, drop targets, Tab lands on the selected entry (since 1.4.0) |
 | `StepItem` | One step in a setup sidebar (done, current or to come) |
 | `StatusHero` | Big centred status: an icon badge with a busy or progress ring, a headline, a subtitle, actions |
 | `AtlasProgressBar` | Rounded accent progress bar, or an indeterminate one; `text` beside it, `status` "normal", "paused" or "error" (`text`, `status` since 1.4.0) |

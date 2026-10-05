@@ -7,8 +7,30 @@ import org.kde.kirigami as Kirigami
 // `blurAlpha` over a blurred desktop, Mica style; otherwise it is the plain
 // opaque background, exactly as before. Put `sidebarColor(base)` on a sidebar
 // so it is a little more see-through; Section cards stay nearly opaque.
+//
+// `widthClass` says how roomy the window is (Compact, Medium or Wide), and
+// `sidebarCollapsed` is true in Compact, so every app folds its sidebar to
+// icons at the same width:
+//
+//   AtlasWindow {
+//       AtlasSidebar {
+//           compact: window.sidebarCollapsed
+//           ...
+//       }
+//   }
 QQC2.ApplicationWindow {
     id: root
+
+    enum WidthClass {
+        Compact,
+        Medium,
+        Wide
+    }
+
+    // Compact below 30 grid units wide, Wide from 60, Medium between.
+    readonly property int widthClass: root.width < Kirigami.Units.gridUnit * 30 ? AtlasWindow.WidthClass.Compact : root.width >= Kirigami.Units.gridUnit * 60 ? AtlasWindow.WidthClass.Wide : AtlasWindow.WidthClass.Medium
+    // True in Compact: show the sidebar as icons only (AtlasSidebar.compact).
+    readonly property bool sidebarCollapsed: root.widthClass === AtlasWindow.WidthClass.Compact
 
     // True while the window is drawn over blur.
     readonly property bool blurred: Appearance.effective

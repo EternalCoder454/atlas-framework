@@ -39,6 +39,10 @@ ColumnLayout {
         return false;
     }
 
+    // Hooks for AtlasSidebar (filtering, hit testing); not for apps.
+    readonly property Item _header: header
+    readonly property Item _entries: entries
+
     signal toggled
     signal activated
 

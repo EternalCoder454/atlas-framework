@@ -35,6 +35,7 @@ qt_add_qml_module(atlasui
         StatusHero.qml
         SidebarItem.qml
         SidebarGroup.qml
+        AtlasSidebar.qml
         StepItem.qml
         AtlasPage.qml
         AtlasSwitch.qml
