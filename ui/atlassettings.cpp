@@ -1,4 +1,5 @@
 #include "atlassettings.h"
+#include "atlaslogsafe.h"
 
 #include <KConfig>
 #include <KConfigGroup>
@@ -540,7 +541,7 @@ void AtlasSettings::setFileName(const QString &fileName)
 void AtlasSettings::dropPending()
 {
     if (!flush() && !m_pending.isEmpty()) {
-        qWarning("AtlasSettings: %s/%s: %lld unsaved change(s) dropped", qPrintable(m_fileName), qPrintable(m_group), qint64(m_pending.size()));
+        qWarning("AtlasSettings: %s/%s: %lld unsaved change(s) dropped", qPrintable(m_fileName), qPrintable(logSafe(m_group)), qint64(m_pending.size()));
         m_pending.clear();
     }
 }
@@ -579,7 +580,7 @@ void AtlasSettings::reload(bool announce)
         }
         for (const QString &key : expandingKeys(file)) {
             if (m_snapshot.remove(key)) {
-                qWarning("AtlasSettings: %s: %s/%s is marked [$e] (variable expansion); ignored", qPrintable(file), qPrintable(m_group), qPrintable(key));
+                qWarning("AtlasSettings: %s: %s/%s is marked [$e] (variable expansion); ignored", qPrintable(file), qPrintable(logSafe(m_group)), qPrintable(logSafe(key)));
             }
         }
     }
@@ -663,15 +664,15 @@ bool AtlasSettings::setValue(const QString &key, const QVariant &value)
 {
     const QVariant stored = normalise(value);
     if (!stored.isValid()) {
-        qWarning("AtlasSettings: %s/%s: this value cannot be stored", qPrintable(m_group), qPrintable(key));
+        qWarning("AtlasSettings: %s/%s: this value cannot be stored", qPrintable(logSafe(m_group)), qPrintable(logSafe(key)));
         return false;
     }
     if (!validGroup(m_group) || !validKey(key)) {
-        qWarning("AtlasSettings: %s/%s is not a valid group and key", qPrintable(m_group), qPrintable(key));
+        qWarning("AtlasSettings: %s/%s is not a valid group and key", qPrintable(logSafe(m_group)), qPrintable(logSafe(key)));
         return false;
     }
     if (m_cfg && (m_cfg->isImmutable() || m_cfg->group(m_group).isImmutable() || m_cfg->group(m_group).isEntryImmutable(key))) {
-        qWarning("AtlasSettings: %s/%s is immutable", qPrintable(m_group), qPrintable(key));
+        qWarning("AtlasSettings: %s/%s is immutable", qPrintable(logSafe(m_group)), qPrintable(logSafe(key)));
         return false;
     }
     m_pending.insert(key, stored);
@@ -682,11 +683,11 @@ bool AtlasSettings::setValue(const QString &key, const QVariant &value)
 bool AtlasSettings::remove(const QString &key)
 {
     if (!validGroup(m_group) || !validKey(key)) {
-        qWarning("AtlasSettings: %s/%s is not a valid group and key", qPrintable(m_group), qPrintable(key));
+        qWarning("AtlasSettings: %s/%s is not a valid group and key", qPrintable(logSafe(m_group)), qPrintable(logSafe(key)));
         return false;
     }
     if (m_cfg && (m_cfg->isImmutable() || m_cfg->group(m_group).isImmutable() || m_cfg->group(m_group).isEntryImmutable(key))) {
-        qWarning("AtlasSettings: %s/%s is immutable", qPrintable(m_group), qPrintable(key));
+        qWarning("AtlasSettings: %s/%s is immutable", qPrintable(logSafe(m_group)), qPrintable(logSafe(key)));
         return false;
     }
     m_pending.insert(key, QVariant());
@@ -742,7 +743,7 @@ bool AtlasSettings::flush()
         KConfig cfg(file, KConfig::SimpleConfig);
         KConfigGroup g = cfg.group(m_group);
         if (cfg.isImmutable() || g.isImmutable()) {
-            qWarning("AtlasSettings: %s: group %s is immutable; changes dropped", qPrintable(file), qPrintable(m_group));
+            qWarning("AtlasSettings: %s: group %s is immutable; changes dropped", qPrintable(file), qPrintable(logSafe(m_group)));
             m_pending.clear();
             reload(false);
             return false;
@@ -750,7 +751,7 @@ bool AtlasSettings::flush()
         for (auto it = m_pending.cbegin(); it != m_pending.cend(); ++it) {
             const QString &key = it.key();
             if (g.isEntryImmutable(key)) {
-                qWarning("AtlasSettings: %s: %s/%s is immutable; change dropped", qPrintable(file), qPrintable(m_group), qPrintable(key));
+                qWarning("AtlasSettings: %s: %s/%s is immutable; change dropped", qPrintable(file), qPrintable(logSafe(m_group)), qPrintable(logSafe(key)));
                 continue;
             }
             const QVariant &v = it.value();

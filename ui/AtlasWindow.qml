@@ -47,6 +47,11 @@ import org.kde.kirigami as Kirigami
 // above the content, as with any ApplicationWindow `header`, so it composes
 // with Kirigami page stacks inside (their global toolbars are separate).
 // Without an AtlasHeaderBar nothing changes: KWin decorates the window.
+//
+// `kiosk: true` is for a first-run setup or a locked-down screen: the window
+// is full screen, has no close button (the header's too), and a close request
+// (Alt+F4, the compositor) is refused. Qt.quit() asks windows to close, so
+// the app sets kiosk to false first, or calls Qt.exit().
 QQC2.ApplicationWindow {
     id: root
 
@@ -67,6 +72,9 @@ QQC2.ApplicationWindow {
 
     // Names the saved window state; empty keeps none.
     property string stateKey
+
+    // Full screen, no close button, and a close request is refused.
+    property bool kiosk: false
 
     // True while the window is drawn over blur.
     readonly property bool blurred: Appearance.effective
@@ -275,7 +283,54 @@ QQC2.ApplicationWindow {
     readonly property bool frameless: root._atlasHeader !== null
     // The window can be resized by the handles: frameless and in a normal state.
     readonly property bool _resizable: root.frameless && root.visibility !== Window.Maximized && root.visibility !== Window.FullScreen
-    flags: root.frameless ? Qt.Window | Qt.FramelessWindowHint : Qt.Window
+    flags: (root.frameless ? Qt.Window | Qt.FramelessWindowHint : Qt.Window) | (root.kiosk ? Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint : 0)
+    onKioskChanged: root._applyKiosk()
+    // True once kiosk put this window in full screen: leaving kiosk then
+    // takes it out again (and nothing else's full screen).
+    property bool _kioskApplied: false
+    // One turn later: `flags` changes with `kiosk` and on Wayland can recreate
+    // the window, so the visibility is set after that settled, and re-checked.
+    function _applyKiosk(): void {
+        Qt.callLater(root._enforceKiosk);
+    }
+    // Only while shown: setting `visibility` on a hidden window would show it.
+    function _enforceKiosk(): void {
+        if (root._gone || !root.visible) {
+            return;
+        }
+        if (root.kiosk) {
+            // Minimized stays minimized; anything else goes back to full screen.
+            if (root.visibility !== Window.FullScreen && root.visibility !== Window.Minimized) {
+                root._kioskApplied = true;
+                root.visibility = Window.FullScreen;
+            }
+        } else if (root._kioskApplied && root.visibility !== Window.Minimized) {
+            // A minimized window is left until it comes back (Qt would restore
+            // it to full screen).
+            root._kioskApplied = false;
+            if (root.visibility === Window.FullScreen) {
+                root.visibility = root._leaveTarget();
+            }
+        }
+    }
+    function _leaveTarget(): int {
+        return root.stateKey.length > 0 && root._state.value("Maximized", false) ? Window.Maximized : Window.Windowed;
+    }
+    // Shown again after kiosk was left while hidden: Qt shows it in the state it
+    // had when hidden (full screen), and that state can arrive after a
+    // callLater turn, so the state is set right here, not only checked later.
+    function _leaveKioskOnShow(): void {
+        if (!root.kiosk && root._kioskApplied && root.visibility !== Window.Minimized) {
+            root._kioskApplied = false;
+            root.visibility = root._leaveTarget();
+        }
+    }
+    // A close request is refused in kiosk mode, Qt.quit()'s included.
+    onClosing: close => {
+        if (root.kiosk) {
+            close.accepted = false;
+        }
+    }
 
     // Test hook: replaces startSystemResize(edges).
     property var _resizeHook: null
@@ -367,6 +422,9 @@ QQC2.ApplicationWindow {
         Appearance.refresh();
         syncBlur();
         _firstShow();
+        // A kiosk change made while hidden counts now.
+        root._leaveKioskOnShow();
+        root._applyKiosk();
     } else {
         root._finishAllConfirms(false);
     }
@@ -417,12 +475,15 @@ QQC2.ApplicationWindow {
             return;
         }
         root._shown = true;
-        if (root.stateKey.length > 0 && root._state.value("Maximized", false)) {
+        if (root.kiosk) {
+            root._applyKiosk();
+        } else if (root.stateKey.length > 0 && root._state.value("Maximized", false)) {
             root.visibility = Window.Maximized;
         }
     }
     function _saveState() {
-        if (!root._stateReady || root.stateKey.length === 0 || !root._shown) {
+        // Kiosk's full screen, and the resize leaving it, are not the user's.
+        if (!root._stateReady || root.stateKey.length === 0 || !root._shown || root.kiosk || root._kioskApplied) {
             return;
         }
         if (root.visibility === Window.Windowed) {
@@ -436,5 +497,12 @@ QQC2.ApplicationWindow {
     }
     onWidthChanged: _saveState()
     onHeightChanged: _saveState()
-    onVisibilityChanged: _saveState()
+    onVisibilityChanged: {
+        _saveState();
+        // KWin's F11, a Restore from a menu: kiosk puts it back. Each change
+        // is checked once a turn later, so a compositor bouncing it cannot spin.
+        if (root.kiosk || root._kioskApplied) {
+            root._applyKiosk();
+        }
+    }
 }

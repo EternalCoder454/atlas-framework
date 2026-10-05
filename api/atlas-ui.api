@@ -44,13 +44,32 @@ AtlasAboutPage.property statusTitle: QString
 AtlasAboutPage.property subtitle: QString
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
+AtlasAccentPicker.base QQuickControl
+AtlasAccentPicker.property count: int [readonly]
+AtlasAccentPicker.property currentColor: QColor [readonly]
+AtlasAccentPicker.property currentIndex: int
+AtlasAccentPicker.property model: QVariant
+AtlasAccentPicker.signal activated(int index)
+AtlasAccentPicker.type
 AtlasAction.base QQuickAction
+AtlasAction.property category: QString
 AtlasAction.property menu: QQuickMenu*
 AtlasAction.property popover: QQuickPopup*
 AtlasAction.property section: QString
 AtlasAction.property symbol: int
 AtlasAction.property toolTip: QString
 AtlasAction.type
+AtlasActionCollection.base QObject
+AtlasActionCollection.method action(QString name): QVariant
+AtlasActionCollection.method declaredConflict(QString name): QString
+AtlasActionCollection.method hasCustomShortcut(QString name): bool
+AtlasActionCollection.method resetShortcut(QString name): bool
+AtlasActionCollection.method resetShortcuts(): bool
+AtlasActionCollection.method setShortcut(QString name, QString sequence): bool
+AtlasActionCollection.property actions: QQmlListProperty<QQuickAction> [readonly]
+AtlasActionCollection.property settings: AtlasSettings*
+AtlasActionCollection.property shortcutsEditable: bool
+AtlasActionCollection.type
 AtlasApp.base QObject
 AtlasApp.property id: QString [readonly]
 AtlasApp.property issuesUrl: QString [readonly]
@@ -82,6 +101,7 @@ AtlasAppCard.type
 AtlasAppMenu.base QQuickItem
 AtlasAppMenu.method open(): QVariant
 AtlasAppMenu.property accessibleName: QString
+AtlasAppMenu.property collection: QObject*
 AtlasAppMenu.property exportShortcuts: bool
 AtlasAppMenu.property menus: QVariant
 AtlasAppMenu.signal modelActivated(QString id, QVariant modelData, int index)
@@ -164,6 +184,10 @@ AtlasChipGroup.property content: QQmlListProperty<QObject> [readonly]
 AtlasChipGroup.property exclusive: bool
 AtlasChipGroup.property spacing: double
 AtlasChipGroup.type
+AtlasChoiceCard.base QQuickAbstractButton
+AtlasChoiceCard.property aspectRatio: double
+AtlasChoiceCard.property source: QUrl
+AtlasChoiceCard.type
 AtlasClipboard.base QObject
 AtlasClipboard.method setImage(QVariant image): bool
 AtlasClipboard.method setRichText(QString html, QString plainFallback): void
@@ -194,6 +218,7 @@ AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
 AtlasCommandPalette.base QQuickPopup
 AtlasCommandPalette.property actions: QQmlListProperty<QObject> [readonly]
+AtlasCommandPalette.property collection: QObject*
 AtlasCommandPalette.property placeholderText: QString
 AtlasCommandPalette.property query: QString
 AtlasCommandPalette.property recentCount: int
@@ -463,14 +488,24 @@ AtlasNumberValidator.property locale: QString
 AtlasNumberValidator.property top: double
 AtlasNumberValidator.type
 AtlasOnboarding.base QQuickItem
+AtlasOnboarding.enum StepStyle: Column = 0
+AtlasOnboarding.enum StepStyle: Dots = 1
 AtlasOnboarding.method back(): QVariant
 AtlasOnboarding.method next(): QVariant
 AtlasOnboarding.method skip(): QVariant
+AtlasOnboarding.property autoAdvance: bool
+AtlasOnboarding.property backText: QString
+AtlasOnboarding.property busy: bool
+AtlasOnboarding.property canGoBack: bool
 AtlasOnboarding.property count: int [readonly]
 AtlasOnboarding.property currentIndex: int
+AtlasOnboarding.property finishText: QString
+AtlasOnboarding.property nextText: QString
 AtlasOnboarding.property pages: QQmlListProperty<QQuickItem> [readonly]
 AtlasOnboarding.property showSkip: bool
 AtlasOnboarding.property showSteps: bool
+AtlasOnboarding.property stepStyle: int
+AtlasOnboarding.signal advanceRequested(int index)
 AtlasOnboarding.signal finished()
 AtlasOnboarding.signal skipped(int index)
 AtlasOnboarding.type
@@ -497,6 +532,10 @@ AtlasPasswordField.property hasError: bool [readonly]
 AtlasPasswordField.property revealed: bool [readonly]
 AtlasPasswordField.property rtl: bool [readonly]
 AtlasPasswordField.type
+AtlasPasswordStrength.base QQuickItem
+AtlasPasswordStrength.property score: int
+AtlasPasswordStrength.property text: QString
+AtlasPasswordStrength.type
 AtlasPathValidator.base QValidator
 AtlasPathValidator.property absolute: bool
 AtlasPathValidator.property directory: bool
@@ -609,6 +648,7 @@ AtlasShortcuts.property actions: QList<QObject*> [readonly]
 AtlasShortcuts.property conflicts: QVariantList [readonly]
 AtlasShortcuts.type
 AtlasShortcutsDialog.base QQuickPopup
+AtlasShortcutsDialog.property collection: QObject*
 AtlasShortcutsDialog.property title: QString
 AtlasShortcutsDialog.type
 AtlasSidebar.base QQuickFocusScope
@@ -895,6 +935,7 @@ AtlasWindow.property blurAlpha: double
 AtlasWindow.property blurred: bool [readonly]
 AtlasWindow.property compactBreakpoint: double
 AtlasWindow.property frameless: bool [readonly]
+AtlasWindow.property kiosk: bool
 AtlasWindow.property sidebarCollapsed: bool [readonly]
 AtlasWindow.property sidebarFactor: double
 AtlasWindow.property stateKey: QString

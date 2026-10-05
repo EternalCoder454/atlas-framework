@@ -26,6 +26,7 @@ None. Its dependencies are `serde`, `libc` and `log`.
 |---|---|
 | [AppInfo and app_info!](app-info.md) | Who the running app is: name, ID, version, repository |
 | [settings](settings.md) | The app's own `atlas-<app>rc` file in KConfig format |
+| [task](task.md) | Feature `task`: one runtime thread and `spawn_ui`, results back on the UI thread |
 | [log](log.md) | The `log` macros sent to the systemd journal |
 | [osrelease](osrelease.md) | The OS name, version and logo from os-release |
 | [fsutil](fsutil.md) | Appending to shared log files safely |
@@ -37,3 +38,4 @@ None. Its dependencies are `serde`, `libc` and `log`.
 | `AppInfo` | struct | Re-exported from the `app` module |
 | `app_info!` | macro | Builds an `AppInfo` with the calling crate's version |
 | `app`, `fsutil`, `log`, `osrelease`, `settings` | modules | All public |
+| `task` | module | Public, behind the cargo feature `task` |

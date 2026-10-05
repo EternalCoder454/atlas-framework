@@ -27,7 +27,7 @@ Item {
         },
         {
             title: qsTr("Inputs"),
-            types: ["AtlasTextField", "AtlasPasswordField", "AtlasTextArea", "SearchField", "AtlasSpinBox", "AtlasDoubleSpinBox", "AtlasSlider", "AtlasAutocompleteField", "AtlasFileField", "AtlasShortcutField", "AtlasDropZone"]
+            types: ["AtlasTextField", "AtlasPasswordField", "AtlasPasswordStrength", "AtlasTextArea", "SearchField", "AtlasSpinBox", "AtlasDoubleSpinBox", "AtlasSlider", "AtlasAutocompleteField", "AtlasFileField", "AtlasShortcutField", "AtlasDropZone"]
         },
         {
             title: qsTr("Pickers"),
@@ -35,7 +35,7 @@ Item {
         },
         {
             title: qsTr("Selection"),
-            types: ["AtlasCheckBox", "AtlasRadioButton", "AtlasSwitch", "AtlasTransparencySwitch", "AtlasRating", "AtlasChip"]
+            types: ["AtlasCheckBox", "AtlasRadioButton", "AtlasSwitch", "AtlasTransparencySwitch", "AtlasRating", "AtlasChip", "AtlasChoiceCard", "AtlasAccentPicker"]
         },
         {
             title: qsTr("Lists and tables"),
@@ -63,7 +63,7 @@ Item {
         },
         {
             title: qsTr("Style and services"),
-            types: ["AtlasStyle", "AtlasFormat", "AtlasAction", "AtlasValidators", "Section", "SectionRow", "Symbol", "AtlasFocusRing"]
+            types: ["AtlasStyle", "AtlasFormat", "AtlasAction", "AtlasActionCollection", "AtlasValidators", "Section", "SectionRow", "Symbol", "AtlasFocusRing"]
         }
     ]
 

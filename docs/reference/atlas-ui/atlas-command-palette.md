@@ -30,7 +30,8 @@ AtlasAction {
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `actions` | `list<QtObject>` | `AtlasShortcuts.actions` (every AtlasAction of the app) | The actions on offer: anything with `text`, `enabled` and `trigger()`, and optionally `symbol`, `section` and `shortcut`. Give a list to offer fewer. |
+| `actions` | `list<QtObject>` | `AtlasShortcuts.actions` (every AtlasAction of the app), or the actions of `collection` | The actions on offer: anything with `text`, `enabled` and `trigger()`, and optionally `symbol`, `category`, `section` and `shortcut`. Give a list to offer fewer; a list that is not empty wins over the collection. |
+| `collection` | `AtlasActionCollection` | `null` | The app's [AtlasActionCollection](atlas-action-collection.md): its actions are offered when `actions` is empty, and the user's changed shortcuts show. Each row's subtitle is the action's `category`. |
 | `placeholderText` | `string` | `qsTr("Type a command")` | Hint in the empty search field. |
 | `query` | `string` | `""` | The text in the search field. |
 | `recentCount` | `int` | `5` | How many recently run actions lead the empty list. |

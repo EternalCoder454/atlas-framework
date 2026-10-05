@@ -57,6 +57,7 @@ AtlasHeaderBar {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `accessibleName` | `string` | `qsTr("Main menu")` | The name of the menu button for screen readers, and its tooltip. |
+| `collection` | `AtlasActionCollection` | `null` | The app's [AtlasActionCollection](atlas-action-collection.md). While `menus` is empty, the menus are its actions grouped by `category` (an empty category is "General"), in the order each category first appears. A `menus` list that is not empty wins. The desktop's global menu shows no shortcuts for a collection's actions. |
 | `exportShortcuts` | `bool` | `false` | Shows each `{ action, shortcut }` entry's `shortcut` in the global menu, and in the button's rows. |
 | `menus` | `var` | `[]` | A list of groups, each `{title, actions}`. See Entries above for what `actions` may hold. The item is hidden while the list is empty. |
 

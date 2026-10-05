@@ -30,6 +30,7 @@ AtlasWindow {
 | `blurred` | `bool` (read-only) | — | True while the window is drawn over blur (`Appearance.effective`). |
 | `compactBreakpoint` | `real` | `30` | Below this width, in grid units, `widthClass` is `Compact` (and `sidebarCollapsed` is true). A value that is not a finite number above 0 uses the default. Since 1.5.0. |
 | `frameless` | `bool` (read-only) | — | True when `header` is an [AtlasHeaderBar](atlas-header-bar.md): the window then draws its own title row. |
+| `kiosk` | `bool` | `false` | Full screen, no close button (the window buttons and the header's window menu leave Close out), and a close request (Alt+F4, the compositor) is refused. `Qt.quit()` asks every window to close, so a kiosk window stops it too: to end the app, set `kiosk` to `false` first, or call `Qt.exit()`. Maximize and Restore are left out too, and if the window leaves full screen anyway (KWin's F11, a menu) it is put back, unless it is minimized. Set on a hidden window, it takes effect when the window is shown, also when set again after hiding; set back to `false`, the window leaves the full screen kiosk put it in (a full screen the app chose itself stays; a minimized window leaves it when it comes back) (to Maximized if `stateKey` saved it so). Applied one turn after the change, because `flags` change with it and on Wayland that can recreate the window; this is verified only on the offscreen platform. See "Kiosk windows". Since 1.5.0. |
 | `sidebarCollapsed` | `bool` (read-only) | — | True when `widthClass` is `Compact`; bind `AtlasSidebar.compact` to it. |
 | `sidebarFactor` | `real` | `0.8` | How much more see-through the sidebar is, as a factor on `blurAlpha`. |
 | `stateKey` | `string` | `""` | Names the saved window state; empty keeps none. |
@@ -70,3 +71,8 @@ The window then has `Qt.FramelessWindowHint`, a hairline border (none when maxim
 
 > [!NOTE]
 > A second launch of an app started with `atlas_app_run` raises this window and exits; nothing is needed in QML.
+
+## Kiosk windows
+
+- An app's own `onClosing` handles the same close request, and the handler that runs last decides. Do not set `close.accepted = true` while `kiosk` is on, or the window may close.
+- Logout and shutdown ask windows to close too, and a kiosk window refuses them: it can delay the session's logout until the app sets `kiosk` to `false` or exits (`Qt.exit()`).

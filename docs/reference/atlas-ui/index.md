@@ -98,6 +98,8 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasRadioButton](atlas-radio-button.md): A radio button; siblings form a group.
 - [AtlasSegmentedControl](atlas-segmented-control.md): Joined segments with one selected.
 - [AtlasChip](atlas-chip.md): A small chip for a tag, filter or value.
+- [AtlasChoiceCard](atlas-choice-card.md): One of a few choices as a picture with its name and a check circle.
+- [AtlasAccentPicker](atlas-accent-picker.md): A row of round colour swatches, one chosen.
 - [AtlasChipGroup](atlas-chip-group.md): A wrapping group of chips, optionally one-of.
 
 ### Fields and pickers
@@ -105,6 +107,7 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasTextField](atlas-text-field.md): A single-line text field with error, clear button, prefix, suffix and counter.
 - [AtlasTextArea](atlas-text-area.md): A multi-line text field.
 - [AtlasPasswordField](atlas-password-field.md): A password field with a show toggle.
+- [AtlasPasswordStrength](atlas-password-strength.md): A strength bar and label for a password.
 - [SearchField](search-field.md): A search field with a debounced query.
 - [AtlasAutocompleteField](atlas-autocomplete-field.md): A text field that suggests completions.
 - [AtlasComboBox](atlas-combo-box.md): A drop-down list, optionally filterable.
@@ -154,6 +157,7 @@ Every type has a page. The groups below are the sidebar sections.
 - [ContextMenuSeparator](context-menu-separator.md): A divider line in a context menu.
 - [AtlasAppMenu](atlas-app-menu.md): The app's menus for the header bar or the desktop's global menu.
 - [AtlasAction](atlas-action.md): One user action shared by buttons, menus and the keyboard.
+- [AtlasActionCollection](atlas-action-collection.md): The app's actions declared once, with user-changeable shortcuts.
 - [AtlasDialog](atlas-dialog.md): The general modal dialog.
 - [ConfirmDialog](confirm-dialog.md): A modal question with small rounded buttons.
 - [AtlasPopover](atlas-popover.md): A raised card that opens next to a control.

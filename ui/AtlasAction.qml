@@ -30,6 +30,9 @@ T.Action {
     // The group the action shows under in AtlasShortcutsDialog; empty for the
     // general group.
     property string section
+    // The group the action shows under in AtlasShortcutsDialog, the command
+    // palette and (with a collection) AtlasAppMenu; `section` unless set.
+    property string category: action.section
     // A ContextMenu that the action's toolbar button opens instead of
     // triggering; in an AtlasAppMenu it shows as a submenu. If both this and
     // `popover` are set, `menu` wins.

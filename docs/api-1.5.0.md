@@ -773,6 +773,86 @@ Open question: if Updater needs a Ghost button with accent text, that would be
 a new value on `AtlasButton.Variant` (`Link`), which is additive and cheap.
 Is that the real request? The roadmap says "Ghost link buttons".
 
+### Item 42: the AtlasOS Wizard's controls
+
+The Wizard (AtlasOS's first-run setup) agreed to these names; its stand-ins
+mirror them. Everything is additive. A name that no app folder holds as a
+`.qml` file was checked on 2026-10-05 (the Wizard's own types are `Wizard*`).
+
+#### AtlasOnboarding
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `nextText`, `finishText`, `backText` | `string` | `""` | Replace the built-in "Next", "Finish" and "Back". Empty keeps them. |
+| `busy` | `bool` | `false` | Next shows an AtlasSpinner and ignores clicks and keys; its `Accessible.description` is "Busy". Back, Skip and Alt+Left do nothing. |
+| `autoAdvance` | `bool` | `true` | `false`: Next only emits `advanceRequested`; the app calls `next()` itself when its work is done. |
+| `canGoBack` | `bool` | `true` | `false` hides Back and turns Alt+Left off. |
+| `stepStyle` | `enum` | `AtlasOnboarding.Column` | `Column` (today's look) or `Dots`. |
+
+Signal `advanceRequested(int index)`: every use of the Next button, on every
+page, before the control moves. `next()` called from code moves without
+signalling, so an app answering `advanceRequested` does not loop. `showSteps:
+false` hides either style.
+
+Dots: a row above the page, centred. The current dot is wider and the accent
+colour, past dots the accent at 45 %, future dots the text colour at 20 % (the
+control border in high contrast, where 20 % would vanish). The width animates
+with `durationShort`, not under reduced motion. The dots show at any window
+width; with them there is no "Step 2 of 3" line, and a screen reader gets one
+static "Step 2 of 3" for the row.
+
+#### AtlasPasswordStrength
+
+New. Sits under an AtlasPasswordField.
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `score` | `int` | `-1` | 0 (very weak) to 4 (strong); -1 is nothing typed: an empty bar and no label. Other values are clamped. |
+| `text` | `string` | `""` | Replaces the built-in label ("Very weak", "Weak", "Fair", "Good", "Strong"). |
+
+A bar of four cells and the label; error for 0 and 1, warning for 2, success
+for 3 and 4 (the label and the cell count say the same, so colour is not the
+only cue). Accessible: a progress bar whose name is "<label>, <score> of 4".
+The scoring stays in the app.
+
+#### AtlasChoiceCard
+
+New. A checkable `AbstractButton`: a picture, the name under it, a check circle.
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `source` | `url` | | The picture, cropped to fill; a missing file leaves the empty frame. |
+| `aspectRatio` | `real` | `1.6` | Width over height of the picture (16:10). Not a finite number above 0 uses 1.6. |
+| `text`, `checked` | | | As for any button. |
+
+A checked ring in the accent colour, a fainter ring on hover and keyboard
+focus, the focus ring, and a check circle by the name. Exclusive through
+`ButtonGroup` or `autoExclusive`. `checked` follows the edit rule (Part 1).
+Screen readers get a radio button named `text`.
+
+#### AtlasAccentPicker
+
+New. Round swatches, one chosen.
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `model` | `var` | `[]` | Colours, or objects `{ color, name }`. |
+| `currentIndex` | `int` | `0` | The chosen swatch. Follows the edit rule. |
+| `currentColor` | `color` (read-only) | | The chosen colour; fully transparent when `currentIndex` is out of range. |
+| `count` | `int` (read-only) | | The number of swatches. |
+
+Signal `activated(int index)`: the user's choice, not a change from code. One
+Tab stop; Left and Right (mirrored in right-to-left), Home and End move the
+choice. A swatch's accessible name is its `name`, or "Accent color N" (N from
+1) when it has none; the same text is its tooltip.
+
+#### AtlasWindow
+
+`kiosk: bool = false`. True: full screen, no close button (the window buttons
+and the header's window menu drop Close) and a close request (Alt+F4, the
+compositor) is refused. `Qt.quit()` is refused too: the app sets `kiosk` to `false` first, or calls `Qt.exit()`. Set while
+the window is hidden, it takes effect when the window is shown.
+
 ## Items dropped as already possible
 
 | Request | How it is met today |

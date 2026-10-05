@@ -81,6 +81,9 @@ Item {
         }
     }
     function _toggleMaximize() {
+        if (root._kiosk) {
+            return;
+        }
         if (_toggleHook) {
             _toggleHook();
             return;
@@ -98,6 +101,12 @@ Item {
         if (Window.window) {
             Window.window.showMinimized();
         }
+    }
+    // The window is a kiosk (AtlasWindow.kiosk): no way to close it from here.
+    readonly property bool _kiosk: root._kioskOf(Window.window)
+    // `w` is untyped: only an AtlasWindow has `kiosk`, and a plain Window does not.
+    function _kioskOf(w: var): bool {
+        return w ? w["kiosk"] === true : false;
     }
     function _close() {
         if (Window.window) {
@@ -186,11 +195,15 @@ Item {
             onTriggered: root._minimize()
         }
         ContextMenuItem {
+            visible: !root._kiosk
             text: root._maximized ? qsTr("Restore") : qsTr("Maximize")
             onTriggered: root._toggleMaximize()
         }
-        ContextMenuSeparator {}
+        ContextMenuSeparator {
+            visible: !root._kiosk
+        }
         ContextMenuItem {
+            visible: !root._kiosk
             text: qsTr("Close")
             destructive: true
             onTriggered: root._close()
