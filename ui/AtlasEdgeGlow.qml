@@ -28,8 +28,9 @@ Item {
     property bool active: false
     // False holds the breathing still (a screenshot); the glow stays visible.
     property bool animated: true
-    // How far the glow reaches in from the edge, in pixels.
-    property real size: AtlasStyle.spacingXXLarge * 1.5
+    // How far the glow reaches in from each edge, in pixels. The four edges
+    // overlap in the corners by design, so a corner is a little brighter.
+    property real reach: AtlasStyle.spacingXXLarge * 1.5
 
     // 0 to 1: how far the glow has faded in.
     property real _shown: root.active ? 1 : 0
@@ -63,14 +64,17 @@ Item {
         onRunningChanged: if (!running) root._breath = 1
     }
 
-    // One edge: strongest at the window's edge, gone by `size`. `reversed` is
+    // One edge: strongest at the window's edge, gone by `reach`. `reversed` is
     // for the bottom and trailing edges, whose window edge is at position 1.
     component Edge: Rectangle {
         required property color tone
         required property bool reversed
+        // True for the top and bottom edges (the gradient runs down the strip),
+        // false for the left and right ones.
+        required property bool vertical
         readonly property real _a: AtlasStyle.highContrast ? 0.8 : 0.5
         gradient: Gradient {
-            orientation: width > height ? Gradient.Vertical : Gradient.Horizontal
+            orientation: vertical ? Gradient.Vertical : Gradient.Horizontal
             GradientStop {
                 position: 0
                 color: Qt.alpha(tone, reversed ? 0 : _a)
@@ -96,32 +100,36 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: root.size
+        height: root.reach
         tone: AtlasStyle.accent
         reversed: false
+        vertical: true
     }
     Edge {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: root.size
+        height: root.reach
         tone: AtlasStyle.sakura
         reversed: true
+        vertical: true
     }
     Edge {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: root.size
+        width: root.reach
         tone: AtlasStyle.accent
         reversed: false
+        vertical: false
     }
     Edge {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: root.size
+        width: root.reach
         tone: AtlasStyle.sakura
         reversed: true
+        vertical: false
     }
 }

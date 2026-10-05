@@ -36,7 +36,8 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   two-step shortcut. `AtlasProgressBar` shimmers violet to sakura while it is
   working (`animated: false` holds it still; flat under reduced motion). New
   `AtlasEdgeGlow`: a soft violet-to-sakura glow along the edges of its parent,
-  for one meaning only, "the system is doing something for you now" (since 1.4.0).
+  for one meaning only, "the system is doing something for you now" (since 1.4.0;
+  `reach` sets how far it reaches in, and the corners overlap by design).
 - Buttons, switch, segmented control and chips follow the new design: small
   corners (pressed 4 to 6 px), grey hover, `controlHeight`, readable disabled
   text. `AtlasButton` gains `variant` (Default, Prominent, Destructive, Ghost;

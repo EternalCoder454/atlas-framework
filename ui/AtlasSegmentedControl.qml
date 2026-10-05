@@ -57,21 +57,10 @@ T.Control {
     readonly property real _pos: (control.mirrored ? control.count - 1 - control.currentIndex : control.currentIndex) * 100
     property real _slidePos: _pos
 
-    // The widest segment's natural width: every cell is that wide.
-    property real _cell: 0
-    function _measure() {
-        let widest = 0;
-        for (let i = 0; i < segments.count; i++) {
-            const item = segments.itemAt(i);
-            if (item) {
-                widest = Math.max(widest, item.implicitWidth);
-            }
-        }
-        control._cell = widest;
-    }
-
     padding: 2
-    implicitWidth: control._cell * control.count + leftPadding + rightPadding
+    // uniformCellSizes makes the row as wide as its widest cell times the count,
+    // a binding, so there is no first frame at width 0.
+    implicitWidth: row.implicitWidth + leftPadding + rightPadding
     implicitHeight: Math.max(AtlasStyle.controlHeight, row.implicitHeight + topPadding + bottomPadding)
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -141,8 +130,6 @@ T.Control {
         Repeater {
             id: segments
             model: control.count
-            onItemAdded: Qt.callLater(control._measure)
-            onItemRemoved: Qt.callLater(control._measure)
             delegate: Item {
                 id: seg
                 required property int index
@@ -156,7 +143,6 @@ T.Control {
                 Layout.fillHeight: true
                 // The text's own width, not the elided one, so the width does not loop.
                 implicitWidth: (symbolSlot.visible ? symbolSlot.width + inner.spacing : 0) + (segText.visible ? Math.ceil(metrics.advanceWidth) : 0) + AtlasStyle.spacingLarge * 2
-                onImplicitWidthChanged: Qt.callLater(ctl._measure)
                 implicitHeight: inner.implicitHeight
 
                 Accessible.role: Accessible.PageTab

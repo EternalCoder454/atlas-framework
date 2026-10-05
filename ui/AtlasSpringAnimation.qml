@@ -12,6 +12,13 @@ import Atlas.Ui
 // the target):
 //   standard    no overshoot, settled in about 240 ms (within 5 px at 160 ms)
 //   expressive  overshoots by about 7 px (7%), settled in about 350 ms
+// The spring stops once it is within `epsilon` of the target, 0.25 by default,
+// which suits pixels. For a value that moves less than about 2 units (scale,
+// a 0 to 1 progress) set `fine: true`, or the spring ends in one frame:
+//   Behavior on scale { AtlasSpringAnimation { expressive: true; fine: true } }
+// A fine spring keeps stepping a little longer (a 0.04 scale move: standard
+// about 210 ms, expressive about 340 ms; a 100 px move about 510 ms and 1 s),
+// and the extra frames are sub-pixel.
 // Qt steps the spring once per 16 ms frame: velocity = velocity * (1 - damping)
 // + spring * 0.016 * (target - value), then value += velocity. That is a damped
 // oscillator of unit mass (stiffness k = natural frequency squared, damping
@@ -29,9 +36,12 @@ import Atlas.Ui
 SpringAnimation {
     // A small overshoot for signature moments; false is the everyday spring.
     property bool expressive: false
+    // For values that move less than about 2 units (scale, 0 to 1): stops at
+    // 0.001 instead of 0.25.
+    property bool fine: false
 
     spring: expressive ? 4 : 7
     damping: expressive ? 0.3 : 0.55
     mass: 1
-    epsilon: 0.25
+    epsilon: fine ? 0.001 : 0.25
 }

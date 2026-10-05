@@ -205,7 +205,7 @@ AtlasDropZone.signal dropped(QList<QUrl> urls)
 AtlasDropZone.type
 AtlasEdgeGlow.property active: bool
 AtlasEdgeGlow.property animated: bool
-AtlasEdgeGlow.property size: double
+AtlasEdgeGlow.property reach: double
 AtlasEdgeGlow.type
 AtlasEmailValidator.type
 AtlasEmptyState.property actionSymbol: int
@@ -523,6 +523,7 @@ AtlasSplitView.method saveSizes(): QString
 AtlasSplitView.property stateKey: QString
 AtlasSplitView.type
 AtlasSpringAnimation.property expressive: bool
+AtlasSpringAnimation.property fine: bool
 AtlasSpringAnimation.type
 AtlasStat.property invertTrend: bool
 AtlasStat.property label: QString

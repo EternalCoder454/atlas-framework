@@ -44,37 +44,76 @@ T.Control {
 
     // The current tab's item; the tint follows it.
     property Item _cur: null
-    // False until the first layout is done: the tint then jumps.
-    property bool _placed: false
-    Timer {
-        id: placeTimer
-        interval: 50
-        onTriggered: control._placed = true
-    }
-    Component.onCompleted: placeTimer.restart()
-
     // One tint that slides (a spring with a small overshoot) to the current
-    // tab, behind the tabs.
+    // tab, behind the tabs. It follows layout changes directly; only a change
+    // of the current tab springs.
     Rectangle {
+        id: tint
         z: -1
         visible: control.currentIndex >= 0 && control._cur !== null
-        x: control._cur ? control._cur.x + row.x : 0
-        y: control._cur ? control._cur.y + row.y : 0
-        width: control._cur ? control._cur.width : 0
-        height: control._cur ? control._cur.height : 0
         radius: AtlasStyle.radiusSmall
         color: AtlasStyle.selection
-        Behavior on x {
-            enabled: control._placed && !AtlasStyle.reducedMotion
+        property Item _item: control._cur
+        // Where the tint sits (follows the item directly) and how far it still
+        // lags behind after a selection change (springs back to 0).
+        property real _baseX: 0
+        property real _baseY: 0
+        property real _baseW: 0
+        property real _baseH: 0
+        property real _slideX: 0
+        property real _slideW: 0
+        property bool _springing: false
+        property Item _shown: null
+        x: _baseX + _slideX
+        y: _baseY
+        width: Math.max(0, _baseW + _slideW)
+        height: _baseH
+        Behavior on _slideX {
+            enabled: _springing && !AtlasStyle.reducedMotion
             AtlasSpringAnimation {
                 expressive: true
             }
         }
-        Behavior on width {
-            enabled: control._placed && !AtlasStyle.reducedMotion
+        Behavior on _slideW {
+            enabled: _springing && !AtlasStyle.reducedMotion
             AtlasSpringAnimation {
                 expressive: true
             }
+        }
+        function _sync() {
+            _baseX = _item ? _item.x + row.x : 0;
+            _baseY = _item ? _item.y + row.y : 0;
+            _baseW = _item ? _item.width : 0;
+            _baseH = _item ? _item.height : 0;
+        }
+        // Only a selection change slides, and only from a tint that was showing.
+        Component.onCompleted: {
+            _sync();
+            _shown = _item;
+        }
+        on_ItemChanged: {
+            const oldX = x;
+            const oldW = width;
+            const from = _shown !== null && _item !== null;
+            _springing = false;
+            _slideX = 0;
+            _slideW = 0;
+            _sync();
+            _shown = _item;
+            if (from) {
+                _slideX = oldX - _baseX;
+                _slideW = oldW - _baseW;
+                _springing = true;
+                _slideX = 0;
+                _slideW = 0;
+            }
+        }
+        Connections {
+            target: _item
+            function onXChanged() { _sync(); }
+            function onYChanged() { _sync(); }
+            function onWidthChanged() { _sync(); }
+            function onHeightChanged() { _sync(); }
         }
     }
 

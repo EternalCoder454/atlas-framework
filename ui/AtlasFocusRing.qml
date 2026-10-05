@@ -39,6 +39,7 @@ Rectangle {
         enabled: !AtlasStyle.reducedMotion
         AtlasSpringAnimation {
             expressive: true
+            fine: true
         }
     }
     z: 1
