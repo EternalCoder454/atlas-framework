@@ -15,6 +15,7 @@ Appearance.property textScale: double [readonly]
 Appearance.property transparency: bool
 Appearance.type
 AtlasAboutPage.method ensureVisible(QVariant item): QVariant
+AtlasAboutPage.method systemInfo(): QString
 AtlasAboutPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasAboutPage.property description: QString
 AtlasAboutPage.property extraContent: QQmlListProperty<QObject> [readonly]
@@ -65,6 +66,7 @@ AtlasCheckBox.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
+AtlasEmptyState.property actionSymbol: int
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
 AtlasEmptyState.property symbol: int
@@ -94,6 +96,13 @@ AtlasInstallButton.property progress: double
 AtlasInstallButton.property updateText: QString
 AtlasInstallButton.signal cancelRequested()
 AtlasInstallButton.type
+AtlasLabel.enum TextStyle: Body = 0
+AtlasLabel.enum TextStyle: Caption = 3
+AtlasLabel.enum TextStyle: Heading = 2
+AtlasLabel.enum TextStyle: Mono = 4
+AtlasLabel.enum TextStyle: Title = 1
+AtlasLabel.property textStyle: int
+AtlasLabel.type
 AtlasPage.method ensureVisible(QVariant item): QVariant
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property maxContentWidth: double [readonly]
@@ -110,7 +119,10 @@ AtlasPlaceholder.property animated: bool
 AtlasPlaceholder.property lineHeight: double
 AtlasPlaceholder.property lines: int
 AtlasPlaceholder.type
+AtlasProgressBar.property fillColor: QColor [readonly]
 AtlasProgressBar.property indeterminate: bool
+AtlasProgressBar.property status: QString
+AtlasProgressBar.property text: QString
 AtlasProgressBar.property value: double
 AtlasProgressBar.type
 AtlasRadioButton.type
@@ -279,6 +291,7 @@ FindBar.signal replaceOne()
 FindBar.type
 InfoBanner.property actions: QQmlListProperty<QObject> [readonly]
 InfoBanner.property closable: bool
+InfoBanner.property closeName: QString
 InfoBanner.property iconName: QString [readonly]
 InfoBanner.property shown: bool
 InfoBanner.property text: QString
@@ -472,8 +485,11 @@ TabBar.type
 TextButton.type
 Toast.method hide(): QVariant
 Toast.method show(QVariant message): QVariant
+Toast.method showAction(QVariant message, QVariant actionText): QVariant
+Toast.property actionText: QString
 Toast.property interval: int
 Toast.property text: QString
+Toast.signal actionTriggered()
 Toast.type
 ToolbarButton.property iconRotation: double
 ToolbarButton.property shortcutText: QString

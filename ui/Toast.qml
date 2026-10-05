@@ -1,10 +1,13 @@
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
 // A short message that appears at the bottom centre of its parent and goes
 // by itself: "Copied", "Saved". Call show("text"). It stays while the
-// pointer is over it. Place it as the last child of the window's content so
+// pointer is over it or its button has focus. For "Deleted" with an "Undo", call
+// showAction("Deleted", "Undo") and handle actionTriggered(): the button is
+// reached with Tab, and clicking it hides the toast. Place it as the last child of the window's content so
 // that it draws above the rest.
 Item {
     id: control
@@ -12,16 +15,34 @@ Item {
     // How long it stays, in ms.
     property int interval: 2500
     property alias text: label.text
+    // The label of the action button (Undo); empty for none. show() clears it.
+    property string actionText
+
+    // The action button was clicked; the toast has already hidden itself.
+    signal actionTriggered
 
     function show(message) {
-        label.text = message;
-        Accessible.announce(message);
-        timer.showing = true;
-        timer.restart();
+        control.actionText = "";
+        priv.display(message);
+    }
+    // Shows `message` with an action button labelled `actionText`.
+    function showAction(message, actionText) {
+        control.actionText = actionText;
+        priv.display(message);
     }
     function hide() {
         timer.stop();
         timer.showing = false;
+    }
+
+    QtObject {
+        id: priv
+        function display(message) {
+            label.text = message;
+            control.Accessible.announce(control.actionText.length > 0 ? message + ", " + control.actionText : message);
+            timer.showing = true;
+            timer.restart();
+        }
     }
 
     anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
@@ -49,7 +70,7 @@ Item {
         // Hovering holds it: the timer starts over when the pointer leaves.
         running: false
         onTriggered: {
-            if (hoverHandler.hovered) {
+            if (hoverHandler.hovered || actionButton.visualFocus || actionButton.activeFocus) {
                 timer.restart();
             } else {
                 timer.showing = false;
@@ -73,21 +94,41 @@ Item {
     }
     Rectangle {
         id: pill
-        width: Math.min(label.implicitWidth + Kirigami.Units.gridUnit * 2, (control.parent ? control.parent.width : 0) - Kirigami.Units.gridUnit * 2)
-        height: label.implicitHeight + Kirigami.Units.largeSpacing * 2
+        readonly property real pad: Kirigami.Units.gridUnit
+        width: Math.min(row.implicitWidth + pad + (actionButton.visible ? Kirigami.Units.smallSpacing : pad), Math.max(0, (control.parent ? control.parent.width : 0) - Kirigami.Units.gridUnit * 2))
+        height: Math.max(label.implicitHeight, actionButton.visible ? actionButton.implicitHeight : 0) + Kirigami.Units.largeSpacing * 2
         radius: height / 2
         color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.1))
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
 
-        QQC2.Label {
-            id: label
-            anchors.centerIn: parent
-            width: parent.width - Kirigami.Units.gridUnit * 2
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
-            textFormat: Text.PlainText
-            color: Kirigami.Theme.textColor
+        RowLayout {
+            id: row
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: pill.pad
+            anchors.rightMargin: actionButton.visible ? Kirigami.Units.smallSpacing : pill.pad
+            spacing: Kirigami.Units.largeSpacing
+
+            QQC2.Label {
+                id: label
+                Layout.fillWidth: true
+                horizontalAlignment: actionButton.visible ? Text.AlignLeft : Text.AlignHCenter
+                elide: Text.ElideRight
+                textFormat: Text.PlainText
+                color: Kirigami.Theme.textColor
+            }
+            TextButton {
+                id: actionButton
+                visible: control.actionText.length > 0
+                text: control.actionText
+                Accessible.name: control.actionText
+                onClicked: {
+                    control.hide();
+                    control.actionTriggered();
+                }
+            }
         }
     }
 }

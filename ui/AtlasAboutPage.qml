@@ -5,7 +5,8 @@ import org.kde.kirigami as Kirigami
 
 // An About page every Atlas app can drop in: the app's icon, name and
 // version, an optional description, the version, OS and Qt in use, links to
-// the source and the issue tracker, and the licence. All of it comes from
+// the source and the issue tracker, the licence, and a "Copy system info"
+// button for bug reports (`systemInfo()` returns the same text). All of it comes from
 // AtlasApp, which reads the app's own name, version and desktop file name
 // (set them on the application object at startup) and its `atlasRepo`
 // property (a repository name under github.com/EternalCoder454/).
@@ -29,6 +30,35 @@ AtlasPage {
     default property alias extraContent: extra.data
 
     title: qsTr("About")
+
+    // Plain text for a bug report: app, versions, OS and graphics platform.
+    function systemInfo(): string {
+        const lines = [AtlasApp.name + (AtlasApp.version.length > 0 ? " " + AtlasApp.version : "")];
+        if (AtlasApp.id.length > 0) {
+            lines.push("ID: " + AtlasApp.id);
+        }
+        lines.push("Atlas.Ui: " + AtlasApp.uiVersion);
+        lines.push("Qt: " + AtlasApp.qtVersion);
+        const os = AtlasApp.osPrettyName.length > 0 ? AtlasApp.osPrettyName : AtlasApp.osName + (AtlasApp.osVersion.length > 0 ? " " + AtlasApp.osVersion : "");
+        if (os.trim().length > 0) {
+            lines.push("OS: " + os.trim());
+        }
+        // The session type (XDG_SESSION_TYPE) is not an AtlasApp property: the
+        // Qt platform plugin ("wayland", "xcb") says the same.
+        lines.push("Platform: " + Qt.platform.pluginName);
+        return lines.join("\n");
+    }
+
+    TextEdit {
+        id: clipboardHelper
+        parent: page
+        visible: false
+        textFormat: TextEdit.PlainText
+    }
+    Toast {
+        id: copiedToast
+        parent: page
+    }
 
     ColumnLayout {
         Layout.fillWidth: true
@@ -64,6 +94,19 @@ AtlasPage {
             opacity: 0.7
             text: page.description
             textFormat: Text.PlainText
+        }
+        SecondaryButton {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: Kirigami.Units.smallSpacing
+            symbol: Symbols.ContentCopy
+            text: qsTr("Copy system info")
+            onClicked: {
+                clipboardHelper.text = page.systemInfo();
+                clipboardHelper.selectAll();
+                clipboardHelper.copy();
+                clipboardHelper.text = "";
+                copiedToast.show(qsTr("Copied"));
+            }
         }
     }
 

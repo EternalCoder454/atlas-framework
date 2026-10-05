@@ -20,7 +20,7 @@ Item {
         anchors.margins: 10
         spacing: 8
         InfoBanner { Layout.fillWidth: true; type: "info"; text: "An update is available." }
-        InfoBanner { Layout.fillWidth: true; type: "warning"; text: "The disk is almost full."; closable: true }
+        InfoBanner { Layout.fillWidth: true; type: "warning"; text: "The disk is almost full."; closable: true; closeName: "Dismiss" }
         InfoBanner { Layout.fillWidth: true; type: "error"; text: "The download failed." }
     }
 }

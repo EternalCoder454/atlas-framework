@@ -18,6 +18,6 @@ Item {
     Toast {
         id: toast
         interval: 3600000
-        Component.onCompleted: show("Copied to clipboard")
+        Component.onCompleted: showAction("File deleted", "Undo")
     }
 }

@@ -29,6 +29,11 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   choices). AtlasTextField gains `showCounter`, `prefix`, `suffix`,
   `invalidText` and `validateOn`. A compact SidebarItem shows its title and
   value as a tooltip.
+- Atlas.Ui: AtlasLabel (a Label in one of five text styles: Body, Title,
+  Heading, Caption, Mono). AtlasEmptyState gains `actionSymbol`, InfoBanner
+  `closeName`, Toast an action button (`showAction()`, `actionTriggered()`),
+  AtlasProgressBar `text` and `status` ("paused", "error"), and AtlasAboutPage
+  a "Copy system info" button and `systemInfo()`.
 
 ## 1.3.0
 

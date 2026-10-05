@@ -6,7 +6,8 @@ import org.kde.kirigami as Kirigami
 // What a list shows when it has nothing: a large symbol, a title, a line of
 // explanation, and an optional action button, all centred. Fill the list's
 // area with it and show it when the list is empty. The button appears when
-// `actionText` is set and emits `triggered()`.
+// `actionText` is set and emits `triggered()`; `actionSymbol` puts a Symbols
+// icon on it.
 //
 //   AtlasEmptyState {
 //       anchors.fill: parent
@@ -15,6 +16,7 @@ import org.kde.kirigami as Kirigami
 //       title: qsTr("No files")
 //       text: qsTr("Files you download will show up here.")
 //       actionText: qsTr("Open Downloads")
+//       actionSymbol: Symbols.FolderOpen
 //       onTriggered: openDownloads()
 //   }
 Item {
@@ -27,6 +29,8 @@ Item {
     property string text
     // The button's label; empty for no button.
     property string actionText
+    // A Symbols value shown on the action button; 0 for none.
+    property int actionSymbol: 0
 
     signal triggered
 
@@ -116,6 +120,7 @@ Item {
             visible: control.actionText.length > 0
             Layout.preferredHeight: visible ? implicitHeight : 0
             text: control.actionText
+            symbol: control.actionSymbol
             onClicked: control.triggered()
         }
     }

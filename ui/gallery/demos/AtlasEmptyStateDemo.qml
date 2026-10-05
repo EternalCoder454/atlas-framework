@@ -30,6 +30,7 @@ Item {
             title: qsTr("No files")
             text: qsTr("Files you download will show up here.")
             actionText: qsTr("Open Downloads")
+            actionSymbol: Symbols.FolderOpen
         }
         Caption { text: "Without action" }
         AtlasEmptyState {

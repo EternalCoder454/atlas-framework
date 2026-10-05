@@ -8,7 +8,7 @@ import org.kde.kirigami as Kirigami
 // save". `type` tints it: "info" with the accent, "warning" and "error" with
 // the theme's neutral and negative colours. Each entry of `actions` (a
 // QQC2.Action) becomes a button at the trailing end; with `closable` a small
-// cross dismisses it.
+// cross dismisses it (`closeName` is its accessible name and tooltip).
 //
 // It slides open and shut with `shown` (animations off: at once). Use
 // `shown` rather than `visible`, which cannot be animated; a dismissed banner
@@ -21,6 +21,8 @@ Item {
     property list<QtObject> actions
     property bool closable: false
     property bool shown: true
+    // The close button's accessible name and tooltip.
+    property string closeName: qsTr("Close")
 
     signal closed
 
@@ -143,7 +145,10 @@ Item {
                 hoverEnabled: true
                 focusPolicy: Qt.TabFocus // a click must not take the editor's focus
                 Accessible.role: Accessible.Button
-                Accessible.name: qsTr("Close")
+                Accessible.name: control.closeName
+                QQC2.ToolTip.text: control.closeName
+                QQC2.ToolTip.visible: closeButton.hovered || closeButton.visualFocus
+                QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                 onClicked: {
                     control.shown = false;
                     control.closed();
