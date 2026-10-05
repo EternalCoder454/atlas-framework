@@ -43,7 +43,7 @@ Item {
         anchors.top: parent.top
         width: parent.width
         height: 1
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
+        color: AtlasStyle.separator
     }
 
     RowLayout {

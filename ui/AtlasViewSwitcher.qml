@@ -4,7 +4,8 @@ import org.kde.kirigami as Kirigami
 
 // Page tabs for the top of a window, after libadwaita's ViewSwitcher: each tab
 // is a symbol with its text beside it (or under it with `narrow`), the current
-// one tinted with the accent, and an optional count badge.
+// one tinted with the accent (the tint slides to the new tab, and its symbol
+// turns solid), and an optional count badge.
 //
 //   AtlasViewSwitcher {
 //       model: [
@@ -35,11 +36,47 @@ T.Control {
 
     implicitWidth: row.implicitWidth + leftPadding + rightPadding
     implicitHeight: row.implicitHeight + topPadding + bottomPadding
-    padding: 2
+    padding: AtlasStyle.spacingXSmall
     focusPolicy: Qt.TabFocus
 
     Accessible.role: Accessible.PageTabList
     Accessible.name: qsTr("Views")
+
+    // The current tab's item; the tint follows it.
+    property Item _cur: null
+    // False until the first layout is done: the tint then jumps.
+    property bool _placed: false
+    Timer {
+        id: placeTimer
+        interval: 50
+        onTriggered: control._placed = true
+    }
+    Component.onCompleted: placeTimer.restart()
+
+    // One tint that slides (a spring with a small overshoot) to the current
+    // tab, behind the tabs.
+    Rectangle {
+        z: -1
+        visible: control.currentIndex >= 0 && control._cur !== null
+        x: control._cur ? control._cur.x + row.x : 0
+        y: control._cur ? control._cur.y + row.y : 0
+        width: control._cur ? control._cur.width : 0
+        height: control._cur ? control._cur.height : 0
+        radius: AtlasStyle.radiusSmall
+        color: AtlasStyle.selection
+        Behavior on x {
+            enabled: control._placed && !AtlasStyle.reducedMotion
+            AtlasSpringAnimation {
+                expressive: true
+            }
+        }
+        Behavior on width {
+            enabled: control._placed && !AtlasStyle.reducedMotion
+            AtlasSpringAnimation {
+                expressive: true
+            }
+        }
+    }
 
     function _step(delta) {
         if (control.count === 0) {
@@ -77,7 +114,7 @@ T.Control {
 
     contentItem: Row {
         id: row
-        spacing: 2
+        spacing: AtlasStyle.spacingXSmall
 
         Repeater {
             model: control.model
@@ -92,6 +129,22 @@ T.Control {
                 readonly property int glyph: modelData.symbol ?? 0
                 readonly property int badge: modelData.badge ?? 0
 
+                onCurrentChanged: {
+                    if (current) {
+                        control._cur = tab;
+                    }
+                }
+                Component.onCompleted: {
+                    if (current) {
+                        control._cur = tab;
+                    }
+                }
+                Component.onDestruction: {
+                    if (control._cur === tab) {
+                        control._cur = null;
+                    }
+                }
+
                 implicitWidth: Math.max(Kirigami.Units.gridUnit * 3, flow.implicitWidth + Kirigami.Units.largeSpacing * 2)
                 implicitHeight: control.narrow ? Math.round(Kirigami.Units.gridUnit * 3.2) : Math.round(Kirigami.Units.gridUnit * 2.2)
 
@@ -104,8 +157,9 @@ T.Control {
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: AtlasStyle.radius
-                    color: tab.current ? Qt.alpha(AtlasStyle.accent, press.pressed ? 0.28 : 0.18) : Qt.alpha(Kirigami.Theme.textColor, press.pressed ? 0.12 : hover.hovered ? 0.07 : 0)
+                    radius: AtlasStyle.radiusSmall
+                    // The current tab is tinted by the sliding highlight.
+                    color: press.pressed ? AtlasStyle.pressed : !tab.current && hover.hovered ? AtlasStyle.hover : "transparent"
                     Behavior on color {
                         ColorAnimation {
                             duration: AtlasStyle.durationShort
@@ -124,7 +178,7 @@ T.Control {
                     columns: control.narrow ? 1 : 2
                     horizontalItemAlignment: Grid.AlignHCenter
                     verticalItemAlignment: Grid.AlignVCenter
-                    spacing: control.narrow ? 2 : Kirigami.Units.smallSpacing
+                    spacing: control.narrow ? AtlasStyle.spacingXSmall : AtlasStyle.spacingSmall
 
                     Item {
                         visible: tab.glyph !== 0
@@ -135,6 +189,7 @@ T.Control {
                         Symbol {
                             id: glyphItem
                             icon: tab.glyph
+                            filled: tab.current
                             size: Kirigami.Units.iconSizes.smallMedium
                             color: tab.current ? AtlasStyle.accent : Kirigami.Theme.textColor
                         }

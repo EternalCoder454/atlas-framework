@@ -53,9 +53,9 @@ FocusScope {
     // Inner margin round the entries.
     property int padding: AtlasStyle.spacingSmall
     // Gap between entries.
-    property int spacing: 2
+    property int spacing: AtlasStyle.spacingXSmall
     // The base colour, made see-through by the window's blur like any sidebar.
-    property color baseColor: Kirigami.Theme.backgroundColor
+    property color baseColor: AtlasStyle.base
 
     signal contextMenuRequested(Item item, point pos)
     signal dropped(Item item, var drop)
@@ -72,6 +72,47 @@ FocusScope {
         property bool filtered: false
         property int visibleCount: 1
         property var dropItem: null
+        // The entry (or group header) the shared selection highlight sits on.
+        property Item target: null
+        // False until the highlight has been laid out once: it then jumps
+        // instead of sliding in.
+        property bool placed: false
+        readonly property bool hasTarget: target !== null && target.visible && target.height > 0
+        // The target's rectangle in column coordinates. Sums the positions up
+        // the parent chain, so it follows any layout change above the target.
+        readonly property rect targetRect: {
+            const t = target;
+            if (!t) {
+                return Qt.rect(0, 0, 0, 0);
+            }
+            let x = 0;
+            let y = 0;
+            for (let it = t; it && it !== column; it = it.parent) {
+                x += it.x;
+                y += it.y;
+            }
+            return Qt.rect(x, y, t.width, t.height);
+        }
+        function updateTarget() {
+            let found = null;
+            for (const e of entries()) {
+                const c = isGroup(e) ? e._header : e;
+                if (c.selected === true && (isGroup(e) || e.visible)) {
+                    found = c;
+                    break;
+                }
+            }
+            if (found === target) {
+                return;
+            }
+            if (found === null) {
+                placed = false;
+            }
+            target = found;
+            if (found !== null && !placed) {
+                placeTimer.restart();
+            }
+        }
         readonly property var win: control.Window.window
         // A leaf entry (SidebarItem) or a group (SidebarGroup).
         function isGroup(c: var): bool {
@@ -113,8 +154,13 @@ FocusScope {
                 if (control.compact !== e.compact) {
                     e.compact = control.compact;
                 }
+                const c = isGroup(e) ? e._header : e;
+                if (c._sharedSelection === false) {
+                    c._sharedSelection = true;
+                }
             }
             applyFilter();
+            updateTarget();
             const sel = selectedItem();
             if (sel) {
                 reveal(sel);
@@ -124,13 +170,17 @@ FocusScope {
             watched.push(e);
             if (isGroup(e)) {
                 e._entries.childrenChanged.connect(schedule);
+                e._header.selectedChanged.connect(updateTarget);
+                e.expandedChanged.connect(schedule);
                 return;
             }
             e.selectedChanged.connect(() => {
+                updateTarget();
                 if (e.selected) {
                     reveal(e);
                 }
             });
+            e.visibleChanged.connect(updateTarget);
             e.activeFocusChanged.connect(() => {
                 if (e.activeFocus) {
                     reveal(e);
@@ -252,6 +302,13 @@ FocusScope {
         }
     }
 
+    // After the first layout the highlight may slide.
+    Timer {
+        id: placeTimer
+        interval: 50
+        onTriggered: priv.placed = true
+    }
+
     onFilterTextChanged: priv.schedule()
     onCurrentIndexChanged: Qt.callLater(() => priv.reveal(priv.selectedItem()))
     onCompactChanged: {
@@ -274,7 +331,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: control.win && typeof control.win.sidebarColor === "function" ? control.win.sidebarColor(control.baseColor) : control.baseColor
+        color: control.win && typeof control.win.sidebarColor === "function" ? control.win.sidebarColor(control.baseColor) : Qt.alpha(control.baseColor, Appearance.effective ? 0.94 : 1)
     }
     readonly property var win: priv.win
 
@@ -339,12 +396,38 @@ FocusScope {
                 }
             }
 
+            // The selection highlight: one rectangle that slides to the selected
+            // entry (a spring with a small overshoot), behind the entries.
+            Rectangle {
+                id: selectionHighlight
+                z: -1
+                visible: priv.hasTarget
+                x: priv.targetRect.x + column.x
+                y: priv.targetRect.y + column.y
+                width: priv.targetRect.width
+                height: priv.targetRect.height
+                radius: AtlasStyle.radiusSmall
+                color: AtlasStyle.selection
+                Behavior on y {
+                    enabled: priv.placed && !AtlasStyle.reducedMotion
+                    AtlasSpringAnimation {
+                        expressive: true
+                    }
+                }
+                Behavior on height {
+                    enabled: priv.placed && !AtlasStyle.reducedMotion
+                    AtlasSpringAnimation {
+                        expressive: true
+                    }
+                }
+            }
+
             Rectangle {
                 id: dropHighlight
                 visible: control.dropEnabled && priv.dropItem !== null
                 z: 2
-                radius: AtlasStyle.radius
-                color: Qt.alpha(AtlasStyle.accent, 0.18)
+                radius: AtlasStyle.radiusSmall
+                color: AtlasStyle.selection
                 border.width: 2
                 border.color: AtlasStyle.accent
             }

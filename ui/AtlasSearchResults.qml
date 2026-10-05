@@ -176,7 +176,7 @@ T.Control {
                     anchors.bottomMargin: AtlasStyle.spacingSmall
                     text: parent.section
                     font: priv.strong
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                    color: AtlasStyle.textMuted
                     textFormat: Text.PlainText
                 }
             }
@@ -188,8 +188,8 @@ T.Control {
                     anchors.fill: parent
                     anchors.leftMargin: AtlasStyle.spacingSmall
                     anchors.rightMargin: AtlasStyle.spacingSmall
-                    radius: AtlasStyle.radiusLarge
-                    color: Qt.alpha(AtlasStyle.accent, 0.2)
+                    radius: AtlasStyle.radiusSmall
+                    color: AtlasStyle.selection
                     AtlasFocusRing {
                         radius: pill.radius + gap
                         shown: control.visualFocus
@@ -272,7 +272,7 @@ T.Control {
                         Accessible.ignored: true // the row carries the name
                         text: row.title
                         font: Kirigami.Theme.defaultFont
-                        color: Kirigami.Theme.textColor
+                        color: AtlasStyle.text
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
                     }
@@ -282,7 +282,7 @@ T.Control {
                         Accessible.ignored: true
                         text: row.subtitle
                         font: Kirigami.Theme.smallFont
-                        color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                        color: AtlasStyle.textMuted
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
                     }
@@ -296,7 +296,7 @@ T.Control {
                     Accessible.ignored: true
                     text: row.shortcut
                     font: Kirigami.Theme.smallFont
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+                    color: AtlasStyle.textMuted
                     textFormat: Text.PlainText
                 }
 
@@ -326,12 +326,12 @@ T.Control {
                 anchors.horizontalCenter: parent.horizontalCenter
                 icon: Symbols.SearchOff
                 size: Kirigami.Units.iconSizes.large
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+                color: AtlasStyle.textMuted
             }
             Text {
                 text: control.placeholderText
                 font: Kirigami.Theme.defaultFont
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
             }
         }

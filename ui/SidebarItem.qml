@@ -4,7 +4,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// Sidebar entry: accent icon plus label, with a rounded selection pill, and
+// Sidebar entry: accent icon plus label, with a softly rounded selection, and
 // optionally a live value on the right ("42%", "1.2 MB/s"). A `sub` entry is
 // indented under a SidebarGroup's header; a `disclosure` entry is that header.
 // A `badge` icon flags something on the entry's page that needs attention:
@@ -19,7 +19,7 @@ T.AbstractButton {
     // Tint a monochrome icon with the accent; false keeps a coloured icon as is.
     property bool tintIcon: true
     // A Material Symbol (Symbols.<Name>) to draw instead of icon.name. It
-    // fills in while the entry is selected.
+    // fills in while the entry is selected (the one place a symbol is solid).
     property int symbol: 0
     // Shown dimmed at the right edge; hidden when compact.
     property string value
@@ -66,11 +66,15 @@ T.AbstractButton {
         shown: control.compact && control.text.length > 0 && (control.hovered || control.visualFocus)
     }
 
+    // Set by AtlasSidebar, which draws one selection highlight that slides
+    // between entries; the entry then draws only hover and focus.
+    property bool _sharedSelection: false
+
     background: Rectangle {
-        radius: AtlasStyle.radius
-        color: control.selected ? Qt.alpha(AtlasStyle.accent, 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.06 : 0)
+        radius: AtlasStyle.radiusSmall
+        color: control.selected ? (control._sharedSelection ? (control.down ? AtlasStyle.pressed : "transparent") : AtlasStyle.selection) : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
         border.width: control.visualFocus ? 2 : 0
-        border.color: Qt.alpha(AtlasStyle.focus, 0.85)
+        border.color: AtlasStyle.focus
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
@@ -151,7 +155,7 @@ T.AbstractButton {
                     "tnum": 1
                 })
             textFormat: Text.PlainText
-            opacity: 0.6
+            color: AtlasStyle.textMuted
         }
         Kirigami.Icon {
             visible: !control.compact && control.disclosure
@@ -160,8 +164,7 @@ T.AbstractButton {
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             source: control.mirrored ? "arrow-left" : "arrow-right"
             isMask: true
-            color: Kirigami.Theme.textColor
-            opacity: 0.45
+            color: AtlasStyle.textMuted
             // A quarter turn to point down, whichever way it starts.
             rotation: control.expanded ? (control.mirrored ? -90 : 90) : 0
             Behavior on rotation {

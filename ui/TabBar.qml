@@ -5,8 +5,8 @@ import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
 // A strip of document tabs in the Atlas look, after Windows 11 Notepad: each
-// tab is a rounded pill like a SidebarItem, with an accent tint for the
-// current one, a dot when it holds unsaved changes and a close button on
+// tab is softly rounded like a SidebarItem, with an accent tint for the
+// current one (one highlight that slides to the new tab), a dot when it holds unsaved changes and a close button on
 // hover. A "+" after the last tab asks for a new one. The strip scrolls
 // sideways with the wheel when the tabs overflow, and keeps the current tab
 // in view.
@@ -48,6 +48,15 @@ Item {
     Accessible.role: Accessible.PageTabList
     Accessible.name: qsTr("Tabs")
 
+    // False until the first layout is done: the highlight then jumps.
+    property bool _placed: false
+    Timer {
+        id: placeTimer
+        interval: 50
+        onTriggered: control._placed = true
+    }
+    Component.onCompleted: placeTimer.restart()
+
     function ensureCurrentVisible() {
         if (control.currentIndex >= 0 && control.currentIndex < list.count) {
             list.positionViewAtIndex(control.currentIndex, ListView.Contain);
@@ -77,13 +86,47 @@ Item {
             Layout.minimumWidth: 0
             Layout.preferredWidth: contentWidth
             orientation: ListView.Horizontal
-            spacing: 2
+            spacing: AtlasStyle.spacingXSmall
             clip: true
             // Dragging belongs to reordering; the wheel scrolls.
             interactive: false
             boundsBehavior: Flickable.StopAtBounds
             model: control.model
             currentIndex: control.currentIndex
+            highlightFollowsCurrentItem: false
+            // The current tab's tint, one rectangle that slides (a spring with
+            // a small overshoot) to the tab that becomes current. It jumps on
+            // the first layout.
+            highlight: Rectangle {
+                z: -1
+                visible: list.currentItem !== null
+                x: list.currentItem ? list.currentItem.x : 0
+                y: list.currentItem ? list.currentItem.y : 0
+                width: list.currentItem ? list.currentItem.width : 0
+                height: list.currentItem ? list.currentItem.height : 0
+                radius: AtlasStyle.radiusSmall
+                color: AtlasStyle.selection
+                Behavior on x {
+                    enabled: control._placed && !AtlasStyle.reducedMotion
+                    AtlasSpringAnimation {
+                        expressive: true
+                    }
+                }
+                Behavior on width {
+                    enabled: control._placed && !AtlasStyle.reducedMotion
+                    AtlasSpringAnimation {
+                        expressive: true
+                    }
+                }
+            }
+            readonly property bool _hasCurrent: currentItem !== null
+            on_HasCurrentChanged: {
+                if (_hasCurrent) {
+                    placeTimer.restart();
+                } else {
+                    control._placed = false;
+                }
+            }
             onCountChanged: Qt.callLater(control.ensureCurrentVisible)
             onWidthChanged: Qt.callLater(control.ensureCurrentVisible)
 
@@ -211,8 +254,10 @@ Item {
                 }
 
                 background: Rectangle {
-                    radius: AtlasStyle.radius
-                    color: tab.current ? Qt.alpha(AtlasStyle.accent, 0.18) : Qt.alpha(Kirigami.Theme.textColor, tab.down ? 0.1 : tab.hovered ? 0.06 : 0)
+                    radius: AtlasStyle.radiusSmall
+                    // The current tab is tinted by the list's sliding highlight,
+                    // except while it is dragged away from it.
+                    color: tab.current ? (dragHandler.active ? AtlasStyle.selection : "transparent") : tab.down ? AtlasStyle.pressed : tab.hovered ? AtlasStyle.hover : "transparent"
                     Behavior on color {
                         ColorAnimation {
                             duration: AtlasStyle.durationShort
@@ -246,8 +291,7 @@ Item {
                         Layout.preferredWidth: 7
                         Layout.preferredHeight: 7
                         radius: 3.5
-                        color: Kirigami.Theme.textColor
-                        opacity: 0.6
+                        color: AtlasStyle.textMuted
                     }
                     Text {
                         Accessible.ignored: true
@@ -258,8 +302,7 @@ Item {
                         font.weight: tab.current ? Font.Medium : Font.Normal
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
-                        color: Kirigami.Theme.textColor
-                        opacity: tab.current ? 1 : 0.8
+                        color: tab.current ? AtlasStyle.text : AtlasStyle.textMuted
                     }
                     T.AbstractButton {
                         id: closeButton
@@ -274,13 +317,12 @@ Item {
                         onClicked: control.closeRequested(tab.index)
                         background: Rectangle {
                             radius: width / 2
-                            color: Qt.alpha(Kirigami.Theme.textColor, closeButton.down ? 0.16 : closeButton.hovered ? 0.1 : 0)
+                            color: closeButton.down ? AtlasStyle.pressed : closeButton.hovered ? AtlasStyle.hover : "transparent"
                         }
                         contentItem: Kirigami.Icon {
                             source: "window-close"
                             isMask: true
-                            color: Kirigami.Theme.textColor
-                            opacity: 0.7
+                            color: AtlasStyle.textMuted
                         }
                     }
                 }

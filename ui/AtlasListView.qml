@@ -599,10 +599,10 @@ ListView {
                 anchors.fill: parent
                 anchors.leftMargin: AtlasStyle.spacing
                 anchors.rightMargin: AtlasStyle.spacing
-                anchors.topMargin: 2
-                anchors.bottomMargin: 2
+                anchors.topMargin: AtlasStyle.spacingXSmall
+                anchors.bottomMargin: AtlasStyle.spacingXSmall
                 radius: AtlasStyle.radiusSmall
-                color: row.dragging ? Qt.alpha(AtlasStyle.accent, 0.3) : row.selected ? Qt.alpha(AtlasStyle.accent, control.activeFocus ? 0.24 : 0.16) : Qt.alpha(Kirigami.Theme.textColor, control._hover === row.index ? 0.06 : 0)
+                color: row.dragging ? AtlasStyle.selection : row.selected ? (control.activeFocus ? AtlasStyle.selection : AtlasStyle.selectionInactive) : control._hover === row.index ? AtlasStyle.hover : "transparent"
                 AtlasFocusRing {
                     gap: 1
                     radius: pill.radius + gap
@@ -626,7 +626,7 @@ ListView {
                         anchors.centerIn: parent
                         icon: Symbols.DragIndicator
                         size: Kirigami.Units.iconSizes.smallMedium
-                        color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+                        color: AtlasStyle.textMuted
                     }
                     DragHandler {
                         target: null
@@ -672,7 +672,7 @@ ListView {
                         Layout.fillWidth: true
                         text: row.title
                         font: Kirigami.Theme.defaultFont
-                        color: Kirigami.Theme.textColor
+                        color: AtlasStyle.text
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
                         Accessible.ignored: true // the row carries the name

@@ -35,8 +35,9 @@ import org.kde.kirigami as Kirigami
 //                     a second `fill` is sized by its width like the rest)
 //   align             Qt.AlignLeft (default) or Qt.AlignRight for figures
 //   text(value, row)  formats the value; `row` is the delegate's model object
-//   heat              shade the cell by value / heat (load columns, as in the
-//                     Windows Task Manager); 0 or absent for none
+//   heat              a short bar under the cell's text, as wide as value / heat
+//                     of the cell (load columns); 0 or absent for none. The
+//                     cell itself is never filled
 //   iconRole          a role holding an icon name, drawn before the text
 //   cell              a Component for anything else (a status dot, a switch);
 //                     it gets `value`, `row` and `column` set. Rows are
@@ -516,10 +517,10 @@ FocusScope {
     // The card, drawn like Section's.
     Rectangle {
         anchors.fill: parent
-        radius: AtlasStyle.radiusLarge
-        color: Qt.alpha(Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06)), root.Window.window && root.Window.window.blurred === true ? 0.94 : 1)
+        radius: AtlasStyle.radius
+        color: AtlasStyle.surface
         border.width: 1
-        border.color: root.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.12)
+        border.color: root.activeFocus ? AtlasStyle.focus : AtlasStyle.separator
     }
 
     Row {
@@ -564,7 +565,7 @@ FocusScope {
                     anchors.fill: parent
                     anchors.margins: 1
                     radius: AtlasStyle.radiusSmall
-                    color: Qt.alpha(Kirigami.Theme.textColor, headMouse.pressed ? 0.1 : headMouse.containsMouse ? 0.05 : 0)
+                    color: headMouse.pressed ? AtlasStyle.pressed : headMouse.containsMouse ? AtlasStyle.hover : "transparent"
                 }
 
                 RowLayout {
@@ -646,7 +647,7 @@ FocusScope {
                         width: grip.pressed || grip.containsMouse ? 2 : 1
                         height: parent.height * 0.5
                         radius: width / 2
-                        color: grip.pressed || grip.containsMouse ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, 0.18)
+                        color: grip.pressed || grip.containsMouse ? AtlasStyle.accent : AtlasStyle.controlBorder
                     }
                 }
             }
@@ -659,7 +660,7 @@ FocusScope {
         y: header.y + header.height
         width: root.width - 2 * x
         height: 1
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        color: AtlasStyle.separator
     }
 
     Item {
@@ -754,11 +755,11 @@ FocusScope {
                 anchors.topMargin: 1
                 anchors.bottomMargin: 1
                 radius: AtlasStyle.radiusSmall
-                color: row.selected ? Qt.alpha(AtlasStyle.accent, root.activeFocus ? 0.22 : 0.14) : Qt.alpha(Kirigami.Theme.textColor, rowMouse.pressed ? 0.08 : rowMouse.containsMouse ? 0.045 : 0)
+                color: row.selected ? (root.activeFocus ? AtlasStyle.selection : AtlasStyle.selectionInactive) : rowMouse.pressed ? AtlasStyle.pressed : rowMouse.containsMouse ? AtlasStyle.hover : "transparent"
                 // The current row of a multi-selection when it isn't selected
                 // (Ctrl+Space off), so the keyboard position stays visible.
                 border.width: root._multi && row.current && !row.selected && root.activeFocus ? 1 : 0
-                border.color: Qt.alpha(AtlasStyle.focus, 0.85)
+                border.color: AtlasStyle.focus
             }
 
             Row {
@@ -780,14 +781,19 @@ FocusScope {
                         width: root.widths[index] ?? 0
                         height: row.height
 
-                        // Heat: the busier, the warmer. Faint at idle so a
-                        // quiet list stays quiet.
+                        // Heat: a small bar at the leading edge of the cell's bottom,
+                        // as wide as the load. The cell is not filled, and on a
+                        // selected row the bar takes the accent so no data colour
+                        // fights the selection. Hidden at idle.
                         Rectangle {
                             visible: cell.heat > 0.02
-                            anchors.fill: parent
-                            anchors.topMargin: 1
-                            anchors.bottomMargin: 1
-                            color: Qt.alpha(Kirigami.Theme.neutralTextColor, 0.06 + 0.32 * cell.heat)
+                            anchors.left: parent.left
+                            anchors.leftMargin: root.cellPadding
+                            y: parent.height - height - AtlasStyle.spacingXSmall - 1
+                            width: Math.max(height, Math.round((parent.width - 2 * root.cellPadding) * cell.heat))
+                            height: 3
+                            radius: height / 2
+                            color: row.selected ? AtlasStyle.accent : AtlasStyle.warning
                         }
 
                         Loader {
