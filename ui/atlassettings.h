@@ -123,6 +123,8 @@ private:
     void ensureLoaded() const;
     void fileTouched();
     void dropPending();
+    void timedWrite();
+    bool writePending(int lockWaitMs);
     QString m_group, m_fileName;
     bool m_complete = false;
     bool m_loaded = false; // the snapshot matches the current group and file
@@ -132,6 +134,9 @@ private:
     // Waiting to be written: a value, or an invalid QVariant for "remove".
     QHash<QString, QVariant> m_pending;
     QTimer m_writeTimer, m_watchTimer;
+    // Timed-write backoff while another process holds the lock.
+    int m_retryMs = 0, m_retryWaitedMs = 0;
+    bool m_lockBusy = false;
     QFileSystemWatcher m_watcher;
     QMetaObject::Connection m_quitConnection;
 };

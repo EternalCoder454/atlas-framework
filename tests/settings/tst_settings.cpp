@@ -631,6 +631,38 @@ private Q_SLOTS:
         const QUrl web(QStringLiteral("https://example.com/?attach=1"));
         QCOMPARE(AtlasPortal::cleanMailto(web), web);
     }
+    void timedWriteNeverBlocksOnTheLock()
+    {
+        auto s = make(QStringLiteral("Busy"));
+        const int fd = ::open(QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock"))).constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+        QVERIFY(fd >= 0);
+        QCOMPARE(::flock(fd, LOCK_EX | LOCK_NB), 0);
+        QVERIFY(s->setValue(QStringLiteral("K"), 7));
+        // The event loop keeps turning while the timed write tries and retries.
+        qint64 worst = 0;
+        QElapsedTimer sinceTick;
+        sinceTick.start();
+        QTimer ticker;
+        ticker.setInterval(10);
+        connect(&ticker, &QTimer::timeout, this, [&] {
+            worst = qMax(worst, sinceTick.elapsed());
+            sinceTick.restart();
+        });
+        ticker.start();
+        QTest::qWait(1800);
+        ticker.stop();
+        QVERIFY2(worst < 400, qPrintable(QString::number(worst)));
+        QVERIFY(!QFile::exists(m_dir.filePath(QStringLiteral("atlas-testerrc")))); // still pending
+        QCOMPARE(s->value(QStringLiteral("K"), 0).toInt(), 7);
+        // Explicit flush still waits about a second, then fails and keeps the change.
+        QElapsedTimer t;
+        t.start();
+        QVERIFY(!s->flush());
+        QVERIFY2(t.elapsed() >= 900 && t.elapsed() < 3000, qPrintable(QString::number(t.elapsed())));
+        // Released: the next retry writes it.
+        ::close(fd);
+        QTRY_VERIFY_WITH_TIMEOUT(readAll(rc()).contains(QStringLiteral("K=7")), 4000);
+    }
     void notifyBodyIsPlainByDefault()
     {
         // No D-Bus here: the call is checked through the rules that run first.
