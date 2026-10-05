@@ -22,7 +22,7 @@ AtlasShelf {
 }
 ```
 
-The default delegate is an [AtlasAppCard](atlas-app-card.md). It reads `name`, `summary`, `sizeText`, `rating`, `iconName`, `installState`, `progress` and `verified` from each entry (a list of objects, or the roles of an item model) and emits `activated(index)` when pressed. A custom `delegate` gets the usual `index`, `model` and `modelData`, and sets its own width; `cardWidth` is the width the default card uses. The row is as high as the tallest card made so far.
+The default delegate is an [AtlasAppCard](atlas-app-card.md). It reads `name`, `summary`, `sizeText`, `rating`, `iconName`, `installState`, `progress` and `verified` from each entry (a list of objects, or the roles of an item model) and emits `activated(index)` when pressed. A custom `delegate` gets the usual `index`, `model` and `modelData`, and sets its own width; `cardWidth` is the width the default card uses. The row is as high as the tallest card made so far (its implicit or its set height), and starts again when the model changes.
 
 ## Keyboard
 

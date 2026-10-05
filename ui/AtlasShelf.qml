@@ -20,7 +20,7 @@ import org.kde.kirigami as Kirigami
 // from each model entry, and emits `activated(index)` when pressed. A custom
 // `delegate` gets the usual `index`, `model` and `modelData` and sets its own
 // width (`control.cardWidth` is the one the default card uses). The row is as
-// high as the tallest card made so far.
+// high as the tallest card made so far (its implicit or its set height).
 //
 // The cards are Tab stops, and the Left and Right arrows (Home, End) move
 // between them and scroll the next one into view. In a right-to-left layout
@@ -68,9 +68,8 @@ T.Control {
         function measure() {
             let h = 0;
             for (const c of list.contentItem.children) {
-                if (c.implicitHeight > h) {
-                    h = c.implicitHeight;
-                }
+                // A delegate that sets a height of its own has no implicit one.
+                h = Math.max(h, c.implicitHeight, c.height);
             }
             if (h > priv.rowHeight) {
                 priv.rowHeight = h;
@@ -85,8 +84,10 @@ T.Control {
         function scroll(direction) {
             const lo = list.originX;
             const hi = Math.max(lo, list.originX + list.contentWidth - list.width);
+            // A second press while one is running goes on from where that one ends.
+            const from = scrollAnim.running ? scrollAnim.to : list.contentX;
             scrollAnim.stop();
-            scrollAnim.to = Math.max(lo, Math.min(hi, list.contentX + direction * priv.stepWidth));
+            scrollAnim.to = Math.max(lo, Math.min(hi, from + direction * priv.stepWidth));
             scrollAnim.start();
         }
         // The first Tab stop of a card's root item, or null.
@@ -104,6 +105,7 @@ T.Control {
             if (i < 0 || i >= list.count) {
                 return;
             }
+            scrollAnim.stop();
             list.positionViewAtIndex(i, ListView.Contain);
             list.forceLayout();
             const target = priv.focusTarget(list.itemAtIndex(i));
@@ -114,7 +116,7 @@ T.Control {
     }
 
     implicitWidth: Kirigami.Units.gridUnit * 40
-    implicitHeight: heading.height + list.height + AtlasStyle.spacing
+    implicitHeight: heading.height + list.height + (heading.visible ? AtlasStyle.spacing : 0)
     focusPolicy: Qt.NoFocus
     background: null
 
@@ -160,6 +162,13 @@ T.Control {
             onContentWidthChanged: priv.measure()
             onCountChanged: priv.measure()
             onMovementEnded: priv.measure()
+            // A drag or a wheel takes over from a running button scroll.
+            onMovementStarted: scrollAnim.stop()
+            // A new model may hold shorter cards.
+            onModelChanged: {
+                priv.rowHeight = 0;
+                Qt.callLater(priv.measure);
+            }
             Component.onCompleted: Qt.callLater(priv.measure)
 
             Keys.onPressed: event => {
@@ -205,6 +214,7 @@ T.Control {
                 const i = list.indexAt(p.x, p.y);
                 if (i >= 0) {
                     list.currentIndex = i;
+                    scrollAnim.stop();
                     list.positionViewAtIndex(i, ListView.Contain);
                 }
             }

@@ -144,7 +144,7 @@ T.AbstractButton {
             GradientStop { position: 1; color: Qt.alpha(AtlasStyle.accent, 0) }
         }
         NumberAnimation on phase {
-            running: priv.installing && control.animated && control.visible && !AtlasStyle.reducedMotion
+            running: priv.working && control.animated && control.visible && !AtlasStyle.reducedMotion
             from: 0
             to: 1
             duration: AtlasStyle.durationLong * 7

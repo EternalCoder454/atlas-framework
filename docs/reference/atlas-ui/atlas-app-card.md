@@ -63,8 +63,8 @@ The card is a Tab stop, and so is its action. Return or Enter on the focused car
 | `rating` | `real` | `0` | Stars, 0 to 5. A value of 0 or less shows none. |
 | `sizeText` | `string` | `""` | The download or installed size, already formatted ("12 MB"). |
 | `summary` | `string` | `""` | A short description, up to two lines. |
-| `verified` | `bool` | `false` | Adds a badge after the name. A screen reader hears "Verified" in the card's description. Since 1.5.0. |
 | `symbol` | `int` (a `Symbols.<Name>` value, see [Symbols](symbols.md)) | `0` | The icon for an app without `icon.name` or `icon.source`. 0 shows `Symbols.Apps`. |
+| `verified` | `bool` | `false` | Adds a badge after the name. A screen reader hears "Verified" in the card's description. Since 1.5.0. |
 
 ## Signals
 

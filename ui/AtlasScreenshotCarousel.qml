@@ -132,16 +132,43 @@ T.Control {
             expanded = false;
         }
     }
+    // The viewer is a popup and needs a window. `expanded: true` at creation
+    // waits for the window; with none by then, or set later with none, it
+    // goes back to false instead of staying true with nothing shown.
+    property bool _completed: false
+    function _openViewer() {
+        if (viewer.visible) {
+            return;
+        }
+        viewer.open();
+        opened(currentIndex);
+    }
     onExpandedChanged: {
         if (expanded) {
             if (!expandable || count === 0) {
                 expanded = false;
-                return;
+            } else if (control.Window.window) {
+                _openViewer();
+            } else if (_completed) {
+                expanded = false;
             }
-            viewer.open();
-            opened(currentIndex);
         } else {
             viewer.close();
+        }
+    }
+    Window.onWindowChanged: {
+        if (expanded && control.Window.window) {
+            _openViewer();
+        }
+    }
+    Component.onCompleted: {
+        _completed = true;
+        if (expanded) {
+            if (control.Window.window && expandable && count > 0) {
+                _openViewer();
+            } else {
+                expanded = false;
+            }
         }
     }
 
@@ -151,12 +178,12 @@ T.Control {
 
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Screenshots")
-    //: Spoken position in the screenshot gallery: %1 is the current image, %2 how many there are
     Accessible.onPressAction: {
         if (control.expandable) {
             control.expanded = true;
         }
     }
+    //: Spoken position in the screenshot gallery: %1 is the current image, %2 how many there are
     Accessible.description: control.count > 0 ? qsTr("Image %1 of %2").arg(control.currentIndex + 1).arg(control.count) : qsTr("No screenshots")
 
     Keys.onPressed: event => {
@@ -483,6 +510,7 @@ T.Control {
 
             contentItem: FocusScope {
                 id: zoom
+                objectName: "viewer"
                 // False: the picture is zoomed to fit; true: shown 1:1.
                 property bool actual: false
                 readonly property int shown: control.currentIndex
@@ -493,6 +521,11 @@ T.Control {
                 //: Spoken position in the screenshot viewer: %1 is the current image, %2 how many there are ("2 of 5")
                 Accessible.description: qsTr("%1 of %2").arg(zoom.shown + 1).arg(control.count)
                 onShownChanged: zoom.actual = false
+                // A large image at 1:1 starts centred, not at its corner.
+                onActualChanged: Qt.callLater(() => {
+                    flick.contentX = Math.max(0, (flick.contentWidth - flick.width) / 2);
+                    flick.contentY = Math.max(0, (flick.contentHeight - flick.height) / 2);
+                })
 
                 Keys.onPressed: event => {
                     const dir = control.mirrored ? -1 : 1;
@@ -530,9 +563,10 @@ T.Control {
                         height: Math.max(flick.height, zoom.actual ? img.implicitHeight : 0)
                         Image {
                             id: img
+                            objectName: "viewerImage"
                             anchors.centerIn: parent
-                            width: zoom.actual ? implicitWidth : flick.width - AtlasStyle.spacingXXLarge * 2
-                            height: zoom.actual ? implicitHeight : flick.height - AtlasStyle.spacingXXLarge * 2
+                            width: zoom.actual ? implicitWidth : Math.max(0, flick.width - AtlasStyle.spacingXXLarge * 2)
+                            height: zoom.actual ? implicitHeight : Math.max(0, flick.height - AtlasStyle.spacingXXLarge * 2)
                             source: zoom.source
                             asynchronous: true
                             fillMode: Image.PreserveAspectFit

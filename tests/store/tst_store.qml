@@ -28,6 +28,50 @@ Item {
         }
     }
     Component {
+        id: rtlShelfComp
+        AtlasShelf {
+            width: root.width
+            LayoutMirroring.enabled: true
+            LayoutMirroring.childrenInherit: true
+            model: 8
+        }
+    }
+    Component {
+        id: openAtCreationComp
+        AtlasScreenshotCarousel {
+            anchors.fill: parent
+            expandable: true
+            expanded: true
+            sources: ["file:///nonexistent/a.png"]
+            onOpened: index => root.openedAtCreation = index
+        }
+    }
+    Component {
+        id: noWindowComp
+        AtlasScreenshotCarousel {
+            expandable: true
+            expanded: true
+            sources: ["file:///nonexistent/a.png"]
+        }
+    }
+    property int openedAtCreation: -1
+
+    // The item with `objectName` somewhere under `item` (the viewer's popup
+    // lives in the window's overlay, not under the carousel).
+    function findItem(item, name) {
+        if (item.objectName === name) {
+            return item;
+        }
+        for (const c of item.children) {
+            const f = findItem(c, name);
+            if (f) {
+                return f;
+            }
+        }
+        return null;
+    }
+
+    Component {
         id: customShelfComp
         AtlasShelf {
             width: root.width
@@ -101,13 +145,34 @@ Item {
             const c = make();
             c.expanded = true;
             compare(openedSpy.count, 1);
+            const viewer = root.findItem(root.Window.window.contentItem, "viewer");
+            verify(viewer !== null, "the viewer exists");
+            tryVerify(() => viewer.activeFocus, 2000, "the viewer holds the focus");
+            compare(viewer.Accessible.description, "1 of 3");
             keyClick(Qt.Key_Right);
             compare(c.currentIndex, 1);
+            compare(viewer.Accessible.description, "2 of 3");
             keyClick(Qt.Key_End);
             compare(c.currentIndex, 2);
             keyClick(Qt.Key_Left);
             compare(c.currentIndex, 1);
             c.expanded = false;
+        }
+
+        function test_expanded_at_creation_opens() {
+            root.openedAtCreation = -1;
+            const c = createTemporaryObject(openAtCreationComp, root);
+            verify(c !== null);
+            tryCompare(root, "openedAtCreation", 0);
+            compare(c.expanded, true);
+            c.expanded = false;
+        }
+
+        function test_expanded_without_a_window_resets() {
+            const c = noWindowComp.createObject(null);
+            verify(c !== null);
+            compare(c.expanded, false);
+            c.destroy();
         }
 
         function test_click_opens() {
@@ -124,14 +189,25 @@ Item {
             compare(openedSpy.count, 0);
         }
 
-        function test_remote_rule_is_shared() {
-            // The viewer reads the carousel's own vetted sources: an http:
-            // source opens the viewer (the broken-image state), never a load.
-            ignoreWarning(/refused screenshot/);
-            const c = make({ sources: ["http://example.invalid/a.png"] });
+        function viewerSource(c) {
             c.expanded = true;
-            compare(c.expanded, true);
+            const top = root.Window.window.contentItem;
+            tryVerify(() => { const v = root.findItem(top, "viewer"); return v !== null && v.visible; });
+            const img = root.findItem(top, "viewerImage");
+            verify(img !== null, "the viewer image exists");
+            const url = img.source.toString();
             c.expanded = false;
+            return url;
+        }
+
+        function test_remote_rule_is_shared() {
+            // The viewer reads the carousel's vetted sources: http: never
+            // loads, https: only with allowRemote.
+            ignoreWarning(/refused screenshot/);
+            compare(viewerSource(make({ sources: ["http://example.invalid/a.png"] })), "");
+            ignoreWarning(/refused screenshot/);
+            compare(viewerSource(make({ sources: ["https://example.invalid/a.png"] })), "");
+            compare(viewerSource(make({ sources: ["https://example.invalid/a.png"], allowRemote: true })), "https://example.invalid/a.png");
         }
     }
 
@@ -152,6 +228,17 @@ Item {
             compare(s.Accessible.name, "Shelf");
         }
 
+        // Waits until a button's scroll animation is over.
+        function settle(list) {
+            let last = NaN;
+            tryVerify(() => {
+                const now = list.contentX;
+                const done = now === last;
+                last = now;
+                return done;
+            }, 3000);
+        }
+
         function test_buttons_hide_at_the_ends() {
             const s = make();
             const left = findChild(s, "scrollLeft");
@@ -163,12 +250,13 @@ Item {
             verify(right.available);
             mouseClick(right);
             tryVerify(() => left.available);
+            settle(list);
             list.contentX = list.originX + list.contentWidth - list.width;
             tryVerify(() => !right.available);
         }
 
         function test_rtl_mirrors_the_buttons() {
-            const s = make(shelfComp, { LayoutMirroring.enabled: true, LayoutMirroring.childrenInherit: true });
+            const s = make(rtlShelfComp);
             const left = findChild(s, "scrollLeft");
             const right = findChild(s, "scrollRight");
             const list = findChild(s, "list");
