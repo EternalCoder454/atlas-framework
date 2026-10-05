@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A rounded drop-down list: the current choice on a pill with a chevron, the
+// A drop-down list: the current choice in a field with a chevron, the
 // choices in a raised card like ContextMenu's. `model`, `textRole`,
 // `currentIndex` and `onActivated` work as in any ComboBox; `placeholderText`
 // shows while nothing is chosen (currentIndex -1). With `filterable: true`
@@ -63,12 +63,11 @@ T.ComboBox {
     }
 
     implicitWidth: Kirigami.Units.gridUnit * 12
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-    leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
-    rightPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+    implicitHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(contentItem.implicitHeight) + AtlasStyle.spacing)
+    leftPadding: AtlasStyle.spacingLarge
+    rightPadding: AtlasStyle.spacingLarge
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.ComboBox
     Accessible.name: control.displayText.length > 0 ? control.displayText : control.placeholderText
@@ -145,8 +144,7 @@ T.ComboBox {
         height: width
         source: "arrow-down"
         isMask: true
-        color: Kirigami.Theme.textColor
-        opacity: 0.6
+        color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
     }
 
     contentItem: Text {
@@ -154,7 +152,7 @@ T.ComboBox {
         rightPadding: control.mirrored ? 0 : control.indicator.width + AtlasStyle.spacingSmall
         text: control.displayText.length > 0 ? control.displayText : control.placeholderText
         font: Kirigami.Theme.defaultFont
-        color: control.displayText.length > 0 ? Kirigami.Theme.textColor : Qt.alpha(Kirigami.Theme.textColor, 0.5)
+        color: !control.enabled ? AtlasStyle.textDisabled : control.displayText.length > 0 ? Kirigami.Theme.textColor : AtlasStyle.textMuted
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft
         elide: Text.ElideRight
@@ -162,10 +160,11 @@ T.ComboBox {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusPill
-        color: Qt.alpha(Kirigami.Theme.textColor, control.down || control.popup.visible ? 0.14 : control.hovered ? 0.12 : 0.07)
+        radius: AtlasStyle.radiusSmall
+        color: control.down || control.popup.visible ? Qt.tint(AtlasStyle.control, AtlasStyle.pressed) : control.hovered && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
         border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.14)
+        border.color: AtlasStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A rounded multi-line text field. `placeholderText` shows while it is empty.
+// A multi-line text field with small rounded corners. `placeholderText` shows while it is empty.
 // It wraps long lines; put it in a ScrollView or give it a height for long
 // text. With `wrapMode: TextEdit.NoWrap` (a log or code view) it is as wide
 // as its longest line, so a ScrollView around it scrolls sideways. Tab and Shift+Tab move focus on, as in a form (a plain TextArea
@@ -24,15 +24,14 @@ T.TextArea {
     implicitHeight: Math.max(Kirigami.Units.gridUnit * 6, contentHeight + topPadding + bottomPadding)
     padding: AtlasStyle.spacingLarge
     wrapMode: TextEdit.Wrap
-    placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
-    color: Kirigami.Theme.textColor
+    placeholderTextColor: AtlasStyle.textMuted
+    color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
     selectionColor: AtlasStyle.accent
     selectedTextColor: AtlasStyle.accentText
     font: Kirigami.Theme.defaultFont
     selectByMouse: true
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.EditableText
     //: Spoken name of a multi-line text field that has no placeholder or label of its own
@@ -54,10 +53,11 @@ T.TextArea {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusLarge
-        color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
-        border.width: control.activeFocus ? 2 : 1
-        border.color: control.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        radius: AtlasStyle.radiusSmall
+        color: control.hovered && !control.activeFocus && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        border.width: 1
+        border.color: control.activeFocus ? AtlasStyle.focus : AtlasStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
         AtlasFocusRing {
             radius: parent.radius + gap
             shown: control.activeFocus && (control.focusReason === Qt.TabFocusReason || control.focusReason === Qt.BacktabFocusReason || control.focusReason === Qt.ShortcutFocusReason)

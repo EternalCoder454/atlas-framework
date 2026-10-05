@@ -41,7 +41,7 @@ T.AbstractButton {
     QtObject {
         id: internals
 
-        readonly property real fieldHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+        readonly property real fieldHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(sizeMetrics.height) + AtlasStyle.spacing)
         readonly property var all: Qt.fontFamilies()
         // Families found to be monospace, and how far the scan has got.
         property var fixed: []
@@ -103,13 +103,18 @@ T.AbstractButton {
         onTriggered: internals.scanSome()
     }
 
+    TextMetrics {
+        id: sizeMetrics
+        font: Kirigami.Theme.defaultFont
+        text: "0"
+    }
+
     implicitWidth: Math.max(Kirigami.Units.gridUnit * 12, contentItem.implicitWidth + leftPadding + rightPadding)
     implicitHeight: internals.fieldHeight
-    leftPadding: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+    leftPadding: AtlasStyle.spacingLarge
     rightPadding: leftPadding
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.Button
     //: Spoken name of a font chooser that has no name of its own
@@ -134,23 +139,24 @@ T.AbstractButton {
             Layout.fillWidth: true
             text: control.font.family
             font: control._nameFont
-            color: Kirigami.Theme.textColor
+            color: control.enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
             elide: Text.ElideRight
             textFormat: Text.PlainText
         }
         Text {
             text: qsTr("%1 pt").arg(Math.round(control.font.pointSize * 10) / 10)
             font: Kirigami.Theme.defaultFont
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+            color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
             textFormat: Text.PlainText
         }
     }
 
     background: Rectangle {
-        radius: height / 2
-        color: Qt.alpha(Kirigami.Theme.textColor, control.down || popup.visible ? 0.14 : control.hovered ? 0.12 : 0.07)
+        radius: AtlasStyle.radiusSmall
+        color: control.down || popup.visible ? Qt.tint(AtlasStyle.control, AtlasStyle.pressed) : control.hovered && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
         border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.14)
+        border.color: AtlasStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
         AtlasFocusRing {
             radius: parent.radius + gap
             shown: control.visualFocus

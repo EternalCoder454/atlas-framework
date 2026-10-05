@@ -10,7 +10,9 @@ import org.kde.kirigami as Kirigami
 // to the error colour and says so. `dropped(urls)` carries only the accepted
 // URLs: local files (file://), unless `allowRemote` is true, that match
 // `nameFilters` (globs such as "*.png", case-insensitive; empty accepts all).
-// The zone never opens or reads a file: the app does that with the URLs.
+// A drag that will be accepted also makes the zone swell slightly (scale 1.02,
+// the expressive spring), and it settles back when the drag leaves; under
+// reduced motion it does not scale. The zone never opens or reads a file: the app does that with the URLs.
 // Return and Space (and a click) emit `browseRequested()` as well, so an app
 // opens its file dialog there; the Browse button shows when `browseText` is set.
 //
@@ -56,6 +58,13 @@ Item {
     implicitHeight: column.implicitHeight + Kirigami.Units.gridUnit * 3
 
     activeFocusOnTab: true
+    scale: control.dragAccepted ? 1.02 : 1
+    Behavior on scale {
+        enabled: !AtlasStyle.reducedMotion
+        AtlasSpringAnimation {
+            expressive: true
+        }
+    }
     opacity: enabled ? 1 : 0.5
     Accessible.role: Accessible.Button
     Accessible.name: control.text
@@ -87,7 +96,7 @@ Item {
         property bool byMouse: false
         readonly property bool over: dragOver || control._forceHover || control._forceReject
         readonly property bool rejected: control._forceReject || (dragOver && dragBad)
-        readonly property color stroke: rejected ? AtlasStyle.error : over ? AtlasStyle.accent : Qt.alpha(AtlasStyle.text, 0.35)
+        readonly property color stroke: rejected ? AtlasStyle.error : over ? AtlasStyle.accent : AtlasStyle.controlBorder
         readonly property color tint: rejected ? Qt.alpha(AtlasStyle.error, 0.08) : over ? Qt.alpha(AtlasStyle.accent, 0.1) : "transparent"
 
         // A glob such as "*.png" as a case-insensitive whole-name test.
@@ -153,7 +162,7 @@ Item {
     }
 
     AtlasFocusRing {
-        radius: AtlasStyle.radiusLarge
+        radius: AtlasStyle.radiusLarge + gap
         shown: control.activeFocus && !priv.byMouse
     }
 

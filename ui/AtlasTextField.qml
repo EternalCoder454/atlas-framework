@@ -2,16 +2,22 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A rounded single-line text field. `placeholderText` shows while it is
-// empty; a non-empty `errorText` turns the outline red and shows the message
-// below the field; with `clearable` a small cross empties it.
+// A single-line text field with small rounded corners, 28 px high (24
+// compact; it grows with large text). `placeholderText` shows while it is
+// empty; a non-empty `errorText` turns the outline red, tints the field,
+// puts an error symbol at the trailing edge and shows the message below the
+// field; with `clearable` a small cross empties it.
 //
 // `prefix` and `suffix` are fixed, muted text inside the field before and after
 // what is typed ("$", "kg"). `showCounter` writes "length/max" under the field
 // at its trailing end when `maximumLength` is set. `invalidText` is the message
-// for a text the `validator` (or `inputMask`) does not accept: shown while
-// typing (`validateOn: "typing"`) or once the focus has left the field
-// (`validateOn: "leaving"`, the default). An `errorText` set by the app wins.
+// for a text the `validator` (or `inputMask`) does not accept. It is not
+// shown while the user types (the unfinished text of an email or URL
+// validator is not an error yet): it appears once the focus has left the field
+// or Return is pressed (`validateOn: "leaving"`, the default), or at once with
+// `validateOn: "typing"`. After it has appeared it follows the text live and
+// goes as soon as the text is acceptable. An `errorText` set by the app shows
+// at once and wins.
 //
 //   AtlasTextField {
 //       placeholderText: qsTr("Name")
@@ -47,8 +53,10 @@ T.TextField {
 
     QtObject {
         id: internals
-        readonly property real fieldHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-        // The user has typed in the field / the focus has been on it and left.
+        // Grows when the text (large font) needs more than the control height.
+        readonly property real fieldHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(control.contentHeight) + AtlasStyle.spacing)
+        // The user has typed in the field / the focus has left it or Return
+        // was pressed: from then on a validator error shows and follows live.
         property bool touched: false
         property bool left: false
         readonly property bool invalidShown: control.invalidText.length > 0 && !control.acceptableInput && (left || (control.validateOn === "typing" && touched))
@@ -62,12 +70,14 @@ T.TextField {
         }
         readonly property bool counterShown: control.showCounter && control.maximumLength < 32767
         readonly property bool rowShown: message.visible || counterShown
-        readonly property real messageHeight: rowShown ? Math.max(message.visible ? message.implicitHeight : 0, counterShown ? counter.implicitHeight : 0) + AtlasStyle.spacingSmall : 0
+        readonly property real messageHeight: rowShown ? Math.max(message.visible ? message.implicitHeight : 0, counterShown ? counter.implicitHeight : 0) + AtlasStyle.spacing : 0
         readonly property real prefixSpace: control.prefix.length > 0 ? prefixText.implicitWidth + AtlasStyle.spacingSmall : 0
         readonly property real suffixSpace: control.suffix.length > 0 ? suffixText.implicitWidth + AtlasStyle.spacingSmall : 0
-        readonly property real edgePad: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+        readonly property real edgePad: AtlasStyle.spacingLarge
+        readonly property real iconSize: Kirigami.Units.iconSizes.small
+        readonly property real errorSpace: control.hasError ? iconSize + AtlasStyle.spacingSmall : 0
         readonly property bool showClear: control.clearable && control.text.length > 0 && control.enabled && !control.readOnly
-        readonly property real clearSpace: showClear ? clearButton.width + AtlasStyle.spacingSmall : 0
+        readonly property real clearSpace: errorSpace + (showClear ? clearButton.width + AtlasStyle.spacingSmall : 0)
     }
 
     implicitWidth: Kirigami.Units.gridUnit * 14
@@ -78,15 +88,14 @@ T.TextField {
     topPadding: 0
     bottomPadding: internals.messageHeight
     verticalAlignment: TextInput.AlignVCenter
-    placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
-    color: Kirigami.Theme.textColor
+    placeholderTextColor: AtlasStyle.textMuted
+    color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
     selectionColor: AtlasStyle.accent
     selectedTextColor: AtlasStyle.accentText
     font: Kirigami.Theme.defaultFont
     selectByMouse: true
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.EditableText
     //: Spoken name of a text field that has no placeholder or label of its own
@@ -94,6 +103,12 @@ T.TextField {
     Accessible.description: internals.shownError
 
     onTextEdited: internals.touched = true
+    // Return reveals a validator error even when the validator refuses it.
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            internals.left = true;
+        }
+    }
     onActiveFocusChanged: {
         if (!activeFocus) {
             internals.left = true;
@@ -102,10 +117,11 @@ T.TextField {
 
     background: Rectangle {
         height: internals.fieldHeight
-        radius: AtlasStyle.radiusPill
-        color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
-        border.width: control.activeFocus || control.hasError ? 2 : 1
-        border.color: control.hasError ? Kirigami.Theme.negativeTextColor : control.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        radius: AtlasStyle.radiusSmall
+        color: control.hasError ? AtlasStyle.errorFill : control.hovered && !control.activeFocus && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        border.width: 1
+        border.color: control.hasError ? AtlasStyle.error : control.activeFocus ? AtlasStyle.focus : AtlasStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
         AtlasFocusRing {
             radius: parent.radius + gap
             shown: control.activeFocus && (control.focusReason === Qt.TabFocusReason || control.focusReason === Qt.BacktabFocusReason || control.focusReason === Qt.ShortcutFocusReason)
@@ -135,7 +151,7 @@ T.TextField {
         visible: control.prefix.length > 0
         text: control.prefix
         font: control.font
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+        color: AtlasStyle.textMuted
         textFormat: Text.PlainText
         renderType: control.renderType
         Accessible.ignored: true
@@ -148,7 +164,7 @@ T.TextField {
         visible: control.suffix.length > 0
         text: control.suffix
         font: control.font
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+        color: AtlasStyle.textMuted
         textFormat: Text.PlainText
         renderType: control.renderType
         Accessible.ignored: true
@@ -156,7 +172,7 @@ T.TextField {
 
     T.AbstractButton {
         id: clearButton
-        x: control.rtl ? AtlasStyle.spacingSmall + 2 : control.width - width - AtlasStyle.spacingSmall - 2
+        x: control.rtl ? internals.edgePad / 2 + internals.errorSpace : control.width - width - internals.edgePad / 2 - internals.errorSpace
         y: Math.round((internals.fieldHeight - height) / 2)
         width: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
         height: width
@@ -181,16 +197,26 @@ T.TextField {
         }
     }
 
+    // The error symbol, at the trailing edge (mirrored in RTL).
+    Symbol {
+        x: control.rtl ? internals.edgePad / 2 : control.width - width - internals.edgePad / 2
+        y: Math.round((internals.fieldHeight - height) / 2)
+        visible: control.hasError
+        icon: Symbols.Error
+        size: internals.iconSize
+        color: AtlasStyle.error
+    }
+
     Text {
         id: message
         // The counter sits at the trailing end; the message takes the rest.
         x: control.rtl && internals.counterShown ? counter.implicitWidth + AtlasStyle.spacingLarge * 2 : AtlasStyle.spacingLarge
-        y: internals.fieldHeight + AtlasStyle.spacingSmall
+        y: internals.fieldHeight + AtlasStyle.spacing
         width: control.width - AtlasStyle.spacingLarge * 2 - (internals.counterShown ? counter.implicitWidth + AtlasStyle.spacingLarge : 0)
         visible: control.hasError
         text: internals.shownError
         font: Kirigami.Theme.smallFont
-        color: Kirigami.Theme.negativeTextColor
+        color: AtlasStyle.error
         wrapMode: Text.Wrap
         textFormat: Text.PlainText
         horizontalAlignment: control.rtl ? Text.AlignRight : Text.AlignLeft
@@ -200,11 +226,11 @@ T.TextField {
     Text {
         id: counter
         x: control.rtl ? AtlasStyle.spacingLarge : control.width - AtlasStyle.spacingLarge - width
-        y: internals.fieldHeight + AtlasStyle.spacingSmall
+        y: internals.fieldHeight + AtlasStyle.spacing
         visible: internals.counterShown
         text: control.length + "/" + control.maximumLength
         font: Kirigami.Theme.smallFont
-        color: control.length >= control.maximumLength ? Kirigami.Theme.negativeTextColor : Qt.alpha(Kirigami.Theme.textColor, 0.6)
+        color: control.length >= control.maximumLength ? AtlasStyle.error : AtlasStyle.textMuted
         textFormat: Text.PlainText
         Accessible.ignored: true
     }

@@ -46,9 +46,12 @@ T.TextField {
     QtObject {
         id: internals
         property bool shown: false
-        readonly property real fieldHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-        readonly property real messageHeight: message.visible ? message.implicitHeight + AtlasStyle.spacingSmall : 0
-        readonly property real toggleSpace: toggle.width + AtlasStyle.spacingSmall
+        // Grows when the text (large font) needs more than the control height.
+        readonly property real fieldHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(control.contentHeight) + AtlasStyle.spacing)
+        readonly property real messageHeight: message.visible ? message.implicitHeight + AtlasStyle.spacing : 0
+        readonly property real iconSize: Kirigami.Units.iconSizes.small
+        readonly property real errorSpace: control.hasError ? iconSize + AtlasStyle.spacingSmall : 0
+        readonly property real toggleSpace: toggle.width + AtlasStyle.spacingSmall + errorSpace
         // Focus on the eye is still focus on the field.
         readonly property bool focused: control.activeFocus || toggle.activeFocus
         onFocusedChanged: {
@@ -86,20 +89,19 @@ T.TextField {
 
     implicitWidth: Kirigami.Units.gridUnit * 14
     implicitHeight: internals.fieldHeight + internals.messageHeight
-    leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall + (rtl ? internals.toggleSpace : 0)
-    rightPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall + (rtl ? 0 : internals.toggleSpace)
+    leftPadding: AtlasStyle.spacingLarge + (rtl ? internals.toggleSpace : 0)
+    rightPadding: AtlasStyle.spacingLarge + (rtl ? 0 : internals.toggleSpace)
     topPadding: 0
     bottomPadding: internals.messageHeight
     verticalAlignment: TextInput.AlignVCenter
-    placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
-    color: Kirigami.Theme.textColor
+    placeholderTextColor: AtlasStyle.textMuted
+    color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
     selectionColor: AtlasStyle.accent
     selectedTextColor: AtlasStyle.accentText
     font: Kirigami.Theme.defaultFont
     selectByMouse: true
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
     echoMode: revealed ? TextInput.Normal : TextInput.Password
     // No suggestions, no capital first letter, and keyboards keep it out of
     // their history. Qt's Password echo already refuses copy and cut.
@@ -121,10 +123,11 @@ T.TextField {
 
     background: Rectangle {
         height: internals.fieldHeight
-        radius: AtlasStyle.radiusPill
-        color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
-        border.width: control.activeFocus || control.hasError ? 2 : 1
-        border.color: control.hasError ? Kirigami.Theme.negativeTextColor : control.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        radius: AtlasStyle.radiusSmall
+        color: control.hasError ? AtlasStyle.errorFill : control.hovered && !control.activeFocus && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        border.width: 1
+        border.color: control.hasError ? AtlasStyle.error : control.activeFocus ? AtlasStyle.focus : AtlasStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
         AtlasFocusRing {
             radius: parent.radius + gap
             shown: control.activeFocus && (control.focusReason === Qt.TabFocusReason || control.focusReason === Qt.BacktabFocusReason || control.focusReason === Qt.ShortcutFocusReason)
@@ -150,7 +153,7 @@ T.TextField {
     // The eye. Tab reaches it; a click does not take the focus from the field.
     T.AbstractButton {
         id: toggle
-        x: control.rtl ? AtlasStyle.spacingSmall + 2 : control.width - width - AtlasStyle.spacingSmall - 2
+        x: control.rtl ? AtlasStyle.spacingSmall + internals.errorSpace : control.width - width - AtlasStyle.spacingSmall - internals.errorSpace
         y: Math.round((internals.fieldHeight - height) / 2)
         width: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
         height: width
@@ -183,15 +186,25 @@ T.TextField {
         }
     }
 
+    // The error symbol, left of the eye at the trailing edge (mirrored in RTL).
+    Symbol {
+        x: control.rtl ? AtlasStyle.spacingSmall : control.width - width - AtlasStyle.spacingSmall
+        y: Math.round((internals.fieldHeight - height) / 2)
+        visible: control.hasError
+        icon: Symbols.Error
+        size: internals.iconSize
+        color: AtlasStyle.error
+    }
+
     Text {
         id: message
         x: AtlasStyle.spacingLarge
-        y: internals.fieldHeight + AtlasStyle.spacingSmall
+        y: internals.fieldHeight + AtlasStyle.spacing
         width: control.width - AtlasStyle.spacingLarge * 2
         visible: control.hasError
         text: control.errorText
         font: Kirigami.Theme.smallFont
-        color: Kirigami.Theme.negativeTextColor
+        color: AtlasStyle.error
         wrapMode: Text.Wrap
         textFormat: Text.PlainText
         horizontalAlignment: control.rtl ? Text.AlignRight : Text.AlignLeft

@@ -1,13 +1,16 @@
 import QtQuick
 import Atlas.Ui
 
-// The keyboard focus ring every Atlas control shows: a pink (AtlasStyle.focus) outline just
-// outside the control's shape, only when focus came from the keyboard. Put
-// it inside the control's background and give it the shape's radius:
+// The keyboard focus ring every Atlas control shows: a 2 px pink
+// (AtlasStyle.focus) outline with a 2 px gap outside the control's shape, only
+// when focus came from the keyboard. It fades in with durationShort and grows
+// slightly into place (scale 0.96 to 1, the expressive spring); under reduced
+// motion it only appears. Put it inside the control's background and give it
+// the shape's radius plus the gap:
 //
 //   background: Rectangle {
-//       radius: height / 2
-//       AtlasFocusRing { radius: parent.radius; shown: control.visualFocus }
+//       radius: AtlasStyle.radiusSmall
+//       AtlasFocusRing { radius: parent.radius + gap; shown: control.visualFocus }
 //   }
 //
 // Decorative: screen readers skip it.
@@ -22,8 +25,22 @@ Rectangle {
     radius: 0
     color: "transparent"
     border.width: 2
-    border.color: Qt.alpha(AtlasStyle.focus, 0.85)
-    visible: shown
+    border.color: AtlasStyle.focus
+    // Fades out before it is hidden; nothing runs while it is off.
+    visible: shown || opacity > 0
+    opacity: shown ? 1 : 0
+    scale: shown ? 1 : 0.96
+    Behavior on opacity {
+        NumberAnimation {
+            duration: AtlasStyle.durationShort
+        }
+    }
+    Behavior on scale {
+        enabled: !AtlasStyle.reducedMotion
+        AtlasSpringAnimation {
+            expressive: true
+        }
+    }
     z: 1
     Accessible.ignored: true
 }

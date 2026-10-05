@@ -23,8 +23,8 @@ T.SpinBox {
 
     QtObject {
         id: internals
-        readonly property real buttonSize: Math.round(Kirigami.Units.gridUnit * 1.9)
-        readonly property real sidePadding: control.showButtons ? buttonSize : AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+        readonly property real buttonSize: Math.max(AtlasStyle.controlHeight, Math.ceil(metricsFrom.height) + AtlasStyle.spacing)
+        readonly property real sidePadding: control.showButtons ? buttonSize : AtlasStyle.spacingLarge
         // The widest text the field can show: the longest of the two ends.
         readonly property real textWidth: Math.max(metricsFrom.advanceWidth, metricsTo.advanceWidth)
     }
@@ -48,7 +48,6 @@ T.SpinBox {
     inputMethodHints: Qt.ImhFormattedNumbersOnly
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.role: Accessible.SpinBox
     //: Spoken name of a number field that has no label of its own (the app sets Accessible.name)
@@ -97,7 +96,7 @@ T.SpinBox {
     contentItem: TextInput {
         text: control.displayText
         font: Kirigami.Theme.defaultFont
-        color: Kirigami.Theme.textColor
+        color: control.enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
         selectionColor: AtlasStyle.accent
         selectedTextColor: AtlasStyle.accentText
         horizontalAlignment: Qt.AlignHCenter
@@ -121,9 +120,9 @@ T.SpinBox {
         opacity: control.up.indicator.enabled ? 1 : 0.4
         Rectangle {
             anchors.fill: parent
-            anchors.margins: 3
-            radius: AtlasStyle.radiusPill
-            color: Qt.alpha(Kirigami.Theme.textColor, control.up.pressed ? 0.2 : control.up.hovered ? 0.12 : 0)
+            anchors.margins: AtlasStyle.spacingXSmall
+            radius: AtlasStyle.radiusSmall
+            color: control.up.pressed ? AtlasStyle.pressed : control.up.hovered ? AtlasStyle.hover : "transparent"
         }
         Rectangle {
             anchors.centerIn: parent
@@ -149,9 +148,9 @@ T.SpinBox {
         opacity: control.down.indicator.enabled ? 1 : 0.4
         Rectangle {
             anchors.fill: parent
-            anchors.margins: 3
-            radius: AtlasStyle.radiusPill
-            color: Qt.alpha(Kirigami.Theme.textColor, control.down.pressed ? 0.2 : control.down.hovered ? 0.12 : 0)
+            anchors.margins: AtlasStyle.spacingXSmall
+            radius: AtlasStyle.radiusSmall
+            color: control.down.pressed ? AtlasStyle.pressed : control.down.hovered ? AtlasStyle.hover : "transparent"
         }
         Rectangle {
             anchors.centerIn: parent
@@ -163,10 +162,11 @@ T.SpinBox {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusPill
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
-        border.width: control.activeFocus ? 2 : 1
-        border.color: control.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        radius: AtlasStyle.radiusSmall
+        color: AtlasStyle.control
+        border.width: 1
+        border.color: control.activeFocus ? AtlasStyle.focus : AtlasStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
         AtlasFocusRing {
             radius: parent.radius + gap
             shown: control.visualFocus

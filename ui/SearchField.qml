@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A rounded search field: a magnifier, the text, and a clear button once
+// A search field with small rounded corners: a magnifier, the text, and a clear button once
 // there is text. `query` follows the text after a short pause, so a live
 // list filters once per word rather than per key; bind to it, not to text.
 // Escape clears the field (and, when it is already empty, lets the key go
@@ -17,13 +17,14 @@ T.TextField {
     readonly property bool rtl: LayoutMirroring.enabled
 
     implicitWidth: Kirigami.Units.gridUnit * 14
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-    leftPadding: (rtl ? clearButton.width : icon.width) + AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
-    rightPadding: (rtl ? icon.width : clearButton.width) + AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+    implicitHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(contentHeight) + AtlasStyle.spacing)
+    leftPadding: (rtl ? clearButton.width : icon.width) + AtlasStyle.spacingLarge
+    rightPadding: (rtl ? icon.width : clearButton.width) + AtlasStyle.spacingLarge
     verticalAlignment: TextInput.AlignVCenter
     placeholderText: qsTr("Search")
-    placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
-    color: Kirigami.Theme.textColor
+    placeholderTextColor: AtlasStyle.textMuted
+    color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
+    hoverEnabled: true
     selectionColor: AtlasStyle.accent
     selectedTextColor: AtlasStyle.accentText
     font: Kirigami.Theme.defaultFont
@@ -57,10 +58,15 @@ T.TextField {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusPill
-        color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
-        border.width: control.activeFocus ? 2 : 1
-        border.color: control.activeFocus ? Qt.alpha(AtlasStyle.focus, 0.85) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        radius: AtlasStyle.radiusSmall
+        color: control.hovered && !control.activeFocus && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        border.width: 1
+        border.color: control.activeFocus ? AtlasStyle.focus : AtlasStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
+        AtlasFocusRing {
+            radius: parent.radius + gap
+            shown: control.activeFocus && (control.focusReason === Qt.TabFocusReason || control.focusReason === Qt.BacktabFocusReason || control.focusReason === Qt.ShortcutFocusReason)
+        }
     }
 
     // A template field keeps placeholderText but draws nothing for it.
@@ -86,8 +92,7 @@ T.TextField {
         height: width
         source: "search"
         isMask: true
-        color: Kirigami.Theme.textColor
-        opacity: 0.55
+        color: AtlasStyle.textMuted
     }
 
     T.AbstractButton {

@@ -222,8 +222,8 @@ T.Control {
                 Accessible.name: text
                 Accessible.onPressAction: clicked()
                 background: Rectangle {
-                    radius: AtlasStyle.radiusPill
-                    color: Qt.alpha(AtlasStyle.text, nav.down ? 0.2 : nav.hovered ? 0.12 : 0)
+                    radius: AtlasStyle.radiusSmall
+                    color: nav.down ? AtlasStyle.pressed : nav.hovered ? AtlasStyle.hover : "transparent"
                 }
                 contentItem: Symbol {
                     name: nav.symbol
@@ -309,7 +309,7 @@ T.Control {
                         width: parent.width - 4
                         height: width
                         radius: width / 2
-                        color: day.isSelected ? AtlasStyle.accent : Qt.alpha(AtlasStyle.text, day.allowed && area.containsMouse ? (area.pressed ? 0.2 : 0.12) : 0)
+                        color: day.isSelected ? AtlasStyle.accent : day.allowed && area.containsMouse ? (area.pressed ? AtlasStyle.pressed : AtlasStyle.hover) : "transparent"
                         border.width: day.isToday && !day.isSelected ? 1 : 0
                         border.color: AtlasStyle.accent
                         Behavior on color {

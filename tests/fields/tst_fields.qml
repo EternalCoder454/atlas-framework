@@ -24,6 +24,15 @@ Item {
         AtlasColorField {}
     }
 
+    Component {
+        id: emailField
+        AtlasTextField {
+            width: 300
+            validator: AtlasEmailValidator {}
+            invalidText: "Enter an email address"
+        }
+    }
+
     ListModel {
         id: lm
         ListElement { name: "Oslo" }
@@ -190,6 +199,71 @@ Item {
             f.showAlpha = true;
             f.color = "#803daee9";
             compare(f.hex, "#803daee9");
+        }
+
+        function test_rgba_text_and_input() {
+            const f = createTemporaryObject(colorField, root, { color: "#3daee9" });
+            compare(f._label, "#3daee9", "opaque shows hex");
+            f.showAlpha = true;
+            f.color = Qt.rgba(104 / 255, 88 / 255, 226 / 255, 0.5);
+            compare(f._label, "rgba(104, 88, 226, 0.5)");
+            const c = f._parseHex("rgba(104, 88, 226, 0.5)");
+            verify(c !== undefined);
+            compare(Math.round(c.r * 255), 104);
+            compare(Math.round(c.a * 100), 50);
+            compare(String(f._parseHex("rgb(255, 0, 0)")), "#ff0000");
+            compare(f._parseHex("rgba(300, 0, 0, 1)"), undefined);
+            compare(f._parseHex("rgba(1, 2, 3, 1.5)"), undefined);
+            compare(f._parseHex("rgba(1, 2, 3"), undefined);
+            f.showAlpha = false;
+            compare(f._parseHex("rgba(1, 2, 3, 0.5)"), undefined, "alpha is off");
+        }
+    }
+
+    TestCase {
+        name: "ValidationTiming"
+        when: windowShown
+
+        function test_error_waits_for_leaving_then_follows_live() {
+            const f = createTemporaryObject(emailField, root);
+            f.forceActiveFocus();
+            keyClick("a");
+            keyClick("@");
+            keyClick("b");
+            verify(!f.acceptableInput);
+            verify(!f.hasError, "no error while typing an unfinished address");
+            // Leaving the field shows it.
+            root.forceActiveFocus();
+            tryVerify(() => f.hasError);
+            // Back in the field the error updates live and clears when valid.
+            f.forceActiveFocus();
+            keyClick(".");
+            keyClick("c");
+            keyClick("o");
+            verify(f.acceptableInput);
+            verify(!f.hasError, "gone as soon as the text is valid");
+            keyClick(Qt.Key_Backspace);
+            keyClick(Qt.Key_Backspace);
+            keyClick(Qt.Key_Backspace);
+            verify(f.hasError, "and back live once it was showing");
+        }
+
+        function test_return_shows_the_error() {
+            const f = createTemporaryObject(emailField, root);
+            f.forceActiveFocus();
+            keyClick("x");
+            verify(!f.hasError);
+            keyClick(Qt.Key_Return);
+            verify(f.hasError);
+        }
+
+        function test_typing_mode_and_app_error_show_at_once() {
+            const f = createTemporaryObject(emailField, root, { validateOn: "typing" });
+            f.forceActiveFocus();
+            keyClick("x");
+            verify(f.hasError);
+            const g = createTemporaryObject(emailField, root, { errorText: "Taken" });
+            verify(g.hasError, "an app-set errorText shows at once");
         }
     }
 
