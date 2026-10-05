@@ -54,4 +54,13 @@ Item {
         x: Math.round((parent.width - width) / 2)
         y: parent.height - height - Kirigami.Units.gridUnit
     }
+    // A tall capsule that stays quiet until the pointer is near.
+    AtlasFloatingToolbar {
+        actions: [bold, italic, link]
+        orientation: Qt.Vertical
+        autoDim: true
+        shown: true
+        x: parent.width - width - Kirigami.Units.gridUnit
+        y: Math.round((parent.height - height) / 2)
+    }
 }

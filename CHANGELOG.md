@@ -105,6 +105,22 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `accentColor`, from Qt and the desktop portal's appearance settings.
 - `Appearance.highContrast` and `reducedMotion` (and so `AtlasStyle`) also
   follow the desktop portal's `contrast` and `reduced-motion`, live.
+- Added: `AtlasPopover.side` (Auto, Below, Above, Start, End) with a
+  matching arrow, and `placedSide`, the side it opened on.
+- Added: `AtlasHeaderBar.stretch`, a full-width row such as a TabBar, and
+  `showTitle`; `leading` and `trailing` are capped at half the bar each.
+- Added: `ToolbarButton.round`, `tipSide`, `toolTipText` and `focusOnClick`;
+  `AtlasAction.menu` and `popover` open from a toolbar button without
+  triggering it.
+- Added: `AtlasToolbar.orientation`, a Scroll overflow (wheel and
+  chevrons), `focusOnClick` and `scrolls`; menu and popover actions reach
+  the overflow menu.
+- Added: `AtlasFloatingToolbar` can replace an app's own capsule: vertical
+  orientation, overflow, a dimmed level away from the pointer, Esc back to
+  the content, and focus returned to the opening button.
+- Added: `AtlasAppMenu` nested submenus, model-driven rows,
+  `exportShortcuts` (shortcuts in the global menu) and `modelActivated`;
+  rows bound to a checkable Action stay in step with it.
 - Docs: `TextButton` is not an `AtlasButton` preset and has no `variant`.
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call

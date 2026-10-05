@@ -39,6 +39,8 @@ AtlasAboutPage.property subtitle: QString
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
 AtlasAction.base QQuickAction
+AtlasAction.property menu: QQuickMenu*
+AtlasAction.property popover: QQuickPopup*
 AtlasAction.property section: QString
 AtlasAction.property symbol: int
 AtlasAction.property toolTip: QString
@@ -74,7 +76,9 @@ AtlasAppCard.type
 AtlasAppMenu.base QQuickItem
 AtlasAppMenu.method open(): QVariant
 AtlasAppMenu.property accessibleName: QString
+AtlasAppMenu.property exportShortcuts: bool
 AtlasAppMenu.property menus: QVariant
+AtlasAppMenu.signal modelActivated(QString id, QVariant modelData, int index)
 AtlasAppMenu.type
 AtlasAutocompleteField.base QQuickFocusScope
 AtlasAutocompleteField.property clearable: bool
@@ -190,12 +194,21 @@ AtlasCommandPalette.property recentCount: int
 AtlasCommandPalette.signal triggered(QObject* action)
 AtlasCommandPalette.type
 AtlasCopyButton.base QQuickAbstractButton
+AtlasCopyButton.enum TipSide: Below = 0
+AtlasCopyButton.enum TipSide: End = 2
+AtlasCopyButton.enum TipSide: Start = 1
+AtlasCopyButton.property focusOnClick: bool
+AtlasCopyButton.property focusable: bool
+AtlasCopyButton.property iconRotation: double
+AtlasCopyButton.property round: bool
 AtlasCopyButton.property copiedLabel: QString
 AtlasCopyButton.property focusable: bool
 AtlasCopyButton.property iconRotation: double
 AtlasCopyButton.property label: QString
 AtlasCopyButton.property shortcutText: QString
 AtlasCopyButton.property symbol: int
+AtlasCopyButton.property tipSide: int
+AtlasCopyButton.property toolTipText: QString
 AtlasCopyButton.signal copied()
 AtlasCopyButton.type
 AtlasDatePicker.base QQuickControl
@@ -284,11 +297,21 @@ AtlasFileField.type
 AtlasFloatingToolbar.base QQuickItem
 AtlasFloatingToolbar.property accessibleName: QString
 AtlasFloatingToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
+AtlasFloatingToolbar.property autoDim: bool
 AtlasFloatingToolbar.property content: QQmlListProperty<QObject> [readonly]
+AtlasFloatingToolbar.property dimOpacity: double
+AtlasFloatingToolbar.property focusOnClick: bool
 AtlasFloatingToolbar.property focusable: bool
+AtlasFloatingToolbar.property keepActive: bool
 AtlasFloatingToolbar.property margin: double
+AtlasFloatingToolbar.property near: bool [readonly]
+AtlasFloatingToolbar.property nearDistance: double
+AtlasFloatingToolbar.property orientation: int
+AtlasFloatingToolbar.property overflow: int
+AtlasFloatingToolbar.property returnFocus: QQuickItem*
 AtlasFloatingToolbar.property shown: bool
 AtlasFloatingToolbar.property toolbar: AtlasToolbar_QMLTYPE* [readonly]
+AtlasFloatingToolbar.signal escaped()
 AtlasFloatingToolbar.type
 AtlasFlowLayout.base QQuickItem
 AtlasFlowLayout.property rowSpacing: double
@@ -350,6 +373,8 @@ AtlasHeaderBar.property active: bool
 AtlasHeaderBar.property centerTitle: bool
 AtlasHeaderBar.property iconName: QString
 AtlasHeaderBar.property leading: QQmlListProperty<QObject> [readonly]
+AtlasHeaderBar.property showTitle: bool
+AtlasHeaderBar.property stretch: QQmlListProperty<QObject> [readonly]
 AtlasHeaderBar.property title: QString
 AtlasHeaderBar.property titleCentered: bool [readonly]
 AtlasHeaderBar.property trailing: QQmlListProperty<QObject> [readonly]
@@ -467,9 +492,16 @@ AtlasPlaceholder.property lineHeight: double
 AtlasPlaceholder.property lines: int
 AtlasPlaceholder.type
 AtlasPopover.base QQuickPopup
+AtlasPopover.enum Side: Above = 2
+AtlasPopover.enum Side: Auto = 0
+AtlasPopover.enum Side: Below = 1
+AtlasPopover.enum Side: End = 4
+AtlasPopover.enum Side: Start = 3
 AtlasPopover.property above: bool [readonly]
 AtlasPopover.property content: QQmlListProperty<QObject> [readonly]
+AtlasPopover.property placedSide: int [readonly]
 AtlasPopover.property showArrow: bool
+AtlasPopover.property side: int
 AtlasPopover.property target: QQuickItem*
 AtlasPopover.type
 AtlasPortal.base QObject
@@ -734,13 +766,19 @@ AtlasToolTip.base QQuickToolTip
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
 AtlasToolbar.base QQuickItem
+AtlasToolbar.enum Overflow: Menu = 0
+AtlasToolbar.enum Overflow: Scroll = 1
 AtlasToolbar.property accessibleName: QString
 AtlasToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
 AtlasToolbar.property flat: bool
+AtlasToolbar.property focusOnClick: bool
 AtlasToolbar.property focusable: bool
 AtlasToolbar.property leading: QQmlListProperty<QObject> [readonly]
 AtlasToolbar.property moreMenu: ContextMenu_QMLTYPE* [readonly]
+AtlasToolbar.property orientation: int
+AtlasToolbar.property overflow: int
 AtlasToolbar.property overflowCount: int [readonly]
+AtlasToolbar.property scrolls: bool [readonly]
 AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
 AtlasToolbar.property visibleCount: int [readonly]
 AtlasToolbar.type
@@ -1185,10 +1223,17 @@ Toast.property text: QString
 Toast.signal actionTriggered()
 Toast.type
 ToolbarButton.base QQuickAbstractButton
+ToolbarButton.enum TipSide: Below = 0
+ToolbarButton.enum TipSide: End = 2
+ToolbarButton.enum TipSide: Start = 1
+ToolbarButton.property focusOnClick: bool
 ToolbarButton.property focusable: bool
 ToolbarButton.property iconRotation: double
+ToolbarButton.property round: bool
 ToolbarButton.property shortcutText: QString
 ToolbarButton.property symbol: int
+ToolbarButton.property tipSide: int
+ToolbarButton.property toolTipText: QString
 ToolbarButton.type
 UsageBar.base QQuickColumnLayout
 UsageBar.method colorAt(QVariant i): QVariant

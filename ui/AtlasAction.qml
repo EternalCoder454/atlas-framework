@@ -30,6 +30,13 @@ T.Action {
     // The group the action shows under in AtlasShortcutsDialog; empty for the
     // general group.
     property string section
+    // A ContextMenu that the action's toolbar button opens instead of
+    // triggering; in an AtlasAppMenu it shows as a submenu. If both this and
+    // `popover` are set, `menu` wins.
+    property T.Menu menu: null
+    // An AtlasPopover that the action's toolbar button opens instead of
+    // triggering. Its `target` is set to the button.
+    property T.Popup popover: null
 
     Component.onCompleted: AtlasShortcuts.add(action)
     Component.onDestruction: AtlasShortcuts.remove(action)
