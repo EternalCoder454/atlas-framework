@@ -11,6 +11,12 @@ import org.kde.kirigami as Kirigami
 // then closes; so does the Close button. Open it from a menu or a shortcut of
 // its own.
 //
+// With a `collection` (AtlasActionCollection) the list shows its actions, by
+// `category`. When the collection's `shortcutsEditable` is set, each row has a
+// Change button that records a new shortcut (a shortcut another action has is
+// refused, saying which), a Reset button for a changed one, and the dialog has
+// Reset all.
+//
 //   AtlasShortcutsDialog { id: shortcutsDialog }
 //   AtlasAction {
 //       text: qsTr("Keyboard Shortcuts")
@@ -21,15 +27,24 @@ QQC2.Popup {
     id: dialog
 
     property string title: qsTr("Keyboard Shortcuts")
+    // The app's AtlasActionCollection: its actions are listed instead of every
+    // registered action, and the user can change shortcuts when its
+    // `shortcutsEditable` is set.
+    property AtlasActionCollection collection: null
+    readonly property bool _editable: dialog.collection !== null && dialog.collection.shortcutsEditable
 
     QtObject {
         id: priv
         // [{ section, text, sequence, readable }] for what the dialog shows now.
-        readonly property var entries: dialog.visible ? priv.build(AtlasShortcuts.actions, search.query, AtlasShortcuts.conflicts) : []
+        readonly property var entries: dialog.visible ? priv.build(dialog.collection ? dialog.collection._all : AtlasShortcuts.actions, search.query, AtlasShortcuts.conflicts, dialog.collection ? dialog.collection._overrides : null) : []
+        // The action being given a new shortcut, and what went wrong last.
+        property var editing: null
+        property string message
 
-        // `conflicts` is only a dependency: it changes (after each change of an
-        // action's shortcut, text or enabled) so the list is rebuilt.
-        function build(actions: var, query: string, conflicts: var): var {
+        // `conflicts` and `overrides` are only dependencies: `conflicts` changes
+        // (after each change of an action's shortcut, text or enabled) so the
+        // list is rebuilt, and `overrides` when the user changed a shortcut.
+        function build(actions: var, query: string, conflicts: var, overrides: var): var {
             const q = query.trim().toLowerCase();
             const general = qsTr("General");
             const groups = [];
@@ -47,7 +62,8 @@ QQC2.Popup {
                 if (q.length > 0 && text.toLowerCase().indexOf(q) < 0 && readable.toLowerCase().indexOf(q) < 0) {
                     continue;
                 }
-                const section = a.section && a.section.length > 0 ? a.section : general;
+                const category = a.category !== undefined ? a.category : a.section;
+                const section = category && category.length > 0 ? category : general;
                 if (!(section in index)) {
                     index[section] = groups.length;
                     groups.push([]);
@@ -56,7 +72,9 @@ QQC2.Popup {
                     "section": section,
                     "text": text,
                     "sequence": a.shortcut,
-                    "readable": readable
+                    "readable": readable,
+                    "action": a,
+                    "name": a.objectName ?? ""
                 });
             }
             // Sections by name with the general one first, rows by text: the
@@ -64,6 +82,35 @@ QQC2.Popup {
             const byText = (x, y) => x.text.localeCompare(y.text);
             const names = Object.keys(index).sort((x, y) => x === general ? -1 : y === general ? 1 : x.localeCompare(y));
             return names.reduce((all, name) => all.concat(groups[index[name]].sort(byText)), []);
+        }
+
+        // Whether the row's action can be given a shortcut: it is in the
+        // editable collection and has an objectName to keep it under.
+        function canEdit(row: var): bool {
+            return dialog._editable && row.name.length > 0 && dialog.collection.action(row.name) === row.action;
+        }
+        function stop(): void {
+            priv.editing = null;
+            priv.message = "";
+        }
+        // The user recorded `text` for the row's action: refuse what another
+        // action has, keep anything else.
+        function accept(row: var, text: string, conflict: string): bool {
+            if (text.length === 0) {
+                priv.message = qsTr("A shortcut cannot be empty. Press keys, or use Reset.");
+                return false;
+            }
+            if (conflict.length > 0) {
+                //: Under the shortcut list: %1 is "Already used by “Save”"
+                priv.message = qsTr("%1. Choose another shortcut.").arg(conflict);
+                return false;
+            }
+            if (!dialog.collection.setShortcut(row.name, text)) {
+                priv.message = qsTr("That is not a shortcut.");
+                return false;
+            }
+            priv.stop();
+            return true;
         }
     }
 
@@ -76,7 +123,10 @@ QQC2.Popup {
     padding: Math.round(Kirigami.Units.gridUnit * 1.3)
     height: Math.min(implicitHeight, parent ? parent.height - Kirigami.Units.gridUnit * 2 : implicitHeight)
     onOpened: search.forceActiveFocus()
-    onClosed: search.clear()
+    onClosed: {
+        search.clear();
+        priv.stop();
+    }
 
     enter: Transition {
         NumberAnimation {
@@ -166,12 +216,15 @@ QQC2.Popup {
                     id: row
                     required property var modelData
                     width: ListView.view.width
-                    height: Math.max(label.implicitHeight, keys.implicitHeight) + AtlasStyle.spacingSmall * 2
+                    readonly property bool editable: priv.canEdit(row.modelData)
+                    readonly property bool isEditing: row.editable && priv.editing === row.modelData.action
+                    height: rowLayout.implicitHeight + AtlasStyle.spacingSmall * 2
 
                     Accessible.role: Accessible.ListItem
                     Accessible.name: row.modelData.text + ", " + row.modelData.readable
 
                     RowLayout {
+                        id: rowLayout
                         anchors.fill: parent
                         anchors.rightMargin: AtlasStyle.spacingLarge + (bar.visible ? bar.width : 0)
                         spacing: AtlasStyle.spacingLarge
@@ -185,8 +238,61 @@ QQC2.Popup {
                         }
                         AtlasShortcutLabel {
                             id: keys
+                            visible: !row.isEditing
                             sequence: row.modelData.sequence
                             Accessible.ignored: true
+                        }
+                        AtlasShortcutField {
+                            id: field
+                            visible: row.isEditing
+                            Layout.preferredWidth: Kirigami.Units.gridUnit * 9
+                            ignoreAction: row.modelData.action
+                            Accessible.name: qsTr("New shortcut for %1").arg(row.modelData.text)
+                            // The recorded text is held for one turn, so a binding
+                            // on `sequence` is kept (the edit rule of the controls).
+                            property string _edit
+                            property bool _editing: false
+                            readonly property Binding _hold: Binding {
+                                target: field
+                                property: "sequence"
+                                value: field._edit
+                                when: field._editing
+                                restoreMode: Binding.RestoreBinding
+                            }
+                            function _release(): void {
+                                field._editing = false;
+                            }
+                            sequence: AtlasShortcuts.portable(row.modelData.sequence)
+                            onVisibleChanged: if (visible) startRecording()
+                            onEdited: {
+                                const wanted = field.sequence;
+                                const accepted = priv.accept(row.modelData, wanted, field.conflictText);
+                                // Back to the action's own shortcut when refused.
+                                field._edit = accepted ? wanted : AtlasShortcuts.portable(row.modelData.sequence);
+                                field._editing = true;
+                                Qt.callLater(field._release);
+                                if (!accepted) {
+                                    Qt.callLater(field.startRecording);
+                                }
+                            }
+                        }
+                        TextButton {
+                            visible: row.editable && !row.isEditing
+                            text: qsTr("Change")
+                            Accessible.name: qsTr("Change shortcut for %1").arg(row.modelData.text)
+                            onClicked: {
+                                priv.message = "";
+                                priv.editing = row.modelData.action;
+                            }
+                        }
+                        TextButton {
+                            visible: row.editable && !row.isEditing && dialog.collection.hasCustomShortcut(row.modelData.name)
+                            text: qsTr("Reset")
+                            Accessible.name: qsTr("Reset shortcut for %1").arg(row.modelData.text)
+                            onClicked: {
+                                priv.stop();
+                                dialog.collection.resetShortcut(row.modelData.name);
+                            }
                         }
                     }
                 }
@@ -202,9 +308,28 @@ QQC2.Popup {
             }
         }
 
+        QQC2.Label {
+            Layout.fillWidth: true
+            visible: priv.message.length > 0
+            text: priv.message
+            color: AtlasStyle.error
+            wrapMode: Text.Wrap
+            textFormat: Text.PlainText
+            Accessible.role: Accessible.AlertMessage
+            Accessible.name: priv.message
+        }
+
         RowLayout {
             Layout.fillWidth: true
             Layout.topMargin: AtlasStyle.spacingSmall
+            SecondaryButton {
+                visible: dialog._editable
+                text: qsTr("Reset all")
+                onClicked: {
+                    priv.stop();
+                    dialog.collection.resetShortcuts();
+                }
+            }
             Item {
                 Layout.fillWidth: true
             }

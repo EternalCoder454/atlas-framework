@@ -39,12 +39,23 @@ AtlasAboutPage.property subtitle: QString
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
 AtlasAction.base QQuickAction
+AtlasAction.property category: QString
 AtlasAction.property menu: QQuickMenu*
 AtlasAction.property popover: QQuickPopup*
 AtlasAction.property section: QString
 AtlasAction.property symbol: int
 AtlasAction.property toolTip: QString
 AtlasAction.type
+AtlasActionCollection.base QObject
+AtlasActionCollection.method action(QString name): QVariant
+AtlasActionCollection.method hasCustomShortcut(QString name): bool
+AtlasActionCollection.method resetShortcut(QString name): QVariant
+AtlasActionCollection.method resetShortcuts(): QVariant
+AtlasActionCollection.method setShortcut(QString name, QString sequence): bool
+AtlasActionCollection.property actions: QQmlListProperty<QQuickAction> [readonly]
+AtlasActionCollection.property settings: AtlasSettings*
+AtlasActionCollection.property shortcutsEditable: bool
+AtlasActionCollection.type
 AtlasApp.base QObject
 AtlasApp.property id: QString [readonly]
 AtlasApp.property issuesUrl: QString [readonly]
@@ -76,6 +87,7 @@ AtlasAppCard.type
 AtlasAppMenu.base QQuickItem
 AtlasAppMenu.method open(): QVariant
 AtlasAppMenu.property accessibleName: QString
+AtlasAppMenu.property collection: QObject*
 AtlasAppMenu.property exportShortcuts: bool
 AtlasAppMenu.property menus: QVariant
 AtlasAppMenu.signal modelActivated(QString id, QVariant modelData, int index)
@@ -188,6 +200,7 @@ AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
 AtlasCommandPalette.base QQuickPopup
 AtlasCommandPalette.property actions: QQmlListProperty<QObject> [readonly]
+AtlasCommandPalette.property collection: QObject*
 AtlasCommandPalette.property placeholderText: QString
 AtlasCommandPalette.property query: QString
 AtlasCommandPalette.property recentCount: int
@@ -593,6 +606,7 @@ AtlasShortcuts.property actions: QList<QObject*> [readonly]
 AtlasShortcuts.property conflicts: QVariantList [readonly]
 AtlasShortcuts.type
 AtlasShortcutsDialog.base QQuickPopup
+AtlasShortcutsDialog.property collection: QObject*
 AtlasShortcutsDialog.property title: QString
 AtlasShortcutsDialog.type
 AtlasSidebar.base QQuickFocusScope

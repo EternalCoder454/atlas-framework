@@ -26,6 +26,10 @@ import Qt.labs.platform as Platform
 //       }
 //   }
 //
+// With a `collection` (AtlasActionCollection) and no `menus`, the menus are
+// the collection's actions grouped by `category`, in the order each category
+// first appears; `menus`, when it is not empty, wins.
+//
 // The native export is made only when a global menu is there, so a desktop
 // without one never creates a menu bar of its own. Detection is an
 // asynchronous D-Bus check with a timeout: until it answers, the button shows.
@@ -34,6 +38,9 @@ Item {
 
     // [{title: string, actions: [Action | null | {action, shortcut} | {title, actions} | {id, title, model, ...}]}]
     property var menus: []
+    // The app's AtlasActionCollection: its actions make the menus when `menus`
+    // is empty.
+    property AtlasActionCollection collection: null
     // The name of the menu button for screen readers and its tooltip.
     property string accessibleName: qsTr("Main menu")
     // Shows each `{action, shortcut}` entry's shortcut in the global menu (and
@@ -43,6 +50,31 @@ Item {
 
     // A row of a model-driven submenu was chosen.
     signal modelActivated(string id, var modelData, int index)
+
+    // What the menus are made of: `menus`, else the collection's actions by category.
+    readonly property var _menus: root.menus.length > 0 || !root.collection ? root.menus : root._fromCollection(root.collection)
+    function _fromCollection(c): var {
+        const general = qsTr("General");
+        const groups = [];
+        const index = {};
+        const all = c._all ?? [];
+        for (let i = 0; i < all.length; ++i) {
+            const a = all[i];
+            if (!a) {
+                continue;
+            }
+            const title = a.category && a.category.length > 0 ? a.category : general;
+            if (!Object.prototype.hasOwnProperty.call(index, title)) {
+                index[title] = groups.length;
+                groups.push({
+                    "title": title,
+                    "actions": []
+                });
+            }
+            groups[index[title]].actions.push(a);
+        }
+        return groups;
+    }
 
     // Tests: true builds the native export whatever the desktop has.
     property bool _forceNative: false
@@ -62,7 +94,7 @@ Item {
         }
     }
 
-    visible: _showButton && menus.length > 0
+    visible: _showButton && _menus.length > 0
     implicitWidth: visible ? button.implicitWidth : 0
     implicitHeight: visible ? button.implicitHeight : 0
 
@@ -386,7 +418,7 @@ Item {
         if (!_showButton) {
             return;
         }
-        for (const g of menus ?? []) {
+        for (const g of root._menus ?? []) {
             if (!g || g.actions === undefined) {
                 continue;
             }
@@ -395,7 +427,7 @@ Item {
             popup.addMenu(sub);
         }
     }
-    onMenusChanged: if (!popup.visible) _rebuildButton()
+    on_MenusChanged: if (!popup.visible) _rebuildButton()
     on_ShowButtonChanged: if (!popup.visible) _rebuildButton()
     onExportShortcutsChanged: if (!popup.visible) _rebuildButton()
     Component.onCompleted: _rebuildButton()
@@ -427,7 +459,7 @@ Item {
 
     Loader {
         id: nativeLoader
-        active: root._native && root.menus.length > 0
+        active: root._native && root._menus.length > 0
         sourceComponent: Platform.MenuBar {
             id: menuBar
             window: root.Window.window
@@ -634,7 +666,7 @@ Item {
                 }
                 _objs = [];
                 _watched = [];
-                for (const g of root.menus ?? []) {
+                for (const g of root._menus ?? []) {
                     if (!g || g.actions === undefined) {
                         continue;
                     }
@@ -654,7 +686,7 @@ Item {
                 target: root
                 // Later, never inside the handler that changed them: that could
                 // be a row's onTriggered, and clear() deletes the row.
-                function onMenusChanged() {
+                function on_MenusChanged() {
                     Qt.callLater(root._rebuildNative);
                 }
                 function onExportShortcutsChanged() {
