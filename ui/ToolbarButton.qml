@@ -5,8 +5,8 @@ import org.kde.kirigami as Kirigami
 
 // A small icon button for formatting toolbars (Bold, Italic, ...). It never
 // takes the keyboard focus from the editor. `checkable` makes it a toggle,
-// drawn with an accent-tinted fill and an accent icon while checked. The
-// tooltip is the text plus the optional `shortcutText`: "Bold (Ctrl+B)".
+// drawn with the selection fill, an accent border and an accent icon while
+// checked. The tooltip is the text plus the optional `shortcutText`: "Bold (Ctrl+B)".
 //
 // With an `action` (an AtlasAction or a plain Qt Action) the button follows
 // it: the tooltip is `action.toolTip`, else `action.text`, else `text`; the
@@ -43,10 +43,10 @@ T.AbstractButton {
         const raw = a && a.toolTip !== undefined && String(a.toolTip).length > 0 ? String(a.toolTip) : a && a.text ? String(a.text) : control.text;
         return raw.replace(/&(.)/g, "$1");
     }
-    readonly property color _iconColor: control.checked ? AtlasStyle.accent : Kirigami.Theme.textColor
+    readonly property color _iconColor: !control.enabled ? AtlasStyle.textDisabled : control.checked ? AtlasStyle.accent : Kirigami.Theme.textColor
 
     implicitWidth: Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
+    implicitHeight: AtlasStyle.controlHeight
     padding: AtlasStyle.spacingSmall + 1
     display: T.AbstractButton.IconOnly
     hoverEnabled: true
@@ -80,14 +80,28 @@ T.AbstractButton {
 
     background: Rectangle {
         radius: AtlasStyle.radiusSmall
-        color: control.checked ? Qt.alpha(AtlasStyle.accent, control.down ? 0.28 : 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.12 : control.hovered ? 0.07 : 0)
+        // On: the selection fill with an accent border and icon; hover and
+        // press are the grey overlay.
+        color: control.checked ? AtlasStyle.selection : "transparent"
+        border.width: control.checked ? 1 : 0
+        border.color: control.enabled ? AtlasStyle.accent : AtlasStyle.controlBorder
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
             }
         }
-        AtlasFocusRing {
+        Rectangle {
+            anchors.fill: parent
             radius: parent.radius
+            color: !control.enabled ? "transparent" : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
+            Behavior on color {
+                ColorAnimation {
+                    duration: AtlasStyle.durationShort
+                }
+            }
+        }
+        AtlasFocusRing {
+            radius: parent.radius + gap
             shown: control.visualFocus
         }
     }
@@ -111,7 +125,6 @@ T.AbstractButton {
                     // matches a theme icon of the same slot.
                     size: Math.round(Kirigami.Units.iconSizes.small * 1.2)
                     color: control._iconColor
-                    opacity: control.enabled ? 1 : 0.4
                 }
             }
             Kirigami.Icon {
@@ -119,7 +132,6 @@ T.AbstractButton {
                 source: control.icon.name.length > 0 ? control.icon.name : control.icon.source
                 isMask: true
                 color: control._iconColor
-                opacity: control.enabled ? 1 : 0.4
                 width: Kirigami.Units.iconSizes.small
                 height: width
                 rotation: control.iconRotation
@@ -136,7 +148,6 @@ T.AbstractButton {
                 text: control.text
                 font: Kirigami.Theme.defaultFont
                 color: Kirigami.Theme.textColor
-                opacity: control.enabled ? 1 : 0.4
                 textFormat: Text.PlainText
             }
         }

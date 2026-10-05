@@ -23,7 +23,6 @@ T.RadioButton {
     hoverEnabled: true
     // Tab visits one radio of a group: the checked one, or the first if none is.
     focusPolicy: internals.tabStop ? Qt.StrongFocus : Qt.ClickFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.name: text
     Accessible.role: Accessible.RadioButton
@@ -89,9 +88,9 @@ T.RadioButton {
         x: control.mirrored ? control.width - width : 0
         y: Math.round((control.height - height) / 2)
         radius: AtlasStyle.radiusPill
-        color: control.checked ? (control.enabled ? AtlasStyle.accent : control.palette.active.highlight) : Qt.alpha(Kirigami.Theme.textColor, control.hovered ? 0.12 : 0.07)
-        border.width: 1
-        border.color: control.checked ? "transparent" : Qt.alpha(Kirigami.Theme.textColor, 0.3)
+        color: control.checked ? (control.enabled ? AtlasStyle.accent : Qt.alpha(AtlasStyle.accent, 0.4)) : control.enabled && control.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        border.width: control.checked ? 0 : 1
+        border.color: AtlasStyle.controlBorder
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
@@ -126,7 +125,7 @@ T.RadioButton {
     contentItem: Text {
         text: control.text
         font: Kirigami.Theme.defaultFont
-        color: Kirigami.Theme.textColor
+        color: control.enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
         elide: Text.ElideRight
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft

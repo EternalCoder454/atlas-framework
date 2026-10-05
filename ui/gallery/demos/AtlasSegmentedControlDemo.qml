@@ -11,7 +11,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 340
-    implicitHeight: 150
+    implicitHeight: 230
     width: implicitWidth
     height: implicitHeight
 
@@ -37,6 +37,20 @@ Item {
                     "toolTip": "Settings"
                 }]
             currentIndex: 0
+        }
+        // Too narrow for its text: the labels are elided.
+        AtlasSegmentedControl {
+            Accessible.name: "Narrow"
+            Layout.preferredWidth: 150
+            Layout.maximumWidth: 150
+            model: ["Everything", "Unread messages", "Starred"]
+            currentIndex: 0
+        }
+        AtlasSegmentedControl {
+            Accessible.name: "Disabled"
+            enabled: false
+            model: ["List", "Grid", "Table"]
+            currentIndex: 2
         }
     }
 }
