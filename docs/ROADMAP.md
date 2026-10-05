@@ -212,8 +212,9 @@ everything working after a restart and with an older `atlasrc`.
 (startup 190 ms, RSS 129.2 MB, PSS 114.8 MB, idle CPU 1 %): no figure worse
 than 1.4.0. Plus: `libatlasui.so` smaller (28 MB in Release; try hidden
 visibility), list and table scrolling at 10k rows without dropped frames,
-the new floating toolbar and popover idle at zero CPU, and qmllint warnings
-at or below 162.
+the new floating toolbar and popover idle at zero CPU, qmllint warnings at
+or below 119 (the CI gate), and at least 79.2 % of Atlas.Ui compiled to C++
+(`all_aotstats`, raised as the A2 compile pass lands).
 
 ### B0: bugs the apps hit on 1.4.0
 
@@ -289,6 +290,66 @@ at or below 162.
   only. (Updater)
 - SidebarGroup: `symbol` and `badge` like SidebarItem. (study 3)
 - AtlasBreadcrumb: the "Hidden folders" text as a property. (study 3)
+
+### A2: from the research (docs/research-1.5.md)
+
+In 1.5.0 (robustness, performance and accessibility; no large new API):
+
+- [ ] Compile coverage: an `all_aotstats` gate in CI (Atlas.Ui at 79.2 %,
+  ratchet up), then a pass over the worst files (DataTable, ConfirmDialog,
+  AtlasShortcutsDialog, AtlasWindow, AtlasSidebar, AtlasViewSwitcher,
+  AtlasTreeView, SectionRow, AtlasNavigationStack, UsageBar, AtlasStat,
+  AtlasDetailGrid, AtlasSplitView): `pragma ComponentBehavior: Bound`,
+  id-qualified access, typed function signatures, `required property` in
+  delegates, no arrays in `var`.
+- [ ] A typed colour helper (returns `color`) in place of `Qt.alpha` and
+  `Qt.rgba`, which return a QVariant and keep 107 bindings interpreted.
+- [ ] Apps that import `QtQuick.Controls` without an alias lose Qt's
+  `ContextMenu` attached type (6.9) to Atlas's `ContextMenu`, in either
+  import order, and `SearchField` (6.10) is ambiguous: DESIGN.md says to
+  import it `as QQC2`, and lint-app warns on an unaliased import next to
+  Atlas.Ui.
+- [ ] `Accessible.announce()` (6.8) for Toast, a field's error text and
+  AtlasNavigationStack page changes; check with Orca.
+- [ ] High contrast follows `QStyleHints.accessibility.contrastPreference`
+  (6.10) as well as Kirigami; KDE's portal has no contrast key.
+- [ ] Dialogs and popups have a transient parent (xdg-dialog-v1 needs it on
+  KWin) and windows set their icon (xdg-toplevel-icon-v1).
+- [ ] At 1.25x and 1.5x (PassThrough rounding), 1 px separators and borders
+  snap to device pixels: check the goldens at `QT_SCALE_FACTOR=1.5`.
+- [ ] `lcheck` on `ui/translations/*.ts` in CI.
+- [ ] InfoBanner covers the four severities (colour, icon and accessible
+  role together) and one action, like WinUI's InfoBar.
+
+Candidates for 1.6.0 (new API; the scope is the user's call):
+
+- Form, FormGroup and FormEntry that wrap any control with label, help,
+  `errorText`, validators and a form-level `valid` (Kirigami Forms), read
+  through attached properties.
+- Settings rows that save themselves (`settingKey` bound to AtlasSettings)
+  in a searchable preferences dialog (libadwaita).
+- An action registry: AtlasActions declared once feed menus, the command
+  palette, AtlasShortcutsDialog and hover shortcut hints (KDE
+  ActionCollection).
+- A `status` (loading, empty, error, no results, ready) on AtlasListView,
+  DataTable and AtlasPage that shows AtlasEmptyState or AtlasSpinner.
+- An adaptive scaffold on `widthClass`: sidebar or tab bar, split or stack.
+- `toast(text, {action})` with a queue, and `confirm()` with a callback.
+- Token-only lint for apps (no raw colours, durations or radii).
+- A GlobalShortcuts portal wrapper (KDE: active only after BindShortcuts).
+- An app preview runner over the golden matrix (light, dark, accent, RTL,
+  text 200 %, compact).
+- `popupType: Popup.Window` for menus, the command palette and tooltips
+  (test on KWin); RectangularShadow for card shadows.
+- Crates: cxx-qt 0.10 on a branch; one async helper (tokio thread,
+  `queue(...).ok()`, cancellation and timeouts); portal Settings
+  (color-scheme, accent, contrast, reduced motion) in one place; crash
+  minidumps out of process with signature dedupe; settings watched by
+  directory with `schema_version` migrations.
+- Qt 6.12 (released 2026-09-30) once Fedora ships it: `motionPreference`,
+  hot reload with `qt_add_qml_preview()`, ToolTip `policy`, MenuItem
+  shortcuts. Qt's Rust bridge (beta) is not a fit while the crates mix Rust
+  and C++.
 
 ### B1: bugs other apps reported
 
@@ -477,6 +538,10 @@ that lands, then go in one batch.
   `busy` stuck; the notifyrc icon doesn't exist; main.cpp redeclares
   `atlas_app_run` instead of including atlas/app.h; no CI workflow; StackView
   with no Esc or reduced motion (AtlasNavigationStack exists).
+- [ ] Low: building the template prints a CMake warning that the qml plugin
+  target `atlasui` doesn't exist (the installed qmldir's plugin is matched
+  against a CMake target); check whether the qmldir's `linktarget` or the
+  spec's CMake config should provide it, or silence it in the template.
 
 ### S-phase notes (from the studies; handled in the S pass)
 
@@ -505,6 +570,11 @@ that lands, then go in one batch.
   `variableAxes` per row and `Symbols::names()`.
 - TabBar builds every tab (cacheBuffer) so it scrolls by real widths: measure
   restoring 300+ tabs.
+- AtlasEdgeGlow under software rendering costs Atlas Updater 40 to 145 %
+  of a core: draw it static or at 15 to 30 fps when the renderer is
+  software or llvmpipe (`GL_RENDERER`), never animate the full window.
+- Atlas Monitor's RSS figures on 1.4.0 (sent by the Monitor session):
+  compare after the per-instance work.
 - AtlasEdgeGlow repaints every frame while active (160 Hz); AtlasStyle's
   hidden probe Window at startup; AtlasSidebar `entries()` per drag move;
   AtlasToolbar fit O(n²); AtlasInstallButton's hidden shimmer; AtlasChipGroup
