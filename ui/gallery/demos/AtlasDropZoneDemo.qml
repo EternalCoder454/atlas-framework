@@ -18,33 +18,38 @@ Item {
         opacity: 0.6
     }
 
-    ColumnLayout {
+    // Two columns: four zones stacked are taller than the test window.
+    GridLayout {
         id: layout
         anchors.centerIn: parent
-        spacing: Kirigami.Units.largeSpacing
+        columns: 2
+        flow: GridLayout.TopToBottom
+        rows: 4
+        rowSpacing: Kirigami.Units.largeSpacing
+        columnSpacing: Kirigami.Units.gridUnit
 
         Caption { text: "Idle, with Browse" }
         AtlasDropZone {
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 24
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 18
             subtitle: qsTr("PNG or JPEG images")
             browseText: qsTr("Browse…")
             nameFilters: ["*.png", "*.jpg"]
         }
         Caption { text: "A drag over it" }
         AtlasDropZone {
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 24
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 18
             subtitle: qsTr("PNG or JPEG images")
             _forceHover: true
         }
         Caption { text: "A drag it can't accept" }
         AtlasDropZone {
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 24
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 18
             subtitle: qsTr("PNG or JPEG images")
             _forceReject: true
         }
         Caption { text: "Disabled" }
         AtlasDropZone {
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 24
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 18
             enabled: false
             symbol: Symbols.FolderOpen
             text: qsTr("Drop a folder here")
