@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A small pill for a tag, a filter or a value. Plain (just `text`), checkable
+// A small chip for a tag, a filter or a value. Plain (just `text`), checkable
 // (a filter: the checked chip has the selection fill, an accent border and a
 // check mark instead of its symbol, and is a full pill, while an unchecked one
 // is a rounded rectangle of radiusLarge, 8 px) and/or `closable` (an x button, or Delete/Backspace while the

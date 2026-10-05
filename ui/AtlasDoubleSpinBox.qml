@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// AtlasSpinBox for numbers with decimals: the same pill with a minus and a
+// AtlasSpinBox for numbers with decimals: the same field with a minus and a
 // plus button, `prefix`, `suffix` and `showButtons`, and the same keys (Up/Down,
 // PageUp/PageDown for ten steps, the wheel). `from`, `to`, `value`, `stepSize`
 // and `editable` are reals, `decimals` (default 2) says how many digits follow
