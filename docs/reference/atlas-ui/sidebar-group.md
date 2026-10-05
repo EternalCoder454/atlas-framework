@@ -25,11 +25,14 @@ SidebarGroup {
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `badge` | `string` | `""` | An icon name flagging the group, like `SidebarItem.badge`. In a compact sidebar it sits on the icon's corner. Since 1.5.0. |
+| `badgeText` | `string` | `""` | What the badge means, for screen readers and the compact tooltip. Since 1.5.0. |
 | `compact` | `bool` | `false` | Icon only; follows `AtlasSidebar.compact` when inside an `AtlasSidebar`. |
 | `expanded` | `bool` | `true` | Whether the sub-entries are shown. |
 | `holdsSelection` | `bool` (read-only) | — | True when one of the entries is selected. |
 | `iconName` | `string` | `""` | The header's icon name. |
 | `items` | `list<Item>` (read-only) | — | The default property: the sub-entries. |
+| `symbol` | `int` (a `Symbols.<Name>` value) | `0` | A Material Symbol for the header, like `SidebarItem.symbol`; it wins over `iconName` and fills while the header is selected. See [Symbols](symbols.md). Since 1.5.0. |
 | `text` | `string` | `""` | The header's title. |
 | `tintIcon` | `bool` | `true` | Tints a monochrome icon with the accent; false keeps a coloured icon as is. |
 | `value` | `string` | `""` | A live value shown dimmed at the right of the header; hidden when compact. |
