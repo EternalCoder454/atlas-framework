@@ -127,6 +127,10 @@ Item {
                         interval: 50
                         repeat: true
                         running: root.indeterminate && root.status !== "paused" && root.visible && root.animated && AtlasStyle.duration > 0 && AtlasStyle.softwareRendering
+                        // Start where the slider is, not at the left edge.
+                        onRunningChanged: if (running) {
+                            cycle = Math.min(1, Math.max(0, slider.x / Math.max(1, track.width - slider.width))) / 2;
+                        }
                         onTriggered: {
                             cycle = (cycle + interval / (AtlasStyle.durationLong * 4)) % 1;
                             slider.x = Math.max(0, track.width - slider.width) * (cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2);

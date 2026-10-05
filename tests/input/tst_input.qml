@@ -215,9 +215,9 @@ Item {
         when: windowShown
 
         // The shimmer is a gradient band over a flat fill: it must show as
-        // different pixels along the fill, also on the software renderer. (The
-        // input test sets ATLAS_SOFTWARE_RENDERING=0: with the flag on, the
-        // shimmer is hidden on purpose.)
+        // different pixels along the fill. (run-variant.sh sets
+        // ATLAS_SOFTWARE_RENDERING=0: with the flag on, the shimmer is hidden
+        // on purpose.)
         function distinctAlongFill(item) {
             const img = grabImage(item);
             const y = Math.round(item.height / 2);

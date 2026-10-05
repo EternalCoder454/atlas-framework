@@ -23,6 +23,7 @@
 #include <QPalette>
 #include <QStyleHints>
 #include <QtGlobal>
+#include <atomic>
 #include <memory>
 
 namespace
@@ -181,7 +182,7 @@ bool Appearance::eventFilter(QObject *watched, QEvent *event)
 
 bool Appearance::isSoftwareRasterizer(const QString &deviceName)
 {
-    for (const QLatin1String name : {QLatin1String("llvmpipe"), QLatin1String("softpipe"), QLatin1String("swiftshader"), QLatin1String("lavapipe")}) {
+    for (const QLatin1String name : {QLatin1String("llvmpipe"), QLatin1String("softpipe"), QLatin1String("swiftshader"), QLatin1String("lavapipe"), QLatin1String("software rasterizer")}) {
         if (deviceName.contains(name, Qt::CaseInsensitive)) {
             return true;
         }
@@ -189,65 +190,112 @@ bool Appearance::isSoftwareRasterizer(const QString &deviceName)
     return false;
 }
 
-// The rendering mode is known on the first frame: the GL renderer string is
-// only readable on the render thread, with the context current. So the first
-// beforeRendering reads everything it needs into plain values and queues them
-// to this thread; nothing of this object is touched over there.
+std::optional<bool> Appearance::decideRendering(int api, const QString &glRenderer, const QString &vulkanDevice)
+{
+    switch (api) {
+    case QSGRendererInterface::Software:
+        return true;
+    case QSGRendererInterface::OpenGL:
+        // An empty string is a failed probe, not "hardware".
+        return glRenderer.isEmpty() ? std::nullopt : std::optional<bool>(isSoftwareRasterizer(glRenderer));
+    case QSGRendererInterface::Vulkan:
+        return vulkanDevice.isEmpty() ? std::nullopt : std::optional<bool>(isSoftwareRasterizer(vulkanDevice));
+    case QSGRendererInterface::Unknown:
+        return std::nullopt;
+    default:
+        return false; // Metal, Direct3D: no software variant to tell apart here
+    }
+}
+
+namespace {
+// How many frames the probe may fail before it settles on "not software".
+constexpr int kMaxProbeFrames = 10;
+
+// Shared by the render thread and the GUI thread: atomics only.
+struct ProbeState {
+    std::atomic_bool resolved{false};
+    std::atomic_int frames{0};
+};
+}
+
+// The rendering mode is known on the first frames: the GL renderer string is
+// only readable on the render thread, with the context current. So
+// beforeRendering reads what it needs into plain values and queues them to the
+// GUI thread; nothing of this object is touched over there. A probe that finds
+// nothing (no context yet, an empty string) is retried on the next frames, and
+// gives up after kMaxProbeFrames.
 void Appearance::watchWindow(QQuickWindow *window)
 {
-    if (m_renderingKnown) {
+    if (m_renderingKnown || m_probes.contains(window)) {
         return;
     }
-    // Show comes again on every show: connect once per window.
-    if (window->property("_atlasRenderingWatched").toBool()) {
-        return;
-    }
-    window->setProperty("_atlasRenderingWatched", true);
-    auto connection = std::make_shared<QMetaObject::Connection>();
+    auto state = std::make_shared<ProbeState>();
     QPointer<Appearance> self(this);
-    *connection = connect(window, &QQuickWindow::beforeRendering, window, [self, window, connection] {
-        QObject::disconnect(*connection); // once
+    auto report = [self, window](std::optional<bool> result, int api, QString device) {
+        // Queued to the GUI thread, with the window as the context object: a
+        // window that is gone drops the call.
+        QMetaObject::invokeMethod(window, [self, result, api, device] {
+            if (self) {
+                self->applyRendering(result, api, device);
+            }
+        }, Qt::QueuedConnection);
+    };
+    const QMetaObject::Connection connection = connect(window, &QQuickWindow::beforeRendering, window, [state, report, window] {
+        if (state->resolved.load(std::memory_order_relaxed)) {
+            return;
+        }
+        int api = QSGRendererInterface::Unknown;
+        QString gl;
+        QString vulkan;
         bool software = window->sceneGraphBackend() == QLatin1String("software");
-        QString device;
         if (QSGRendererInterface *ri = window->rendererInterface()) {
-            software = software || ri->graphicsApi() == QSGRendererInterface::Software;
-            if (ri->graphicsApi() == QSGRendererInterface::OpenGL) {
+            api = ri->graphicsApi();
+            if (api == QSGRendererInterface::OpenGL) {
                 if (QOpenGLContext *context = QOpenGLContext::currentContext()) {
                     if (const GLubyte *renderer = context->functions()->glGetString(GL_RENDERER)) {
-                        device = QString::fromLatin1(reinterpret_cast<const char *>(renderer));
+                        gl = QString::fromLatin1(reinterpret_cast<const char *>(renderer));
                     }
                 }
             }
 #if QT_CONFIG(vulkan)
-            else if (ri->graphicsApi() == QSGRendererInterface::Vulkan && window->vulkanInstance()) {
+            else if (api == QSGRendererInterface::Vulkan && window->vulkanInstance()) {
                 const void *resource = ri->getResource(window, QSGRendererInterface::PhysicalDeviceResource);
                 QVulkanFunctions *functions = window->vulkanInstance()->functions();
                 if (resource && functions) {
                     VkPhysicalDeviceProperties properties = {};
                     functions->vkGetPhysicalDeviceProperties(*static_cast<const VkPhysicalDevice *>(resource), &properties);
-                    device = QString::fromUtf8(properties.deviceName);
+                    vulkan = QString::fromUtf8(properties.deviceName);
                 }
             }
 #endif
         }
-        software = software || isSoftwareRasterizer(device);
-        if (self) {
-            QMetaObject::invokeMethod(self.data(), [self, software] {
-                if (self) {
-                    self->applyRendering(software);
-                }
-            }, Qt::QueuedConnection);
+        std::optional<bool> result = software ? std::optional<bool>(true) : decideRendering(api, gl, vulkan);
+        const QString device = api == QSGRendererInterface::Vulkan ? vulkan : gl;
+        if (!result && state->frames.fetch_add(1) + 1 < kMaxProbeFrames) {
+            return; // unknown: try again next frame
+        }
+        if (!state->resolved.exchange(true)) {
+            report(result, api, device);
         }
     }, Qt::DirectConnection);
+    m_probes.insert(window, connection);
+    connect(window, &QObject::destroyed, this, [this, window] { m_probes.remove(window); });
 }
 
-// GUI thread only.
-void Appearance::applyRendering(bool software)
+// GUI thread only. `result` is empty when the probe gave up.
+void Appearance::applyRendering(std::optional<bool> result, int api, const QString &device)
 {
     if (m_renderingKnown) {
         return;
     }
     m_renderingKnown = true;
+    for (auto it = m_probes.begin(); it != m_probes.end(); ++it) {
+        QObject::disconnect(it.value());
+    }
+    m_probes.clear();
+    qInfo("Atlas.Ui: graphics API %d, device \"%s\": software rendering %s", api, device.toUtf8().constData(),
+          result ? (*result ? "yes" : "no") : "unknown (probe failed, assuming no)");
+    const bool software = result.value_or(false);
     if (software != m_softwareRendering) {
         m_softwareRendering = software;
         Q_EMIT softwareRenderingChanged();

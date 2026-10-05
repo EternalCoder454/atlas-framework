@@ -47,11 +47,14 @@
 #include <KSharedConfig>
 
 #include <QFont>
+#include <QHash>
 #include <QObject>
 #include <QPointer>
 #include <QQuickWindow>
 #include <QWindow>
 #include <QtQml/qqmlregistration.h>
+
+#include <optional>
 
 class Appearance : public QObject
 {
@@ -99,6 +102,10 @@ public:
 
     // True when a GL_RENDERER or Vulkan device name is a software rasterizer.
     static bool isSoftwareRasterizer(const QString &deviceName);
+    // The probe's decision from the graphics API (a QSGRendererInterface::
+    // GraphicsApi), the GL_RENDERER string and the Vulkan device name: empty
+    // while the answer is unknown (no usable string yet).
+    static std::optional<bool> decideRendering(int api, const QString &glRenderer, const QString &vulkanDevice);
 
     // Ask the compositor again whether blur is on.
     Q_INVOKABLE void refresh();
@@ -125,7 +132,7 @@ private:
     void readSystem();
     void readMotion();
     void watchWindow(QQuickWindow *window);
-    void applyRendering(bool software);
+    void applyRendering(std::optional<bool> result, int api, const QString &device);
 
     QPointer<PortalAppearance> m_portal;
     KSharedConfig::Ptr m_globals;
@@ -137,6 +144,8 @@ private:
     bool m_softwareRendering = false;
     // The environment forced the value, or the first window has been checked.
     bool m_renderingKnown = false;
+    // Windows whose first frames are being probed, with their connection.
+    QHash<QQuickWindow *, QMetaObject::Connection> m_probes;
     qreal m_textScale = 1.0;
 
     KSharedConfig::Ptr m_config;

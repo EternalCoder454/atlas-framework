@@ -134,7 +134,7 @@ add_test(NAME input
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
 set_tests_properties(input PROPERTIES
     TIMEOUT 120
-    ENVIRONMENT "ATLAS_SOFTWARE_RENDERING=0;ATLAS_TEST_BIN=$<TARGET_FILE:atlas-input-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/input-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-input-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/input-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
 # The translation test: a throwaway atlas-ui_de.qm (tests/i18n) in a directory
 # of its own, found through ATLAS_UI_TRANSLATIONS_DIR (development builds only).
@@ -300,7 +300,7 @@ add_test(NAME window
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
 set_tests_properties(window PROPERTIES
     TIMEOUT 120
-    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-window-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/window-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+    ENVIRONMENT "ATLAS_SOFTWARE_RENDERING=;ATLAS_TEST_BIN=$<TARGET_FILE:atlas-window-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/window-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
 # No test may reach a real desktop portal: Appearance and AccessibilityState
 # read the portal's settings from the session bus, so every test runs with the

@@ -5,6 +5,7 @@
 #include <QFont>
 #include <QGuiApplication>
 #include <QRegularExpression>
+#include <QSGRendererInterface>
 #include <QtTest>
 
 class TestAppearance : public QObject
@@ -65,7 +66,26 @@ private Q_SLOTS:
         QVERIFY(Appearance::isSoftwareRasterizer("SwiftShader Device (Subzero)"));
         QVERIFY(Appearance::isSoftwareRasterizer("Lavapipe"));
         QVERIFY(!Appearance::isSoftwareRasterizer("AMD Radeon RX 7900 XTX (radeonsi, navi31)"));
+        QVERIFY(Appearance::isSoftwareRasterizer("Mesa Software Rasterizer"));
+        QVERIFY(!Appearance::isSoftwareRasterizer("AMD Radeon RX 7900 XTX (radeonsi, navi31)"));
         QVERIFY(!Appearance::isSoftwareRasterizer(QString()));
+    }
+
+    // The probe's decision: a failed probe (empty string) is "unknown", never
+    // "hardware".
+    void probeDecision()
+    {
+        using A = QSGRendererInterface;
+        const QString hardware = QStringLiteral("AMD Radeon RX 7900 XTX (radeonsi, navi31)");
+        QCOMPARE(Appearance::decideRendering(A::Software, QString(), QString()), std::optional<bool>(true));
+        QCOMPARE(Appearance::decideRendering(A::OpenGL, "llvmpipe (LLVM 19, 256 bits)", QString()), std::optional<bool>(true));
+        QCOMPARE(Appearance::decideRendering(A::OpenGL, "Software Rasterizer", QString()), std::optional<bool>(true));
+        QCOMPARE(Appearance::decideRendering(A::OpenGL, hardware, QString()), std::optional<bool>(false));
+        QCOMPARE(Appearance::decideRendering(A::OpenGL, QString(), QString()), std::optional<bool>());
+        QCOMPARE(Appearance::decideRendering(A::Vulkan, QString(), "llvmpipe (LLVM 19)"), std::optional<bool>(true));
+        QCOMPARE(Appearance::decideRendering(A::Vulkan, QString(), hardware), std::optional<bool>(false));
+        QCOMPARE(Appearance::decideRendering(A::Vulkan, hardware, QString()), std::optional<bool>());
+        QCOMPARE(Appearance::decideRendering(A::Unknown, hardware, hardware), std::optional<bool>());
     }
 };
 
