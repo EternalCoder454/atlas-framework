@@ -1,11 +1,11 @@
 ---
 title: AtlasSlider
-summary: A slider with a thin accent pill track and a knob, horizontal or vertical, with Page Up, Page Down, Home and End keys.
+summary: A slider with a thin accent track with round ends and a knob, horizontal or vertical, with Page Up, Page Down, Home and End keys.
 section: Fields and pickers
 since: "1.3.0"
 ---
 
-A slider: a thin pill track filled with the accent up to a knob in the theme's background colour. It can be vertical. For a whole number with typing, see [AtlasSpinBox](atlas-spin-box.md).
+A slider: a thin track with round ends filled with the accent up to a knob in the theme's background colour. It can be vertical. For a whole number with typing, see [AtlasSpinBox](atlas-spin-box.md).
 
 AtlasSlider is a Qt Quick Controls [`Slider`](https://doc.qt.io/qt-6/qml-qtquick-templates-slider.html); `from`, `to`, `value`, `stepSize`, `orientation` and `moved` work as usual.
 

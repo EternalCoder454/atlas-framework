@@ -5,7 +5,7 @@ section: Windows and pages
 since: "1.4.0"
 ---
 
-AtlasWindowButtons draws the window buttons as 32 px cells with a 26 px rounded square, as the AtlasOS KWin decoration does. Hover tints the square with the accent and close turns red. [AtlasHeaderBar](atlas-header-bar.md) places two of these in KWin's left and right button layout; use one on its own to build a custom title bar. The colours come from the Header colour set, so a scheme other than AtlasOS's still works.
+AtlasWindowButtons draws the window buttons as 32 px cells with a 26 px rounded square, as the AtlasOS KWin decoration does. Hover tints the square with the highlight colour and close turns red. [AtlasHeaderBar](atlas-header-bar.md) places two of these in KWin's left and right button layout; use one on its own to build a custom title bar. The colours come from the Header colour set, so a scheme other than AtlasOS's still works.
 
 AtlasWindowButtons is a `Row`. A click minimises, maximises or restores, or closes the window the item is in.
 
