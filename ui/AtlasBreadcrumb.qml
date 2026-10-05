@@ -30,7 +30,7 @@ T.Control {
     property var segments: []
     readonly property int count: control.segments ? control.segments.length : 0
 
-    // The title of the menu behind the "…" crumb, and its accessible name.
+    // See docs/reference/atlas-ui/atlas-breadcrumb.md.
     property string hiddenText: qsTr("Hidden folders")
 
     signal activated(int index)

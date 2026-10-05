@@ -27,8 +27,7 @@ Item {
     property bool wrap: false
     property bool showCopy: false
     property bool lineNumbers: false
-    // Room at the leading and trailing edge of an unframed view, as much as a
-    // SectionRow's text has. A framed view has it already.
+    // See docs/reference/atlas-ui/atlas-code-view.md.
     property bool inset: false
 
     // True once the mouse pressed in the view: the focus ring is for the keyboard.

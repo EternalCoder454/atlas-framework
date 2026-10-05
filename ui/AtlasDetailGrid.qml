@@ -20,11 +20,7 @@ import org.kde.kirigami as Kirigami
 //       ]
 //   }
 //
-// `columns` is how many label/value pairs sit in a row (default 1). A column
-// needs `columnsBreakpoint` grid units (default 20): below that the label
-// stacks over its value, and a grid with `columns` > 1 shows fewer pairs per
-// row, as many as fit. Give it a width (fill it): its height depends on it.
-// A screen reader reads each value as "label: value".
+// See docs/reference/atlas-ui/atlas-detail-grid.md.
 Item {
     id: grid
 
@@ -32,13 +28,12 @@ Item {
     property int columns: 1
     // The least width of one pair, in grid units.
     property real columnsBreakpoint: 20
-    // A heading above the grid, and a muted note below it. Plain text.
     property string title
     property string footer
-    // Draws the card a Section has round the grid.
     property bool framed: false
 
-    readonly property int _count: Array.isArray(model) ? model.length : 0
+    // A list from C++ (a QVariantList) is not a JS array but has a length.
+    readonly property int _count: model !== null && typeof model === "object" && Number.isInteger(model.length) ? model.length : 0
     // Room the card takes on each side of the grid inside it.
     readonly property real _padX: framed ? AtlasStyle.spacingLarge : 0
     readonly property real _padY: framed ? AtlasStyle.spacing : 0
@@ -51,8 +46,9 @@ Item {
     implicitWidth: layout.implicitWidth + _padX * 2
     opacity: enabled ? 1 : 0.6
 
-    // A group for screen readers: named by the title, described by the footer.
-    Accessible.role: Accessible.Grouping
+    // A group only when there is a title or a footer to name it by: a plain
+    // grid adds no node of its own, as in 1.4.0.
+    Accessible.role: grid.title.length > 0 || grid.footer.length > 0 ? Accessible.Grouping : Accessible.NoRole
     Accessible.name: grid.title
     Accessible.description: grid.footer
 
@@ -76,6 +72,8 @@ Item {
         }
 
         Rectangle {
+            // No card and no gap round a grid with nothing to show.
+            visible: grid._count > 0
             Layout.fillWidth: true
             implicitHeight: layout.implicitHeight + grid._padY * 2 + (grid.framed ? 2 : 0)
             radius: AtlasStyle.radius
