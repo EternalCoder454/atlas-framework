@@ -58,7 +58,7 @@ FocusScope {
     readonly property Item _control: host.children.length > 0 ? host.children[0] : null
     readonly property bool _isEmpty: entry._emptyOf(entry._control)
     readonly property bool _missing: entry.required && entry._isEmpty
-    readonly property bool _unacceptable: !entry._isEmpty && entry._control !== null && entry._control["acceptableInput"] === false
+    readonly property bool _unacceptable: !entry._isEmpty && entry._control !== null && entry._untyped(entry._control)["acceptableInput"] === false
     readonly property bool _autoStacked: entry._narrow || (entry._control !== null && entry._control.implicitHeight > AtlasStyle.controlHeight * 2.5)
     // Narrow: below 22 grid units, and not wide again until 24 (no flapping at
     // the threshold).
@@ -247,7 +247,7 @@ FocusScope {
     }
 
     function _ensureVisible(): void {
-        let f = entry.parent;
+        let f = entry._untyped(entry.parent);
         while (f && !(f.contentY !== undefined && f.contentHeight !== undefined && f.flickableDirection !== undefined)) {
             f = f.parent;
         }
@@ -272,8 +272,14 @@ FocusScope {
         return false;
     }
 
+    // The controls and views an entry meets are any type; their members are
+    // looked up at run time.
+    function _untyped(o: var): var {
+        return o;
+    }
+
     function _findForm(): var {
-        for (let p = entry.parent; p; p = p.parent) {
+        for (let p = entry._untyped(entry.parent); p; p = p.parent) {
             if (p._isAtlasForm === true) {
                 return p;
             }
@@ -283,7 +289,7 @@ FocusScope {
 
     // A combo box's list takes the focus while it is open; that is not leaving.
     function _popupOpen(): bool {
-        const c = entry._control;
+        const c = entry._untyped(entry._control);
         return c !== null && c["popup"] !== undefined && c["popup"] !== null && c["popup"].visible === true;
     }
 
@@ -378,7 +384,7 @@ FocusScope {
 
     // Names the control for a screen reader, and connects what saves its edits.
     function _attach(): void {
-        const c = entry._control;
+        const c = entry._untyped(entry._control);
         if (entry._wiredTo === c) {
             return;
         }
@@ -447,7 +453,7 @@ FocusScope {
     // Return in a field whose text is not acceptable never reaches its
     // `accepted`, so show the errors from here.
     function _returnKey(event: var): void {
-        const c = entry._control;
+        const c = entry._untyped(entry._control);
         if (c && c["echoMode"] !== undefined && c["acceptableInput"] === false && !event.isAutoRepeat) {
             entry._returned();
         }
@@ -740,7 +746,7 @@ FocusScope {
         width: entry._controlRect.width
         height: entry._controlRect.height
         z: 10
-        visible: entry.shownError.length > 0 && entry._control !== null && entry._control.visible && entry._control.width > 0 && entry._control["hasError"] !== true
+        visible: entry.shownError.length > 0 && entry._control !== null && entry._control.visible && entry._control.width > 0 && entry._untyped(entry._control)["hasError"] !== true
         radius: AtlasStyle.radiusSmall
         color: "transparent"
         border.width: 1
