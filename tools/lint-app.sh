@@ -22,6 +22,8 @@
 #             (InfoBanner); and every name in tools/deprecated.txt
 #             (`Name<TAB>since<TAB>replacement`; ATLAS_LINT_DEPRECATED names
 #             another list).
+#             AtlasPortal.notify(...) with `markup: true` whose body is not a
+#             literal and does not go through AtlasPortal.escape().
 # A finding is silenced by `// atlas-lint: allow <reason>` on its line or the
 # line before.
 set -uo pipefail
@@ -159,6 +161,23 @@ END {
         }
         if (s ~ /(^|[^A-Za-z0-9_])AtlasTextField[ \t]*\{/ && setsOwn(nr, PASSWORD)) report(nr, "warning", "AtlasTextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
         if (s ~ /(^|[^A-Za-z0-9_])AtlasPasswordField[ \t]*\{/ && setsOwn(nr, MASKING)) report(nr, "warning", "AtlasPasswordField sets echoMode or inputMethodHints", ": it sets both itself; yours can show the password or let the keyboard remember it")
+        if (s ~ /(^|[^A-Za-z0-9_])AtlasPortal\.notify[ \t]*\(/) {
+            # The whole call (up to 12 lines, until its parentheses close).
+            call = ""; depth = 0
+            for (i = nr; i <= NR && i < nr + 12; i++) {
+                l = lines[i]
+                call = call " " l
+                depth += gsub(/\(/, "(", l) - gsub(/\)/, ")", l)
+                if (depth <= 0) break
+            }
+            if (call ~ /markup[ \t]*:[ \t]*true/ && call !~ /AtlasPortal\.escape[ \t]*\(/) {
+                t = call
+                sub(/^.*AtlasPortal\.notify[ \t]*\(/, "", t)
+                gsub(/"[^"]*"/, "S", t); gsub(/qsTr[ \t]*\([ \t]*S[ \t]*\)/, "S", t)
+                if (t !~ /^[ \t]*S[ \t]*,[ \t]*S[ \t]*[,)]/)
+                    report(nr, "warning", "AtlasPortal.notify with markup: true and a body that is not escaped", ": pass the body through AtlasPortal.escape(), or drop markup (the body is plain text by default)")
+            }
+        }
     }
     exit (errors > 0 ? 1 : 0)
 }

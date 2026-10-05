@@ -92,6 +92,29 @@ private Q_SLOTS:
         junk.write("not a png");
         junk.close();
         QVERIFY(!board.setImage(QUrl::fromLocalFile(junk.fileName())));
+
+        // svg is not on the list of formats, whatever its name says.
+        QFile svg(dir.filePath(QStringLiteral("pic.png")));
+        QVERIFY(svg.open(QIODevice::WriteOnly));
+        svg.write("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"4\" height=\"4\"><rect width=\"4\" height=\"4\"/></svg>");
+        svg.close();
+        QVERIFY(!board.setImage(QUrl::fromLocalFile(svg.fileName())));
+    }
+
+    void imageFormatsAllowed()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QImage image(3, 3, QImage::Format_ARGB32);
+        image.fill(Qt::red);
+        AtlasClipboard board;
+        for (const char *format : {"png", "jpg", "bmp", "gif"}) {
+            const QString path = dir.filePath(QStringLiteral("p.") + QLatin1String(format));
+            if (!image.save(path)) {
+                continue; // plugin not built in
+            }
+            QVERIFY2(board.setImage(path), format);
+        }
     }
 };
 

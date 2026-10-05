@@ -12,6 +12,9 @@
 #include <QDesktopServices>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QMimeDatabase>
+#include <QMimeType>
+#include <QUrlQuery>
 #include <QRegularExpression>
 
 namespace
@@ -36,6 +39,76 @@ bool hasControl(const QString &s)
         }
     }
     return false;
+}
+
+// A control character in any part of the URL, after percent-decoding (toString
+// keeps %0A encoded, so the parts are decoded one by one).
+bool urlHasControl(const QUrl &url)
+{
+    const QUrl::ComponentFormattingOption f = QUrl::FullyDecoded;
+    return hasControl(url.userName(f)) || hasControl(url.password(f)) || hasControl(url.host(f)) || hasControl(url.path(f)) || hasControl(url.query(f)) || hasControl(url.fragment(f))
+        || hasControl(url.toString());
+}
+
+// Content types that run code (or are launchers) when "opened": never handed
+// to the desktop.
+bool runsCode(const QMimeType &type)
+{
+    static const QStringList names = {
+        QStringLiteral("application/x-desktop"),         QStringLiteral("application/x-executable"),   QStringLiteral("application/x-sharedlib"),
+        QStringLiteral("application/x-shellscript"),     QStringLiteral("application/x-pie-executable"), QStringLiteral("application/vnd.appimage"),
+        QStringLiteral("application/x-ms-dos-executable"), QStringLiteral("application/x-msdownload"),  QStringLiteral("application/x-dosexec"),
+        QStringLiteral("application/x-perl"),            QStringLiteral("application/x-python"),       QStringLiteral("application/x-python3"),
+        QStringLiteral("text/x-python"),                 QStringLiteral("text/x-python3"),             QStringLiteral("text/x-script"),
+        QStringLiteral("application/x-java-archive"),    QStringLiteral("application/x-ruby"),         QStringLiteral("application/x-php"),
+        QStringLiteral("application/x-msi"),             QStringLiteral("application/x-bat"),          QStringLiteral("application/x-executable-script"),
+    };
+    for (const QString &n : names) {
+        if (type.inherits(n)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// The real file behind `file` (symlinks resolved) must exist, be a directory
+// or a regular file with no execute bit, and by content not be a program or
+// a launcher; a link named .txt that points at a .desktop file is a .desktop
+// file.
+bool fileOpenable(const QString &file, QString *why)
+{
+    const auto no = [why](const QString &reason) {
+        if (why) {
+            *why = reason;
+        }
+        return false;
+    };
+    if (file.contains(QChar(0)) || hasControl(file)) {
+        return no(QStringLiteral("no such file"));
+    }
+    const QString real = QFileInfo(file).canonicalFilePath();
+    if (real.isEmpty()) {
+        return no(QStringLiteral("no such file"));
+    }
+    if (file.endsWith(QLatin1String(".desktop"), Qt::CaseInsensitive) || real.endsWith(QLatin1String(".desktop"), Qt::CaseInsensitive)) {
+        return no(QStringLiteral("a desktop file would run a program"));
+    }
+    const QFileInfo info(real);
+    if (info.isDir()) {
+        return true;
+    }
+    // Not a pipe, socket or device: sniffing the content could block.
+    if (!info.isFile()) {
+        return no(QStringLiteral("not a regular file or directory"));
+    }
+    if (info.permissions() & (QFileDevice::ExeOwner | QFileDevice::ExeGroup | QFileDevice::ExeOther)) {
+        return no(QStringLiteral("an executable file would run a program"));
+    }
+    const QMimeType type = QMimeDatabase().mimeTypeForFile(real, QMimeDatabase::MatchContent);
+    if (runsCode(type)) {
+        return no(QStringLiteral("a %1 file would run a program").arg(type.name()));
+    }
+    return true;
 }
 }
 
@@ -77,7 +150,7 @@ bool AtlasPortal::isOpenable(const QUrl &url, const QStringList &extraSchemes, Q
         return no(QStringLiteral("not a valid URL"));
     }
     const QString text = url.toString(QUrl::FullyEncoded);
-    if (text.size() > kMaxUrlLength || hasControl(url.toString())) {
+    if (text.size() > kMaxUrlLength || urlHasControl(url)) {
         return no(QStringLiteral("too long, or has control characters"));
     }
     const QString scheme = url.scheme().toLower();
@@ -91,19 +164,34 @@ bool AtlasPortal::isOpenable(const QUrl &url, const QStringList &extraSchemes, Q
         if (!url.isLocalFile()) {
             return no(QStringLiteral("not a local file"));
         }
-        const QString file = url.toLocalFile();
-        if (file.contains(QChar(0)) || !QFileInfo::exists(file)) {
-            return no(QStringLiteral("no such file"));
-        }
-        if (file.endsWith(QLatin1String(".desktop"), Qt::CaseInsensitive)) {
-            return no(QStringLiteral("a desktop file would run a program"));
-        }
-        return true;
+        return fileOpenable(url.toLocalFile(), why);
     }
     if (!scheme.isEmpty() && extraSchemes.contains(scheme)) {
         return true;
     }
     return no(QStringLiteral("scheme %1 is not allowed").arg(scheme.isEmpty() ? QStringLiteral("(none)") : scheme));
+}
+
+QUrl AtlasPortal::cleanMailto(const QUrl &url, QStringList *dropped)
+{
+    if (url.scheme().toLower() != QLatin1String("mailto")) {
+        return url;
+    }
+    // Only subject and body: attach, bcc, cc and the rest could leak a file or
+    // copy the mail to someone else.
+    const QUrlQuery in(url);
+    QUrlQuery out;
+    for (const auto &item : in.queryItems(QUrl::FullyDecoded)) {
+        const QString key = item.first.toLower();
+        if ((key == QLatin1String("subject") || key == QLatin1String("body")) && !out.hasQueryItem(key)) {
+            out.addQueryItem(key, item.second);
+        } else if (dropped) {
+            *dropped << item.first.left(40);
+        }
+    }
+    QUrl clean = url;
+    clean.setQuery(out.isEmpty() ? QString() : out.query(QUrl::FullyEncoded), QUrl::StrictMode);
+    return clean;
 }
 
 bool AtlasPortal::openUrl(const QUrl &url)
@@ -113,7 +201,12 @@ bool AtlasPortal::openUrl(const QUrl &url)
         qWarning("AtlasPortal: not opening %s: %s", qPrintable(url.toDisplayString().left(200)), qPrintable(why));
         return false;
     }
-    if (!QDesktopServices::openUrl(url)) {
+    QStringList dropped;
+    const QUrl target = cleanMailto(url, &dropped);
+    if (!dropped.isEmpty()) {
+        qWarning("AtlasPortal: mailto: dropped %s (only subject and body are kept)", qPrintable(dropped.join(QLatin1Char(','))));
+    }
+    if (!QDesktopServices::openUrl(target)) {
         qWarning("AtlasPortal: nothing opened %s", qPrintable(url.toDisplayString().left(200)));
         return false;
     }
@@ -247,6 +340,8 @@ QString AtlasPortal::notify(const QString &title, const QString &body, const QVa
         qWarning("AtlasPortal: notify: the title is empty, or the title or body is too long");
         return QString();
     }
+    // Plain text unless the caller says it escaped the markup itself.
+    const QString shownBody = options.value(QStringLiteral("markup")).toBool() ? body : escape(body);
     QStringList actionList;
     for (const QVariant &a : actions) {
         const QVariantMap m = a.toMap();
@@ -285,7 +380,7 @@ QString AtlasPortal::notify(const QString &title, const QString &body, const QVa
 
     ensureConnected();
     QDBusMessage call = QDBusMessage::createMethodCall(QString::fromLatin1(kService), QString::fromLatin1(kPath), QString::fromLatin1(kInterface), QStringLiteral("Notify"));
-    call << appName << uint(0) << icon << title << body << actionList << hints << timeout;
+    call << appName << uint(0) << icon << title << shownBody << actionList << hints << timeout;
     const QString ourId = QStringLiteral("atlas-notification-%1").arg(++m_counter);
     // Asynchronous: the UI thread never waits for the server.
     auto *watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call, kCallTimeoutMs), this);
@@ -296,10 +391,16 @@ QString AtlasPortal::notify(const QString &title, const QString &body, const QVa
             qWarning("AtlasPortal: notification %s was not shown: %s", qPrintable(eventId), qPrintable(reply.error().message()));
             return;
         }
-        if (m_byServerId.size() >= kMaxTracked) {
-            m_byServerId.erase(m_byServerId.begin());
+        const uint serverId = reply.value();
+        if (m_byServerId.contains(serverId)) {
+            m_order.removeOne(serverId); // the server reused a number
         }
-        m_byServerId.insert(reply.value(), ourId);
+        // The oldest goes first (a QHash has no order, so m_order keeps it).
+        while (m_order.size() >= kMaxTracked) {
+            m_byServerId.remove(m_order.takeFirst());
+        }
+        m_byServerId.insert(serverId, ourId);
+        m_order.append(serverId);
     });
     return ourId;
 }
@@ -315,5 +416,7 @@ void AtlasPortal::onServerAction(uint serverId, const QString &actionKey)
 
 void AtlasPortal::onServerClosed(uint serverId, uint)
 {
-    m_byServerId.remove(serverId);
+    if (m_byServerId.remove(serverId)) {
+        m_order.removeOne(serverId);
+    }
 }

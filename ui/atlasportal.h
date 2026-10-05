@@ -13,8 +13,11 @@
 // openUrl(url) opens a link with the user's default app (QDesktopServices,
 // which goes through the OpenURI portal under Flatpak). It refuses, with a
 // warning in the log and `false`, every URL that is not http or https (with a
-// host), mailto (with an address), or file (a local, existing path, not a
-// .desktop file). An app that really needs another scheme lists it in
+// host), mailto (with an address; only its `subject` and `body` are kept, any
+// other query key such as attach or bcc is dropped and logged), or file (a
+// local path that exists; the real path behind symbolic links is checked, and
+// a program, a launcher or any executable file is refused, by content and not
+// by name; directories are fine). An app that really needs another scheme lists it in
 // `extraSchemes`; the file and host rules still apply to the four above.
 //
 // notify(title, body, actions, options) shows a desktop notification over
@@ -22,7 +25,9 @@
 // was sent: the user turned the event's popup off, or the arguments are bad).
 // It follows the notification rules in docs/DESIGN.md, like the Rust crate's
 // `notify`:
-//  - `body` is markup: escape() what came from outside.
+//  - `body` is plain text: the portal escapes it. `options.markup: true`
+//    says the body is markup the caller has escaped (use escape() on
+//    everything that came from outside); the server shows it as markup.
 //  - `actions` is a list of `{id, text}`; the id "default" is a click on the
 //    notification itself. At most 8, ids of letters, digits and `._-`.
 //  - `options.eventId`: the notifyrc event, camelCase letters and digits
@@ -40,6 +45,7 @@
 #pragma once
 
 #include <QHash>
+#include <QList>
 #include <QObject>
 #include <QStringList>
 #include <QUrl>
@@ -63,12 +69,15 @@ public:
 
     Q_INVOKABLE bool openUrl(const QUrl &url);
     Q_INVOKABLE QString notify(const QString &title, const QString &body, const QVariantList &actions = {}, const QVariantMap &options = {});
-    // `text` safe to put in a notification body (markup characters escaped,
-    // control characters turned into spaces).
+    // `text` safe to put in a notification body with `options.markup: true`
+    // (markup characters escaped, control characters turned into spaces).
     Q_INVOKABLE QString escape(const QString &text) const;
 
     // The rule behind openUrl, without opening anything.
     static bool isOpenable(const QUrl &url, const QStringList &extraSchemes = {}, QString *why = nullptr);
+    // `url` with, for mailto, every query key but subject and body removed
+    // (their names go to `dropped`); any other URL as it is.
+    static QUrl cleanMailto(const QUrl &url, QStringList *dropped = nullptr);
     static bool validEventId(const QString &id);
     static bool validIcon(const QString &icon);
     static bool validActionId(const QString &id);
@@ -89,4 +98,6 @@ private:
     qulonglong m_counter = 0;
     // The server's number for each notification this app sent -> our id.
     QHash<uint, QString> m_byServerId;
+    // The same server ids, oldest first, for eviction.
+    QList<uint> m_order;
 };

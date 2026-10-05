@@ -6,10 +6,14 @@
 #include <QImage>
 #include <QImageReader>
 #include <QMimeData>
+#include <QSet>
 #include <QUrl>
 #include <QtGlobal>
 
 namespace {
+constexpr int kAllocationLimitMb = 256; // Qt's own default
+const QSet<QByteArray> kFormats = {"png", "jpeg", "jpg", "webp", "gif", "bmp"};
+
 // Reads a local image file within the size caps; a null image otherwise.
 QImage loadLocalImage(const QUrl &url)
 {
@@ -27,7 +31,18 @@ QImage loadLocalImage(const QUrl &url)
         qWarning("AtlasClipboard.setImage: file is larger than 64 MB");
         return {};
     }
+    // A global limit of 0 means "no limit": never decode without one.
+    if (QImageReader::allocationLimit() == 0) {
+        QImageReader::setAllocationLimit(kAllocationLimitMb);
+    }
     QImageReader reader(path);
+    // Only the plain picture formats, by content: no svg (it can pull in other
+    // files), no exotic plugins.
+    const QByteArray format = reader.format().toLower();
+    if (!kFormats.contains(format)) {
+        qWarning("AtlasClipboard.setImage: this image format is not accepted (png, jpeg, webp, gif, bmp)");
+        return {};
+    }
     reader.setAutoTransform(true);
     const QSize size = reader.size();
     // Refuse a small file that decodes to a huge picture; an unknown size is
