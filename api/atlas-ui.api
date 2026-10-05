@@ -120,7 +120,7 @@ AtlasButton.enum Variant: Ghost = 3
 AtlasButton.enum Variant: Prominent = 1
 AtlasButton.property accent: QColor [readonly]
 AtlasButton.property busy: bool
-AtlasButton.property maximumWidth: qreal
+AtlasButton.property maximumWidth: double
 AtlasButton.property prominent: bool
 AtlasButton.property symbol: int
 AtlasButton.property textTint: QColor [readonly]
@@ -149,7 +149,7 @@ AtlasCheckBox.base QQuickCheckBox
 AtlasCheckBox.type
 AtlasChip.base QQuickAbstractButton
 AtlasChip.property closable: bool
-AtlasChip.property maximumWidth: qreal
+AtlasChip.property maximumWidth: double
 AtlasChip.property showsCheck: bool [readonly]
 AtlasChip.property symbol: int
 AtlasChip.property tint: QColor [readonly]
@@ -199,14 +199,12 @@ AtlasCopyButton.base QQuickAbstractButton
 AtlasCopyButton.enum TipSide: Below = 0
 AtlasCopyButton.enum TipSide: End = 2
 AtlasCopyButton.enum TipSide: Start = 1
+AtlasCopyButton.property copiedLabel: QString
 AtlasCopyButton.property focusOnClick: bool
 AtlasCopyButton.property focusable: bool
 AtlasCopyButton.property iconRotation: double
-AtlasCopyButton.property round: bool
-AtlasCopyButton.property copiedLabel: QString
-AtlasCopyButton.property focusable: bool
-AtlasCopyButton.property iconRotation: double
 AtlasCopyButton.property label: QString
+AtlasCopyButton.property round: bool
 AtlasCopyButton.property shortcutText: QString
 AtlasCopyButton.property symbol: int
 AtlasCopyButton.property tipSide: int
@@ -1024,6 +1022,7 @@ MenuButton.enum Variant: Prominent = 1
 MenuButton.property accent: QColor [readonly]
 MenuButton.property busy: bool
 MenuButton.property items: QQmlListProperty<QObject> [readonly]
+MenuButton.property maximumWidth: double
 MenuButton.property prominent: bool
 MenuButton.property symbol: int
 MenuButton.property textTint: QColor [readonly]
@@ -1055,6 +1054,7 @@ PrimaryButton.enum Variant: Ghost = 3
 PrimaryButton.enum Variant: Prominent = 1
 PrimaryButton.property accent: QColor [readonly]
 PrimaryButton.property busy: bool
+PrimaryButton.property maximumWidth: double
 PrimaryButton.property prominent: bool
 PrimaryButton.property symbol: int
 PrimaryButton.property textTint: QColor [readonly]
@@ -1075,6 +1075,7 @@ SecondaryButton.enum Variant: Ghost = 3
 SecondaryButton.enum Variant: Prominent = 1
 SecondaryButton.property accent: QColor [readonly]
 SecondaryButton.property busy: bool
+SecondaryButton.property maximumWidth: double
 SecondaryButton.property prominent: bool
 SecondaryButton.property symbol: int
 SecondaryButton.property textTint: QColor [readonly]
