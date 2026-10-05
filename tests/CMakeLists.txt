@@ -64,6 +64,20 @@ if(Qt6LinguistTools_FOUND AND ATLAS_UI_DEV_BUILD)
         ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-i18n-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/i18n-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR};LANGUAGE=de;LANG=de_DE.UTF-8;LC_ALL=de_DE.UTF-8;ATLAS_UI_TRANSLATIONS_DIR=${CMAKE_BINARY_DIR}/i18n-qm")
 endif()
 
+# The date and time controls: keyboard navigation, minimum and maximum, minute
+# snapping (tests/dates). Same private environment as the visual tests.
+add_executable(atlas-dates-tests dates/main.cpp)
+target_compile_definitions(atlas-dates-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/dates")
+target_link_libraries(atlas-dates-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-dates-tests atlasui)
+add_test(NAME dates
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(dates PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-dates-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/dates-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
 # The shortcut registry (ui/atlasshortcuts.cpp, compiled into the test):
 # add, remove, conflicts, destroyed actions.
 find_package(Qt6 6.11 REQUIRED COMPONENTS Test)

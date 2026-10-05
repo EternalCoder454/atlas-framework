@@ -13,6 +13,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,
   a field that records a key combination and reports a conflict with another
   AtlasAction.
+- Atlas.Ui: AtlasCalendar (month grid with keyboard navigation, minimum and
+  maximum), AtlasDatePicker (a pill that opens it) and AtlasTimePicker (hours,
+  minutes, `minuteStep`, 12 or 24 h from the locale, optional day of week).
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points

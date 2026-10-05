@@ -72,6 +72,9 @@ qt_add_qml_module(atlasui
         AtlasRadioButton.qml
         AtlasSlider.qml
         AtlasSpinBox.qml
+        AtlasCalendar.qml
+        AtlasDatePicker.qml
+        AtlasTimePicker.qml
         AtlasToolTip.qml
         AtlasSpinner.qml
         AtlasPlaceholder.qml

@@ -1,0 +1,218 @@
+import QtQuick
+import QtQuick.Templates as T
+import org.kde.kirigami as Kirigami
+
+// A date field: a pill like AtlasComboBox that shows the chosen date and opens
+// an AtlasCalendar in a raised card. An invalid Date (new Date(NaN)) means "no
+// date": the pill shows `placeholderText`. Choosing a day sets `selectedDate`,
+// emits `edited` and closes the card; Escape closes it too, and focus returns
+// to the pill. Alt+Down, Return or Space on the pill open the card.
+//
+//   AtlasDatePicker {
+//       selectedDate: new Date(2026, 2, 15)
+//       minimumDate: new Date(2026, 0, 1)
+//       clearable: true
+//       onEdited: task.due = selectedDate
+//   }
+//
+// Name it for screen readers with Accessible.name (what the date is for); the
+// date itself is spoken as the description.
+T.Control {
+    id: control
+
+    // The chosen day; invalid for none.
+    property date selectedDate
+    // The earliest and latest day that can be chosen; invalid for no limit.
+    property date minimumDate
+    property date maximumDate
+    // How the date reads on the pill: a Locale format, or a format string.
+    property var format: Locale.ShortFormat
+    property string placeholderText: qsTr("Pick a date")
+    // A clear button on the pill (and Delete or Backspace) while a date is set.
+    property bool clearable: false
+    // The day that is ringed in the calendar (default: the current day).
+    property date today: new Date()
+    readonly property bool opened: _popup.visible
+
+    // The user changed `selectedDate` (a day chosen or cleared).
+    signal edited
+
+    function open(): void {
+        _popup.open();
+    }
+    function close(): void {
+        _popup.close();
+    }
+
+    function _valid(d): bool {
+        return d instanceof Date && !isNaN(d.getTime());
+    }
+    readonly property bool _hasDate: _valid(selectedDate)
+    readonly property string _text: _hasDate ? (typeof format === "string" ? locale.toString(selectedDate, format) : selectedDate.toLocaleDateString(locale, format)) : ""
+
+    function _clear(): void {
+        if (clearable && _hasDate) {
+            selectedDate = new Date(NaN);
+            edited();
+        }
+    }
+
+    implicitWidth: Kirigami.Units.gridUnit * 12
+    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+    leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+    rightPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+    hoverEnabled: true
+    focusPolicy: Qt.StrongFocus
+    opacity: enabled ? 1 : 0.5
+
+    Accessible.role: Accessible.ComboBox
+    Accessible.name: control._hasDate ? control._text : control.placeholderText
+    Accessible.description: control.placeholderText
+    Accessible.onPressAction: control.open()
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space || (event.key === Qt.Key_Down && (event.modifiers & Qt.AltModifier))) {
+            control.open();
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) {
+            control._clear();
+            event.accepted = control.clearable;
+        }
+    }
+
+    contentItem: Text {
+        text: control._hasDate ? control._text : control.placeholderText
+        font: Kirigami.Theme.defaultFont
+        color: control._hasDate ? AtlasStyle.text : Qt.alpha(AtlasStyle.text, 0.5)
+        verticalAlignment: Text.AlignVCenter
+        horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft
+        elide: Text.ElideRight
+        textFormat: Text.PlainText
+        // Room for the clear button and the calendar symbol.
+        leftPadding: control.mirrored ? tail.width : 0
+        rightPadding: control.mirrored ? 0 : tail.width
+    }
+
+    // The clear button (when it applies) and the calendar symbol, at the end.
+    Row {
+        id: tail
+        x: control.mirrored ? control.leftPadding : control.width - width - control.rightPadding
+        y: Math.round((control.height - height) / 2)
+        spacing: AtlasStyle.spacingSmall
+        layoutDirection: control.mirrored ? Qt.RightToLeft : Qt.LeftToRight
+        z: 2
+
+        Item {
+            id: clearButton
+            visible: control.clearable && control._hasDate
+            width: visible ? Kirigami.Units.iconSizes.small : 0
+            height: Kirigami.Units.iconSizes.small
+            Accessible.role: Accessible.Button
+            //: Button that empties a date field
+            Accessible.name: qsTr("Clear")
+            Accessible.onPressAction: control._clear()
+            Symbol {
+                anchors.centerIn: parent
+                name: "close"
+                size: Kirigami.Units.iconSizes.small
+                color: AtlasStyle.text
+                opacity: clearArea.containsMouse ? 1 : 0.6
+            }
+            MouseArea {
+                id: clearArea
+                anchors.fill: parent
+                anchors.margins: -2
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: control._clear()
+            }
+        }
+        Symbol {
+            name: "calendar_month"
+            size: Kirigami.Units.iconSizes.small
+            color: AtlasStyle.text
+            opacity: 0.6
+        }
+    }
+
+    TapHandler {
+        // The clear button sits above this and takes its own clicks.
+        onTapped: {
+            if (clearArea.containsMouse && clearButton.visible) {
+                return;
+            }
+            control._popup.visible ? control.close() : control.open();
+        }
+        gesturePolicy: TapHandler.ReleaseWithinBounds
+    }
+
+    background: Rectangle {
+        radius: height / 2
+        color: Qt.alpha(AtlasStyle.text, control._popup.visible ? 0.14 : control.hovered ? 0.12 : 0.07)
+        border.width: 1
+        border.color: Qt.alpha(AtlasStyle.text, 0.14)
+        Behavior on color {
+            ColorAnimation {
+                duration: AtlasStyle.durationShort
+            }
+        }
+        AtlasFocusRing {
+            radius: parent.radius + gap
+            shown: control.visualFocus
+        }
+    }
+
+    readonly property T.Popup _popup: T.Popup {
+        parent: control
+        y: control.height + AtlasStyle.spacingSmall
+        padding: AtlasStyle.spacingSmall
+        margins: AtlasStyle.spacingSmall
+        modal: false
+        focus: true
+        closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutsideParent
+
+        onAboutToShow: {
+            popupCalendar.showDate(control._hasDate ? control.selectedDate : control.today);
+        }
+        onOpened: popupCalendar.forceActiveFocus(Qt.PopupFocusReason)
+        onClosed: control.forceActiveFocus(Qt.PopupFocusReason)
+
+        contentItem: AtlasCalendar {
+            id: popupCalendar
+            selectedDate: control.selectedDate
+            minimumDate: control.minimumDate
+            maximumDate: control.maximumDate
+            locale: control.locale
+            today: control.today
+            onActivated: date => {
+                control.selectedDate = date;
+                control.edited();
+                control.close();
+            }
+        }
+
+        background: Rectangle {
+            radius: AtlasStyle.radiusLarge
+            color: AtlasStyle.surface
+            border.width: 1
+            border.color: Qt.alpha(AtlasStyle.text, 0.16)
+        }
+
+        enter: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: AtlasStyle.durationShort
+            }
+        }
+        exit: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 1
+                to: 0
+                duration: AtlasStyle.durationShort
+            }
+        }
+    }
+}
