@@ -356,6 +356,20 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
 - [ ] 39 One software-rendering flag in AtlasStyle (the software adaptation,
   or llvmpipe by GL_RENDERER) for the controls and apps; AtlasEdgeGlow static
   or throttled under it.
+- [ ] 40 atlas-framework-flatpak for the Store, Settings and the Updater
+  (AtlasOS Store, 2026-10-05; pending the Store's scope): `list_installed`,
+  `plan_install` and `install`, `uninstall` (data kept unless asked),
+  `list_unused` and `uninstall_unused`, `permissions()` with risk levels and
+  one plain wording, `remote_ref_info`, flatpakref and flatpakrepo parsing
+  (untrusted input) and `add_remote`, `update_appstream`, and a shared
+  per-user operation lock (`atlas-flatpak.lock`, taken with the Updater's
+  `atlas-updater-apps.lock` during the transition). The Store prototypes
+  them first; they move here with the same names.
+- [ ] 41 Store controls: `AtlasScreenshotCarousel.expandable` (a full-window
+  viewer), AtlasShelf (a horizontal row of cards with scroll buttons),
+  AtlasInstallButton `"remove"`, `"removing"` and `"queued"`,
+  `AtlasAppCard.verified` and `compact`. Permission rows are SectionRow with
+  a leading symbol and an AtlasBadge, no new type.
 - Waits for Fedora's Qt 6.12 (Fedora 44 and 45 ship 6.11.2):
   `motionPreference`, QML hot reload, ToolTip `policy`, MenuItem shortcuts.
 
