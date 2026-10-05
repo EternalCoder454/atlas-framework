@@ -655,4 +655,64 @@ Item {
             compare(f.replaced, 1);
         }
     }
+
+    Component {
+        id: rtlFieldsComp
+        Item {
+            LayoutMirroring.enabled: true
+            LayoutMirroring.childrenInherit: true
+            width: 400
+            height: 80
+            property alias field: tf
+            property alias search: sf
+            AtlasTextField { id: tf; width: 300 }
+            SearchField { id: sf; y: 40; width: 300 }
+        }
+    }
+
+    function placeholderOf(field) {
+        const out = [];
+        const walk = item => {
+            for (const c of item.children) {
+                if (c !== field && c.text === field.placeholderText && c.elide !== undefined) {
+                    out.push(c);
+                }
+                walk(c);
+            }
+        };
+        walk(field);
+        return out[0];
+    }
+
+    TestCase {
+        name: "PlaceholderRtl"
+        when: windowShown
+
+        // The placeholder sits where typed text of the same script would:
+        // Arabic on the right, Latin on the left, in a mirrored layout.
+        function test_placeholder_follows_its_script_like_typed_text() {
+            const w = createTemporaryObject(rtlFieldsComp, root);
+            for (const f of [w.field, w.search]) {
+                for (const words of ["\u0627\u0628\u062d\u062b", "Search"]) {
+                    f.text = "";
+                    f.placeholderText = words;
+                    const p = placeholderOf(f);
+                    verify(p, "placeholder of " + f);
+                    f.text = words;
+                    const typed = f.effectiveHorizontalAlignment;
+                    f.text = "";
+                    compare(p.effectiveHorizontalAlignment, typed, words + " in " + f);
+                    compare(p.effectiveHorizontalAlignment, words === "Search" ? Text.AlignLeft : Text.AlignRight, words + " in " + f);
+                }
+            }
+        }
+
+        function test_placeholder_is_plain_text() {
+            const w = createTemporaryObject(rtlFieldsComp, root);
+            for (const f of [w.field, w.search]) {
+                f.placeholderText = "<b>Name</b>";
+                compare(placeholderOf(f).textFormat, Text.PlainText, "in " + f);
+            }
+        }
+    }
 }

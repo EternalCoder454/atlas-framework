@@ -187,6 +187,7 @@ Item {
             font: field.font
             color: field.placeholderTextColor
             elide: Text.ElideRight
+            textFormat: Text.PlainText
             Accessible.ignored: true
         }
         Kirigami.Icon {
