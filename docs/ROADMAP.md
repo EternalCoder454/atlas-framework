@@ -655,6 +655,10 @@ that lands, then go in one batch.
 
 ### P-phase notes (from the studies; measured in the P pass)
 
+- [ ] Profile the 1.5.0 PSS +7 MB (template 111→118 MB, RSS 117→124 MB;
+  CI run 37372755331). Every Atlas app pays it; the PSS budget was raised to
+  120 MB to ship 1.5.0 (AtlasOS, 2026-10-05). Find what is loaded or made
+  eagerly and bring the budget back down.
 - AtlasTreeView `selectRange` on a non-AtlasTreeModel: one select per row,
   quadratic on 10k rows. AtlasCodeView's line numbers on a 100k-line log.
 - AtlasComboBox filtering (above); AtlasListView and AtlasTreeView type-ahead
