@@ -165,6 +165,18 @@ private Q_SLOTS:
         QCOMPARE(s->value(QStringLiteral("Name"), QString()), QVariant(QStringLiteral("  a=b [c]\nd\\e  ")));
         QCOMPARE(s->value(QStringLiteral("List"), QStringList()).toStringList(), (QStringList{QStringLiteral("a,b"), QStringLiteral("c"), QString()}));
         QCOMPARE(s->value(QStringLiteral("Sizes"), QVariantList()).toStringList(), (QStringList{QStringLiteral("300"), QStringLiteral("700")}));
+        // A typed default gives typed items.
+        const QVariantList sizes = s->value(QStringLiteral("Sizes"), QVariantList{1, 2}).toList();
+        QCOMPARE(sizes, (QVariantList{300, 700}));
+        QCOMPARE(sizes.at(0).typeId(), int(QMetaType::Int));
+        QCOMPARE(s->value(QStringLiteral("Sizes"), QVariantList{1.5}).toList(), (QVariantList{300.0, 700.0}));
+        QCOMPARE(s->value(QStringLiteral("List"), QVariantList{1}).toList(), (QVariantList{1})); // "a,b" is no number: the default
+        QVERIFY(s->setValue(QStringLiteral("Flags"), QVariantList{true, false}));
+        QCOMPARE(s->value(QStringLiteral("Flags"), QVariantList{false}).toList(), (QVariantList{true, false})); // pending
+        QVERIFY(s->flush());
+        QCOMPARE(s->value(QStringLiteral("Flags"), QVariantList{false}).toList(), (QVariantList{true, false}));
+        QCOMPARE(s->value(QStringLiteral("Flags"), QVariantList{0}).toList(), (QVariantList{0})); // "true" is no int: the default
+        QCOMPARE(s->value(QStringLiteral("Missing"), QVariantList{7, 8}).toList(), (QVariantList{7, 8}));
         // Wrong shape or missing: the default.
         QCOMPARE(s->value(QStringLiteral("Name"), 7), QVariant(7));
         QCOMPARE(s->value(QStringLiteral("Name"), true), QVariant(true));

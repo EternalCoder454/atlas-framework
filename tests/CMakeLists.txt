@@ -208,3 +208,17 @@ target_include_directories(atlas-settings-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui
 target_link_libraries(atlas-settings-tests PRIVATE Qt6::Test Qt6::Gui Qt6::Qml Qt6::DBus KF6::ConfigCore)
 add_test(NAME settings COMMAND atlas-settings-tests)
 set_tests_properties(settings PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# AtlasWindow.stateKey: saved on change, restored clamped to the screen
+# (tests/window). Same private environment as the visual tests.
+add_executable(atlas-window-tests window/main.cpp)
+target_compile_definitions(atlas-window-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/window")
+target_link_libraries(atlas-window-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-window-tests atlasui)
+add_test(NAME window
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(window PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-window-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/window-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
