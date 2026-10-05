@@ -30,7 +30,7 @@ AtlasWindow {
 | `blurred` | `bool` (read-only) | — | True while the window is drawn over blur (`Appearance.effective`). |
 | `compactBreakpoint` | `real` | `30` | Below this width, in grid units, `widthClass` is `Compact` (and `sidebarCollapsed` is true). A value that is not a finite number above 0 uses the default. Since 1.5.0. |
 | `frameless` | `bool` (read-only) | — | True when `header` is an [AtlasHeaderBar](atlas-header-bar.md): the window then draws its own title row. |
-| `kiosk` | `bool` | `false` | Full screen, no close button (the window buttons and the header's window menu leave Close out), and a close request (Alt+F4, the compositor) is refused. `Qt.quit()` from the app still ends it. Set on a hidden window, it takes effect when the window is shown; set back to `false`, the window leaves full screen. Since 1.5.0. |
+| `kiosk` | `bool` | `false` | Full screen, no close button (the window buttons and the header's window menu leave Close out), and a close request (Alt+F4, the compositor) is refused. `Qt.quit()` asks every window to close, so a kiosk window stops it too: to end the app, set `kiosk` to `false` first, or call `Qt.exit()`. Set on a hidden window, it takes effect when the window is shown; set back to `false`, the window leaves full screen. Since 1.5.0. |
 | `sidebarCollapsed` | `bool` (read-only) | — | True when `widthClass` is `Compact`; bind `AtlasSidebar.compact` to it. |
 | `sidebarFactor` | `real` | `0.8` | How much more see-through the sidebar is, as a factor on `blurAlpha`. |
 | `stateKey` | `string` | `""` | Names the saved window state; empty keeps none. |

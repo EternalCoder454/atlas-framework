@@ -50,7 +50,8 @@ import org.kde.kirigami as Kirigami
 //
 // `kiosk: true` is for a first-run setup or a locked-down screen: the window
 // is full screen, has no close button (the header's too), and a close request
-// (Alt+F4, the compositor) is refused. The app ends it with Qt.quit().
+// (Alt+F4, the compositor) is refused. Qt.quit() asks windows to close, so
+// the app sets kiosk to false first, or calls Qt.exit().
 QQC2.ApplicationWindow {
     id: root
 
@@ -294,7 +295,7 @@ QQC2.ApplicationWindow {
             root.visibility = Window.Windowed;
         }
     }
-    // A close request is refused in kiosk mode. Qt.quit() from the app still ends it.
+    // A close request is refused in kiosk mode, Qt.quit()'s included.
     onClosing: close => {
         if (root.kiosk) {
             close.accepted = false;

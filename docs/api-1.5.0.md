@@ -850,7 +850,7 @@ choice. A swatch's accessible name is its `name`, or "Accent color N" (N from
 
 `kiosk: bool = false`. True: full screen, no close button (the window buttons
 and the header's window menu drop Close) and a close request (Alt+F4, the
-compositor) is refused. The app ends the window with `Qt.quit()`. Set while
+compositor) is refused. `Qt.quit()` is refused too: the app sets `kiosk` to `false` first, or calls `Qt.exit()`. Set while
 the window is hidden, it takes effect when the window is shown.
 
 ## Items dropped as already possible
