@@ -8,8 +8,9 @@ import Atlas.Ui
 // The general modal dialog: a title row, a scrolling body and a row of
 // buttons (ConfirmDialog is the yes/no one). The window behind is dimmed,
 // Escape closes it, and the focus starts on the first thing in the body that
-// can take it (the dialog itself when the body has nothing, never a button). A body taller than the window scrolls instead of outgrowing it,
-// and the dialog is never wider than the window.
+// can take it (the dialog itself when the body has nothing, never a button).
+// A body taller than the window scrolls instead of outgrowing it, and the
+// dialog is never wider than the window.
 //
 // The header has an optional Back button at the leading edge (`showBack`,
 // then `backRequested()`; the dialog doesn't close itself), the `title`,
