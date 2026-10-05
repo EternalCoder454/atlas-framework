@@ -38,6 +38,7 @@ extern "C" {
 // Qt message hook (a crash report when the user turned reports on), the
 // app's names (the app ID becomes the single-instance D-Bus name and the
 // desktop file name), and the org.kde.desktop style.
+// Calling it again does nothing, so atlas_app_run after your own call is safe.
 void atlas_app_init();
 
 // After QApplication: the display name, the window icon, and what Atlas.Ui's
@@ -56,7 +57,7 @@ void atlas_app_ready();
 // is older than 1.3.0 (which has no uiVersion to answer with), it logs why,
 // shows a plain window (no Atlas.Ui in it) saying which version is needed,
 // which is installed and how to fix it, and exits with code 1 once the
-// window is closed. On the offscreen and minimal Qt platforms there is no
+// window is closed (or after five minutes, or when it cannot be drawn). On the offscreen and minimal Qt platforms there is no
 // one to read it: it logs and exits at once. A string that isn't a version
 // is logged and ignored.
 void atlas_app_require_ui(const char *minVersion);

@@ -51,7 +51,8 @@ pub fn image_ref_heads(dir: &Path) -> Vec<String> {
             match e.file_type() {
                 Ok(t) if t.is_dir() => dirs.push(e.path()),
                 Ok(t) if t.is_file() => {
-                    if let Ok(text) = std::fs::read_to_string(e.path()) {
+                    if let Ok(bytes) = crate::fsutil::read_capped(&e.path(), 4096) {
+                        let text = String::from_utf8_lossy(&bytes);
                         let c = text.trim();
                         if !c.is_empty() {
                             heads.push(c.to_string());
@@ -75,7 +76,7 @@ pub const BAD_IMAGE_DIGESTS: &str = "/var/lib/atlasos/bad-image-digests";
 /// (none recorded, not AtlasOS, a test). Lines are taken as they are, the way
 /// the stager's `grep -x` matches them; a damaged line doesn't hide the others.
 pub fn bad_image_digests(path: &Path) -> Vec<String> {
-    std::fs::read(path)
+    crate::fsutil::read_capped(path, 1024 * 1024)
         .map(|bytes| {
             String::from_utf8_lossy(&bytes)
                 .lines()
@@ -165,6 +166,7 @@ pub struct OstreeEntry {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ImageStatus {
+    #[serde(default)]
     pub image: ImageReference,
     #[serde(default)]
     pub architecture: Option<String>,
@@ -220,14 +222,22 @@ pub fn version_cmp(a: &str, b: &str) -> Option<std::cmp::Ordering> {
 pub fn utc_second(t: &str) -> Option<&str> {
     let s = t.get(..19)?;
     let b = s.as_bytes();
-    (t.ends_with('Z') && b[4] == b'-' && b[10] == b'T' && b[13] == b':').then_some(s)
+    // YYYY-MM-DDTHH:MM:SS: digits everywhere but the separators
+    let ok = b.iter().enumerate().all(|(i, c)| match i {
+        4 | 7 => *c == b'-',
+        10 => *c == b'T',
+        13 | 16 => *c == b':',
+        _ => c.is_ascii_digit(),
+    });
+    (t.ends_with('Z') && ok).then_some(s)
 }
 
 /// A container image reference: a name (with tag) plus a transport.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ImageReference {
     /// Name with tag, e.g. `ghcr.io/eternalcoder454/atlasos:stable`, or for
-    /// `oci` a path such as `/var/lib/test/img:stable`.
+    /// `oci` a path such as `/var/lib/test/img:stable`. Missing reads as empty.
+    #[serde(default)]
     pub image: String,
     /// `registry`, `oci`, `containers-storage`, ... Missing means `registry`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -853,6 +863,29 @@ mod tests {
             r("x:stable", Some("--apply")).with_channel("stable"),
             Err(RefError::BadTransport(_))
         ));
+    }
+
+    #[test]
+    fn utc_second_wants_digits_and_images_may_lack_a_name() {
+        assert_eq!(
+            utc_second("2026-10-02T18:54:39Z"),
+            Some("2026-10-02T18:54:39")
+        );
+        assert_eq!(
+            utc_second("2026-10-02T18:54:39.5Z"),
+            Some("2026-10-02T18:54:39")
+        );
+        for bad in [
+            "abcd-ef-ghTij:kl:mnZ",
+            "2026-10-02T18:54:3 Z",
+            "2026-1x-02T18:54:39Z",
+        ] {
+            assert_eq!(utc_second(bad), None, "{bad}");
+        }
+        let s: ImageStatus = serde_json::from_str("{}").unwrap();
+        assert_eq!(s.image.image, "");
+        let r: ImageReference = serde_json::from_str("{}").unwrap();
+        assert_eq!(r.image, "");
     }
 
     fn image(version: Option<&str>, time: Option<&str>) -> ImageStatus {

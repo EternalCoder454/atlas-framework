@@ -31,8 +31,8 @@ None.
 
 | Name | Kind | Description |
 |---|---|---|
-| `InstallationKind`, `AppUpdate`, `Progress`, `Updated`, `Held`, `Outcome`, `UpdateOptions` | types | See [Updates](updates.md) |
+| `InstallationKind`, `AppUpdate`, `Progress`, `Updated`, `Held`, `Outcome`, `UpdateOptions`, `CancelToken`, `ListOptions`, `ListOutcome`, `InstallationError`, `DEFAULT_CALL_TIMEOUT` | types | See [Updates](updates.md) |
 | `Error`, `Result` | types | See [Updates](updates.md#errors-and-text-from-remotes) |
-| `list_updates`, `list_updates_with`, `update_all`, `update` | functions | See [Updates](updates.md) |
+| `list_updates`, `list_updates_with`, `list_updates_report`, `update_all`, `update`, `update_cancellable` | functions | See [Updates](updates.md) |
 | `clean`, `clean_to` | functions | Make text from a remote safe to show |
 | `new_permissions`, `UNREADABLE`, `UNMATCHED`, `NEW_APP` | function and constants | See [Permissions](permissions.md) |

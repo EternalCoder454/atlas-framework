@@ -7,6 +7,10 @@
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 use libflatpak::gio::Cancellable;
 use libflatpak::glib::{KeyFile, KeyFileFlags};
@@ -53,7 +57,7 @@ pub struct Progress {
     pub status: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Error(pub String);
 
 impl fmt::Display for Error {
@@ -73,21 +77,141 @@ impl From<libflatpak::glib::Error> for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// A flag that stops a running call from another thread: clone it, hand the
+/// clone to a `*_cancellable` function or [`ListOptions`], and call
+/// [`CancelToken::cancel`] from anywhere. A cancelled call returns an error
+/// that says so (or what it has done so far, for [`list_updates_report`]).
+#[derive(Debug, Clone)]
+pub struct CancelToken(Cancellable);
+
+impl CancelToken {
+    pub fn new() -> CancelToken {
+        CancelToken(Cancellable::new())
+    }
+
+    /// Stop the calls using this token. Takes effect within about 50 ms.
+    pub fn cancel(&self) {
+        self.0.cancel();
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        self.0.is_cancelled()
+    }
+}
+
+impl Default for CancelToken {
+    fn default() -> Self {
+        CancelToken::new()
+    }
+}
+
+/// How long one libflatpak call that may use the network (refreshing a
+/// remote, its appstream data, sizing a ref) may take unless
+/// [`ListOptions::call_timeout`] says otherwise.
+pub const DEFAULT_CALL_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// How often a running call looks at its [`CancelToken`].
+const CANCEL_POLL: Duration = Duration::from_millis(50);
+
+/// Runs `f` with a fresh `Cancellable` that a watcher thread cancels when
+/// `cancel` is cancelled or `limit` has passed. The thread ends when the
+/// call returns. libflatpak has no timeouts of its own: this is the only
+/// way a stalled remote does not hold the worker for good.
+fn guarded<T>(
+    cancel: Option<&CancelToken>,
+    limit: Option<Duration>,
+    f: impl FnOnce(&Cancellable) -> std::result::Result<T, libflatpak::glib::Error>,
+) -> Result<T> {
+    if cancel.is_some_and(CancelToken::is_cancelled) {
+        return Err(Error("cancelled".into()));
+    }
+    let c = Cancellable::new();
+    let expired = Arc::new(AtomicBool::new(false));
+    // Dropping the sender (when this function returns) ends the watcher.
+    let mut _done = None;
+    if cancel.is_some() || limit.is_some() {
+        let (tx, rx) = mpsc::channel::<()>();
+        let (c, token, expired) = (c.clone(), cancel.cloned(), expired.clone());
+        let end = limit.map(|l| Instant::now() + l);
+        let spawned = std::thread::Builder::new()
+            .name("flatpak-watch".into())
+            .spawn(move || {
+                while let Err(mpsc::RecvTimeoutError::Timeout) = rx.recv_timeout(CANCEL_POLL) {
+                    if token.as_ref().is_some_and(CancelToken::is_cancelled) {
+                        c.cancel();
+                        return;
+                    }
+                    if end.is_some_and(|e| Instant::now() >= e) {
+                        expired.store(true, Ordering::SeqCst);
+                        c.cancel();
+                        return;
+                    }
+                }
+            });
+        match spawned {
+            Ok(_) => _done = Some(tx),
+            Err(e) => log::warn!("flatpak: no watcher thread, this call cannot be stopped: {e}"),
+        }
+    }
+    f(&c).map_err(|e| {
+        // Only an error that really is "cancelled" is put down to our stop.
+        if !e.matches(libflatpak::gio::IOErrorEnum::Cancelled) {
+            e.into()
+        } else if expired.load(Ordering::SeqCst) {
+            Error(format!(
+                "timed out after {} s",
+                limit.map_or(0, |l| l.as_secs())
+            ))
+        } else if cancel.is_some_and(CancelToken::is_cancelled) {
+            Error("cancelled".into())
+        } else {
+            e.into()
+        }
+    })
+}
+
+/// The installations that could be opened, and what went wrong with the
+/// others (one failing must not hide the rest).
 /// `no_interaction`: calls through flatpak's system helper (refreshing a
 /// system remote, say) fail rather than raise a password prompt.
-fn installations(no_interaction: bool) -> Result<Vec<(InstallationKind, Installation)>> {
+fn installations(
+    no_interaction: bool,
+    cancel: Option<&CancelToken>,
+) -> (
+    Vec<(InstallationKind, Installation)>,
+    Vec<InstallationError>,
+) {
     let mut v = Vec::new();
-    for i in libflatpak::functions::system_installations(None::<&Cancellable>)? {
-        v.push((InstallationKind::System, i));
+    let mut errors = Vec::new();
+    match guarded(cancel, Some(DEFAULT_CALL_TIMEOUT), |c| {
+        libflatpak::functions::system_installations(Some(c))
+    }) {
+        Ok(list) => v.extend(list.into_iter().map(|i| (InstallationKind::System, i))),
+        Err(error) => errors.push(InstallationError {
+            installation: InstallationKind::System,
+            id: String::new(),
+            error,
+        }),
     }
-    v.push((
-        InstallationKind::User,
-        Installation::new_user(None::<&Cancellable>)?,
-    ));
+    match guarded(cancel, Some(DEFAULT_CALL_TIMEOUT), |c| {
+        Installation::new_user(Some(c))
+    }) {
+        Ok(i) => v.push((InstallationKind::User, i)),
+        Err(error) => errors.push(InstallationError {
+            installation: InstallationKind::User,
+            id: "user".into(),
+            error,
+        }),
+    }
     for (_, i) in &v {
         i.set_no_interaction(no_interaction);
     }
-    Ok(v)
+    (v, errors)
+}
+
+/// The installation's id (`default`, `user`, an extra one's name).
+fn inst_id(inst: &Installation) -> String {
+    inst.id().map(|s| s.to_string()).unwrap_or_default()
 }
 
 /// The longest error text passed on.
@@ -155,8 +279,13 @@ fn clean_opt(s: Option<impl AsRef<str>>) -> Option<String> {
 
 /// Updates available in the system and user installations, apps and
 /// runtimes. With `refresh`, appstream data and remote summaries are updated
-/// first (network); without it only cached metadata is read. A remote that
-/// fails to refresh is skipped.
+/// first (network) and download sizes are looked up; without it only cached
+/// metadata is read and `download_size` is `0`. A remote that fails to
+/// refresh is skipped (and logged). An installation that fails does not fail
+/// the call: the others are returned; only when every installation failed is
+/// it an error, and a run that was cancelled is an error too. The result can
+/// therefore be partial: failures are logged at warn level, and
+/// [`list_updates_report`] returns them.
 pub fn list_updates(refresh: bool) -> Result<Vec<AppUpdate>> {
     list_updates_with(refresh, false)
 }
@@ -164,34 +293,262 @@ pub fn list_updates(refresh: bool) -> Result<Vec<AppUpdate>> {
 /// [`list_updates`] for a check nobody is watching: with `no_interaction`
 /// nothing asks for a password (see [`UpdateOptions::no_interaction`]).
 pub fn list_updates_with(refresh: bool, no_interaction: bool) -> Result<Vec<AppUpdate>> {
-    let none = None::<&Cancellable>;
+    let out = list_updates_report(&ListOptions {
+        refresh,
+        no_interaction,
+        ..ListOptions::default()
+    });
+    if !out.errors.is_empty() {
+        log::warn!(
+            "flatpak: {} installation(s) could not be checked; the list is partial",
+            out.errors.len()
+        );
+    }
+    out.into_result()
+}
+
+/// How [`list_updates_report`] runs.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct ListOptions {
+    /// Update remote summaries and appstream data first, and look up
+    /// download sizes (network). Default `false`.
+    pub refresh: bool,
+    /// Never ask for a password. Default `false`.
+    pub no_interaction: bool,
+    /// Stops the run when cancelled. Default none.
+    pub cancel: Option<CancelToken>,
+    /// The longest one libflatpak call may take (refreshing a remote,
+    /// listing, sizing a ref); a call over it fails and the run goes on with
+    /// the next. Default [`DEFAULT_CALL_TIMEOUT`]; `None` waits for ever.
+    pub call_timeout: Option<Duration>,
+    /// The longest the whole run may take. When it has passed, the call in
+    /// progress is cut short and the rest is not started: the installation
+    /// in progress is reported as an error. Default `None`.
+    pub deadline: Option<Duration>,
+}
+
+impl ListOptions {
+    pub fn with_refresh(mut self, refresh: bool) -> Self {
+        self.refresh = refresh;
+        self
+    }
+
+    pub fn with_no_interaction(mut self, no_interaction: bool) -> Self {
+        self.no_interaction = no_interaction;
+        self
+    }
+
+    pub fn with_cancel(mut self, cancel: CancelToken) -> Self {
+        self.cancel = Some(cancel);
+        self
+    }
+
+    pub fn with_call_timeout(mut self, call_timeout: Option<Duration>) -> Self {
+        self.call_timeout = call_timeout;
+        self
+    }
+
+    pub fn with_deadline(mut self, deadline: Option<Duration>) -> Self {
+        self.deadline = deadline;
+        self
+    }
+}
+
+impl Default for ListOptions {
+    fn default() -> Self {
+        ListOptions {
+            refresh: false,
+            no_interaction: false,
+            cancel: None,
+            call_timeout: Some(DEFAULT_CALL_TIMEOUT),
+            deadline: None,
+        }
+    }
+}
+
+/// An installation that could not be checked.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct InstallationError {
+    pub installation: InstallationKind,
+    /// flatpak's id for it (`default`, `user`, an extra one's name); empty
+    /// when the list of system installations itself failed.
+    pub id: String,
+    pub error: Error,
+}
+
+/// What [`list_updates_report`] found.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ListOutcome {
+    /// Updates from every installation that could be checked.
+    pub updates: Vec<AppUpdate>,
+    /// The installations that could not (an unmounted extra one, say), and a
+    /// run stopped by its cancel token.
+    pub errors: Vec<InstallationError>,
+    /// How many installations were checked without error.
+    pub checked: usize,
+    /// The run was stopped by its cancel token.
+    pub cancelled: bool,
+}
+
+impl ListOutcome {
+    /// The updates, unless the run was cancelled, or nothing could be checked
+    /// at all: then the first error (`cancelled` for a cancelled run).
+    pub fn into_result(self) -> Result<Vec<AppUpdate>> {
+        if self.cancelled {
+            return Err(Error("cancelled".into()));
+        }
+        match self.errors.into_iter().next() {
+            Some(e) if self.checked == 0 => Err(e.error),
+            _ => Ok(self.updates),
+        }
+    }
+}
+
+/// [`list_updates`] that says which installations failed, and can be
+/// cancelled and bounded in time (see [`ListOptions`]).
+pub fn list_updates_report(opts: &ListOptions) -> ListOutcome {
+    let cancel = opts.cancel.as_ref();
+    let end = opts.deadline.map(|d| Instant::now() + d);
     let arch = libflatpak::functions::default_arch();
-    let mut out = Vec::new();
-    for (kind, inst) in installations(no_interaction)? {
-        if refresh {
-            for remote in inst.list_remotes(none)? {
-                let Some(name) = remote.name() else { continue };
-                let _ = inst.update_remote_sync(&name, none);
-                let _ = inst.update_appstream_sync(&name, arch.as_deref(), none);
+    let (insts, errors) = installations(opts.no_interaction, cancel);
+    let mut out = ListOutcome {
+        errors,
+        ..ListOutcome::default()
+    };
+    for (kind, inst) in insts {
+        let id = inst_id(&inst);
+        match list_installation(&inst, kind, &id, opts, arch.as_deref(), end) {
+            Ok(mut v) => {
+                out.updates.append(&mut v);
+                out.checked += 1;
+            }
+            Err(error) => {
+                log::warn!("flatpak: cannot check installation {id}: {error}");
+                out.errors.push(InstallationError {
+                    installation: kind,
+                    id,
+                    error,
+                });
             }
         }
-        for r in inst.list_installed_refs_for_update(none)? {
-            out.push(to_update(&inst, kind, &r));
+        if cancel.is_some_and(CancelToken::is_cancelled) {
+            out.cancelled = true;
+            break;
         }
+    }
+    out
+}
+
+/// The limit for the next call: the per-call one, cut to what is left of the
+/// overall deadline; `None` when that has passed.
+fn next_limit(call: Option<Duration>, end: Option<Instant>) -> Option<Option<Duration>> {
+    let Some(end) = end else {
+        return Some(call);
+    };
+    let left = end
+        .checked_duration_since(Instant::now())
+        .filter(|d| !d.is_zero())?;
+    Some(Some(call.map_or(left, |c| c.min(left))))
+}
+
+fn list_installation(
+    inst: &Installation,
+    kind: InstallationKind,
+    id: &str,
+    opts: &ListOptions,
+    arch: Option<&str>,
+    end: Option<Instant>,
+) -> Result<Vec<AppUpdate>> {
+    let cancel = opts.cancel.as_ref();
+    let call = opts.call_timeout;
+    let over = || Error("the time limit for the whole check has passed".into());
+    // Remotes that failed to refresh or to size a ref in this run: asking
+    // again would only wait for the same timeout once per ref.
+    let mut dead: std::collections::HashSet<String> = std::collections::HashSet::new();
+    if opts.refresh {
+        let limit = next_limit(call, end).ok_or_else(over)?;
+        for remote in guarded(cancel, limit, |c| inst.list_remotes(Some(c)))? {
+            let Some(name) = remote.name() else {
+                log::warn!("flatpak: installation {id} has a remote without a name; skipped");
+                continue;
+            };
+            let limit = next_limit(call, end).ok_or_else(over)?;
+            if let Err(e) = guarded(cancel, limit, |c| inst.update_remote_sync(&name, Some(c))) {
+                log::warn!(
+                    "flatpak: cannot refresh remote {name} in {id}: {e}; its sizes are skipped"
+                );
+                dead.insert(name.to_string());
+            }
+            if cancel.is_some_and(CancelToken::is_cancelled) {
+                return Err(Error("cancelled".into()));
+            }
+            let limit = next_limit(call, end).ok_or_else(over)?;
+            if let Err(e) = guarded(cancel, limit, |c| {
+                inst.update_appstream_sync(&name, arch, Some(c))
+            }) {
+                log::warn!("flatpak: cannot refresh the appstream data of {name} in {id}: {e}");
+            }
+            if cancel.is_some_and(CancelToken::is_cancelled) {
+                return Err(Error("cancelled".into()));
+            }
+        }
+    }
+    let limit = next_limit(call, end).ok_or_else(over)?;
+    let refs = guarded(cancel, limit, |c| {
+        inst.list_installed_refs_for_update(Some(c))
+    })?;
+    let mut out = Vec::with_capacity(refs.len());
+    for r in &refs {
+        if cancel.is_some_and(CancelToken::is_cancelled) {
+            return Err(Error("cancelled".into()));
+        }
+        // Past the deadline the sizes are dropped, the list is kept.
+        let limit = if opts.refresh {
+            next_limit(call, end)
+        } else {
+            None
+        };
+        out.push(to_update(inst, kind, r, limit, cancel, &mut dead));
     }
     Ok(out)
 }
 
-fn to_update(inst: &Installation, kind: InstallationKind, r: &InstalledRef) -> AppUpdate {
+/// `size_limit`: `Some` looks up the download size with that limit. `fetch_remote_size_sync` reads the
+/// remote's summary, which flatpak downloads when it is not cached, so it
+/// is only asked after a refresh (then the summary is cached and the lookup
+/// is quick); without one the size is `0`.
+fn to_update(
+    inst: &Installation,
+    kind: InstallationKind,
+    r: &InstalledRef,
+    size_limit: Option<Option<Duration>>,
+    cancel: Option<&CancelToken>,
+    dead: &mut std::collections::HashSet<String>,
+) -> AppUpdate {
     let id = r.name().map(|s| s.to_string()).unwrap_or_default();
     let name = clean_opt(r.appdata_name()).unwrap_or_else(|| id.clone());
-    let download_size = r
-        .origin()
-        .and_then(|o| {
-            inst.fetch_remote_size_sync(&o, r, None::<&Cancellable>)
-                .ok()
-        })
-        .map_or(0, |(download, _installed)| download);
+    let origin = r.origin().map(|o| o.to_string());
+    let download_size = match (size_limit, origin) {
+        (Some(limit), Some(o)) if !dead.contains(&o) => {
+            match guarded(cancel, limit, |c| {
+                inst.fetch_remote_size_sync(&o, r, Some(c))
+            }) {
+                Ok((download, _installed)) => download,
+                Err(e) => {
+                    log::warn!("flatpak: no size for {id}: {e}");
+                    if e.0.starts_with("timed out") {
+                        log::warn!("flatpak: remote {o} timed out; no more sizes from it");
+                        dead.insert(o);
+                    }
+                    0
+                }
+            }
+        }
+        _ => 0,
+    };
     AppUpdate {
         name,
         branch: r.branch().map(|s| s.to_string()).unwrap_or_default(),
@@ -267,17 +624,30 @@ pub struct Outcome {
 /// Like [`update_all`], with options, and says what changed even when an
 /// installation failed part way.
 pub fn update(opts: &UpdateOptions, progress: impl FnMut(Progress) + 'static) -> Outcome {
+    update_cancellable(opts, None, progress)
+}
+
+/// [`update`] that stops when `cancel` is cancelled: the running transaction
+/// is cancelled, the rest are not started, and `Outcome::error` says so.
+/// There is no deadline: an update may rightly take long.
+pub fn update_cancellable(
+    opts: &UpdateOptions,
+    cancel: Option<&CancelToken>,
+    progress: impl FnMut(Progress) + 'static,
+) -> Outcome {
     let progress: Rc<RefCell<dyn FnMut(Progress)>> = Rc::new(RefCell::new(progress));
     let mut out = Outcome::default();
-    let insts = match installations(opts.no_interaction) {
-        Ok(i) => i,
-        Err(e) => {
-            out.error = Some(e);
-            return out;
-        }
-    };
+    let (insts, errors) = installations(opts.no_interaction, cancel);
+    // An installation that cannot be opened does not stop the others.
+    for e in errors {
+        out.error.get_or_insert(e.error);
+    }
     for (kind, inst) in insts {
-        if let Err(e) = update_installation(&inst, kind, opts, &progress, &mut out) {
+        if cancel.is_some_and(CancelToken::is_cancelled) {
+            out.error.get_or_insert(Error("cancelled".into()));
+            break;
+        }
+        if let Err(e) = update_installation(&inst, kind, opts, cancel, &progress, &mut out) {
             out.error.get_or_insert(e);
         }
     }
@@ -291,11 +661,14 @@ fn update_installation(
     inst: &Installation,
     kind: InstallationKind,
     opts: &UpdateOptions,
+    cancel: Option<&CancelToken>,
     progress: &Rc<RefCell<dyn FnMut(Progress)>>,
     out: &mut Outcome,
 ) -> Result<()> {
     let none = None::<&Cancellable>;
-    let refs = inst.list_installed_refs_for_update(none)?;
+    let refs = guarded(cancel, None, |c| {
+        inst.list_installed_refs_for_update(Some(c))
+    })?;
     // What each ref was before, by its full ref string.
     let mut before = std::collections::HashMap::new();
     for r in &refs {
@@ -464,7 +837,7 @@ fn update_installation(
                 });
             });
         });
-        let res = tx.run(none);
+        let res = guarded(cancel, None, |c| tx.run(Some(c)));
         for spec in done.borrow().iter() {
             out.updated
                 .push(updated(inst, kind, spec, before.get(spec)));
@@ -510,7 +883,7 @@ fn update_installation(
             if !checked.get()
                 && let Err(e) = res
             {
-                error = Some(e.into());
+                error = Some(e);
             }
             break;
         }
@@ -522,7 +895,7 @@ fn update_installation(
         if let Some(e) = failed.borrow_mut().take() {
             error = Some(e);
         } else if let Err(e) = res {
-            error = Some(e.into());
+            error = Some(e);
         }
         break;
     }
@@ -1080,6 +1453,137 @@ mod tests {
         assert_eq!(clean(&smear).chars().count(), 4);
         assert_eq!(clean(&"a".repeat(200)).chars().count(), 80);
         assert_eq!(clean_opt(Some("  ")), None);
+    }
+
+    /// Serialises the tests that set environment variables.
+    static ENV: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    #[test]
+    fn a_cancelled_run_is_an_error_and_the_deadline_is_split() {
+        let o = ListOutcome {
+            checked: 1,
+            cancelled: true,
+            ..ListOutcome::default()
+        };
+        assert_eq!(o.into_result().unwrap_err().0, "cancelled");
+        assert_eq!(
+            next_limit(Some(Duration::from_secs(60)), None),
+            Some(Some(Duration::from_secs(60)))
+        );
+        let end = Instant::now() + Duration::from_secs(5);
+        let l = next_limit(Some(Duration::from_secs(60)), Some(end))
+            .unwrap()
+            .unwrap();
+        assert!(l <= Duration::from_secs(5));
+        assert_eq!(
+            next_limit(None, Some(Instant::now() - Duration::from_secs(1))),
+            None
+        );
+    }
+
+    #[test]
+    fn an_unrelated_error_is_not_called_cancelled() {
+        let token = CancelToken::new();
+        let t2 = token.clone();
+        let e = guarded(Some(&token), None, |_| {
+            t2.cancel();
+            Err::<(), _>(libflatpak::glib::Error::new(
+                libflatpak::gio::IOErrorEnum::NotFound,
+                "no such remote",
+            ))
+        })
+        .unwrap_err();
+        assert_eq!(e.0, "no such remote");
+    }
+
+    fn wait_for_cancel(c: &Cancellable) -> std::result::Result<(), libflatpak::glib::Error> {
+        while !c.is_cancelled() {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        Err(libflatpak::glib::Error::new(
+            libflatpak::gio::IOErrorEnum::Cancelled,
+            "cancelled",
+        ))
+    }
+
+    #[test]
+    fn a_stalled_call_times_out() {
+        let t = Instant::now();
+        let e = guarded(None, Some(Duration::from_millis(150)), wait_for_cancel).unwrap_err();
+        assert!(e.0.starts_with("timed out"), "{e}");
+        assert!(t.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn a_token_stops_a_running_call() {
+        let token = CancelToken::new();
+        let t2 = token.clone();
+        let h = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(100));
+            t2.cancel();
+        });
+        let e = guarded(Some(&token), None, wait_for_cancel).unwrap_err();
+        h.join().unwrap();
+        assert_eq!(e.0, "cancelled");
+        // already cancelled: the call never starts
+        let mut ran = false;
+        let e = guarded(Some(&token), None, |_| {
+            ran = true;
+            Ok(())
+        })
+        .unwrap_err();
+        assert!(!ran && e.0 == "cancelled");
+    }
+
+    #[test]
+    fn a_quick_call_is_not_cut_and_leaves_no_thread_behind() {
+        let r = guarded(None, Some(Duration::from_secs(30)), |_| Ok(7)).unwrap();
+        assert_eq!(r, 7);
+    }
+
+    #[test]
+    fn a_report_checks_what_it_can_and_stops_on_cancel() {
+        // An empty private user installation, no network: refresh is off.
+        let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let d = tempfile::tempdir().unwrap();
+        // SAFETY: tests that touch the environment hold ENV.
+        unsafe { std::env::set_var("FLATPAK_USER_DIR", d.path()) };
+        let o = list_updates_report(&ListOptions::default());
+        assert!(o.updates.is_empty());
+        assert!(o.checked >= 1, "{o:?}");
+        let token = CancelToken::new();
+        token.cancel();
+        let o = list_updates_report(&ListOptions {
+            cancel: Some(token),
+            ..ListOptions::default()
+        });
+        assert_eq!(o.checked, 0);
+        // SAFETY: as above.
+        unsafe { std::env::remove_var("FLATPAK_USER_DIR") };
+        assert!(o.errors.iter().all(|e| e.error.0 == "cancelled"));
+        assert!(!o.errors.is_empty());
+        assert!(o.into_result().is_err());
+    }
+
+    #[test]
+    fn some_failures_still_give_the_successes() {
+        let fail = InstallationError {
+            installation: InstallationKind::System,
+            id: "extra".into(),
+            error: Error("not mounted".into()),
+        };
+        let o = ListOutcome {
+            updates: Vec::new(),
+            errors: vec![fail.clone()],
+            checked: 1,
+            cancelled: false,
+        };
+        assert!(o.into_result().unwrap().is_empty());
+        let o = ListOutcome {
+            errors: vec![fail],
+            ..ListOutcome::default()
+        };
+        assert_eq!(o.into_result().unwrap_err().0, "not mounted");
     }
 
     #[test]

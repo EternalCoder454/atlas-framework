@@ -8,7 +8,7 @@ The `polkit` module is the check behind every admin action of an Atlas root help
 
 The subject is the caller's unique bus name (`system-bus-name`): polkit asks the bus who is behind it, so a caller cannot pass for another process, as it can with a PID (a PID can be reused by the time polkit looks). Anything but a clear yes is an error, so the check fails closed.
 
-It runs on Tokio with timers enabled (`#[tokio::main]` and `Builder::enable_all` do that). A non-interactive check gives up after 25 seconds; an interactive one waits for the person at the password prompt.
+It runs on Tokio with timers enabled (`#[tokio::main]` and `Builder::enable_all` do that). A non-interactive check gives up after 25 seconds; an interactive one (the password prompt) after 120 seconds. Every check carries its own cancellation id, and polkit gets `CancelCheck` when the check gives up, when the caller's bus name disappears from the bus (looked at every 2 seconds), or when the future is dropped, so a stale prompt closes. A give-up is `Denied::Unavailable`.
 
 ## Example
 

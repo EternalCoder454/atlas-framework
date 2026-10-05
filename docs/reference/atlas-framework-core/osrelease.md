@@ -37,7 +37,7 @@ Values may be unquoted, single-quoted, or double-quoted (inside double quotes `\
 | Name | Signature | Description |
 |---|---|---|
 | `OsRelease::load` | `fn load() -> OsRelease` | `/etc/os-release`, else `/usr/lib/os-release`, else all empty |
-| `OsRelease::load_from` | `fn load_from(path: &Path) -> Option<OsRelease>` | One file; `None` if it cannot be read |
+| `OsRelease::load_from` | `fn load_from(path: &Path) -> Option<OsRelease>` | One file; `None` if it cannot be read, is not a regular file, or is over 1 MB. Bytes that are not UTF-8 are replaced |
 | `OsRelease::parse` | `fn parse(text: &str) -> OsRelease` | Parses os-release text |
 | `OsRelease::display_name` | `fn display_name(&self) -> String` | `PRETTY_NAME`, else `NAME VERSION` (or `VERSION_ID`), else `Linux` |
 | `OsRelease::logo_icon` | `fn logo_icon(&self) -> Option<String>` | `LOGO` when it is a plain icon name (ASCII letters, digits, `-`, `_`, `.`, `+`); a path or an empty value is `None` |

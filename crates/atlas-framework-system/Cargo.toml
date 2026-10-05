@@ -24,7 +24,7 @@ getrandom = "0.3.4"
 # NFC before name matching, so a decomposed "ë" still matches "ë"
 unicode-normalization = "0.1.25"
 zbus = { version = "5.19.0", default-features = false, features = ["tokio"], optional = true }
-tokio = { version = "1.53.2", features = ["rt", "time"], optional = true }
+tokio = { version = "1.53.2", features = ["rt", "time", "macros"], optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true

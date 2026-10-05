@@ -13,6 +13,7 @@
 #include <QQmlComponent>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QTimer>
 
 #include <algorithm>
 #include <cstdio>
@@ -158,12 +159,25 @@ void showUiError(const QString &title, const QString &text)
         qCritical("Cannot show the Atlas.Ui error window: %s", qPrintable(component.errorString()));
         return;
     }
+    if (!window->isVisible()) {
+        qCritical("The Atlas.Ui error window did not show");
+        return;
+    }
     QEventLoop loop;
     QObject::connect(window, &QWindow::visibleChanged, &loop, [&loop, window] {
         if (!window->isVisible()) {
             loop.quit();
         }
     });
+    // A window that cannot be drawn (no GPU, a failed scene graph) would
+    // never be closed by anyone: stop waiting for it.
+    QObject::connect(window, &QQuickWindow::sceneGraphError, &loop, [&loop](QQuickWindow::SceneGraphError, const QString &message) {
+        qCritical("The Atlas.Ui error window cannot be drawn: %s", qPrintable(message));
+        loop.quit();
+    });
+    QObject::connect(window, &QObject::destroyed, &loop, &QEventLoop::quit);
+    // Nobody reads it for five minutes: give up and exit.
+    QTimer::singleShot(5 * 60 * 1000, &loop, &QEventLoop::quit);
     loop.exec();
 }
 
@@ -227,6 +241,14 @@ void raise(QQmlApplicationEngine &engine)
 
 extern "C" void atlas_app_init()
 {
+    // Idempotent: a second call (an app that calls it and then atlas_app_run)
+    // would install the handler as its own previous one, and the first
+    // message would recurse until the stack ends.
+    static bool done = false;
+    if (done) {
+        return;
+    }
+    done = true;
     atlas_framework_ui_start();
     // Before QApplication, so a fatal while it starts (no display, no
     // platform plugin) is saved too.

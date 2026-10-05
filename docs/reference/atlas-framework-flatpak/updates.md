@@ -31,10 +31,12 @@ if let Some(e) = outcome.error {
 
 | Name | Signature | Description |
 |---|---|---|
-| `list_updates` | `pub fn list_updates(refresh: bool) -> Result<Vec<AppUpdate>>` | Updates available, apps and runtimes. With `refresh`, appstream data and remote summaries are updated first (network); without it only cached metadata is read. A remote that fails to refresh is skipped |
+| `list_updates` | `pub fn list_updates(refresh: bool) -> Result<Vec<AppUpdate>>` | Updates available, apps and runtimes. With `refresh`, appstream data and remote summaries are updated first (network); without it only cached metadata is read. `download_size` is only looked up with `refresh` (the lookup reads the remote's summary, which flatpak downloads when it is not cached), so without it every size is `0`. A remote that fails to refresh is skipped and logged. An installation that fails (an unmounted extra one) does not fail the call: the others are returned, and only when every installation failed is it an error |
 | `list_updates_with` | `pub fn list_updates_with(refresh: bool, no_interaction: bool) -> Result<Vec<AppUpdate>>` | `list_updates` for a check nobody is watching: with `no_interaction` nothing asks for a password |
+| `list_updates_report` | `pub fn list_updates_report(opts: &ListOptions) -> ListOutcome` | `list_updates` that also reports the installations that failed, and can be cancelled and bounded in time |
 | `update_all` | `pub fn update_all(progress: impl FnMut(Progress) + 'static) -> Result<()>` | Updates everything that has an update, one transaction per installation. Returns the first error; the other installations are still updated |
 | `update` | `pub fn update(opts: &UpdateOptions, progress: impl FnMut(Progress) + 'static) -> Outcome` | Like `update_all`, with options, and says what changed even when an installation failed part way |
+| `update_cancellable` | `pub fn update_cancellable(opts: &UpdateOptions, cancel: Option<&CancelToken>, progress: impl FnMut(Progress) + 'static) -> Outcome` | `update` that stops when the token is cancelled: the running transaction is cancelled, the rest are not started, and `Outcome::error` is `cancelled`. It has no deadline, as an update may rightly take long |
 
 ## UpdateOptions
 
@@ -45,6 +47,12 @@ if let Some(e) = outcome.error {
 | `no_interaction` | Never ask for a password: a step that would need one fails instead. For updates nobody is watching |
 | `hold_new_permissions` | Leave out apps whose new version asks for more permissions than the installed one (new files, devices, sockets, D-Bus names and so on). They are listed in `Outcome::held_back` and wait for an update the user starts. See [Permissions](permissions.md) |
 | `check_only` | Only look: `Outcome::held_back` says what `hold_new_permissions` would leave out, and nothing is downloaded or installed. For showing what an update asks for before the user starts it |
+
+## Cancellation and time limits
+
+libflatpak has no timeouts of its own, so a stalled remote would hold the worker for good. `CancelToken` (`Debug, Clone, Default`; `new()`, `cancel()`, `is_cancelled()`) stops a running call from another thread within about 50 ms. `ListOptions` (`Debug, Clone`, `#[non_exhaustive]`: start from `ListOptions::default()` and set the fields, or use the `with_refresh`, `with_no_interaction`, `with_cancel`, `with_call_timeout` and `with_deadline` methods) has `refresh: bool` and `no_interaction: bool` (both default `false`), `cancel: Option<CancelToken>` (default `None`) and `call_timeout: Option<Duration>` (default `Some(DEFAULT_CALL_TIMEOUT)`, 60 seconds; `None` waits for ever) and `deadline: Option<Duration>` (the whole run, default `None`; calls are cut to what is left of it). A remote that failed to refresh, or timed out sizing a ref, gets no more size lookups in that run (those sizes are `0`). The timeout is per libflatpak call (refreshing a remote, its appstream data, listing, sizing a ref): a call over it fails with `timed out after N s`, is logged and the run goes on with the next.
+
+`ListOutcome` (`Debug, Clone, Default, PartialEq, Eq`, `#[non_exhaustive]`) has `updates: Vec<AppUpdate>`, `errors: Vec<InstallationError>` and `checked: usize` (installations checked without error) and `cancelled: bool` (stopped by the token; `into_result()` is then an error); `into_result()` is the updates, or the first error when nothing could be checked. `InstallationError` (`#[non_exhaustive]`) has `installation: InstallationKind`, `id: String` (flatpak's id for it, empty when listing the system installations itself failed) and `error: Error`. `Error` also derives `Clone, PartialEq, Eq`.
 
 ## Types
 

@@ -35,7 +35,7 @@
 //!   goes through [`escape`] before it goes into [`Note::text`].
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use atlas_framework_core::AppInfo;
@@ -231,13 +231,12 @@ impl Notifier {
     /// Whether `event` pops up. Plasma's notification settings write the
     /// user's choice to `~/.config/<component>.notifyrc` (`[Event/<id>]
     /// Action=`, a `|`-separated list); without one, the shipped file's
-    /// `Popup` applies. An event id that is not valid never pops up.
+    /// (`$XDG_DATA_DIRS/knotifications6/<component>.notifyrc`) applies, and
+    /// with neither the event pops up. An event id that is not valid never
+    /// pops up. Reads files: not for an async task (`send` does it on a
+    /// blocking thread).
     pub fn popup_enabled(&self, event: &str) -> bool {
-        event_id_ok(event)
-            && popup_in(
-                &config_dir().join(format!("{}.notifyrc", self.component)),
-                event,
-            )
+        popup_for(&self.component, event)
     }
 
     /// Sends `n`. `Ok(None)`: the user turned this event's popup off. Gives
@@ -252,7 +251,12 @@ impl Notifier {
                 n.event
             )));
         }
-        if !self.popup_enabled(n.event) {
+        // Reads files: off the async worker.
+        let (component, event) = (self.component.clone(), n.event.to_string());
+        let popup = tokio::task::spawn_blocking(move || popup_for(&component, &event))
+            .await
+            .unwrap_or(true);
+        if !popup {
             return Ok(None);
         }
         let mut actions: Vec<&str> = Vec::with_capacity(n.actions.len() * 2);
@@ -373,12 +377,35 @@ pub async fn close(conn: &zbus::Connection, id: u32) -> zbus::Result<()> {
     }
 }
 
-fn popup_in(path: &Path, event: &str) -> bool {
-    // Only a regular file: anything else would block the reader.
-    if !path.is_file() {
-        return true;
+fn popup_for(component: &str, event: &str) -> bool {
+    event_id_ok(event) && {
+        let file = format!("{component}.notifyrc");
+        popup_in(&config_dir().join(&file), &shipped_dirs(), &file, event)
     }
-    match Settings::at(path).get(&format!("Event/{event}"), "Action") {
+}
+
+/// `$XDG_DATA_DIRS/knotifications6`, absolute entries only (the XDG default
+/// when it is unset or empty).
+fn shipped_dirs() -> Vec<PathBuf> {
+    let dirs = std::env::var("XDG_DATA_DIRS")
+        .ok()
+        .filter(|d| !d.is_empty())
+        .unwrap_or_else(|| "/usr/local/share:/usr/share".to_string());
+    dirs.split(':')
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .map(|p| p.join("knotifications6"))
+        .collect()
+}
+
+/// The user's `Action=` for the event, else the first shipped file's, else
+/// popup. Settings reads only regular files (never blocks on a FIFO).
+fn popup_in(user: &Path, shipped: &[PathBuf], file: &str, event: &str) -> bool {
+    let group = format!("Event/{event}");
+    let actions = std::iter::once(user.to_path_buf())
+        .chain(shipped.iter().map(|d| d.join(file)))
+        .find_map(|p| Settings::at(p).get(&group, "Action"));
+    match actions {
         Some(actions) => actions.split('|').any(|a| a.trim() == "Popup"),
         None => true,
     }
@@ -496,7 +523,10 @@ mod tests {
         assert!(!no_bus(&io(ErrorKind::PermissionDenied)));
         assert!(!no_bus(&zbus::Error::Address("bad".into())));
         assert_eq!(plain(io(ErrorKind::NotFound), true).to_string(), NO_SERVICE);
-        assert_ne!(plain(zbus::Error::Handshake("auth".into()), true).to_string(), NO_SERVICE);
+        assert_ne!(
+            plain(zbus::Error::Handshake("auth".into()), true).to_string(),
+            NO_SERVICE
+        );
     }
 
     #[test]
@@ -504,28 +534,58 @@ mod tests {
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("atlas-updater.notifyrc");
         // no file, no group, no key: the shipped default (Popup)
-        assert!(popup_in(&p, "updateStaged"));
+        assert!(popup_in(&p, &[], "atlas-updater.notifyrc", "updateStaged"));
         std::fs::write(
             &p,
             "[Event/updateStaged]\nAction=Sound\n\n[Event/restartSoon]\nAction=Popup|Sound\n\n[Event/crashReport]\nAction=\n",
         )
         .unwrap();
-        assert!(!popup_in(&p, "updateStaged"));
-        assert!(popup_in(&p, "restartSoon"));
-        assert!(!popup_in(&p, "crashReport"));
-        assert!(popup_in(&p, "appUpdatesReady"));
+        assert!(!popup_in(&p, &[], "atlas-updater.notifyrc", "updateStaged"));
+        assert!(popup_in(&p, &[], "atlas-updater.notifyrc", "restartSoon"));
+        assert!(!popup_in(&p, &[], "atlas-updater.notifyrc", "crashReport"));
+        assert!(popup_in(
+            &p,
+            &[],
+            "atlas-updater.notifyrc",
+            "appUpdatesReady"
+        ));
+    }
+
+    #[test]
+    fn the_shipped_file_is_the_fallback_and_the_user_file_wins() {
+        let d = tempfile::tempdir().unwrap();
+        let shipped = d.path().join("knotifications6");
+        std::fs::create_dir(&shipped).unwrap();
+        let f = "atlas-updater.notifyrc";
+        std::fs::write(
+            shipped.join(f),
+            "[Event/updateStaged]\nAction=Sound\n\n[Event/restartSoon]\nAction=Popup\n",
+        )
+        .unwrap();
+        let user = d.path().join("user.notifyrc");
+        let dirs = [d.path().join("none"), shipped];
+        // no user file: the shipped one says
+        assert!(!popup_in(&user, &dirs, f, "updateStaged"));
+        assert!(popup_in(&user, &dirs, f, "restartSoon"));
+        assert!(popup_in(&user, &dirs, f, "unlisted"));
+        // the user's choice for an event beats it; other events fall through
+        std::fs::write(&user, "[Event/updateStaged]\nAction=Popup\n").unwrap();
+        assert!(popup_in(&user, &dirs, f, "updateStaged"));
+        std::fs::write(&user, "[Event/restartSoon]\nAction=\n").unwrap();
+        assert!(!popup_in(&user, &dirs, f, "restartSoon"));
+        assert!(!popup_in(&user, &dirs, f, "updateStaged"));
     }
 
     #[test]
     fn a_setting_that_is_not_a_regular_file_means_popup() {
         let d = tempfile::tempdir().unwrap();
         // a directory, and a fifo that would block a reader
-        assert!(popup_in(d.path(), "updateStaged"));
+        assert!(popup_in(d.path(), &[], "x.notifyrc", "updateStaged"));
         let fifo = d.path().join("fifo.notifyrc");
         let c = std::ffi::CString::new(fifo.to_str().unwrap()).unwrap();
         // SAFETY: mkfifo with a valid NUL-terminated path.
         assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
-        assert!(popup_in(&fifo, "updateStaged"));
+        assert!(popup_in(&fifo, &[], "x.notifyrc", "updateStaged"));
     }
 
     #[test]

@@ -38,6 +38,29 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   100000 and reads `symbol` safely; `AtlasShortcuts` ignores NaN, infinite
   and out-of-range numbers as key sequences; `Appearance.textScale` is kept
   between 0.5 and 4.
+- Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
+  (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call
+  (60 s by default) and an overall deadline) returning `ListOutcome`
+  (updates, the installations that failed, how many were checked, whether it
+  was cancelled); `update_cancellable`. All new structs are
+  `#[non_exhaustive]`: start from `ListOptions::default()` or `with_*`.
+- Fix (atlas-framework-flatpak): `list_updates` returns the updates it found
+  when one installation fails (it fails only when all do, and logs a warning
+  for a partial result); download sizes are looked up only with `refresh`,
+  and a remote that failed to refresh or answer is not asked again in the run.
+- Fix (atlas-framework-core, -system): settings and event-log locks wait at
+  most 2 s, then fail with `TimedOut` (show it); reads are capped and never
+  block on a FIFO or take a terminal; a settings file that isn't UTF-8 still
+  reads but is not rewritten; leftover settings temp files older than a day
+  are removed; event names and versions are capped, oversized lines refused,
+  and trimming the log never empties it; history appends are locked.
+- Fix (atlas-framework-system): a polkit check is cancelled (`CancelCheck`)
+  when it times out, the caller leaves the bus or the future is dropped, and
+  an interactive check gives up after 120 s; bootc status without an `image`
+  parses; notifications fall back to the installed `.notifyrc`.
+- Fix (atlas-framework-ui): `atlas_app_init` may be called more than once;
+  the startup error window also quits when the scene graph fails, the window
+  is destroyed or after 5 minutes.
 
 ## 1.4.0
 

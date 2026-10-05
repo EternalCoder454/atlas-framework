@@ -423,19 +423,19 @@ that lands, then go in one batch.
 - [ ] crash.rs Low: `--noproxy "*"`; two senders of one report file two
   issues; `ram_total_kb * 1024` overflow; the "prunes the sent history"
   comment; the C++ `alarm(10)` turns a hung save into SIGALRM (no core).
-- [ ] flatpak: one failing installation (an unmounted extra one) fails all of
+- [x] flatpak: one failing installation (an unmounted extra one) fails all of
   `list_updates`; failed remote refreshes are dropped without a log line.
-- [ ] flatpak: no Cancellable or deadline on any libflatpak call; a stalled
+- [x] flatpak: no Cancellable or deadline on any libflatpak call; a stalled
   remote blocks the worker for good (add `*_with` variants).
-- [ ] flatpak: `fetch_remote_size_sync` runs even with `refresh=false`
+- [x] flatpak: `fetch_remote_size_sync` runs even with `refresh=false`
   (network, serial, errors become size 0), contrary to updates.md (verify).
-- [ ] atlas_app_init isn't idempotent: a second call installs the message
+- [x] atlas_app_init isn't idempotent: a second call installs the message
   handler as its own previous one, and the first qDebug recurses to a stack
   overflow. showUiError's loop never ends if the window never shows.
-- [ ] settings.rs and events.rs: `flock` waits forever while holding the
+- [x] settings.rs and events.rs: `flock` waits forever while holding the
   process-wide WRITERS mutex (a stopped holder or a hung NFS home freezes every
   `Settings::set`); use a deadline.
-- [ ] Low: events `event`/`version` unbounded, `eprintln!` instead of `log`;
+- [x] Low: events `event`/`version` unbounded, `eprintln!` instead of `log`;
   history `append_if_new` without a lock; unbounded `read_to_string` (a FIFO
   blocks, non-UTF-8 makes a key unwritable); temp files never swept; polkit
   interactive check without a cancellation id or timeout; bootc required

@@ -46,6 +46,8 @@ trait Authority {
         flags: u32,
         cancellation_id: &str,
     ) -> zbus::Result<(bool, bool, HashMap<String, String>)>;
+
+    fn cancel_check(&self, cancellation_id: &str) -> zbus::Result<()>;
 }
 
 /// Why an action was refused.
@@ -88,8 +90,12 @@ pub async fn check(
 /// [`check`] for a caller known by its unique bus name (`:1.42`).
 ///
 /// Runs on Tokio, with timers enabled (`#[tokio::main]` and
-/// `Builder::enable_all` do that): a non-interactive check gives up after
-/// 25 seconds.
+/// `Builder::enable_all` do that). A non-interactive check gives up after
+/// 25 seconds, an interactive one (a password prompt) after 120 seconds.
+/// Every check carries its own cancellation id; when it gives up, when the
+/// caller's bus name disappears from the bus (checked every 2 seconds), or
+/// when the future is dropped, polkit is told with `CancelCheck`, so its
+/// password prompt closes. A give-up is `Denied::Unavailable`.
 pub async fn check_bus_name(
     conn: &zbus::Connection,
     sender: &str,
@@ -101,6 +107,12 @@ pub async fn check_bus_name(
         .map_err(|e| Denied::Unavailable(e.to_string()))?;
     let subject = subject(sender);
     let details = HashMap::new();
+    let id = cancellation_id();
+    let mut guard = CancelGuard {
+        conn: conn.clone(),
+        id: id.clone(),
+        armed: true,
+    };
     let call = authority.check_authorization(
         &subject,
         action,
@@ -110,16 +122,26 @@ pub async fn check_bus_name(
         } else {
             0
         },
-        "",
+        &id,
     );
-    // A password prompt waits for the person; anything else that takes this
-    // long is a stuck polkitd, and the answer is no.
-    let reply = if interactive {
-        call.await
+    let limit = if interactive {
+        INTERACTIVE_TIMEOUT
     } else {
-        tokio::time::timeout(NON_INTERACTIVE_TIMEOUT, call)
-            .await
-            .map_err(|_| Denied::Unavailable("polkit did not answer".into()))?
+        NON_INTERACTIVE_TIMEOUT
+    };
+    // Anything that takes this long is a stuck polkitd or an abandoned
+    // prompt, and the answer is no.
+    let reply = tokio::select! {
+        r = tokio::time::timeout(limit, call) => match r {
+            Ok(reply) => {
+                guard.armed = false; // polkit has answered: nothing to cancel
+                reply
+            }
+            Err(_) => return Err(Denied::Unavailable("polkit did not answer".into())),
+        },
+        () = caller_gone(conn, sender) => {
+            return Err(Denied::Unavailable("the caller went away".into()));
+        }
     };
     let (authorized, _challenge, _details) =
         reply.map_err(|e| Denied::Unavailable(e.to_string()))?;
@@ -133,6 +155,65 @@ pub async fn check_bus_name(
 }
 
 const NON_INTERACTIVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(25);
+const INTERACTIVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+const OWNER_POLL: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// A cancellation id no other check of this process (or another helper on the
+/// bus: the pid is in it) uses.
+fn cancellation_id() -> String {
+    static COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    format!(
+        "atlas-{}-{}",
+        std::process::id(),
+        COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    )
+}
+
+/// Tells polkit to drop a check that was not answered (gave up, caller gone,
+/// future dropped). The call runs on a spawned task, errors are only logged.
+struct CancelGuard {
+    conn: zbus::Connection,
+    id: String,
+    armed: bool,
+}
+
+impl Drop for CancelGuard {
+    fn drop(&mut self) {
+        if !self.armed {
+            return;
+        }
+        let Ok(rt) = tokio::runtime::Handle::try_current() else {
+            return;
+        };
+        let (conn, id) = (self.conn.clone(), std::mem::take(&mut self.id));
+        rt.spawn(async move {
+            let r = async { AuthorityProxy::new(&conn).await?.cancel_check(&id).await };
+            if let Ok(Err(e)) | Err(e) = tokio::time::timeout(NON_INTERACTIVE_TIMEOUT, r)
+                .await
+                .map_err(|_| zbus::Error::Failure("timed out".into()))
+            {
+                log::warn!("polkit CancelCheck {id}: {e}");
+            }
+        });
+    }
+}
+
+/// Resolves when `name` no longer has an owner on the bus. A failed
+/// `NameHasOwner` call is not taken for "gone".
+async fn caller_gone(conn: &zbus::Connection, name: &str) {
+    let Ok(bus) = zbus::fdo::DBusProxy::new(conn).await else {
+        return std::future::pending().await;
+    };
+    let Ok(name) = zbus::names::BusName::try_from(name) else {
+        return std::future::pending().await;
+    };
+    loop {
+        tokio::time::sleep(OWNER_POLL).await;
+        if let Ok(false) = bus.name_has_owner(name.clone()).await {
+            return;
+        }
+    }
+}
 
 fn subject(sender: &str) -> (&'static str, HashMap<&'static str, Value<'_>>) {
     (
@@ -151,6 +232,19 @@ mod tests {
         assert_eq!(kind, "system-bus-name");
         assert_eq!(details.len(), 1);
         assert_eq!(details["name"], Value::from(":1.42"));
+    }
+
+    #[test]
+    fn cancellation_ids_are_unique() {
+        let (a, b) = (cancellation_id(), cancellation_id());
+        assert_ne!(a, b);
+        assert!(a.starts_with(&format!("atlas-{}-", std::process::id())));
+    }
+
+    #[test]
+    fn interactive_checks_are_bounded() {
+        assert!(INTERACTIVE_TIMEOUT > NON_INTERACTIVE_TIMEOUT);
+        assert!(INTERACTIVE_TIMEOUT.as_secs() <= 120);
     }
 
     #[test]
