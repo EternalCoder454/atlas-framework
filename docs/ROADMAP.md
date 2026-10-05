@@ -370,6 +370,10 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   with its source), `set` and `reset` for a user app or all apps, atomic and
   locked writes that keep unknown keys, values validated by flatpak's rules,
   tested against Flatseal's list. Built here, not prototyped in Settings.
+  Store prototype ready to upstream: EternalCoder454/atlasos-store c9e96b7,
+  `crates/atlas-store-core/src/flatpak/` (lock, installed, remote, sources,
+  transaction, supervise; tests `tests/flatpak_ops.rs`, `tests/flatpak_tx.rs`).
+  Not needed to ship 1.5.0: the Store keeps its copy until a release has it.
 - [ ] 41 Store controls: `AtlasScreenshotCarousel.expandable` (a full-window
   viewer), AtlasShelf (a horizontal row of cards with scroll buttons),
   AtlasInstallButton `"remove"`, `"removing"` and `"queued"`,
