@@ -30,7 +30,7 @@ jobs:
       # git runs as root on a checkout the runner user owns: safe.directory lets it.
       RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Tags: check-api.sh reads the last v* tag.
           fetch-depth: 0
@@ -44,7 +44,7 @@ jobs:
 
       - name: Restore the compiler cache
         id: cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
           # A new entry per commit; the newest one of any commit seeds the next run.
@@ -77,7 +77,7 @@ jobs:
 
       - name: Upload the actual and diff pictures of a failed visual test
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: visual-test-output
           path: build/visual-out
@@ -101,7 +101,7 @@ jobs:
 
       - name: Save the compiler cache
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
           key: ${{ steps.cache.outputs.cache-primary-key }}
@@ -113,7 +113,7 @@ jobs:
     env:
       RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -w /src -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Tags and history: cargo-semver-checks builds the last release as its baseline.
           fetch-depth: 0
@@ -123,7 +123,7 @@ jobs:
 
       - name: Restore the cargo cache
         id: cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # The downloaded crates, and the compiled dependencies (cargo rebuilds
           # the workspace's own crates, whose sources the checkout made newer).
@@ -185,7 +185,7 @@ jobs:
 
       - name: Save the cargo cache
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             .cargo-registry
@@ -207,7 +207,7 @@ jobs:
       # mounted there. The fixed path keeps cargo's fingerprints valid.
       RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -v ${{ github.workspace }}/.perf-target:/tmp/perf-template/cargo -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e QMAKE=/usr/bin/qmake6 -e ATLAS_PERF_TEMPLATE_BUILD=/tmp/perf-template -e PERF_WARN_ONLY=startup_ms atlas-framework-dev:ci
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -215,7 +215,7 @@ jobs:
 
       - name: Restore the build caches
         id: cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # Atlas.Ui's objects, the downloaded crates and the template's cargo directory.
           path: |
@@ -249,7 +249,7 @@ jobs:
 
       - name: Upload the performance numbers
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: perf-out
           path: perf/out.json
@@ -269,7 +269,7 @@ jobs:
 
       - name: Save the build caches
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             .ccache
@@ -284,7 +284,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # build-rpm.sh packages HEAD with git archive: no history needed.
           persist-credentials: false
@@ -300,7 +300,7 @@ jobs:
             registry.fedoraproject.org/fedora:44 /src/packaging/build-rpm.sh /out
 
       - name: Upload the RPMs
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rpms
           path: ${{ runner.temp }}/rpms/*.rpm
@@ -314,7 +314,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -367,7 +367,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -401,7 +401,7 @@ jobs:
       # main-tip guard below skips stale commits.
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Tags: index.json says whether this commit is the release.
           fetch-depth: 0
