@@ -90,6 +90,7 @@ BEGIN {
     for (i = 1; i <= nd; i++) {
         if (D[i] ~ /^[ \t]*(#|$)/) continue
         split(D[i], F, "\t")
+        if (F[1] ~ /^[ \t]*$/) continue
         dn++; dname[dn] = F[1]; dsince[dn] = F[2]; drepl[dn] = F[3]
         dre[dn] = F[1]; gsub(/\./, "\\.", dre[dn])
     }
@@ -146,7 +147,9 @@ END {
         tt = 0
         for (a in qq) if (s ~ ("(^|[^A-Za-z0-9_.])" a "\\.ToolTip\\.(text|visible|delay|timeout)[ \t]*:")) tt = 1
         if (!tt && unq && !("ToolTip" in isLocal) && s ~ /(^|[^A-Za-z0-9_.])ToolTip\.(text|visible|delay|timeout)[ \t]*:/) tt = 1
-        if (tt) report(nr, "warning", "default ToolTip attached property", ": use AtlasToolTip from Atlas.Ui")
+        # One finding per tooltip: its text, visible and delay lines run together.
+        if (tt && lastTT != nr - 1) report(nr, "warning", "default ToolTip attached property", ": use AtlasToolTip from Atlas.Ui")
+        if (tt) lastTT = nr
         for (i = 1; i <= dn; i++)
             if (s ~ ("(^|[^A-Za-z0-9_])" dre[i] "[ \t]*[{:]") || s ~ ("\\." dre[i] "([^A-Za-z0-9_]|$)"))
                 report(nr, "warning", dname[i] " is deprecated since " dsince[i], ": use " drepl[i])

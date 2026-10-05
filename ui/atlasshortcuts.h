@@ -3,8 +3,8 @@
 // watches each one's `shortcut`, `text` and `enabled`, keeps the list for
 // AtlasShortcutsDialog, and reports conflicts: one shortcut on two actions
 // that are both enabled. Two actions conflict when they live in the same
-// window; an action whose window can't be known (it sits outside any Item, or
-// its Item is not in a window yet) is compared with every other action.
+// window (actions outside any Item or window share the app level). An action
+// whose Item is not in a window yet takes part in no comparison until it is.
 // Each new conflict is logged once with qWarning, naming the shortcut and the
 // action texts.
 //
@@ -37,7 +37,7 @@ public:
     // Registered actions, in the order they were added.
     QList<QObject *> actions() const;
     // [{ shortcut: "Ctrl+S", texts: ["Save", "Sort"] }], by shortcut.
-    QVariantList conflicts();
+    QVariantList conflicts() const;
 
     Q_INVOKABLE void add(QObject *action);
     Q_INVOKABLE void remove(QObject *action);
@@ -68,7 +68,7 @@ private:
     void scheduleRecompute();
 
     QList<QPointer<QObject>> m_actions;
-    QVariantList m_conflicts;
+    QVariantList m_conflicts; // as of the last recompute()
     QSet<QString> m_warned;
     QTimer m_timer;
     bool m_dirty = false;

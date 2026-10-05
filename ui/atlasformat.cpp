@@ -17,14 +17,10 @@ constexpr double kMaxInt64Size = 9.0e18;
 constexpr double kMaxSeconds = 86400.0 * 1.0e9;
 constexpr int kMaxPrecision = 10;
 
-QString tr(const char *source, const char *comment = nullptr)
-{
-    return QCoreApplication::translate("AtlasFormat", source, comment);
-}
-
 // A plural: the catalogue's forms of `one` for n, or, when nothing is
 // translated (the source language), English: `one` for 1, `many` otherwise.
-// lupdate sees `one` only, so `many` is a source-language fallback. Callers
+// lupdate sees `one` only (marked with QT_TRANSLATE_N_NOOP at the call), so
+// `many` is a source-language fallback. Callers
 // keep n at or below a billion (duration() clamps its input), so the number
 // shown is always the real one.
 QString plural(const char *one, qint64 n, const char *many)
@@ -79,7 +75,7 @@ QString sized(double n, int precision, const QLocale &l)
     if (std::round(a) < 1024.0) {
         // "0 B": QLocale would say "0 bytes".
         const double whole = std::round(a);
-        return (whole > 0 ? sign : QString()) + tr("%1 B").arg(l.toString(whole, 'f', 0));
+        return (whole > 0 ? sign : QString()) + QCoreApplication::translate("AtlasFormat", "%1 B").arg(l.toString(whole, 'f', 0));
     }
     if (a >= kMaxInt64Size) {
         return sign + l.toString(a / double(Q_INT64_C(1) << 60), 'f', precision) + QLatin1String(" EiB");
@@ -106,7 +102,7 @@ QString AtlasFormat::bytes(double n, int precision, const QString &locale) const
 
 QString AtlasFormat::bytesPerSecond(double n, int precision, const QString &locale) const
 {
-    return isNum(n) ? tr("%1/s", "a size per second, e.g. 1.5 MiB/s").arg(sized(n, precision, localeFor(locale))) : QString();
+    return isNum(n) ? QCoreApplication::translate("AtlasFormat", "%1/s", "a size per second, e.g. 1.5 MiB/s").arg(sized(n, precision, localeFor(locale))) : QString();
 }
 
 QString AtlasFormat::percent(double fraction, int precision, const QString &locale) const
@@ -178,10 +174,10 @@ QString AtlasFormat::duration(double seconds, const QString &style, const QStrin
         QString text;
     };
     const Unit units[] = {
-        {d, lng ? plural("%n day", d, "%n days") : tr("%1 d").arg(d)},
-        {h, lng ? plural("%n hour", h, "%n hours") : tr("%1 h").arg(h)},
-        {m, lng ? plural("%n minute", m, "%n minutes") : tr("%1 min").arg(m)},
-        {s, lng ? plural("%n second", s, "%n seconds") : tr("%1 s").arg(s)},
+        {d, lng ? plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "%n day"), d, "%n days") : QCoreApplication::translate("AtlasFormat", "%1 d").arg(d)},
+        {h, lng ? plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "%n hour"), h, "%n hours") : QCoreApplication::translate("AtlasFormat", "%1 h").arg(h)},
+        {m, lng ? plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "%n minute"), m, "%n minutes") : QCoreApplication::translate("AtlasFormat", "%1 min").arg(m)},
+        {s, lng ? plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "%n second"), s, "%n seconds") : QCoreApplication::translate("AtlasFormat", "%1 s").arg(s)},
     };
     // The largest unit that is not zero, then the next one if it is not zero.
     int first = 0;
@@ -223,12 +219,12 @@ QString AtlasFormat::date(const QDateTime &d, const QString &style, const QStrin
 
     if (style == QLatin1String("atTime")) {
         if (days == 0) {
-            return tr("today at %1").arg(shortTime);
+            return QCoreApplication::translate("AtlasFormat", "today at %1").arg(shortTime);
         }
         if (days == 1) {
-            return tr("yesterday at %1").arg(shortTime);
+            return QCoreApplication::translate("AtlasFormat", "yesterday at %1").arg(shortTime);
         }
-        return tr("%1 at %2", "a date, then a time of day").arg(shortDate, shortTime);
+        return QCoreApplication::translate("AtlasFormat", "%1 at %2", "a date, then a time of day").arg(shortDate, shortTime);
     }
 
     // relative
@@ -236,28 +232,28 @@ QString AtlasFormat::date(const QDateTime &d, const QString &style, const QStrin
     const qint64 a = qAbs(secs);
     const bool past = secs >= 0;
     if (a < 60) {
-        return tr("just now");
+        return QCoreApplication::translate("AtlasFormat", "just now");
     }
     if (a < 3600) {
         const qint64 n = a / 60;
-        return past ? plural("%n minute ago", n, "%n minutes ago") : plural("in %n minute", n, "in %n minutes");
+        return past ? plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "%n minute ago"), n, "%n minutes ago") : plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "in %n minute"), n, "in %n minutes");
     }
     // Within a day: hours, unless it crossed midnight a good while ago.
     if (a < 86400 && (days == 0 || a < 6 * 3600)) {
         const qint64 n = a / 3600;
-        return past ? plural("%n hour ago", n, "%n hours ago") : plural("in %n hour", n, "in %n hours");
+        return past ? plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "%n hour ago"), n, "%n hours ago") : plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "in %n hour"), n, "in %n hours");
     }
     if (days == 1) {
-        return tr("yesterday");
+        return QCoreApplication::translate("AtlasFormat", "yesterday");
     }
     if (days == -1) {
-        return tr("tomorrow");
+        return QCoreApplication::translate("AtlasFormat", "tomorrow");
     }
     if (days > 1 && days < 7) {
-        return plural("%n day ago", days, "%n days ago");
+        return plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "%n day ago"), days, "%n days ago");
     }
     if (days < -1 && days > -7) {
-        return plural("in %n day", -days, "in %n days");
+        return plural(QT_TRANSLATE_N_NOOP("AtlasFormat", "in %n day"), -days, "in %n days");
     }
     return shortDate;
 }

@@ -509,6 +509,8 @@ void AtlasSettings::setGroup(const QString &group)
     }
     if (m_complete) {
         reload(false);
+    } else {
+        m_loaded = false;
     }
     Q_EMIT groupChanged();
 }
@@ -526,6 +528,8 @@ void AtlasSettings::setFileName(const QString &fileName)
     if (m_complete) {
         reload(false);
         rewatch();
+    } else {
+        m_loaded = false;
     }
     Q_EMIT fileNameChanged();
 }
@@ -544,12 +548,25 @@ void AtlasSettings::dropPending()
 void AtlasSettings::componentComplete()
 {
     m_complete = true;
-    reload(false);
+    if (!m_loaded) {
+        reload(false);
+    }
     rewatch();
+}
+
+// value() and contains() can run before componentComplete(): a binding on a
+// sibling item is evaluated while the tree is built and would never run again.
+// So the file is read on first use, with the group and file name set so far.
+void AtlasSettings::ensureLoaded() const
+{
+    if (!m_loaded) {
+        const_cast<AtlasSettings *>(this)->reload(false);
+    }
 }
 
 void AtlasSettings::reload(bool announce)
 {
+    m_loaded = true;
     const QHash<QString, QString> before = m_snapshot;
     m_snapshot.clear();
     m_cfg.reset();
@@ -618,6 +635,7 @@ QVariant AtlasSettings::value(const QString &key, const QVariant &defaultValue) 
     if (!validKey(key)) {
         return defaultValue;
     }
+    ensureLoaded();
     const auto pending = m_pending.constFind(key);
     if (pending != m_pending.cend()) {
         return pending->isValid() ? coerce(defaultValue, *pending) : defaultValue;
@@ -633,6 +651,7 @@ bool AtlasSettings::contains(const QString &key) const
     if (!validKey(key)) {
         return false;
     }
+    ensureLoaded();
     const auto pending = m_pending.constFind(key);
     if (pending != m_pending.cend()) {
         return pending->isValid();

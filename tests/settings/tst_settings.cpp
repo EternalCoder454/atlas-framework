@@ -10,6 +10,8 @@
 
 #include <QFile>
 #include <QGuiApplication>
+#include <QQmlComponent>
+#include <QQmlEngine>
 #include <QSignalSpy>
 #include <QUrlQuery>
 #include <QTemporaryDir>
@@ -543,6 +545,24 @@ private Q_SLOTS:
         QCOMPARE(s->value(QStringLiteral("L"), QStringLiteral("")).toString(), QStringLiteral("plain"));
         QVERIFY(!s->contains(QStringLiteral("List")));
         qunsetenv("ATLAS_TEST_SECRET");
+    }
+    // A binding on a sibling is evaluated while the tree is built, before
+    // componentComplete(), and never again: it must already see the file.
+    void bindingSeesSavedValueBeforeComplete()
+    {
+        writeAll(rc(), QStringLiteral("[View]\nShowHidden=true\nWidth=321\n"));
+        qmlRegisterType<AtlasSettings>("AtlasTest", 1, 0, "AtlasSettings");
+        QQmlEngine engine;
+        QQmlComponent c(&engine);
+        c.setData("import QtQuick\nimport AtlasTest\nItem {\n"
+                  "  property bool shown: s.value(\"ShowHidden\", false)\n"
+                  "  property int width2: s.value(\"Width\", 5)\n"
+                  "  AtlasSettings { id: s; group: \"View\" }\n}\n",
+                  QUrl());
+        std::unique_ptr<QObject> o(c.create());
+        QVERIFY2(o, qPrintable(c.errorString()));
+        QCOMPARE(o->property("shown").toBool(), true);
+        QCOMPARE(o->property("width2").toInt(), 321);
     }
     void newFileIsPrivate()
     {

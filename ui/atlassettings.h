@@ -12,6 +12,9 @@
 //       onToggled: view.setValue("ShowHidden", checked)
 //   }
 //
+// `value()` reads the file on first use, so a binding on a sibling that runs
+// while the tree is built sees the saved value (a `group` or `fileName` set
+// by a binding is not known yet then; set it as a literal).
 // `value(key, defaultValue)` is typed by the default: a bool, int, real or
 // string list default gives that type back (a stored value of another shape
 // gives the default); anything else gives a string. `setValue` and `remove`
@@ -117,10 +120,12 @@ private:
     QString path() const; // empty when there is no usable file
     void reload(bool announce);
     void rewatch();
+    void ensureLoaded() const;
     void fileTouched();
     void dropPending();
     QString m_group, m_fileName;
     bool m_complete = false;
+    bool m_loaded = false; // the snapshot matches the current group and file
     // What the file held at the last read: raw entries of the group.
     QHash<QString, QString> m_snapshot;
     std::unique_ptr<KConfig> m_cfg;

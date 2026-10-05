@@ -6,7 +6,10 @@ import org.kde.kirigami as Kirigami
 // `indeterminate` slides a short segment back and forth instead. `text` is a
 // label shown beside the bar ("3 of 10", "42 %"), elided when short of room
 // and placed on the trailing side. `status` is "normal", "paused" (muted fill,
-// no motion) or "error" (error colour); a screen reader hears it too.
+// no motion) or "error" (error colour); a screen reader hears it too. Any
+// other value is treated as "normal" (and warned about once). Without `text`
+// the track fills the item's height; with it the track is a thin bar centred
+// beside the label. The fill starts on the right in right-to-left layouts.
 //
 //   AtlasProgressBar { value: done / total; text: qsTr("%1 of %2").arg(done).arg(total) }
 //   AtlasProgressBar { value: 0.4; status: "error"; text: qsTr("Failed") }
@@ -16,8 +19,17 @@ Item {
     property real value: 0
     property bool indeterminate: false
     property string text
-    // "normal" | "paused" | "error"
+    // "normal" | "paused" | "error"; anything else counts as "normal"
     property string status: "normal"
+    property bool _warned: false
+    onStatusChanged: _checkStatus()
+    Component.onCompleted: _checkStatus()
+    function _checkStatus() {
+        if (!_warned && status !== "normal" && status !== "paused" && status !== "error") {
+            _warned = true;
+            console.warn("AtlasProgressBar: unknown status \"" + status + "\"; use \"normal\", \"paused\" or \"error\"");
+        }
+    }
 
     readonly property color _fillColor: status === "error" ? AtlasStyle.error : status === "paused" ? Qt.alpha(Kirigami.Theme.textColor, 0.4) : AtlasStyle.accent
 
@@ -39,12 +51,12 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: Kirigami.Units.gridUnit * 4
+            Layout.minimumWidth: label.visible ? Math.min(Kirigami.Units.gridUnit * 4, root.width * 0.5) : 0
 
             Rectangle {
                 id: track
                 width: parent.width
-                height: Math.round(Kirigami.Units.gridUnit * 0.45)
+                height: label.visible ? Math.round(Kirigami.Units.gridUnit * 0.45) : parent.height
                 anchors.verticalCenter: parent.verticalCenter
                 radius: AtlasStyle.radiusPill
                 color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
@@ -54,7 +66,7 @@ Item {
                     visible: !root.indeterminate
                     height: parent.height
                     radius: AtlasStyle.radiusPill
-                    x: Qt.locale().textDirection === Qt.RightToLeft ? parent.width - width : 0
+                    x: root.LayoutMirroring.enabled ? parent.width - width : 0
                     width: root.indeterminate ? 0 : root.value > 0 ? Math.max(height, parent.width * Math.min(1, root.value)) : 0
                     color: root._fillColor
                     Behavior on width {

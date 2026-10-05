@@ -31,15 +31,27 @@ QString plain(QString text)
     return out;
 }
 
-// The window an action works in: the one of the nearest Item above it.
-QObject *windowOf(QObject *action)
+// Where an action works: the window of the nearest Item or window above it.
+// `pending` is an Item that is not in a window yet: the answer comes later
+// (windowChanged), and until then the action takes part in no conflict. No
+// Item or window above at all is the app level: `window` stays null.
+struct Place {
+    QObject *window = nullptr;
+    bool pending = false;
+};
+
+Place placeOf(QObject *action)
 {
     for (QObject *o = action; o; o = o->parent()) {
         if (auto *item = qobject_cast<QQuickItem *>(o)) {
-            return item->window();
+            QQuickWindow *w = item->window();
+            return {w, w == nullptr};
+        }
+        if (auto *w = qobject_cast<QQuickWindow *>(o)) {
+            return {w, false};
         }
     }
-    return nullptr;
+    return {};
 }
 
 // Native text -> keys. A "+" ends a key, unless it is the key: "Ctrl++".
@@ -83,11 +95,10 @@ QList<QObject *> AtlasShortcuts::actions() const
     return out;
 }
 
-QVariantList AtlasShortcuts::conflicts()
+// The last result of recompute(), which runs once per turn of the event loop
+// after a change: reading it from a binding never emits a signal.
+QVariantList AtlasShortcuts::conflicts() const
 {
-    if (m_dirty) {
-        recompute();
-    }
     return m_conflicts;
 }
 
@@ -105,11 +116,11 @@ QKeySequence AtlasShortcuts::toSequence(const QVariant &sequence)
     case QMetaType::LongLong:
     case QMetaType::Double: {
         const int n = sequence.toInt();
-        // StandardKey numbers are small; anything above is a key code.
+        // The StandardKey numbers end at the last enum value; anything above is a key code.
         if (n <= 0) {
             return {};
         }
-        return n < 0x1000 ? QKeySequence(static_cast<QKeySequence::StandardKey>(n)) : QKeySequence(n);
+        return n <= static_cast<int>(QKeySequence::Cancel) ? QKeySequence(static_cast<QKeySequence::StandardKey>(n)) : QKeySequence(n);
     }
     default:
         return {};
@@ -168,6 +179,15 @@ void AtlasShortcuts::add(QObject *action)
         }
     }
     connect(action, &QObject::destroyed, this, &AtlasShortcuts::onActionDestroyed);
+    // An action whose Item is not in a window yet joins the comparison when it is.
+    for (QObject *o = action; o; o = o->parent()) {
+        if (auto *item = qobject_cast<QQuickItem *>(o)) {
+            if (!item->window()) {
+                connect(item, &QQuickItem::windowChanged, this, &AtlasShortcuts::onActionChanged, Qt::UniqueConnection);
+            }
+            break;
+        }
+    }
     Q_EMIT actionsChanged();
     scheduleRecompute();
 }
@@ -214,10 +234,15 @@ void AtlasShortcuts::recompute()
         QObject *window;
         QString text;
     };
-    QHash<QString, QList<Entry>> byShortcut;
+    // One list per shortcut and window: only actions in the same place conflict.
+    QHash<QString, QHash<QObject *, QList<Entry>>> byShortcut;
     QStringList order;
     for (const auto &a : std::as_const(m_actions)) {
         if (!a || !read(a, "enabled").toBool()) {
+            continue;
+        }
+        const Place place = placeOf(a);
+        if (place.pending) {
             continue;
         }
         const QString key = portable(read(a, "shortcut"));
@@ -227,30 +252,20 @@ void AtlasShortcuts::recompute()
         if (!byShortcut.contains(key)) {
             order << key;
         }
-        byShortcut[key].append({windowOf(a), plain(read(a, "text").toString())});
+        byShortcut[key][place.window].append({place.window, plain(read(a, "text").toString())});
     }
     std::sort(order.begin(), order.end());
 
     QVariantList result;
     QSet<QString> now;
     for (const QString &key : std::as_const(order)) {
-        const QList<Entry> &entries = byShortcut[key];
-        if (entries.size() < 2) {
-            continue;
-        }
-        const qsizetype unknown = std::count_if(entries.begin(), entries.end(), [](const Entry &e) { return !e.window; });
-        QHash<QObject *, qsizetype> perWindow;
-        for (const Entry &e : entries) {
-            if (e.window) {
-                ++perWindow[e.window];
-            }
-        }
         QStringList texts;
-        for (const Entry &e : entries) {
-            // Alone in a known window, and nothing of unknown window to meet.
-            const bool involved = e.window ? (perWindow[e.window] + unknown >= 2) : entries.size() >= 2;
-            if (involved) {
-                texts << e.text;
+        const auto &windows = byShortcut[key];
+        for (auto it = windows.cbegin(); it != windows.cend(); ++it) {
+            if (it.value().size() >= 2) {
+                for (const Entry &e : it.value()) {
+                    texts << e.text;
+                }
             }
         }
         if (texts.size() < 2) {
