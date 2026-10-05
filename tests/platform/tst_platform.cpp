@@ -273,6 +273,39 @@ class TestPlatform : public QObject
         QVERIFY(m_fakeConn.registerService(kPortal));
     }
 
+    // Waits until the portal has handled everything the client sent so far, then
+    // puts it back to its starting state. A session that is torn down sends its
+    // Close without waiting, so the call can reach the portal after the test
+    // function has returned and would be counted by the next test.
+    void resetPortal()
+    {
+        if (!m_portal) {
+            return;
+        }
+        m_portal->readAllDelayMs = 0;
+        // The daemon delivers in order: when this answer is back, so were all
+        // earlier calls from m_client. BlockWithGui lets the portal, in this
+        // thread, run meanwhile.
+        const QDBusMessage call = QDBusMessage::createMethodCall(kPortal, kPortalPath, QStringLiteral("org.freedesktop.portal.Settings"), QStringLiteral("ReadAll"));
+        QDBusMessage ping = call;
+        ping << QStringList();
+        const QDBusMessage reply = m_client.call(ping, QDBus::BlockWithGui, 5000);
+        if (reply.type() != QDBusMessage::ReplyMessage) {
+            qWarning("resetPortal: the fake portal did not answer: %s", qPrintable(reply.errorMessage()));
+        }
+        m_portal->mode = FakePortal::Bind::Good;
+        m_portal->closeAfterBind = false;
+        m_portal->foreignNamespace = false;
+        m_portal->triggerOverride.clear();
+        m_portal->lastRequest.clear();
+        m_portal->session.clear();
+        m_portal->lastBound.clear();
+        m_portal->closes = 0;
+        m_portal->creates = 0;
+        m_portal->binds = 0;
+        m_portal->readAlls = 0;
+    }
+
     AtlasGlobalShortcut *item(const QString &name, const QString &trigger = QStringLiteral("Meta+Shift+M"), bool complete = true)
     {
         auto *s = new AtlasGlobalShortcut;
@@ -322,6 +355,22 @@ private Q_SLOTS:
         if (privateId.isEmpty() || privateId != sessionId) {
             QSKIP("the session bus is not the private one; refusing to run against a real bus");
         }
+    }
+
+    // Every test starts from the same portal: Good mode, no leftovers from the
+    // one before, and no shared session. A test that fails half way (a QTRY_*
+    // returns from the function) then cannot leave the next ones with a portal
+    // in Malformed mode or a session that is gone.
+    void init()
+    {
+        GlobalShortcutSession::setShared(nullptr);
+        resetPortal();
+    }
+
+    void cleanup()
+    {
+        GlobalShortcutSession::setShared(nullptr);
+        resetPortal();
     }
 
     void cleanupTestCase()
