@@ -129,3 +129,54 @@ jobs:
 
       - name: Type names against the apps' files
         run: tools/check-app-names.sh "$RUNNER_TEMP"/apps/*
+
+  docs:
+    # The reference docs (docs/reference, read by atlasos.eterneon.net/docs):
+    # broken links, missing frontmatter, raw HTML and the rest fail here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Check the docs
+        run: python3 tools/docs.py check
+
+  publish-docs:
+    # main only: rebuilds the docs-published branch (the pages, their images
+    # and index.json) that the site fetches. The only job that may write.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-docs
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # Tags: index.json says whether this commit is the release.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build the published tree
+        run: python3 tools/docs.py build "$RUNNER_TEMP/docs-published"
+
+      - name: Force-push docs-published
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          cd "$RUNNER_TEMP/docs-published"
+          git init -q -b docs-published
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Docs from $SHA"
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c http.extraheader="AUTHORIZATION: basic $auth" \
+            push --force "https://github.com/$REPO.git" HEAD:refs/heads/docs-published

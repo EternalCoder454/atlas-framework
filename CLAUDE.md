@@ -46,6 +46,7 @@ runs, for when you need one step on its own.
 | Visual tests | `ctest --test-dir build -j$(nproc) --output-on-failure` (light, dark, accent, opaque, a11y, i18n; `ATLAS_DEMO_FILTER='^(AtlasFoo)$'` for one demo) |
 | Accept new pictures | `ATLAS_UPDATE_GOLDENS=1 ctest --test-dir build`, then look at every changed PNG before committing |
 | API check | `tools/check-api.sh build`; after adding API, `tools/update-api.sh build` and commit `api/` |
+| Reference docs | `python3 tools/docs.py check` (any host or container); a changed API changes its page in `docs/reference/` in the same commit |
 | Semver (crates) | `cargo semver-checks --workspace --baseline-rev <last v* tag>` |
 | App checks | `tools/lint-app.sh <app dir>` and `tools/check-app-names.sh <app dir>` |
 | Performance | `perf/measure.sh build` (budgets in `perf/budget.json`) |

@@ -1,7 +1,7 @@
 #!/bin/bash
 # The local check, run from the host in the dev container, as fast as it
-# goes: an incremental build, qmllint, every test in parallel, the API check
-# and the gallery lint. Stops at the first step that fails.
+# goes: an incremental build, qmllint, every test in parallel, the API check,
+# the gallery lint and the docs check. Stops at the first step that fails.
 #
 #   tools/dev-check.sh                   everything
 #   tools/dev-check.sh AtlasFoo Bar      the visual, a11y and i18n tests only
@@ -81,4 +81,6 @@ step api
 tools/check-api.sh /b/build
 step lint
 tools/lint-app.sh ui/gallery | tail -n 1
+step docs
+python3 tools/docs.py check
 '
