@@ -23,6 +23,8 @@ AtlasDetailGrid {
 
 `columns` is how many label and value pairs sit in a row. A column needs `columnsBreakpoint` grid units: below that, the label stacks over its value, and a grid with `columns` above 1 shows fewer pairs per row, as many as fit.
 
+An empty `model` shows no card, even when `framed`; the `title` and `footer` still show.
+
 ## Accessibility
 
 A screen reader reads each value as "label: value". The grid is a group named by `title`, and `footer` is its description.

@@ -115,9 +115,8 @@ Item {
             verify(c);
             compare(c.hiddenText, "Hidden folders");
             c.hiddenText = "Verborgen";
-            const more = find(c, i => i.Accessible.name === "Verborgen");
-            verify(more, "the … button is named by hiddenText");
-            verify(!find(c, i => i.Accessible.name === "Hidden folders"));
+            tryVerify(() => find(c, i => i.Accessible.name === "Verborgen") !== null);
+            tryVerify(() => find(c, i => i.Accessible.name === "Hidden folders") === null);
         }
 
         function test_code_view_inset() {
@@ -245,7 +244,7 @@ Item {
 
         function test_grid_mono_and_normal_font() {
             const g = makeGrid({ model: gridModel() });
-            tryCompare(values(g), "length", 3);
+            tryVerify(() => values(g).length === 3);
             const v = values(g);
             compare(v[0].font.family, AtlasStyle.fontFamily);
             compare(v[1].font.family, AtlasStyle.monoFamily);
@@ -254,7 +253,7 @@ Item {
 
         function test_grid_copy_button_only_on_copyable_cells() {
             const g = makeGrid({ model: gridModel() });
-            tryCompare(values(g), "length", 3);
+            tryVerify(() => values(g).length === 3);
             const b = copyButtons(g);
             compare(b.length, 1);
             compare(b[0].Accessible.name, "Copy Checksum");
@@ -262,7 +261,7 @@ Item {
 
         function test_grid_accessible_names() {
             const g = makeGrid({ model: gridModel() });
-            tryCompare(values(g), "length", 3);
+            tryVerify(() => values(g).length === 3);
             const v = values(g);
             compare(v[0].Accessible.name, "Version: 1.4.0");
             compare(v[1].Accessible.name, "Checksum: 9f86d081");
@@ -277,7 +276,7 @@ Item {
 
         function test_grid_copy_button_copies_and_shows_copied() {
             const g = makeGrid({ model: gridModel() });
-            tryCompare(copyButtons(g), "length", 1);
+            tryVerify(() => copyButtons(g).length === 1);
             const b = copyButtons(g)[0];
             AtlasClipboard.setText("before");
             verify(!b.copied);
@@ -291,29 +290,29 @@ Item {
 
         function test_grid_rows_added_and_removed() {
             const g = makeGrid({ model: gridModel() });
-            tryCompare(values(g), "length", 3);
+            tryVerify(() => values(g).length === 3);
             const h3 = g.implicitHeight;
             g.model = gridModel([{ label: "Extra", value: "x", copyable: true }]);
-            tryCompare(values(g), "length", 4);
-            tryCompare(copyButtons(g), "length", 2);
+            tryVerify(() => values(g).length === 4);
+            tryVerify(() => copyButtons(g).length === 2);
             tryVerify(() => g.implicitHeight > h3);
             g.model = [];
-            tryCompare(values(g), "length", 0);
+            tryVerify(() => values(g).length === 0);
             compare(copyButtons(g).length, 0);
             tryCompare(g, "implicitHeight", 0);
             g.model = gridModel().slice(0, 1);
-            tryCompare(values(g), "length", 1);
+            tryVerify(() => values(g).length === 1);
         }
 
         function test_grid_copyable_and_mono_toggled_at_runtime() {
             const g = makeGrid({ model: gridModel() });
-            tryCompare(copyButtons(g), "length", 1);
+            tryVerify(() => copyButtons(g).length === 1);
             g.model = [
                 { label: "Version", value: "1.4.0", copyable: true, mono: true },
                 { label: "Checksum", value: "9f86d081" },
                 { label: "Path", value: "/usr/share/atlas", copyable: true }
             ];
-            tryCompare(copyButtons(g), "length", 2);
+            tryVerify(() => copyButtons(g).length === 2);
             const v = values(g);
             compare(v[0].font.family, AtlasStyle.monoFamily);
             compare(v[1].font.family, AtlasStyle.fontFamily);
@@ -328,17 +327,26 @@ Item {
                     { label: "C", value: "3", copyable: true }
                 ]
             });
-            tryCompare(copyButtons(g), "length", 2);
+            tryVerify(() => copyButtons(g).length === 2);
             const win = root.Window.window;
+            keyClick(Qt.Key_Tab);
+            if (!win || !win.activeFocusItem) {
+                skip("the window has no active focus here");
+            }
             const seen = [];
             for (let i = 0; i < 6; ++i) {
-                keyClick(Qt.Key_Tab);
+                if (i > 0) {
+                    keyClick(Qt.Key_Tab);
+                }
                 const f = win.activeFocusItem;
                 if (f && g.contains(g.mapFromItem(f, 0, 0)) && f !== win.contentItem) {
                     seen.push(f);
                 }
             }
             verify(seen.length >= 2, "Tab reached the copy buttons");
+            // In order: A's button, then C's, then focus leaves the grid.
+            compare(seen[0].Accessible.name, "Copy A");
+            compare(seen[1].Accessible.name, "Copy C");
             for (const f of seen) {
                 verify(f.selectByMouse === undefined, "no TextEdit takes Tab");
                 verify(String(f.Accessible.name).startsWith("Copy "), "only copy buttons: " + f);
@@ -354,7 +362,7 @@ Item {
             ];
             // Wide, one column: the value sits beside its label.
             let g = makeGrid({ model: m, width: 500 });
-            tryCompare(values(g), "length", 4);
+            tryVerify(() => values(g).length === 4);
             let l = labelItem(g, "One").mapToItem(g, 0, 0);
             let v = values(g)[0].mapToItem(g, 0, 0);
             verify(v.x > l.x + 1, "value beside label");
@@ -365,7 +373,7 @@ Item {
 
             // Narrow: stacked, the value under its label.
             g = makeGrid({ model: m, width: 150 });
-            tryCompare(values(g), "length", 4);
+            tryVerify(() => values(g).length === 4);
             verify(g._stacked);
             l = labelItem(g, "One").mapToItem(g, 0, 0);
             v = values(g)[0].mapToItem(g, 0, 0);
@@ -375,7 +383,7 @@ Item {
 
             // Wide with columns: two pairs per row.
             g = makeGrid({ model: m, width: 900, columns: 2, columnsBreakpoint: 10 });
-            tryCompare(values(g), "length", 4);
+            tryVerify(() => values(g).length === 4);
             compare(g._pairs, 2);
             l = labelItem(g, "One").mapToItem(g, 0, 0);
             l2 = labelItem(g, "Two").mapToItem(g, 0, 0);
@@ -393,18 +401,22 @@ Item {
             compare(g.implicitHeight, 0);
             g.title = "T";
             g.footer = "F";
-            wait(50);
-            const both = g.implicitHeight;
+            tryVerify(() => labelItem(g, "T") !== null && labelItem(g, "F") !== null);
+            const title = labelItem(g, "T");
+            const footer = labelItem(g, "F");
+            // Unframed: the title, one gap, the footer. The hidden card adds
+            // neither height nor a second gap.
+            tryVerify(() => Math.abs(g.implicitHeight - (title.implicitHeight + AtlasStyle.spacingSmall + footer.implicitHeight)) < 0.5);
             g.footer = "";
-            tryVerify(() => g.implicitHeight < both);
-            const titleOnly = g.implicitHeight;
+            tryVerify(() => Math.abs(g.implicitHeight - title.implicitHeight) < 0.5);
             g.title = "";
             tryCompare(g, "implicitHeight", 0);
             // Framed and empty: no card either.
             g.framed = true;
             wait(50);
             compare(g.implicitHeight, 0);
-            verify(titleOnly > 0);
+            g.title = "T";
+            tryVerify(() => Math.abs(g.implicitHeight - title.implicitHeight) < 0.5);
         }
     }
 }

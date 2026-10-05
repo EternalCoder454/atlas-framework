@@ -33,7 +33,8 @@ Item {
     property bool framed: false
 
     // A list from C++ (a QVariantList) is not a JS array but has a length.
-    readonly property int _count: model !== null && typeof model === "object" && Number.isInteger(model.length) ? model.length : 0
+    // Capped, so a plain object with a huge `length` cannot build a million cells.
+    readonly property int _count: model !== null && typeof model === "object" && Number.isInteger(model.length) && model.length >= 0 ? Math.min(model.length, 100000) : 0
     // Room the card takes on each side of the grid inside it.
     readonly property real _padX: framed ? AtlasStyle.spacingLarge : 0
     readonly property real _padY: framed ? AtlasStyle.spacing : 0
