@@ -51,12 +51,7 @@ QQC2.SplitView {
         if (!buf) {
             return "";
         }
-        const bytes = new Uint8Array(buf);
-        let bin = "";
-        for (let i = 0; i < bytes.length; ++i) {
-            bin += String.fromCharCode(bytes[i]);
-        }
-        return Qt.btoa(bin);
+        return control._toBase64(new Uint8Array(buf));
     }
 
     // Applies sizes from saveSizes(); returns false for a string that is
@@ -65,17 +60,66 @@ QQC2.SplitView {
         if (typeof sizes !== "string" || sizes.length === 0) {
             return false;
         }
-        let bin = "";
-        try {
-            bin = Qt.atob(sizes);
-        } catch (e) {
+        const bytes = control._fromBase64(sizes);
+        if (bytes === null) {
             return false;
         }
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; ++i) {
-            bytes[i] = bin.charCodeAt(i);
+        return control.restoreState(new Uint8Array(bytes).buffer);
+    }
+
+    // Qt.btoa() and Qt.atob() on strings are deprecated (Qt 6.11). The stored
+    // format stays what they wrote, so saved sizes still load and older
+    // versions still read new ones: base64 of the bytes as UTF-8 code points
+    // (0x80 to 0xFF take two bytes).
+    function _toBase64(bytes: var): string {
+        const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        const u = [];
+        for (const b of bytes) {
+            if (b < 0x80) {
+                u.push(b);
+            } else {
+                u.push(0xc0 | (b >> 6), 0x80 | (b & 0x3f));
+            }
         }
-        return control.restoreState(bytes.buffer);
+        let out = "";
+        for (let i = 0; i < u.length; i += 3) {
+            const n = (u[i] << 16) | ((i + 1 < u.length ? u[i + 1] : 0) << 8) | (i + 2 < u.length ? u[i + 2] : 0);
+            out += abc[(n >> 18) & 63] + abc[(n >> 12) & 63]
+                + (i + 1 < u.length ? abc[(n >> 6) & 63] : "=")
+                + (i + 2 < u.length ? abc[n & 63] : "=");
+        }
+        return out;
+    }
+    // The bytes, or null for text that is not in that format.
+    function _fromBase64(text: string): var {
+        const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        const s = text.trim().replace(/=+$/, "");
+        if (s.length === 0 || s.length % 4 === 1 || /[^A-Za-z0-9+\/]/.test(s)) {
+            return null;
+        }
+        const u = [];
+        let acc = 0;
+        let bits = 0;
+        for (let i = 0; i < s.length; ++i) {
+            acc = ((acc << 6) | abc.indexOf(s[i])) & 0xffffff;
+            bits += 6;
+            if (bits >= 8) {
+                bits -= 8;
+                u.push((acc >> bits) & 0xff);
+            }
+        }
+        const bytes = [];
+        for (let i = 0; i < u.length; ++i) {
+            const b = u[i];
+            if (b < 0x80) {
+                bytes.push(b);
+            } else if ((b & 0xfe) === 0xc2 && i + 1 < u.length && (u[i + 1] & 0xc0) === 0x80) {
+                bytes.push(((b & 0x1f) << 6) | (u[++i] & 0x3f));
+            } else {
+                return null;
+            }
+        }
+        return bytes;
     }
 
     function _scheduleSave() {

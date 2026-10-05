@@ -141,13 +141,29 @@ Item {
         }
 
         function test_short_drops_the_symbol_and_stays_inside() {
-            const e = createTemporaryObject(emptyComp, root, { height: 220 });
+            const e = createTemporaryObject(emptyComp, root, { height: 500 });
+            waitForRendering(e);
+            verify(symbolShown(e));
+            // Room for the rest but not for the symbol, whatever the font metrics.
+            const col = parts(e).find(p => p._bare !== undefined);
+            e.height = Math.ceil(col._bare + Kirigami.Units.gridUnit * 2 + Kirigami.Units.iconSizes.huge / 2);
             waitForRendering(e);
             verify(!symbolShown(e), "the symbol goes first");
             const b = button(e);
             verify(b);
             const at = b.mapToItem(e, 0, 0);
             verify(at.y >= 0 && at.y + b.height <= e.height, "the button is inside: " + at.y + "+" + b.height);
+        }
+
+        // The implicit height always counts the symbol, so a short pass does
+        // not drop it for good (the gallery's long-text cell lost it).
+        function test_sized_to_its_implicit_height_after_a_short_pass_shows_the_symbol() {
+            const e = createTemporaryObject(emptyComp, root, { height: 60 });
+            waitForRendering(e);
+            verify(!symbolShown(e));
+            e.height = e.implicitHeight;
+            waitForRendering(e);
+            verify(symbolShown(e), "sized to its implicit height, the symbol shows");
         }
 
         function test_very_short_scrolls_inside_its_area() {

@@ -36,7 +36,7 @@ AtlasPage {
 
 ## Status
 
-`status` swaps the rows for one of four things; `Ready` (the default) shows them. **Loading** shows an [AtlasSpinner](atlas-spinner.md) only after 300 ms, so a fast load never flashes, and announces nothing. **Empty**, **NoResults** and **Error** show an [AtlasEmptyState](atlas-empty-state.md) with the title, text, symbol and action; **Error** is announced to screen readers once, when the status becomes Error (the heading and the text). The title, subtitle and busy row stay; the status replaces the page's content (the items declared inside it are hidden, not removed: everything in the page's content, a search field included, hides under a status; put what must stay in `headerTrailing`).
+`status` swaps the rows for one of four things; `Ready` (the default) shows them. **Loading** shows an [AtlasSpinner](atlas-spinner.md) only after 300 ms, so a fast load never flashes, and announces nothing. **Empty**, **NoResults** and **Error** show an [AtlasEmptyState](atlas-empty-state.md) with the title, text, symbol and action; **Error** is announced to screen readers once, when the status becomes Error (the heading and the text). The title, subtitle and busy row stay; the status fills the visible area under them (it never makes the page scroll) and replaces the page's content (the items declared inside it are hidden, not removed: everything in the page's content, a search field included, hides under a status; put what must stay in `headerTrailing`).
 
 ## Methods
 

@@ -206,7 +206,9 @@ Item {
                 AtlasStatusView {
                     id: statusView
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 14
+                    // The visible area under the title row: centred where the
+                    // user looks, and it never makes the page scroll.
+                    Layout.preferredHeight: Math.max(Kirigami.Units.gridUnit * 8, scroll.height - statusView.y - Kirigami.Units.gridUnit * 3)
                     status: root.status
                     title: root.statusTitle
                     text: root.statusText

@@ -35,7 +35,8 @@ Item {
     signal triggered
 
     implicitWidth: Math.max(Kirigami.Units.gridUnit * 18, column.implicitWidth + Kirigami.Units.gridUnit * 2)
-    implicitHeight: column.implicitHeight + Kirigami.Units.gridUnit * 2
+    // Always with the symbol: sized to it, the symbol shows.
+    implicitHeight: column._full + Kirigami.Units.gridUnit * 2
 
     Accessible.role: Accessible.Grouping
     Accessible.name: control.title
@@ -74,9 +75,27 @@ Item {
 
         ColumnLayout {
             id: column
-            // The column without the symbol, so the check below does not depend
-            // on its own result.
-            readonly property real _bare: column.implicitHeight - (iconSlot.visible ? iconSlot.Layout.preferredHeight + column.spacing : 0)
+            // The column without the symbol and with it, from the parts rather
+            // than the layout: neither depends on whether the symbol shows, so
+            // a short pass cannot drop it for good.
+            readonly property real _bare: {
+                let h = 0;
+                let n = 0;
+                if (control.title.length > 0) {
+                    h += titleText.implicitHeight;
+                    ++n;
+                }
+                if (control.text.length > 0) {
+                    h += bodyText.implicitHeight;
+                    ++n;
+                }
+                if (control.actionText.length > 0) {
+                    h += actionButton.implicitHeight + AtlasStyle.spacingSmall;
+                    ++n;
+                }
+                return h + Math.max(0, n - 1) * column.spacing;
+            }
+            readonly property real _full: column._bare + (iconSlot.present ? Kirigami.Units.iconSizes.huge + (column._bare > 0 ? column.spacing : 0) : 0)
             x: Math.round((flick.width - width) / 2)
             y: Math.round(Math.max(Kirigami.Units.gridUnit, (flick.height - implicitHeight) / 2))
             width: Math.min(flick.width - Kirigami.Units.gridUnit * 2, Kirigami.Units.gridUnit * 22)
@@ -85,7 +104,7 @@ Item {
             Item {
                 id: iconSlot
                 readonly property bool present: control.symbol !== 0 || control.iconName.length > 0
-                readonly property bool fits: control.height <= 0 || control.height >= column._bare + Kirigami.Units.iconSizes.huge + column.spacing + Kirigami.Units.gridUnit * 2
+                readonly property bool fits: control.height <= 0 || control.height + 0.5 >= column._full + Kirigami.Units.gridUnit * 2
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: Kirigami.Units.iconSizes.huge
                 Layout.preferredHeight: present ? Kirigami.Units.iconSizes.huge : 0
@@ -108,6 +127,7 @@ Item {
                 }
             }
             Text {
+                id: titleText
                 Layout.fillWidth: true
                 visible: text.length > 0
                 Layout.preferredHeight: visible ? implicitHeight : 0
@@ -120,6 +140,7 @@ Item {
                 Accessible.ignored: true
             }
             Text {
+                id: bodyText
                 Layout.fillWidth: true
                 visible: text.length > 0
                 Layout.preferredHeight: visible ? implicitHeight : 0
@@ -133,6 +154,7 @@ Item {
                 Accessible.ignored: true
             }
             PrimaryButton {
+                id: actionButton
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: AtlasStyle.spacingSmall
                 visible: control.actionText.length > 0

@@ -312,7 +312,8 @@ Item {
             sv._pushDuration = 600;
             compare(sv.mirrored, true);
             compare(sv.collapsed, false);
-            sv.width = 300;
+            // The view fills the holder: its anchors would undo sv.width.
+            holder.width = 300;
             compare(sv.collapsed, true);
             sv.showPane(1);
             const back = backButton(sv);
