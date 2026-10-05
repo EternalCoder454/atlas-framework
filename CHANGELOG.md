@@ -38,6 +38,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   100000 and reads `symbol` safely; `AtlasShortcuts` ignores NaN, infinite
   and out-of-range numbers as key sequences; `Appearance.textScale` is kept
   between 0.5 and 4.
+- Fix: an `AtlasPage` in an `AtlasNavigationStack` whose header shows no
+  longer repeats its title under the header (its `headerTrailing` items
+  stay); the header's title is heading-sized (it took the point size as
+  pixels and came out small).
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call
   (60 s by default) and an overall deadline) returning `ListOutcome`

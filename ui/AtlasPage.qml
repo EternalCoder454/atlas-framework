@@ -6,7 +6,9 @@ import org.kde.kirigami as Kirigami
 // A scrolling page with a large bold title and generous, centred margins.
 // `headerTrailing` holds items at the trailing end of the title row (a button,
 // a search field); the title elides before them. `maxContentWidth` (default 38
-// grid units) is the widest the content grows.
+// grid units) is the widest the content grows. Inside an AtlasNavigationStack
+// whose header shows, the header carries the title and the page doesn't
+// repeat it.
 Item {
     id: root
 
@@ -14,6 +16,8 @@ Item {
     default property alias content: col.data
     property real maxContentWidth: Kirigami.Units.gridUnit * 38
     property alias headerTrailing: headerRow.data
+    // Set by AtlasNavigationStack while its header shows this page's title.
+    property bool _titleInHeader: false
 
     QQC2.ScrollView {
         id: scroll
@@ -64,9 +68,11 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: AtlasStyle.spacingLarge
+                    visible: !root._titleInHeader || headerRow.visible
 
                     QQC2.Label {
                         Layout.fillWidth: true
+                        visible: !root._titleInHeader
                         text: root.title
                         font.pointSize: AtlasStyle.fontSizeTitle
                         font.bold: true

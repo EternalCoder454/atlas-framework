@@ -24,7 +24,7 @@ AtlasPage {
 | `content` | `list<QtObject>` (read-only) | — | The default property: items declared inside are placed in the page's column. |
 | `headerTrailing` | `list<QtObject>` (read-only) | — | Items at the trailing end of the title row (a button, a search field). The title elides before them. |
 | `maxContentWidth` | `real` | 38 grid units | The widest the content grows. Writable since 1.4.0. |
-| `title` | `string` | `""` | The page's large bold title. |
+| `title` | `string` | `""` | The page's large bold title. Inside an [AtlasNavigationStack](atlas-navigation-stack.md) whose header shows, the header carries it and the page doesn't repeat it. |
 
 ## Methods
 

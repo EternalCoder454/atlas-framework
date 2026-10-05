@@ -14,7 +14,8 @@ import org.kde.kirigami as Kirigami
 //   }
 //
 // A page is any Item, or a Component or URL of one. Its `title` property (a
-// string, if it has one) shows in the header. wentBack() is emitted when the
+// string, if it has one) shows in the header; an AtlasPage then hides its own
+// title row (its headerTrailing items stay). wentBack() is emitted when the
 // stack pops by pop(), the Back button, Alt+Left or the mouse Back button.
 Item {
     id: control
@@ -103,7 +104,7 @@ Item {
                 Layout.fillWidth: true
                 text: header.title
                 elide: Text.ElideRight
-                font.pixelSize: AtlasStyle.fontSizeHeading
+                font.pointSize: AtlasStyle.fontSizeHeading
                 font.weight: Font.DemiBold
                 color: Kirigami.Theme.textColor
                 Accessible.role: Accessible.Heading
@@ -118,6 +119,14 @@ Item {
             Layout.fillHeight: true
             clip: true
             initialItem: control.initialItem
+
+            // Tell an AtlasPage that the header shows its title.
+            onCurrentItemChanged: {
+                const page = stack.currentItem;
+                if (page && "_titleInHeader" in page) {
+                    page._titleInHeader = Qt.binding(() => control.showHeader);
+                }
+            }
 
             readonly property int _dur: AtlasStyle.duration
             readonly property real _dir: control.LayoutMirroring.enabled ? -1 : 1

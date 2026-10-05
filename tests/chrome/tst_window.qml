@@ -182,4 +182,98 @@ Item {
             compare(AtlasWindowChrome.buttonsOnRight, ["minimize", "maximize", "close"]);
         }
     }
+
+    Component {
+        id: navComp
+        AtlasNavigationStack {
+            width: 400
+            height: 300
+            initialItem: AtlasPage {
+                title: "Home"
+            }
+        }
+    }
+    Component {
+        id: navPageComp
+        AtlasPage {
+            title: "Details"
+            headerTrailing: ToolbarButton {
+                objectName: "pageAction"
+                symbol: Symbols.Search
+                text: "Search"
+            }
+        }
+    }
+
+    Component {
+        id: plainPageComp
+        Item {
+            property string title
+        }
+    }
+
+    TestCase {
+        name: "AtlasNavigationStack"
+        when: windowShown
+
+        function findLabel(item, text) {
+            if (!item) {
+                return null;
+            }
+            if (item.text === text && item.font !== undefined && item.elide !== undefined) {
+                return item;
+            }
+            for (let i = 0; i < item.children.length; ++i) {
+                const found = findLabel(item.children[i], text);
+                if (found) {
+                    return found;
+                }
+            }
+            return null;
+        }
+        function findNamed(item, name) {
+            if (!item) {
+                return null;
+            }
+            if (item.objectName === name) {
+                return item;
+            }
+            for (let i = 0; i < item.children.length; ++i) {
+                const found = findNamed(item.children[i], name);
+                if (found) {
+                    return found;
+                }
+            }
+            return null;
+        }
+
+        // The header shows the page's title, so the page doesn't repeat it;
+        // without the header the page shows its own again.
+        function test_page_title_shown_once() {
+            const nav = createTemporaryObject(navComp, root);
+            verify(nav);
+            const page = nav.push(navPageComp);
+            verify(page);
+            tryCompare(nav, "currentItem", page);
+            const own = findLabel(page, "Details");
+            verify(own, "the page's own title label");
+            verify(!own.visible, "hidden under the stack's header");
+            verify(findNamed(page, "pageAction").visible, "the page's header items stay");
+            nav.showHeader = false;
+            verify(own.visible, "shown when the stack has no header");
+            nav.showHeader = true;
+            nav.pop();
+            tryCompare(nav, "depth", 1);
+            verify(!findLabel(nav.currentItem, "Home").visible, "the first page too");
+        }
+
+        // A page that isn't an AtlasPage (no _titleInHeader) is left alone.
+        function test_plain_item_page() {
+            const nav = createTemporaryObject(navComp, root);
+            const page = nav.push(plainPageComp, { title: "Plain" });
+            verify(page);
+            tryCompare(nav, "depth", 2);
+            verify(!("_titleInHeader" in page), "a plain page gets no marker");
+        }
+    }
 }
