@@ -21,6 +21,12 @@ T.AbstractButton {
     property bool closable: false
     signal closeRequested
 
+    // The AtlasChipGroup that holds the chip, set by the group; it is told when
+    // the chip is shown, hidden, enabled or disabled (the roving Tab stop).
+    property Item _tabOwner: null
+    onVisibleChanged: _tabOwner?._chipStateChanged()
+    onEnabledChanged: _tabOwner?._chipStateChanged()
+
     readonly property color tint: Kirigami.Theme.textColor
     readonly property bool showsCheck: checkable && checked
 
@@ -38,6 +44,18 @@ T.AbstractButton {
     Accessible.checkable: checkable
     Accessible.checked: checked
 
+    // Return and Enter press the chip like Space: click() toggles a checkable
+    // chip and runs its action, where emitting clicked() would not.
+    Keys.onReturnPressed: event => {
+        if (enabled && !event.isAutoRepeat) {
+            control.click();
+        }
+    }
+    Keys.onEnterPressed: event => {
+        if (enabled && !event.isAutoRepeat) {
+            control.click();
+        }
+    }
     Keys.onPressed: event => {
         if (control.closable && control.enabled && (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace)) {
             event.accepted = true;

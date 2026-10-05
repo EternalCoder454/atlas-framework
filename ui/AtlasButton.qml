@@ -110,12 +110,12 @@ T.AbstractButton {
     }
     Keys.onReturnPressed: event => {
         if (enabled && !busy && !event.isAutoRepeat) {
-            control.clicked();
+            control.click();
         }
     }
     Keys.onEnterPressed: event => {
         if (enabled && !busy && !event.isAutoRepeat) {
-            control.clicked();
+            control.click();
         }
     }
     // A busy button swallows Space too, so it neither presses nor toggles.

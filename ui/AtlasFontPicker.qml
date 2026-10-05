@@ -147,7 +147,7 @@ T.AbstractButton {
     Accessible.role: Accessible.Button
     //: Spoken name of a font chooser that has no name of its own
     Accessible.name: qsTr("Font")
-    Accessible.description: qsTr("%1, %2 pt").arg(control.font.family).arg(Math.round(control.font.pointSize * 10) / 10)
+    Accessible.description: control.font.pointSize > 0 ? qsTr("%1, %2 pt").arg(control.font.family).arg(Math.round(control.font.pointSize * 10) / 10) : control.font.family
 
     onClicked: popup.opened ? popup.close() : popup.open()
     Keys.onReturnPressed: event => {
@@ -172,7 +172,8 @@ T.AbstractButton {
             textFormat: Text.PlainText
         }
         Text {
-            text: qsTr("%1 pt").arg(Math.round(control.font.pointSize * 10) / 10)
+            // A font set in pixels has pointSize -1: no size is shown.
+            text: control.font.pointSize > 0 ? qsTr("%1 pt").arg(Math.round(control.font.pointSize * 10) / 10) : ""
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody
             color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
@@ -208,12 +209,21 @@ T.AbstractButton {
             searchField.forceActiveFocus(Qt.PopupFocusReason);
         }
         property bool _hadFocus: false
+        // True when item is the root or a descendant (Item.contains takes a point).
+        function _holds(root: Item, item: Item): bool {
+            for (let i = item; i; i = i.parent) {
+                if (i === root) {
+                    return true;
+                }
+            }
+            return false;
+        }
         onAboutToHide: _hadFocus = popup.contentItem.activeFocus
         onClosed: {
             searchField.clear();
             internals.search = "";
             const item = control.Window.activeFocusItem;
-            if (popup._hadFocus && (!item || popup.contentItem.contains(item))) {
+            if (popup._hadFocus && (!item || popup._holds(popup.contentItem, item))) {
                 control.forceActiveFocus(Qt.PopupFocusReason);
             }
             popup._hadFocus = false;

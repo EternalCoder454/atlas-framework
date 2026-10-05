@@ -421,29 +421,39 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 
 #### Fields and buttons
 
-- [ ] High: AtlasColorField:194-200, AtlasFontPicker:189, AtlasDatePicker:183
+- [x] High: AtlasColorField:194-200, AtlasFontPicker:189, AtlasDatePicker:183
   call `Item.contains(item)` (it takes a point): a TypeError on close, and the
-  focus doesn't return to the field.
-- [ ] Return/Enter call `clicked()` not `click()` in AtlasButton, TextButton,
+  focus doesn't return to the field. Fixed: a descendant test walks the parents
+  (tst: `FieldsAndButtons` in tests/fields/tst_fields.qml).
+- [x] Return/Enter call `clicked()` not `click()` in AtlasButton, TextButton,
   AtlasChip and AtlasInstallButton: an `action` isn't triggered and a
-  checkable button doesn't toggle.
-- [ ] AtlasSplitButton: no Return/Enter on its parts, though the header says
-  so (verify).
-- [ ] Internal assignments break app bindings after the first edit: AtlasRating,
+  checkable button doesn't toggle. Fixed in AtlasButton, TextButton and
+  AtlasChip (which had no Return handler: it now has one); AtlasInstallButton
+  is left to its own branch.
+- [x] AtlasSplitButton: no Return/Enter on its parts, though the header says
+  so (verify). Fixed: each part now has Return and Enter handlers.
+- [x] Internal assignments break app bindings after the first edit: AtlasRating,
   AtlasSegmentedControl, AtlasCalendar, AtlasComboBox (filterable),
   AtlasColorField, AtlasDatePicker, AtlasFontPicker, AtlasFileField,
   AtlasFolderField; also FindBar's three toggles, AtlasSidebar's filter
   (`visible`), InfoBanner (B1 above). One rule for all.
-- [ ] AtlasChipGroup: the roving Tab stop isn't moved when its chip is hidden
+  Not a bug any more: every one of them already holds the edit with a Binding
+  (RestoreBinding) and releases it with `Qt.callLater(_release)`; the tests
+  are tests/input/tst_hold_edits.qml and tests/fields/tst_edit.qml.
+- [x] AtlasChipGroup: the roving Tab stop isn't moved when its chip is hidden
   or disabled, so the group can't be reached.
-- [ ] AtlasAutocompleteField: the clear button leaves the popup open with
+- [x] AtlasAutocompleteField: the clear button leaves the popup open with
   stale suggestions; `mark()` offsets after toLowerCase; rowsMoved; forceAll
-  stays on.
+  stays on. Fixed.
 - [ ] AtlasInstallButton: NaN progress shows "NaN%".
-- [ ] AtlasDropZone: a Browse click may emit `browseRequested` twice (verify);
-  glob `?`/`*` don't match a newline.
+- [x] AtlasDropZone: a Browse click may emit `browseRequested` twice (verify);
+  glob `?`/`*` don't match a newline. Fixed the glob; the double Browse emit
+  is guarded (the tap handler ignores a tap on the button), unverified until
+  the build.
 - [ ] AtlasComboBox: filtering hides delegates instead of filtering the model
   (10k rows are all built); null entries or a missing textRole throw.
+  Null entries and a missing textRole are fixed; the 10k rows need a filtered
+  model for the list and are still open.
 - [ ] AtlasSpinBox has no validator; SearchField's `query` lags on Return and
   its clear button works on a read-only field; AtlasShortcutField can't record
   Ctrl+Delete, Shift+Delete, Ctrl+Escape; AtlasSegmentedControl with a
@@ -454,6 +464,13 @@ first. Fix in batches by file; every fix gets a test that fails before it.
   AtlasSplitButton and MenuButton don't flip in RTL; AtlasSwitch's indicator in
   a wide RTL switch; AtlasRating's count text replace; AtlasFileField's
   folder symbol, silent dialog failure, no validator hook. (Low)
+  Done: SearchField (query on Return, clear when read-only), AtlasShortcutField
+  keys, AtlasSegmentedControl (ListModel, number, click focus), AtlasFontPicker
+  "-1 pt", AtlasColorField alpha 0.999. Not a bug: AtlasRating's count replace
+  (it replaces the first number only). Not done: AtlasSpinBox validator (it
+  would reject the prefix and suffix text), duplicate swatches, UrlValidator,
+  elide on AtlasChip and AtlasButton, RTL flips (SplitButton, MenuButton,
+  Switch), FileField, FontPicker families read once.
 
 #### Lists, tables and data
 

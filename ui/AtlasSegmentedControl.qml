@@ -29,18 +29,39 @@ T.Control {
     property int currentIndex: 0
     signal activated(int index)
 
-    readonly property int count: model ? model.length : 0
+    // `model` is a JavaScript array, a ListModel or a number of segments.
+    readonly property int count: {
+        const m = control.model;
+        if (m === null || m === undefined) {
+            return 0;
+        }
+        if (typeof m === "number") {
+            return isFinite(m) ? Math.max(0, Math.floor(m)) : 0;
+        }
+        if (typeof m.get === "function" && typeof m.count === "number") {
+            return m.count;
+        }
+        return typeof m.length === "number" ? m.length : 0;
+    }
 
+    // The entry at i: a string, or an object with text, symbol and toolTip.
+    function _entry(i) {
+        const m = control.model;
+        if (typeof m === "number") {
+            return String(i);
+        }
+        return m && typeof m.get === "function" && typeof m.count === "number" ? m.get(i) : m[i];
+    }
     function _text(i) {
-        const m = control.model[i];
+        const m = control._entry(i);
         return m === null || m === undefined ? "" : typeof m === "object" ? (m.text || "") : String(m);
     }
     function _symbol(i) {
-        const m = control.model[i];
+        const m = control._entry(i);
         return m && typeof m === "object" && m.symbol ? m.symbol : 0;
     }
     function _toolTip(i) {
-        const m = control.model[i];
+        const m = control._entry(i);
         return m && typeof m === "object" && m.toolTip ? m.toolTip : _text(i);
     }
     // A user choice is held by a Binding for one turn, so an app binding on
@@ -229,7 +250,11 @@ T.Control {
                 }
                 TapHandler {
                     enabled: ctl.enabled
-                    onTapped: ctl._choose(seg.index)
+                    onTapped: {
+                        // A click gives the control the focus, so the arrow keys work at once.
+                        ctl.forceActiveFocus(Qt.MouseFocusReason);
+                        ctl._choose(seg.index);
+                    }
                 }
                 AtlasToolTip {
                     text: ctl._toolTip(seg.index)

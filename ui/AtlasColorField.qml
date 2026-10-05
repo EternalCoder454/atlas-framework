@@ -75,7 +75,8 @@ T.AbstractButton {
             return "#" + (control.showAlpha && a < 255 ? pad(a) : "") + r;
         }
         function toLabel(c: color): string {
-            if (c.a >= 1) {
+            // 0.999 rounds to 1 in the label, so it is shown as the plain hex.
+            if (Math.round(c.a * 100) / 100 >= 1) {
                 return toHex(c);
             }
             const alpha = String(Math.round(c.a * 100) / 100);
@@ -207,10 +208,19 @@ T.AbstractButton {
             hexField.forceActiveFocus(Qt.PopupFocusReason);
         }
         property bool _hadFocus: false
+        // True when item is the root or a descendant (Item.contains takes a point).
+        function _holds(root: Item, item: Item): bool {
+            for (let i = item; i; i = i.parent) {
+                if (i === root) {
+                    return true;
+                }
+            }
+            return false;
+        }
         onAboutToHide: _hadFocus = hexField.activeFocus || contentItem.activeFocus
         onClosed: {
             const item = control.Window.activeFocusItem;
-            if (popup._hadFocus && (!item || popup.contentItem.contains(item))) {
+            if (popup._hadFocus && (!item || popup._holds(popup.contentItem, item))) {
                 control.forceActiveFocus(Qt.PopupFocusReason);
             }
             popup._hadFocus = false;

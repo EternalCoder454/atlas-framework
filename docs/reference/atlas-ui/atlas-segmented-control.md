@@ -47,3 +47,5 @@ Screen readers get a tab list (`Accessible.PageTabList`) of page tabs, the selec
 
 > [!NOTE]
 > Give the control an `Accessible.name` ("View mode") for the screen reader's tab list.
+
+Since 1.5.0: `model` may also be a ListModel or a number of segments, and a click gives the control the focus.

@@ -53,6 +53,17 @@ Item {
 
         hoverEnabled: true
         focusPolicy: Qt.StrongFocus
+        // Enter presses the focused part, like Space.
+        Keys.onReturnPressed: event => {
+            if (enabled && !event.isAutoRepeat) {
+                part.click();
+            }
+        }
+        Keys.onEnterPressed: event => {
+            if (enabled && !event.isAutoRepeat) {
+                part.click();
+            }
+        }
         scale: down && enabled ? 0.97 : 1
         Behavior on scale {
             NumberAnimation {

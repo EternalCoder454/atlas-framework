@@ -57,7 +57,7 @@ T.ComboBox {
             const out = [];
             const needle = internals.filter.toLowerCase();
             for (let i = 0; i < control.count; ++i) {
-                out.push(!control.filterable || needle.length === 0 || control.textAt(i).toLowerCase().indexOf(needle) >= 0);
+                out.push(!control.filterable || needle.length === 0 || String(control.textAt(i) ?? "").toLowerCase().indexOf(needle) >= 0);
             }
             return out;
         }
@@ -123,7 +123,11 @@ T.ComboBox {
                 internals.current = index;
             }
         }
-        text: control.textRole.length === 0 ? row.model.modelData : Array.isArray(control.model) ? row.model.modelData[control.textRole] : row.model[control.textRole]
+        // A null entry or a missing role shows an empty row, not a TypeError.
+        text: {
+            const value = control.textRole.length === 0 ? row.model.modelData : Array.isArray(control.model) ? row.model.modelData?.[control.textRole] : row.model[control.textRole];
+            return value === undefined || value === null ? "" : String(value);
+        }
 
         Accessible.name: text
 

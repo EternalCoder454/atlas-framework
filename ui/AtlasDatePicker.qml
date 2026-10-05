@@ -200,12 +200,21 @@ T.Control {
             // Give focus back only if it was in the popup and nothing else took it
             // (a click into another field keeps its caret).
             const item = control.Window.activeFocusItem;
-            if (_hadFocus && (!item || popupCalendar.contains(item))) {
+            if (_hadFocus && (!item || _holds(popupCalendar, item))) {
                 control.forceActiveFocus(Qt.PopupFocusReason);
             }
             _hadFocus = false;
         }
         property bool _hadFocus: false
+        // True when item is the root or a descendant (Item.contains takes a point).
+        function _holds(root: Item, item: Item): bool {
+            for (let i = item; i; i = i.parent) {
+                if (i === root) {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         // A Binding, not a plain binding: the calendar assigns selectedDate itself
         // when a day is picked, which would break a plain one.
