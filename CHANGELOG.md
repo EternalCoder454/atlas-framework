@@ -97,6 +97,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `closeName`, Toast an action button (`showAction()`, `actionTriggered()`),
   AtlasProgressBar `text` and `status` ("paused", "error"), and AtlasAboutPage
   a "Copy system info" button and `systemInfo()`.
+- Atlas.Ui: AtlasFormat, a singleton that writes sizes, speeds, percentages,
+  numbers, durations and dates ("1.5 MiB", "42%", "1 h 5 min", "5 minutes
+  ago") in the user's locale, with Atlas.Ui's own translated wording.
 
 ## 1.3.0
 
