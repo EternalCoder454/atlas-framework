@@ -5,7 +5,7 @@ section: Feedback and status
 since: "1.4.0"
 ---
 
-AtlasEdgeGlow is the window-edge glow. The glow fades in, breathes slowly while `active`, and fades out. While inactive, nothing is drawn and no timer or animation runs. Under reduced motion the glow is static: it still shows and hides, without the fade. It is drawn with stacked gradient rectangles (no shader), so it also works with the software renderer.
+AtlasEdgeGlow is the window-edge glow. The glow fades in, breathes slowly while `active`, and fades out. While inactive, nothing is drawn and no timer or animation runs. Under reduced motion, and in software rendering ([AtlasStyle.softwareRendering](atlas-style.md)), the glow is static: it still shows and hides, without the fade or the breathing, and no animation runs. It is drawn with stacked gradient rectangles (no shader), so it also works with the software renderer.
 
 ## Example
 

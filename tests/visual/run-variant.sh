@@ -50,6 +50,10 @@ export ATLAS_VARIANT=$variant
 # The About page shows the OS and Qt version: pin them for the pictures.
 export ATLAS_UI_TEST_FIXED_ENV=1
 export QT_QUICK_BACKEND=software
+# Pin AtlasStyle.softwareRendering to false: the flag is detected on the first
+# frame, which would race the first grabs, and the goldens show the animated
+# controls. A test sets ATLAS_SOFTWARE_RENDERING (even empty, for detection).
+export ATLAS_SOFTWARE_RENDERING="${ATLAS_SOFTWARE_RENDERING-0}"
 export QT_SCALE_FACTOR=1
 export QT_FONT_DPI=96
 export QT_QPA_PLATFORM=xcb

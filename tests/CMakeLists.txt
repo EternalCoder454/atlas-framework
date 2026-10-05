@@ -299,7 +299,7 @@ add_test(NAME window
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
 set_tests_properties(window PROPERTIES
     TIMEOUT 120
-    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-window-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/window-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+    ENVIRONMENT "ATLAS_SOFTWARE_RENDERING=;ATLAS_TEST_BIN=$<TARGET_FILE:atlas-window-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/window-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
 # atlas-preview on small pages (tests/preview/run.sh): 8 pictures, warnings
 # exit 1, a broken file exit 2. Runs offscreen in the tool's own environment.

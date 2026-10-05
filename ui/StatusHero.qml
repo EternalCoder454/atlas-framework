@@ -113,11 +113,18 @@ ColumnLayout {
                 }
             }
             RotationAnimator on rotation {
-                running: root.visible && root.busy && root.progress < 0 && AtlasStyle.duration > 0
+                running: root.visible && root.busy && root.progress < 0 && AtlasStyle.duration > 0 && !AtlasStyle.softwareRendering
                 from: 0
                 to: 360
                 loops: Animation.Infinite
                 duration: AtlasStyle.durationLong * 3
+            }
+            // Software rendering: 30 degree steps at about 12 frames a second.
+            Timer {
+                interval: 80
+                repeat: true
+                running: root.visible && root.busy && root.progress < 0 && AtlasStyle.duration > 0 && AtlasStyle.softwareRendering
+                onTriggered: ring.rotation = (ring.rotation + 30) % 360
             }
         }
     }
@@ -175,12 +182,22 @@ ColumnLayout {
                 }
             }
             NumberAnimation on slide {
-                running: bar.visible && !fill.known && AtlasStyle.duration > 0
+                running: bar.visible && !fill.known && AtlasStyle.duration > 0 && !AtlasStyle.softwareRendering
                 from: -bar.width * 0.3
                 to: bar.width
                 loops: Animation.Infinite
                 duration: AtlasStyle.durationLong * 3
                 easing.type: Easing.InOutQuad
+            }
+            // Software rendering: 20 frames a second at most, no easing.
+            Timer {
+                interval: 50
+                repeat: true
+                running: bar.visible && !fill.known && AtlasStyle.duration > 0 && AtlasStyle.softwareRendering
+                onTriggered: {
+                    const next = fill.slide + bar.width * 1.3 * interval / (AtlasStyle.durationLong * 3);
+                    fill.slide = next > bar.width ? -bar.width * 0.3 : next;
+                }
             }
         }
     }

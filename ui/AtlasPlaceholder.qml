@@ -22,7 +22,7 @@ Item {
     QtObject {
         id: internals
         readonly property int count: Math.max(1, control.lines)
-        readonly property bool sweeping: control.animated && control.visible && control.opacity > 0 && AtlasStyle.duration > 1
+        readonly property bool sweeping: control.animated && control.visible && control.opacity > 0 && AtlasStyle.duration > 1 && !AtlasStyle.softwareRendering
         // 0 to 1 across the sweep.
         property real phase: 0
     }

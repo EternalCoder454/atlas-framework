@@ -112,7 +112,7 @@ T.AbstractButton {
     // A bright band, violet to sakura, across its parent (the progress fill).
     component Shimmer: Rectangle {
         property real phase: 0.5
-        visible: !AtlasStyle.reducedMotion
+        visible: !AtlasStyle.reducedMotion && !AtlasStyle.softwareRendering
         width: Math.max(parent.width * 0.6, Kirigami.Units.gridUnit * 2)
         height: parent.height
         x: -width + (parent.width + width) * phase
@@ -123,7 +123,7 @@ T.AbstractButton {
             GradientStop { position: 1; color: Qt.alpha(AtlasStyle.accent, 0) }
         }
         NumberAnimation on phase {
-            running: priv.installing && control.animated && control.visible && !AtlasStyle.reducedMotion
+            running: priv.installing && control.animated && control.visible && !AtlasStyle.reducedMotion && !AtlasStyle.softwareRendering
             from: 0
             to: 1
             duration: AtlasStyle.durationLong * 7
@@ -212,8 +212,23 @@ T.AbstractButton {
                     color: AtlasStyle.accent
                     clip: true
                     Shimmer {}
+                    // Software rendering: 20 frames a second at most, no easing.
+                    Timer {
+                        property real cycle: 0
+                        interval: 50
+                        repeat: true
+                        running: priv.indeterminate && control.visible && control.animated && AtlasStyle.duration > 0 && AtlasStyle.softwareRendering
+                        // Start where the slider is, not at the left edge.
+                        onRunningChanged: if (running) {
+                            cycle = Math.min(1, Math.max(0, slider.x / Math.max(1, track.width - slider.width))) / 2;
+                        }
+                        onTriggered: {
+                            cycle = (cycle + interval / (AtlasStyle.durationLong * 4)) % 1;
+                            slider.x = Math.max(0, track.width - slider.width) * (cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2);
+                        }
+                    }
                     SequentialAnimation on x {
-                        running: priv.indeterminate && control.visible && control.animated && AtlasStyle.duration > 0
+                        running: priv.indeterminate && control.visible && control.animated && AtlasStyle.duration > 0 && !AtlasStyle.softwareRendering
                         loops: Animation.Infinite
                         NumberAnimation {
                             from: 0

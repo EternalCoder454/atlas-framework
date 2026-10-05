@@ -10,9 +10,21 @@
 #include <QEvent>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
+#include <QPointer>
+#include <QSGRendererInterface>
+#include <QtGui/qtguiglobal.h>
+#if QT_CONFIG(vulkan)
+#include <QVulkanFunctions>
+#include <QVulkanInstance>
+#endif
+#include <QLoggingCategory>
 #include <QPalette>
 #include <QStyleHints>
 #include <QtGlobal>
+#include <atomic>
+#include <memory>
 
 namespace
 {
@@ -97,7 +109,23 @@ Appearance::Appearance(QObject *parent)
     readSystem();
     readMotion();
 
+    const QByteArray forced = qgetenv("ATLAS_SOFTWARE_RENDERING");
+    if (forced == "1" || forced == "0") {
+        m_softwareRendering = forced == "1";
+        m_renderingKnown = true;
+    } else if (!forced.isEmpty()) {
+        qWarning("Atlas.Ui: ignoring ATLAS_SOFTWARE_RENDERING=\"%s\" (use 1 or 0)", forced.left(32).constData());
+    }
+
     if (qGuiApp) {
+        if (!m_renderingKnown) {
+            const auto windows = qGuiApp->allWindows();
+            for (QWindow *window : windows) {
+                if (auto *quick = qobject_cast<QQuickWindow *>(window)) {
+                    watchWindow(quick);
+                }
+            }
+        }
         connect(qGuiApp->styleHints(), &QStyleHints::colorSchemeChanged, this, &Appearance::readSystem);
         connect(qGuiApp->styleHints()->accessibility(), &QAccessibilityHints::contrastPreferenceChanged, this, &Appearance::readSystem);
         // The palette and font signals are deprecated: the events are not.
@@ -144,8 +172,161 @@ bool Appearance::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::ApplicationPaletteChange || event->type() == QEvent::ApplicationFontChange) {
         readSystem();
+    } else if (!m_renderingKnown && event->type() == QEvent::Show) {
+        if (auto *window = qobject_cast<QQuickWindow *>(watched)) {
+            watchWindow(window);
+        }
     }
     return QObject::eventFilter(watched, event);
+}
+
+bool Appearance::isSoftwareRasterizer(const QString &deviceName)
+{
+    for (const QLatin1String name : {QLatin1String("llvmpipe"), QLatin1String("softpipe"), QLatin1String("swiftshader"), QLatin1String("lavapipe"), QLatin1String("software rasterizer")}) {
+        if (deviceName.contains(name, Qt::CaseInsensitive)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::optional<bool> Appearance::decideRendering(int api, const QString &glRenderer, const QString &vulkanDevice)
+{
+    switch (api) {
+    case QSGRendererInterface::Software:
+        return true;
+    case QSGRendererInterface::OpenGL:
+        // An empty string is a failed probe, not "hardware".
+        return glRenderer.isEmpty() ? std::nullopt : std::optional<bool>(isSoftwareRasterizer(glRenderer));
+    case QSGRendererInterface::Vulkan:
+        return vulkanDevice.isEmpty() ? std::nullopt : std::optional<bool>(isSoftwareRasterizer(vulkanDevice));
+    case QSGRendererInterface::Unknown:
+        return std::nullopt;
+    default:
+        return false; // Metal, Direct3D: no software variant to tell apart here
+    }
+}
+
+namespace {
+// How many frames the probe may fail before it settles on "not software".
+constexpr int kMaxProbeFrames = 10;
+
+// Shared by the render thread and the GUI thread: atomics only.
+struct ProbeState {
+    std::atomic_bool resolved{false};
+    std::atomic_int frames{0};
+};
+}
+
+// The rendering mode is known on the first frames: the GL renderer string is
+// only readable on the render thread, with the context current. So
+// beforeRendering reads what it needs into plain values and queues them to the
+// GUI thread; nothing of this object is touched over there. A probe that finds
+// nothing (no context yet, an empty string) is retried on the next frames, and
+// gives up after kMaxProbeFrames.
+void Appearance::watchWindow(QQuickWindow *window)
+{
+    if (m_renderingKnown || m_probes.contains(window)) {
+        return;
+    }
+    auto state = std::make_shared<ProbeState>();
+    QPointer<Appearance> self(this);
+    auto report = [self, window](std::optional<bool> result, int api, QString device) {
+        // Queued to the GUI thread, with the window as the context object: a
+        // window that is gone drops the call.
+        QMetaObject::invokeMethod(window, [self, window, result, api, device] {
+            if (self) {
+                self->applyRendering(window, result, api, device);
+            }
+        }, Qt::QueuedConnection);
+    };
+    const QMetaObject::Connection connection = connect(window, &QQuickWindow::beforeRendering, window, [state, report, window] {
+        if (state->resolved.load(std::memory_order_relaxed)) {
+            return;
+        }
+        int api = QSGRendererInterface::Unknown;
+        QString gl;
+        QString vulkan;
+        bool software = window->sceneGraphBackend() == QLatin1String("software");
+        if (QSGRendererInterface *ri = window->rendererInterface()) {
+            api = ri->graphicsApi();
+            if (api == QSGRendererInterface::OpenGL) {
+                if (QOpenGLContext *context = QOpenGLContext::currentContext()) {
+                    if (const GLubyte *renderer = context->functions()->glGetString(GL_RENDERER)) {
+                        gl = QString::fromLatin1(reinterpret_cast<const char *>(renderer));
+                    }
+                }
+            }
+#if QT_CONFIG(vulkan)
+            else if (api == QSGRendererInterface::Vulkan && window->vulkanInstance()) {
+                const void *resource = ri->getResource(window, QSGRendererInterface::PhysicalDeviceResource);
+                QVulkanFunctions *functions = window->vulkanInstance()->functions();
+                if (resource && functions) {
+                    VkPhysicalDeviceProperties properties = {};
+                    functions->vkGetPhysicalDeviceProperties(*static_cast<const VkPhysicalDevice *>(resource), &properties);
+                    vulkan = QString::fromUtf8(properties.deviceName);
+                }
+            }
+#endif
+        }
+        std::optional<bool> result = software ? std::optional<bool>(true) : decideRendering(api, gl, vulkan);
+        const QString device = api == QSGRendererInterface::Vulkan ? vulkan : gl;
+        if (!result && state->frames.fetch_add(1) + 1 < kMaxProbeFrames) {
+            return; // unknown: try again next frame
+        }
+        if (!state->resolved.exchange(true)) {
+            report(result, api, device);
+        }
+    }, Qt::DirectConnection);
+    const QMetaObject::Connection destroyed = connect(window, &QObject::destroyed, this, [this, window] { m_probes.remove(window); });
+    m_probes.insert(window, Probe{connection, destroyed});
+}
+
+// Stops probing one window.
+void Appearance::dropProbe(QQuickWindow *window)
+{
+    const auto it = m_probes.find(window);
+    if (it != m_probes.end()) {
+        QObject::disconnect(it->frames);
+        QObject::disconnect(it->destroyed);
+        m_probes.erase(it);
+    }
+}
+
+Appearance::~Appearance()
+{
+    // The frame connections have the window as their context, not this.
+    for (auto it = m_probes.begin(); it != m_probes.end(); ++it) {
+        QObject::disconnect(it->frames);
+        QObject::disconnect(it->destroyed);
+    }
+}
+
+// GUI thread only. `result` is empty when the window's probe gave up: that
+// does not latch, so another window can still find the answer.
+void Appearance::applyRendering(QQuickWindow *window, std::optional<bool> result, int api, const QString &device)
+{
+    if (m_renderingKnown) {
+        return;
+    }
+    if (!result) {
+        qWarning("Atlas.Ui: could not tell the rendering mode (graphics API %d, device \"%s\"): assuming hardware; set ATLAS_SOFTWARE_RENDERING=1 to force", api,
+                 device.toUtf8().constData());
+        if (window) {
+            dropProbe(window);
+        }
+        return;
+    }
+    m_renderingKnown = true;
+    const auto windows = m_probes.keys();
+    for (QQuickWindow *w : windows) {
+        dropProbe(w);
+    }
+    qInfo("Atlas.Ui: graphics API %d, device \"%s\": software rendering %s", api, device.toUtf8().constData(), *result ? "yes" : "no");
+    if (*result != m_softwareRendering) {
+        m_softwareRendering = *result;
+        Q_EMIT softwareRenderingChanged();
+    }
 }
 
 // Colour scheme, dark mode, high contrast and text scale: all from Qt.

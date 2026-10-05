@@ -20,6 +20,13 @@
 //                  (animations off), or the environment has
 //                  ATLAS_REDUCED_MOTION=1, or the portal's `reduced-motion`
 //                  (since 1.5.0). Missing kdeglobals means false.
+//   softwareRendering  rendering is in software: the Qt Quick software
+//                  adaptation, or OpenGL or Vulkan on a software rasterizer
+//                  (GL_RENDERER or the Vulkan device named llvmpipe, softpipe,
+//                  SwiftShader or lavapipe). Known once the first frame is
+//                  drawn, so it changes at most once, false to true.
+//                  ATLAS_SOFTWARE_RENDERING=1 or =0 forces it (anything else
+//                  is logged and ignored).
 //   textScale      the application font's point size over 10 (Plasma's
 //                  default), so 1.0 is the default size, 1.2 is 20% larger. Kept
 //                  between 0.5 and 4.
@@ -40,10 +47,14 @@
 #include <KSharedConfig>
 
 #include <QFont>
+#include <QHash>
 #include <QObject>
 #include <QPointer>
+#include <QQuickWindow>
 #include <QWindow>
 #include <QtQml/qqmlregistration.h>
+
+#include <optional>
 
 class Appearance : public QObject
 {
@@ -58,6 +69,7 @@ class Appearance : public QObject
     Q_PROPERTY(bool darkMode READ darkMode NOTIFY darkModeChanged)
     Q_PROPERTY(bool highContrast READ highContrast NOTIFY highContrastChanged)
     Q_PROPERTY(bool reducedMotion READ reducedMotion NOTIFY reducedMotionChanged)
+    Q_PROPERTY(bool softwareRendering READ softwareRendering NOTIFY softwareRenderingChanged)
     Q_PROPERTY(qreal textScale READ textScale NOTIFY textScaleChanged)
     Q_PROPERTY(bool accentFromSystem READ accentFromSystem CONSTANT)
     Q_PROPERTY(QString fontFamily READ fontFamily CONSTANT)
@@ -72,6 +84,7 @@ public:
     Q_ENUM(ColorScheme)
 
     explicit Appearance(QObject *parent = nullptr);
+    ~Appearance() override;
 
     bool transparency() const { return m_transparency; }
     void setTransparency(bool on);
@@ -82,10 +95,22 @@ public:
     bool darkMode() const { return m_darkMode; }
     bool highContrast() const { return m_highContrast; }
     bool reducedMotion() const { return m_reducedMotion; }
+    bool softwareRendering() const { return m_softwareRendering; }
     qreal textScale() const { return m_textScale; }
     bool accentFromSystem() const;
     QString fontFamily() const;
     QString monoFamily() const;
+
+    // True when a GL_RENDERER or Vulkan device name is a software rasterizer.
+    static bool isSoftwareRasterizer(const QString &deviceName);
+    // The probe's decision from the graphics API (a QSGRendererInterface::
+    // GraphicsApi), the GL_RENDERER string and the Vulkan device name: empty
+    // while the answer is unknown (no usable string yet).
+    static std::optional<bool> decideRendering(int api, const QString &glRenderer, const QString &vulkanDevice);
+
+    // The probe's answer for `window` (internal; public for the tests). An
+    // empty result is a probe that gave up: logged, not latched.
+    void applyRendering(QQuickWindow *window, std::optional<bool> result, int api, const QString &device);
 
     // Ask the compositor again whether blur is on.
     Q_INVOKABLE void refresh();
@@ -101,6 +126,7 @@ Q_SIGNALS:
     void darkModeChanged();
     void highContrastChanged();
     void reducedMotionChanged();
+    void softwareRenderingChanged();
     void textScaleChanged();
 
 protected:
@@ -110,6 +136,8 @@ private:
     void reread();
     void readSystem();
     void readMotion();
+    void watchWindow(QQuickWindow *window);
+    void dropProbe(QQuickWindow *window);
 
     QPointer<PortalAppearance> m_portal;
     KSharedConfig::Ptr m_globals;
@@ -118,6 +146,15 @@ private:
     bool m_darkMode = false;
     bool m_highContrast = false;
     bool m_reducedMotion = false;
+    bool m_softwareRendering = false;
+    // The environment forced the value, or the first window has been checked.
+    bool m_renderingKnown = false;
+    // Windows whose first frames are being probed, with their connection.
+    struct Probe {
+        QMetaObject::Connection frames; // beforeRendering
+        QMetaObject::Connection destroyed;
+    };
+    QHash<QQuickWindow *, Probe> m_probes;
     qreal m_textScale = 1.0;
 
     KSharedConfig::Ptr m_config;
