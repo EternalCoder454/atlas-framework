@@ -440,6 +440,23 @@ Item {
         }
     }
     Component {
+        id: slowDialog
+        Item {
+            property url currentFile
+            property url currentFolder
+            visible: false
+            // Shows after the field's open check has given up.
+            Timer {
+                id: late
+                interval: 1500
+                onTriggered: parent.visible = true
+            }
+            function open() {
+                late.start();
+            }
+        }
+    }
+    Component {
         id: folderFieldComp
         AtlasFolderField {
             width: 300
@@ -526,6 +543,30 @@ Item {
             compare(a.focusPolicy, Qt.ClickFocus);
             b.enabled = false;
             tryCompare(c, "focusPolicy", Qt.StrongFocus);
+        }
+
+        function test_chip_moved_out_of_its_group_is_a_tab_stop_again() {
+            const g = createTemporaryObject(chipGroupComp, root);
+            const b = part(g, "chipB");
+            tryCompare(b, "focusPolicy", Qt.ClickFocus);
+            compare(b._tabOwner, g);
+            b.parent = root;
+            compare(b._tabOwner, null);
+            compare(b.focusPolicy, Qt.StrongFocus);
+            // The group no longer hears from it.
+            failOnWarning(new RegExp(".*"));
+            b.visible = false;
+            b.destroy();
+            wait(0);
+        }
+
+        function test_chip_group_destroyed_with_its_chips_warns_nothing() {
+            failOnWarning(new RegExp(".*"));
+            const g = chipGroupComp.createObject(root);
+            tryCompare(part(g, "chipA"), "focusPolicy", Qt.StrongFocus);
+            part(g, "chipB").visible = false;
+            g.destroy();
+            wait(50);
         }
 
         function test_autocomplete_mark_survives_a_length_changing_lowercase() {
@@ -713,8 +754,18 @@ Item {
                 const f = createTemporaryObject(comp, root, {_dialogOverride: briefDialog});
                 const tf = _textField(f);
                 _browseButton(f).clicked();
-                wait(800);
+                wait(1300);
                 compare(tf.errorText, "", "a dialog that was shown and cancelled is not an error");
+            }
+        }
+
+        function test_file_and_folder_field_dialog_that_opens_late_clears_the_error() {
+            for (const comp of [fileFieldComp, folderFieldComp]) {
+                const f = createTemporaryObject(comp, root, {_dialogOverride: slowDialog});
+                const tf = _textField(f);
+                _browseButton(f).clicked();
+                tryVerify(() => tf.errorText === "The dialog could not be opened.", 3000);
+                tryCompare(tf, "errorText", "", 3000, "the error goes once the dialog shows");
             }
         }
 

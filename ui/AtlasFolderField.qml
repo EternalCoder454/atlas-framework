@@ -79,7 +79,7 @@ Item {
     }
     Timer {
         id: openCheck
-        interval: 400
+        interval: 1000
         onTriggered: {
             if (!control._sawOpen && !(control._dialog && control._dialog.visible)) {
                 internals.dialogFailed = true;
@@ -91,6 +91,8 @@ Item {
         function onVisibleChanged(): void {
             if (control._dialog.visible) {
                 control._sawOpen = true;
+                // A dialog that took longer than the check is not an error.
+                internals.dialogFailed = false;
             }
         }
     }
