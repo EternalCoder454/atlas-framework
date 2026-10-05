@@ -245,7 +245,26 @@ Item {
             keyClick(Qt.Key_Backspace);
             keyClick(Qt.Key_Backspace);
             keyClick(Qt.Key_Backspace);
-            verify(f.hasError, "and back live once it was showing");
+            verify(!f.hasError, "once acceptable the error waits for the next blur again");
+            root.forceActiveFocus();
+            tryVerify(() => f.hasError);
+        }
+
+        function test_blur_on_valid_then_partial_shows_no_error_until_blur() {
+            const f = createTemporaryObject(emailField, root);
+            f.forceActiveFocus();
+            f.text = "a@b.co";
+            verify(f.acceptableInput);
+            root.forceActiveFocus();
+            verify(!f.hasError);
+            f.forceActiveFocus();
+            f.text = "";
+            keyClick("a");
+            keyClick("@");
+            verify(!f.acceptableInput);
+            verify(!f.hasError, "no error while typing after a valid blur");
+            root.forceActiveFocus();
+            tryVerify(() => f.hasError);
         }
 
         function test_return_shows_the_error() {
