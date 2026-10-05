@@ -31,7 +31,7 @@ The names the app gives KNotification come from its `AppInfo`: the component (th
 ## AtlasOS rules for notifications
 
 - Notify only when the user can act on it, or must know: not for progress or success they did not wait for.
-- Popups only, no sounds. Leave `urgency` as `None` or `Normal` (`Critical` only when ignoring it has consequences); `persistent` only when ignoring the notification has consequences (a restart is due).
+- Popups only, no sounds. Leave `urgency` as `None` or `Normal` (`High` at most, never `Critical`); `persistent` only when ignoring the notification has consequences (a restart is due).
 - Actions are short verbs that open the right page ("Restart now", "Open Atlas Updater"), never "OK" or "Dismiss". `DEFAULT_ACTION` is the click on the notification itself.
 - Never from root to a user's session. A system service records the event, and the user-session app notices it and notifies.
 - Do Not Disturb is Plasma's: do not second-guess it.
