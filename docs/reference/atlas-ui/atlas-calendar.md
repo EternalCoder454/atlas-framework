@@ -44,7 +44,7 @@ A move stops at the bounds.
 | `year` | `int` | the selected date's year, else today's | The year of the month shown. |
 
 > [!NOTE]
-> A user's edit does not end a binding on `selectedDate`, `month` or `year` (a day, the month buttons, PageUp and PageDown, the arrow keys). If `onActivated` stores the day, the binding follows the model; if the app ignores it, the property returns to the model's one turn of the event loop later. A new `selectedDate` from the app turns the month to it without holding anything, and `showDate()` called by the app turns it too. With the default `month` and `year`, both go on following the selection afterwards; if the app set `month` or `year` itself, `showDate()` writes them as it did in 1.4.0 (the app asked for it). A handler or `onXChanged` that reads it sees the new value at once. A literal value or no binding keeps the user's edit.
+> A user's edit does not end a binding on `selectedDate`, `month` or `year` (a day, the month buttons, PageUp and PageDown, the arrow keys). If `onActivated` stores the day, the binding follows the model; if the app ignores it, the property returns to the model's one turn of the event loop later. A new `selectedDate` from the app turns the month to it without holding anything, and `showDate()` called by the app turns it too. With the default `month` and `year`, both go on following the selection afterwards; if the app set `month` or `year` itself, `showDate()` writes them as it did in 1.4.0 (the app asked for it). A handler or `onXChanged` that reads it sees the new value at once. A literal value or no binding keeps the user's edit. Store the edit in the handler itself, not later (`Qt.callLater`): an edit the model takes after the turn has ended counts as refused.
 
 ## Signals
 
