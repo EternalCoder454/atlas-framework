@@ -507,6 +507,11 @@ first. Fix in batches by file; every fix gets a test that fails before it.
   opens at 0,0 with no target.
 - [ ] AtlasDialog's body doesn't scroll to the focused field.
 - [ ] FindBar: Enter in the replace field with no matches.
+- [ ] AtlasSplitView doesn't mirror its panes in RTL when expanded: Qt's
+  SplitView has no mirroring (QQuickSplitView lays out left to right
+  only). Lay the panes out in reverse order under LayoutMirroring. The
+  skipped test test_rtl_expanded_puts_the_first_pane_at_the_right in
+  tests/status/tst_splitview.qml marks it.
 - [ ] Low: high contrast leaves selection, hover and pressed faint;
   StatusBarItem not keyboard reachable; SectionRow's press action when
   disabled; AtlasEdgeGlow's gradient in RTL (verify); AtlasShortcutsDialog's
