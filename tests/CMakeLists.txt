@@ -5,14 +5,16 @@
 #
 #   visual-<variant>   every ui/gallery/demos/*Demo.qml against its golden
 #                      (tests/visual/golden/<variant>/<Demo>.png)
+#                      variants: light dark accent opaque contrast rtl compact text200
 #   ATLAS_UPDATE_GOLDENS=1 ctest ...   rewrites the goldens
 #   i18n               a throwaway German catalogue: Atlas.Ui's qsTr() strings
 #                      come back translated (tests/i18n)
 #   state-<n>          every demo against the state contract of docs/DESIGN.md
 #                      (disabled, keyboard focus), in 4 shards (tests/state)
 #   a11y               every demo's item tree: what Tab reaches needs an
-#                      Accessible.role and name (tests/a11y)
-find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
+#                      Accessible.role and name, and Tab goes in reading
+#                      order and Shift+Tab back the same way (tests/a11y)
+find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest DBus)
 
 add_executable(atlas-visual-tests visual/main.cpp demolist.h)
 target_compile_definitions(atlas-visual-tests PRIVATE
@@ -23,12 +25,18 @@ target_link_libraries(atlas-visual-tests PRIVATE
 # The demos import Atlas.Ui: it must be built first.
 add_dependencies(atlas-visual-tests atlasui)
 
-foreach(variant light dark accent opaque)
+# The contrast variant needs a settings portal to say "high contrast" (see
+# visual/fake-portal.cpp).
+add_executable(atlas-fake-portal visual/fake-portal.cpp)
+set_target_properties(atlas-fake-portal PROPERTIES AUTOMOC ON)
+target_link_libraries(atlas-fake-portal PRIVATE Qt6::Core Qt6::DBus)
+
+foreach(variant light dark accent opaque contrast rtl compact text200)
     add_test(NAME visual-${variant}
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh ${variant})
     set_tests_properties(visual-${variant} PROPERTIES
         TIMEOUT 600
-        ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-visual-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/visual-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+        ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-visual-tests>;ATLAS_FAKE_PORTAL=$<TARGET_FILE:atlas-fake-portal>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/visual-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 endforeach()
 
 # The accessibility test: the same demos, the same private environment as the

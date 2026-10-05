@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import org.kde.kirigami as Kirigami
 import Atlas.Ui
@@ -12,9 +13,44 @@ Rectangle {
     height: 700
     color: Kirigami.Theme.backgroundColor
 
+    // rtl: what an app does for an Arabic or Hebrew user (main.cpp also sets
+    // the application's layout direction, which popups and windows follow).
+    LayoutMirroring.enabled: Goldens.variant() === "rtl"
+    LayoutMirroring.childrenInherit: true
+
     TestCase {
         name: "Visual"
         when: windowShown
+
+        // compact: the density an app sets on the style (AtlasStyle.density).
+        // Popups and dialogs live in the window's overlay, which is not a child
+        // of the app's root: an RTL app mirrors it too (Qt does not do it).
+        function mirrorOverlay() {
+            if (Goldens.variant() === "rtl" && Overlay.overlay) {
+                Overlay.overlay.LayoutMirroring.enabled = true;
+                Overlay.overlay.LayoutMirroring.childrenInherit = true;
+            }
+        }
+
+        function init() {
+            AtlasStyle.density = Goldens.variant() === "compact" ? AtlasStyle.Compact : AtlasStyle.Normal;
+            mirrorOverlay();
+        }
+
+        function cleanup() {
+            AtlasStyle.density = AtlasStyle.Normal;
+        }
+
+        // The variant really is on: a picture of the wrong state would be
+        // accepted as a golden without anyone noticing.
+        function test_variant_is_on() {
+            const v = Goldens.variant();
+            compare(AtlasStyle.highContrast, v === "contrast", "AtlasStyle.highContrast");
+            compare(Qt.application.layoutDirection === Qt.RightToLeft, v === "rtl", "layout direction");
+            compare(AtlasStyle.compact, v === "compact", "AtlasStyle.compact");
+            fuzzyCompare(AtlasStyle.textScale, v === "text200" ? 2.0 : 1.0, 0.01, "AtlasStyle.textScale");
+            compare(stage.LayoutMirroring.enabled, v === "rtl", "the stage is mirrored");
+        }
 
         function test_demo_data() {
             return Goldens.demos().map(n => ({
@@ -32,6 +68,12 @@ Rectangle {
                 obj.animate = false;
             }
             if (isWindow) {
+                if (Goldens.variant() === "rtl") {
+                    obj.contentItem.LayoutMirroring.enabled = true;
+                    obj.contentItem.LayoutMirroring.childrenInherit = true;
+                    obj.Overlay.overlay.LayoutMirroring.enabled = true;
+                    obj.Overlay.overlay.LayoutMirroring.childrenInherit = true;
+                }
                 obj.visible = true;
                 tryVerify(() => obj.visible, 5000);
             } else {
