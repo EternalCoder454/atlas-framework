@@ -12,6 +12,8 @@
 #
 # Its API is a contract with every Atlas app: see "Compatibility" in
 # docs/DESIGN.md before renaming or removing anything.
+# AtlasStyle is a QML singleton: the qmldir needs it marked before the module.
+set_source_files_properties(AtlasStyle.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_qml_module(atlasui
     URI Atlas.Ui
     VERSION 1.0
@@ -22,6 +24,7 @@ qt_add_qml_module(atlasui
     CLASS_NAME AtlasUiPlugin
     QML_FILES
         AtlasWindow.qml
+        AtlasStyle.qml
         AtlasButton.qml
         PrimaryButton.qml
         SecondaryButton.qml

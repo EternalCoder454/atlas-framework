@@ -16,6 +16,11 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   the AtlasShortcuts registry that warns about shortcut conflicts,
   AtlasShortcutLabel (keycaps) and AtlasShortcutsDialog (searchable list of an
   app's shortcuts).
+- Atlas.Ui: the `AtlasStyle` singleton (colours by role, spacing, radii, font
+  sizes, durations, `density`, `rowHeight`) and the system preferences on
+  `Appearance` (`colorScheme`, `darkMode`, `highContrast`, `reducedMotion`,
+  `textScale`), live. Durations are 0 when animations are off in Plasma or
+  `ATLAS_REDUCED_MOTION=1`.
 
 ## 1.3.0
 
