@@ -687,7 +687,7 @@ bool AtlasSettings::setValue(const QString &key, const QVariant &value)
     m_pending.insert(key, stored);
     m_retryMs = 0;
     m_retryWaitedMs = 0;
-    m_writeTimer.start();
+    m_writeTimer.start(kWriteDelayMs); // a retry may have changed the interval
     return true;
 }
 
@@ -704,7 +704,7 @@ bool AtlasSettings::remove(const QString &key)
     m_pending.insert(key, QVariant());
     m_retryMs = 0;
     m_retryWaitedMs = 0;
-    m_writeTimer.start();
+    m_writeTimer.start(kWriteDelayMs); // a retry may have changed the interval
     return true;
 }
 
