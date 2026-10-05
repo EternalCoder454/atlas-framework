@@ -132,8 +132,10 @@ T.AbstractButton {
         Text {
             visible: !control.compact
             Layout.fillWidth: true
-            // Explicit, so the label sits next to the icon when mirrored.
-            horizontalAlignment: Text.AlignLeft
+            // Next to the icon: Left flips to the right side when mirrored. In a
+            // left-to-right layout a label in a right-to-left script keeps
+            // aligning by its own direction (Qt's natural alignment).
+            horizontalAlignment: control.mirrored || !/[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(control.text) ? Text.AlignLeft : Text.AlignRight
             text: control.text
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody

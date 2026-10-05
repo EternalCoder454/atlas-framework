@@ -378,6 +378,9 @@ Item {
             find(sb.one);
             verify(tip !== null, "tooltip found");
             verify(tip.text.indexOf("3 unread") >= 0, tip.text);
+            sb.one.badge = "";
+            compare(tip.text.indexOf("3 unread"), -1);
+            compare(tip.text, "One");
         }
     }
 

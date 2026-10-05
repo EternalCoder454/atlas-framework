@@ -117,7 +117,7 @@ FocusScope {
             const found = findSelected();
             if (found === null) {
                 if (target !== null) {
-                    Qt.callLater(() => priv?.clearTarget());
+                    Qt.callLater(priv.clearTarget);
                 }
                 return;
             }
