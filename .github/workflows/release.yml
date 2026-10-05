@@ -4,7 +4,9 @@ name: Release
 # request in every Atlas app (tools/apps.txt) that moves it to the new tag.
 #
 # A release is made only from a commit on main whose CI run passed, and only
-# when CHANGELOG.md has a finished section for the version.
+# when CHANGELOG.md has a finished section for the version. A tag must be
+# newer than every other release, so re-running an older tag's workflow fails
+# once a newer release exists.
 #
 # The pull requests need a token that can push branches and open pull
 # requests in the app repositories: a fine-grained personal access token with
@@ -39,6 +41,34 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # First, before the hour-long CI wait, so a mistyped tag fails at once.
+      - name: The tag is vX.Y.Z, matches every version in the tree and is the newest
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          v=${TAG#v}
+          if ! [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$TAG is not vX.Y.Z"; exit 1
+          fi
+          cmake=$(sed -nE 's/^project\(atlas-framework VERSION ([0-9.]+).*/\1/p' CMakeLists.txt)
+          spec=$(sed -nE 's/^Version:[[:space:]]+([0-9.]+)$/\1/p' packaging/atlas-framework.spec)
+          cargo=$(sed -nE '/^\[workspace.package\]/,/^\[/ s/^version = "([0-9.]+)"$/\1/p' Cargo.toml)
+          bad=0
+          for pair in "CMakeLists.txt:$cmake" "atlas-framework.spec:$spec" "Cargo.toml:$cargo"; do
+            if [ "${pair#*:}" != "$v" ]; then
+              echo "::error::${pair%%:*} says ${pair#*:}, the tag says $v"; bad=1
+            fi
+          done
+          [ $bad = 0 ] || exit 1
+          # Newer than every other release, so the app pull requests never
+          # move an app back (a mistyped tag like v1.4.0 after v1.5.0).
+          newest=$(git tag --list 'v*' | grep -vxF "$TAG" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)
+          if [ -n "$newest" ] && [ "$(printf '%s\n%s\n' "${newest#v}" "$v" | sort -V | tail -n1)" != "$v" ]; then
+            echo "::error::$TAG is not newer than $newest"; exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
       - name: The tag is on main
         run: |
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
@@ -68,32 +98,18 @@ jobs:
           done
           echo "::error::no finished CI run for $GITHUB_SHA after an hour"; exit 1
 
-      - name: The tag matches every version in the tree
-        id: version
+      - name: Still the newest release
         env:
           TAG: ${{ github.ref_name }}
         run: |
+          # Another tag pushed while CI ran (two close together) is known only
+          # now; the older of the two must not release. Public repo, no auth.
+          git fetch --tags --force origin
           v=${TAG#v}
-          if ! [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::$TAG is not vX.Y.Z"; exit 1
-          fi
-          cmake=$(sed -nE 's/^project\(atlas-framework VERSION ([0-9.]+).*/\1/p' CMakeLists.txt)
-          spec=$(sed -nE 's/^Version:[[:space:]]+([0-9.]+)$/\1/p' packaging/atlas-framework.spec)
-          cargo=$(sed -nE '/^\[workspace.package\]/,/^\[/ s/^version = "([0-9.]+)"$/\1/p' Cargo.toml)
-          bad=0
-          for pair in "CMakeLists.txt:$cmake" "atlas-framework.spec:$spec" "Cargo.toml:$cargo"; do
-            if [ "${pair#*:}" != "$v" ]; then
-              echo "::error::${pair%%:*} says ${pair#*:}, the tag says $v"; bad=1
-            fi
-          done
-          [ $bad = 0 ] || exit 1
-          # Newer than every other release, so the app pull requests never
-          # move an app back (a mistyped tag like v1.4.0 after v1.5.0).
           newest=$(git tag --list 'v*' | grep -vxF "$TAG" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)
           if [ -n "$newest" ] && [ "$(printf '%s\n%s\n' "${newest#v}" "$v" | sort -V | tail -n1)" != "$v" ]; then
             echo "::error::$TAG is not newer than $newest"; exit 1
           fi
-          echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - name: Release notes from CHANGELOG.md
         env:
