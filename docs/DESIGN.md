@@ -131,6 +131,7 @@ control takes `iconName`.
 | `FindBar` | Find and replace bar with match case, whole words and regex toggles; the app searches and reports `matchCount`, `currentMatch` or `error` (since 1.2.0) |
 | `StatusBar`, `StatusBarItem` | A slim bottom bar of cells (Ln/Col, encoding, zoom); a cell can be clickable or open a `menu` (since 1.2.0) |
 | `InfoBanner` | Inline info, warning or error banner with action buttons; slides with `shown`; its close button sets `shown` to false and emits `closed()` (since 1.2.0) |
+| `AtlasStyle` | Singleton of design tokens: colours by role, spacing, radii, font sizes, durations (0 when `reducedMotion`), `density` (`Normal` or `Compact`) with `rowHeight`. `Appearance` also reports `colorScheme`, `darkMode`, `highContrast`, `reducedMotion` and `textScale` (since 1.4.0) |
 | `Toast` | A short message at the bottom centre that goes by itself: `show("Copied")` (since 1.2.0) |
 | `ToolbarButton` | Small icon button for a formatting toolbar that never takes the editor's focus; can be checkable (since 1.2.0) |
 | `AtlasTextField`, `AtlasTextArea` | Rounded text fields: placeholder, `errorText` under the field, `clearable`; the area moves focus on Tab (since 1.3.0) |

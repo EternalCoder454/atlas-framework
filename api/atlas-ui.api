@@ -1,9 +1,17 @@
 AccessibilityState.property active: bool [readonly]
 AccessibilityState.type
+Appearance.enum ColorScheme: DarkScheme = 2
+Appearance.enum ColorScheme: LightScheme = 1
+Appearance.enum ColorScheme: UnknownScheme = 0
 Appearance.method applyBlur(QWindow* window): void
 Appearance.method refresh(): void
 Appearance.property blurAvailable: bool [readonly]
+Appearance.property colorScheme: int [readonly]
+Appearance.property darkMode: bool [readonly]
 Appearance.property effective: bool [readonly]
+Appearance.property highContrast: bool [readonly]
+Appearance.property reducedMotion: bool [readonly]
+Appearance.property textScale: double [readonly]
 Appearance.property transparency: bool
 Appearance.type
 AtlasAboutPage.method ensureVisible(QVariant item): QVariant
@@ -127,6 +135,39 @@ AtlasSpinBox.property suffix: QString
 AtlasSpinBox.type
 AtlasSpinner.property animated: bool
 AtlasSpinner.type
+AtlasStyle.enum Density: Compact = 1
+AtlasStyle.enum Density: Normal = 0
+AtlasStyle.property accent: QColor [readonly]
+AtlasStyle.property accentText: QColor [readonly]
+AtlasStyle.property compact: bool [readonly]
+AtlasStyle.property density: int
+AtlasStyle.property duration: int [readonly]
+AtlasStyle.property durationLong: int [readonly]
+AtlasStyle.property durationShort: int [readonly]
+AtlasStyle.property error: QColor [readonly]
+AtlasStyle.property fontSizeBody: double [readonly]
+AtlasStyle.property fontSizeCaption: double [readonly]
+AtlasStyle.property fontSizeHeading: double [readonly]
+AtlasStyle.property fontSizeTitle: double [readonly]
+AtlasStyle.property highContrast: bool [readonly]
+AtlasStyle.property radius: double [readonly]
+AtlasStyle.property radiusLarge: double [readonly]
+AtlasStyle.property radiusPill: double [readonly]
+AtlasStyle.property radiusSmall: double [readonly]
+AtlasStyle.property reducedMotion: bool [readonly]
+AtlasStyle.property rowHeight: double [readonly]
+AtlasStyle.property separator: QColor [readonly]
+AtlasStyle.property spacing: double [readonly]
+AtlasStyle.property spacingLarge: double [readonly]
+AtlasStyle.property spacingSmall: double [readonly]
+AtlasStyle.property success: QColor [readonly]
+AtlasStyle.property surface: QColor [readonly]
+AtlasStyle.property surfaceAlt: QColor [readonly]
+AtlasStyle.property text: QColor [readonly]
+AtlasStyle.property textMuted: QColor [readonly]
+AtlasStyle.property textScale: double [readonly]
+AtlasStyle.property warning: QColor [readonly]
+AtlasStyle.type
 AtlasSwitch.type
 AtlasTextArea.type
 AtlasTextField.property clearable: bool

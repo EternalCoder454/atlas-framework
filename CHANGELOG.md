@@ -12,6 +12,11 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
   Kirigami.PasswordField and password TextFields to it.
+- Atlas.Ui: the `AtlasStyle` singleton (colours by role, spacing, radii, font
+  sizes, durations, `density`, `rowHeight`) and the system preferences on
+  `Appearance` (`colorScheme`, `darkMode`, `highContrast`, `reducedMotion`,
+  `textScale`), live. Durations are 0 when animations are off in Plasma or
+  `ATLAS_REDUCED_MOTION=1`.
 
 ## 1.3.0
 

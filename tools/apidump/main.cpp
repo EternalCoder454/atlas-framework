@@ -119,6 +119,10 @@ void dumpMetaObject(const QString &type, const QMetaObject *start, const QSet<QS
         QSet<QByteArray> notifySignals;
         for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
             const QMetaProperty p = mo->property(i);
+            // A leading underscore marks a QML type's private helper.
+            if (p.name()[0] == '_') {
+                continue;
+            }
             lines << QStringLiteral("%1.property %2: %3%4")
                          .arg(type, QString::fromLatin1(p.name()), typeName(p.typeName()), p.isWritable() ? QString() : QStringLiteral(" [readonly]"));
             if (p.hasNotifySignal()) {
@@ -127,7 +131,7 @@ void dumpMetaObject(const QString &type, const QMetaObject *start, const QSet<QS
         }
         for (int i = mo->methodOffset(); i < mo->methodCount(); ++i) {
             const QMetaMethod m = mo->method(i);
-            if (m.access() != QMetaMethod::Public || m.methodType() == QMetaMethod::Constructor || m.name().startsWith("_q_")) {
+            if (m.access() != QMetaMethod::Public || m.methodType() == QMetaMethod::Constructor || m.name().startsWith("_")) {
                 continue;
             }
             if (m.methodType() == QMetaMethod::Signal) {
@@ -190,6 +194,7 @@ int main(int argc, char *argv[])
     }
     QString typesFile = QStringLiteral("atlasui.qmltypes");
     QStringList qmlTypeNames; // QML-defined, from the qmldir
+    QSet<QString> qmlSingletons; // those the qmldir marks `singleton`
     for (const QString &line : qmldir.split(QLatin1Char('\n'))) {
         const QStringList words = line.simplified().split(QLatin1Char(' '));
         if (words.value(0) == QLatin1String("typeinfo")) {
@@ -197,6 +202,9 @@ int main(int argc, char *argv[])
         } else if (words.size() >= 3 && words.last().endsWith(QLatin1String(".qml")) && words.value(0) != QLatin1String("internal")) {
             const QString name = words.value(0) == QLatin1String("singleton") ? words.value(1) : words.value(0);
             qmlTypeNames << name;
+            if (words.value(0) == QLatin1String("singleton")) {
+                qmlSingletons.insert(name);
+            }
         }
     }
     const QList<QmlTypesComponent> components = parseQmlTypes(readFile(moduleDir + QLatin1Char('/') + typesFile, &error));
@@ -263,7 +271,7 @@ int main(int argc, char *argv[])
                 qml = &c; // QML singletons and types also appear in the qmltypes
             }
         }
-        const bool singleton = (cpp && cpp->singleton) || (qml && qml->singleton);
+        const bool singleton = (cpp && cpp->singleton) || (qml && qml->singleton) || qmlSingletons.contains(name);
         if (cpp && !cpp->creatable && !singleton) {
             std::fprintf(stderr, "apidump: %s is not creatable and not a singleton; skipped\n", qPrintable(name));
             continue;
