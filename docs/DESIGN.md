@@ -130,6 +130,10 @@ everything else, selected or not, uses the outline. The selection tint of
 those controls is one rectangle that slides to the new item (an expressive
 `AtlasSpringAnimation`, off under reduced motion, never on the first layout).
 
+New animated or shader effects check
+[`AtlasStyle.softwareRendering`](reference/atlas-ui/atlas-style.md) and go
+static or slow under it.
+
 ## Atlas.Ui
 
 The reference pages in `docs/reference/` are the single source for what each

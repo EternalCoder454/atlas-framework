@@ -78,7 +78,15 @@ T.BusyIndicator {
                 // One turn in about a second at normal speed.
                 duration: AtlasStyle.duration * 4
                 loops: Animation.Infinite
-                running: internals.turning
+                running: internals.turning && !AtlasStyle.softwareRendering
+            }
+            // In software rendering each turn repaints the spinner, so it
+            // steps 30 degrees at about 12 frames a second instead.
+            Timer {
+                interval: 80
+                repeat: true
+                running: internals.turning && AtlasStyle.softwareRendering
+                onTriggered: arc.rotation = (arc.rotation + 30) % 360
             }
         }
     }

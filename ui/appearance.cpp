@@ -8,9 +8,11 @@
 #include <QEvent>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QLoggingCategory>
 #include <QPalette>
 #include <QStyleHints>
 #include <QtGlobal>
+#include <rhi/qrhi.h>
 
 namespace
 {
@@ -87,7 +89,23 @@ Appearance::Appearance(QObject *parent)
     readSystem();
     readMotion();
 
+    const QByteArray forced = qgetenv("ATLAS_SOFTWARE_RENDERING");
+    if (forced == "1" || forced == "0") {
+        m_softwareRendering = forced == "1";
+        m_renderingKnown = true;
+    } else if (!forced.isEmpty()) {
+        qWarning("Atlas.Ui: ignoring ATLAS_SOFTWARE_RENDERING=\"%s\" (use 1 or 0)", forced.left(32).constData());
+    }
+
     if (qGuiApp) {
+        if (!m_renderingKnown) {
+            const auto windows = qGuiApp->allWindows();
+            for (QWindow *window : windows) {
+                if (auto *quick = qobject_cast<QQuickWindow *>(window)) {
+                    watchWindow(quick);
+                }
+            }
+        }
         connect(qGuiApp->styleHints(), &QStyleHints::colorSchemeChanged, this, &Appearance::readSystem);
         connect(qGuiApp->styleHints()->accessibility(), &QAccessibilityHints::contrastPreferenceChanged, this, &Appearance::readSystem);
         // The palette and font signals are deprecated: the events are not.
@@ -134,8 +152,67 @@ bool Appearance::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::ApplicationPaletteChange || event->type() == QEvent::ApplicationFontChange) {
         readSystem();
+    } else if (!m_renderingKnown && event->type() == QEvent::Show) {
+        if (auto *window = qobject_cast<QQuickWindow *>(watched)) {
+            watchWindow(window);
+        }
     }
     return QObject::eventFilter(watched, event);
+}
+
+bool Appearance::isSoftwareRasterizer(const QString &deviceName)
+{
+    for (const QLatin1String name : {QLatin1String("llvmpipe"), QLatin1String("softpipe"), QLatin1String("swiftshader"), QLatin1String("lavapipe")}) {
+        if (deviceName.contains(name, Qt::CaseInsensitive)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Rendering mode is known once a window's scene graph is initialised.
+void Appearance::watchWindow(QQuickWindow *window)
+{
+    if (m_renderingKnown) {
+        return;
+    }
+    if (window->isSceneGraphInitialized()) {
+        detectRendering(window);
+        return;
+    }
+    // Show comes again on every show: connect once per window.
+    if (window->property("_atlasRenderingWatched").toBool()) {
+        return;
+    }
+    window->setProperty("_atlasRenderingWatched", true);
+    // sceneGraphInitialized comes on the render thread: queue it to this one.
+    connect(window, &QQuickWindow::sceneGraphInitialized, this, [this, w = QPointer<QQuickWindow>(window)] {
+        if (w) {
+            detectRendering(w);
+        }
+    }, Qt::ConnectionType(Qt::QueuedConnection));
+}
+
+void Appearance::detectRendering(QQuickWindow *window)
+{
+    if (m_renderingKnown) {
+        return;
+    }
+    QSGRendererInterface *ri = window->rendererInterface();
+    if (!ri) {
+        return; // not up yet: a later window or signal tries again
+    }
+    m_renderingKnown = true;
+    bool software = window->sceneGraphBackend() == QLatin1String("software") || ri->graphicsApi() == QSGRendererInterface::Software;
+    if (!software) {
+        if (auto *rhi = static_cast<QRhi *>(ri->getResource(window, QSGRendererInterface::RhiResource))) {
+            software = isSoftwareRasterizer(QString::fromUtf8(rhi->driverInfo().deviceName));
+        }
+    }
+    if (software != m_softwareRendering) {
+        m_softwareRendering = software;
+        Q_EMIT softwareRenderingChanged();
+    }
 }
 
 // Colour scheme, dark mode, high contrast and text scale: all from Qt.

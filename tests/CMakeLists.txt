@@ -134,7 +134,7 @@ add_test(NAME input
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
 set_tests_properties(input PROPERTIES
     TIMEOUT 120
-    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-input-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/input-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+    ENVIRONMENT "ATLAS_SOFTWARE_RENDERING=0;ATLAS_TEST_BIN=$<TARGET_FILE:atlas-input-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/input-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
 # The translation test: a throwaway atlas-ui_de.qm (tests/i18n) in a directory
 # of its own, found through ATLAS_UI_TRANSLATIONS_DIR (development builds only).
@@ -210,7 +210,7 @@ add_executable(atlas-appearance-tests hardening/tst_appearance.cpp
     ${PROJECT_SOURCE_DIR}/ui/appearance.h ${PROJECT_SOURCE_DIR}/ui/appearance.cpp
     ${PROJECT_SOURCE_DIR}/ui/textscale.h)
 target_include_directories(atlas-appearance-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
-target_link_libraries(atlas-appearance-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::DBus
+target_link_libraries(atlas-appearance-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::DBus Qt6::GuiPrivate
     KF6::WindowSystem KF6::ConfigCore)
 add_test(NAME appearance COMMAND atlas-appearance-tests)
 # Its own config dir and no session bus: the user's kdeglobals and portal

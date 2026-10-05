@@ -11,8 +11,10 @@ import org.kde.kirigami as Kirigami
 // slowly while it is active, and fades out; while inactive nothing is drawn
 // and no timer or animation runs. Under reduced motion the glow is static (it
 // still shows and hides, without the fade). `animated: false` holds the
-// breathing still. It takes no input and is hidden from screen readers: say
-// what is happening in text as well (a label, an AtlasStatusHero).
+// breathing still. In software rendering (AtlasStyle.softwareRendering) it is
+// static as well: no fade, no breathing, no running animation. It takes no
+// input and is hidden from screen readers: say what is happening in text as
+// well (a label, an AtlasStatusHero).
 //
 // Size it to the parent, and put it last in the window's content so that it
 // draws above the rest:
@@ -36,13 +38,14 @@ Item {
     property real _shown: root.active ? 1 : 0
     // 0 to 1: the breathing (1 is the brightest).
     property real _breath: 1
-    readonly property bool _breathing: root.active && root.animated && !AtlasStyle.reducedMotion && root.visible
+    readonly property bool _breathing: root.active && root.animated && !AtlasStyle.reducedMotion && !AtlasStyle.softwareRendering && root.visible
 
     visible: _shown > 0
     opacity: _shown * (0.6 + 0.4 * _breath)
     Accessible.ignored: true
 
     Behavior on _shown {
+        enabled: !AtlasStyle.softwareRendering
         NumberAnimation {
             duration: AtlasStyle.durationLong
         }

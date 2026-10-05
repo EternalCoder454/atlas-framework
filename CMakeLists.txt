@@ -20,7 +20,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 include(GNUInstallDirs)
-find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets DBus)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets DBus GuiPrivate)
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 find_package(KF6WindowSystem REQUIRED)

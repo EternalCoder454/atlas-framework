@@ -168,7 +168,7 @@ if(ATLAS_UI_DEV_BUILD)
         ATLAS_UI_TRANSLATIONS_BUILD_DIR="${CMAKE_CURRENT_BINARY_DIR}/translations")
 endif()
 # Appearance: the shared transparency switch (atlasrc) and window blur.
-target_link_libraries(atlasui PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::DBus
+target_link_libraries(atlasui PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::DBus Qt6::GuiPrivate
     KF6::WindowSystem KF6::ConfigCore)
 
 # lupdate and lrelease come with qt6-linguist. Without them the module still

@@ -187,6 +187,9 @@ QtObject {
     readonly property real fontSizeCode: fontSizeBody
 
     readonly property bool reducedMotion: Appearance.reducedMotion
+    // Rendering is in software (the software adaptation, or llvmpipe and
+    // the like): effects and always-running animations go static or slow.
+    readonly property bool softwareRendering: Appearance.softwareRendering
     readonly property int durationShort: reducedMotion ? 0 : 100
     readonly property int duration: reducedMotion ? 0 : 150
     readonly property int durationLong: reducedMotion ? 0 : 250

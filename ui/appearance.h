@@ -19,6 +19,13 @@
 //   reducedMotion  Plasma's AnimationDurationFactor in kdeglobals [KDE] is 0
 //                  (animations off), or the environment has
 //                  ATLAS_REDUCED_MOTION=1. Missing kdeglobals means false.
+//   softwareRendering  rendering is in software: the Qt Quick software
+//                  adaptation, or the RHI on a software rasterizer (GL_RENDERER
+//                  or the Vulkan device named llvmpipe, softpipe, SwiftShader
+//                  or lavapipe). Known once the first window's scene graph is
+//                  up, so it changes at most once, false to true.
+//                  ATLAS_SOFTWARE_RENDERING=1 or =0 forces it (anything else
+//                  is logged and ignored).
 //   textScale      the application font's point size over 10 (Plasma's
 //                  default), so 1.0 is the default size, 1.2 is 20% larger. Kept
 //                  between 0.5 and 4.
@@ -38,6 +45,8 @@
 
 #include <QFont>
 #include <QObject>
+#include <QPointer>
+#include <QQuickWindow>
 #include <QWindow>
 #include <QtQml/qqmlregistration.h>
 
@@ -54,6 +63,7 @@ class Appearance : public QObject
     Q_PROPERTY(bool darkMode READ darkMode NOTIFY darkModeChanged)
     Q_PROPERTY(bool highContrast READ highContrast NOTIFY highContrastChanged)
     Q_PROPERTY(bool reducedMotion READ reducedMotion NOTIFY reducedMotionChanged)
+    Q_PROPERTY(bool softwareRendering READ softwareRendering NOTIFY softwareRenderingChanged)
     Q_PROPERTY(qreal textScale READ textScale NOTIFY textScaleChanged)
     Q_PROPERTY(bool accentFromSystem READ accentFromSystem CONSTANT)
     Q_PROPERTY(QString fontFamily READ fontFamily CONSTANT)
@@ -78,10 +88,14 @@ public:
     bool darkMode() const { return m_darkMode; }
     bool highContrast() const { return m_highContrast; }
     bool reducedMotion() const { return m_reducedMotion; }
+    bool softwareRendering() const { return m_softwareRendering; }
     qreal textScale() const { return m_textScale; }
     bool accentFromSystem() const;
     QString fontFamily() const;
     QString monoFamily() const;
+
+    // True when a GL_RENDERER or Vulkan device name is a software rasterizer.
+    static bool isSoftwareRasterizer(const QString &deviceName);
 
     // Ask the compositor again whether blur is on.
     Q_INVOKABLE void refresh();
@@ -97,6 +111,7 @@ Q_SIGNALS:
     void darkModeChanged();
     void highContrastChanged();
     void reducedMotionChanged();
+    void softwareRenderingChanged();
     void textScaleChanged();
 
 protected:
@@ -106,6 +121,8 @@ private:
     void reread();
     void readSystem();
     void readMotion();
+    void watchWindow(QQuickWindow *window);
+    void detectRendering(QQuickWindow *window);
 
     KSharedConfig::Ptr m_globals;
     KConfigWatcher::Ptr m_globalsWatcher;
@@ -113,6 +130,9 @@ private:
     bool m_darkMode = false;
     bool m_highContrast = false;
     bool m_reducedMotion = false;
+    bool m_softwareRendering = false;
+    // The environment forced the value, or the first window has been checked.
+    bool m_renderingKnown = false;
     qreal m_textScale = 1.0;
 
     KSharedConfig::Ptr m_config;
