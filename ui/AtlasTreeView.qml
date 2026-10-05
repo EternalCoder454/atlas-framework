@@ -158,11 +158,11 @@ T.Control {
             const lo = Math.max(0, Math.min(a, b));
             const hi = Math.min(view.rows - 1, Math.max(a, b));
             const m = control.model;
-            if (m && typeof m.selectionOf === "function") {
+            if (m && typeof m._selectionOf === "function") {
                 const list = [];
                 for (let r = lo; r <= hi; ++r)
                     list.push(view.index(r, 0));
-                selection.select(m.selectionOf(list), ItemSelectionModel.ClearAndSelect);
+                selection.select(m._selectionOf(list), ItemSelectionModel.ClearAndSelect);
                 return;
             }
             selection.clearSelection();

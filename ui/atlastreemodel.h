@@ -49,7 +49,9 @@ public:
 
     // One selection for the given indexes (the view's rows in view order),
     // so a range of n rows is selected in a single call, not n.
-    Q_INVOKABLE QItemSelection selectionOf(const QVariantList &indexes) const;
+    // For AtlasTreeView's range select (one selection, not one call per row);
+    // not API.
+    Q_INVOKABLE QItemSelection _selectionOf(const QVariantList &indexes) const;
 
 Q_SIGNALS:
     void itemsChanged();

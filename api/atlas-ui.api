@@ -606,7 +606,6 @@ AtlasTransparencySwitch.property value: QString
 AtlasTransparencySwitch.signal clicked()
 AtlasTransparencySwitch.signal switchToggled(bool checked)
 AtlasTransparencySwitch.type
-AtlasTreeModel.method selectionOf(QVariantList indexes): QItemSelection
 AtlasTreeModel.property items: QVariantList
 AtlasTreeModel.type
 AtlasTreeView.enum SelectionMode: MultiSelection = 1

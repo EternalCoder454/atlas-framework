@@ -107,7 +107,7 @@ QHash<int, QByteArray> AtlasTreeModel::roleNames() const
 
 // Indexes that aren't this model's are skipped. Neighbours in the same parent
 // join into one range, so a run of siblings costs one range.
-QItemSelection AtlasTreeModel::selectionOf(const QVariantList &indexes) const
+QItemSelection AtlasTreeModel::_selectionOf(const QVariantList &indexes) const
 {
     QItemSelection selection;
     QModelIndex runStart;
