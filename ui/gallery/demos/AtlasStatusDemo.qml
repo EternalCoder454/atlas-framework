@@ -13,7 +13,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 840
-    implicitHeight: 620
+    implicitHeight: 690
     width: implicitWidth
     height: implicitHeight
 
@@ -52,7 +52,7 @@ Item {
         Caption { text: "DataTable: NoResults, header kept" }
         AtlasListView {
             Layout.fillWidth: true
-            Layout.preferredHeight: 320
+            Layout.preferredHeight: 250
             model: []
             status: AtlasStatus.Empty
             statusTitle: "No files"
@@ -62,7 +62,7 @@ Item {
         }
         DataTable {
             Layout.fillWidth: true
-            Layout.preferredHeight: 320
+            Layout.preferredHeight: 250
             model: rows
             status: AtlasStatus.NoResults
             statusText: "Nothing matches \"fox\"."
@@ -78,7 +78,7 @@ Item {
         Caption { text: "AtlasPage: Error, title kept" }
         AtlasTreeView {
             Layout.fillWidth: true
-            Layout.preferredHeight: 320
+            Layout.preferredHeight: 250
             model: noFiles
             status: AtlasStatus.Error
             statusText: "The folder could not be read."
@@ -87,7 +87,7 @@ Item {
         }
         AtlasPage {
             Layout.fillWidth: true
-            Layout.preferredHeight: 320
+            Layout.preferredHeight: 250
             title: "Updates"
             status: AtlasStatus.Error
             statusText: "Checking for updates failed."
@@ -98,7 +98,8 @@ Item {
         Caption { text: "" }
         AtlasListView {
             Layout.fillWidth: true
-            Layout.preferredHeight: 320
+            // Only a spinner: the scene stays inside the 700 px test stage.
+            Layout.preferredHeight: 80
             model: []
             status: root.animate ? AtlasStatus.Loading : AtlasStatus.Ready
             statusText: "Reading the folder"
