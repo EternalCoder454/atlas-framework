@@ -120,7 +120,7 @@ control takes `iconName`.
 | `SidebarItem`, `SidebarGroup` | Sidebar entries, with a live value, a badge, and sub-entries; a compact item shows its title (and value) as a tooltip on hover or keyboard focus (since 1.4.0) |
 | `StepItem` | One step in a setup sidebar (done, current or to come) |
 | `StatusHero` | Big centred status: an icon badge with a busy or progress ring, a headline, a subtitle, actions |
-| `AtlasProgressBar` | Rounded accent progress bar, or an indeterminate one |
+| `AtlasProgressBar` | Rounded accent progress bar, or an indeterminate one; `text` beside it, `status` "normal", "paused" or "error" (`text`, `status` since 1.4.0) |
 | `ConfirmDialog` | Modal dialog with pill buttons; `alternativeText` adds a third button (`alternative()`), `defaultButton` ("accept", "reject", "alternative") takes the focus and Return, `destructive` draws accept in the error colour, and a long body scrolls instead of outgrowing the window (since 1.4.0) |
 | `NotesText` | Release notes from a safe HTML fragment |
 | `LiveChart`, `UsageBar`, `MiniBars` | A live chart, a stacked usage bar, a row of small bars |
@@ -130,9 +130,9 @@ control takes `iconName`.
 | `TabBar` | Document tabs: a pill per tab with an unsaved dot and a close button, "+" for a new tab, drag to reorder. The app owns the `model` (`title`, `modified`, `toolTip`) and answers its signals. Tabs take no keyboard focus: the app gives Ctrl+Tab and Ctrl+W. Same name as QtQuick.Controls' TabBar, so import Controls qualified (`as QQC2`) (since 1.2.0) |
 | `FindBar` | Find and replace bar with match case, whole words and regex toggles; the app searches and reports `matchCount`, `currentMatch` or `error` (since 1.2.0) |
 | `StatusBar`, `StatusBarItem` | A slim bottom bar of cells (Ln/Col, encoding, zoom); a cell can be clickable or open a `menu` (since 1.2.0), above the cell from its leading edge and inside the window; a `symbol` before the text |
-| `InfoBanner` | Inline info, warning or error banner with action buttons; slides with `shown`; its close button sets `shown` to false and emits `closed()` (since 1.2.0) |
+| `InfoBanner` | Inline info, warning or error banner with action buttons; slides with `shown`; its close button sets `shown` to false and emits `closed()` (since 1.2.0); `closeName` names the close button (since 1.4.0) |
 | `AtlasStyle` | Singleton of design tokens: colours by role, spacing, radii, font sizes, durations (0 when `reducedMotion`), `density` (`Normal` or `Compact`) with `rowHeight`. `Appearance` also reports `colorScheme`, `darkMode`, `highContrast`, `reducedMotion` and `textScale` (since 1.4.0) |
-| `Toast` | A short message at the bottom centre that goes by itself: `show("Copied")` (since 1.2.0) |
+| `Toast` | A short message at the bottom centre that goes by itself: `show("Copied")` (since 1.2.0); `showAction("Deleted", "Undo")` adds a button that hides it and emits `actionTriggered()`, and it stays while hovered or focused (since 1.4.0) |
 | `ToolbarButton` | Small icon button for a formatting toolbar that never takes the editor's focus; can be checkable (accent fill and icon when checked; since 1.2.0), have a `symbol` or follow an `action` (tooltip, symbol, shortcut), and be `focusable` for Tab (since 1.4.0) |
 | `AtlasTextField`, `AtlasTextArea` | Rounded text fields: placeholder, `errorText` under the field, `clearable`; `showCounter`, `prefix`, `suffix`, and `invalidText` with `validateOn` ("leaving" or "typing") since 1.4.0; the area moves focus on Tab (since 1.3.0) |
 | `AtlasPasswordField` | Rounded password field like `AtlasTextField` (placeholder, `errorText`) with an eye that shows the text; it hides again when focus leaves, the window goes to the background, or the field is hidden or disabled (`revealed`, `reveal()` only while focused); copy and cut are off while hidden. No `clearable`; don't set `echoMode` or `inputMethodHints` (since 1.4.0) |
@@ -145,7 +145,8 @@ control takes `iconName`.
 | `AtlasSlider`, `AtlasSpinBox` | Accent pill slider (Page, Home, End keys); number field with minus and plus, `prefix` and `suffix` (since 1.3.0); narrower by default and `showButtons: false` for a plain number field (since 1.4.0) |
 | `AtlasToolTip` | Hint on a raised card; bind `shown` to hover for the delay (since 1.3.0) |
 | `AtlasSpinner`, `AtlasPlaceholder` | Busy arc; skeleton lines while content loads. Both still when hidden or `animated: false` (since 1.3.0) |
-| `AtlasEmptyState` | What an empty list shows: symbol, title, text, an optional action (since 1.3.0) |
+| `AtlasEmptyState` | What an empty list shows: symbol, title, text, an optional action (since 1.3.0); `actionSymbol` puts an icon on the button (since 1.4.0) |
+| `AtlasLabel` | A Label with `textStyle`: Body, Title, Heading, Caption or Mono, sized from `AtlasStyle`; plain text (since 1.4.0) |
 | `AtlasFocusRing` | The keyboard focus outline every control uses; put it in a custom control's background (since 1.3.0) |
 | `AtlasBreadcrumb` | Path bar; the middle folds into a "…" menu (since 1.3.0) |
 | `AtlasIconGrid` | Grid of icons over names that only makes the cells on screen; `activated`, `contextMenuRequested` (since 1.3.0) |
@@ -155,7 +156,7 @@ control takes `iconName`.
 | `Appearance` | Singleton: `transparency`, `blurAvailable`, `effective`, `refresh()`, `applyBlur()` |
 | `AccessibilityState` | Singleton: whether a screen reader is active |
 | `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `repo`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`; `uiVersion`, the version of Atlas.Ui itself (since 1.3.0). Set by atlas-framework-ui's startup |
-| `AtlasAboutPage` | The About page: icon, name, version, `description`, the version and OS rows, `license`, source and issue links; extra content goes below |
+| `AtlasAboutPage` | The About page: icon, name, version, `description`, the version and OS rows, `license`, source and issue links; extra content goes below; a "Copy system info" button and `systemInfo()` for bug reports (since 1.4.0) |
 
 Each file's header comment says how to use it; its example becomes the
 gallery's "Copy QML" snippet.

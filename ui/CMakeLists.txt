@@ -76,6 +76,7 @@ qt_add_qml_module(atlasui
         AtlasSpinner.qml
         AtlasPlaceholder.qml
         AtlasEmptyState.qml
+        AtlasLabel.qml
         AtlasFocusRing.qml
         AtlasAction.qml
         AtlasShortcutLabel.qml

@@ -11,7 +11,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 320
-    implicitHeight: 130
+    implicitHeight: 230
     width: implicitWidth
     height: implicitHeight
 
@@ -22,5 +22,9 @@ Item {
         AtlasProgressBar { Layout.fillWidth: true; value: 0 }
         AtlasProgressBar { Layout.fillWidth: true; value: 0.35 }
         AtlasProgressBar { Layout.fillWidth: true; value: 1 }
+        AtlasProgressBar { Layout.fillWidth: true; value: 0.42; text: "42 %" }
+        AtlasProgressBar { Layout.fillWidth: true; value: 0.6; status: "paused"; text: "3 of 5" }
+        AtlasProgressBar { Layout.fillWidth: true; value: 0.3; status: "error"; text: "Failed" }
+        AtlasProgressBar { Layout.fillWidth: true; indeterminate: true; status: "paused"; text: "Paused" }
     }
 }

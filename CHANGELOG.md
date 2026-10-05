@@ -38,6 +38,11 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   current row in view.
 - Atlas.Ui: StatusBarItem `symbol`; its `menu` opens above the cell from its
   leading edge, kept inside the window.
+- Atlas.Ui: AtlasLabel (a Label in one of five text styles: Body, Title,
+  Heading, Caption, Mono). AtlasEmptyState gains `actionSymbol`, InfoBanner
+  `closeName`, Toast an action button (`showAction()`, `actionTriggered()`),
+  AtlasProgressBar `text` and `status` ("paused", "error"), and AtlasAboutPage
+  a "Copy system info" button and `systemInfo()`.
 
 ## 1.3.0
 
