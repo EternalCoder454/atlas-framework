@@ -8,6 +8,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.5.0
 
+- Memory: the template app's PSS grew from about 111 to 118 MB (RSS 117 to
+  124 MB, within its budget) with this release's additions; the PSS budget
+  in `perf/budget.json` goes from 114.8 to 120 MB. Not profiled yet.
 - New: `AtlasStyle.softwareRendering`, true under Qt Quick's software
   adaptation and under a software OpenGL rasterizer (llvmpipe). The edge
   glow, shimmers and spinners go static or slower under it, so a VM or a

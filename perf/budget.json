@@ -1,6 +1,6 @@
 {
   "startup_ms": 190,
   "rss_kb": 129200,
-  "pss_kb": 114800,
+  "pss_kb": 120000,
   "idle_cpu_percent": 1.0
 }
