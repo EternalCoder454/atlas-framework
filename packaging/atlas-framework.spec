@@ -52,6 +52,8 @@ Requires:       atlas-symbols-fonts = %{version}-%{release}
 # QML modules Atlas.Ui imports (the plugin doesn't link them)
 Requires:       kf6-kirigami
 Requires:       qt6-qtdeclarative
+# atlas-preview runs its high-contrast variant on a private session bus.
+Requires:       dbus-daemon
 # The Atlas look: IBM Plex Sans for the UI, JetBrains Mono for code (without
 # them Atlas.Ui falls back to the system fonts).
 Requires:       ibm-plex-sans-fonts
@@ -135,6 +137,17 @@ for s in "%{_builddir}" %{?_atlas_build_cache:"%{_atlas_build_cache}"} ATLAS_UI_
     fi
 done
 
+# atlas-preview is a tool for apps' CI: it must not hold a path into the source
+# or build tree either.
+bin=%{buildroot}%{_bindir}/atlas-preview
+strings -el "$bin" > utf16-strings-preview.txt
+for s in "%{_builddir}" %{?_atlas_build_cache:"%{_atlas_build_cache}"}; do
+    if grep -qF "$s" "$bin" || grep -qF "$s" utf16-strings-preview.txt; then
+        echo "atlas-preview holds $s, which only development builds may" >&2
+        exit 1
+    fi
+done
+
 # Every language catalogue (atlas-ui_<locale>.ts) must have shipped as a .qm:
 # a missing LinguistTools would otherwise build without translations, quietly.
 shopt -s nullglob
@@ -149,6 +162,7 @@ fi
 %license LICENSE
 %dir %{_libdir}/qt6/qml/Atlas
 %{_libdir}/qt6/qml/Atlas/Ui/
+%{_bindir}/atlas-preview
 %{_datadir}/atlas-ui/
 %dir %{_datadir}/atlas
 %{_datadir}/atlas/crash-reporting.toml

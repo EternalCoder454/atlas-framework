@@ -21,15 +21,14 @@ target_compile_definitions(atlas-visual-tests PRIVATE
     QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/visual")
 # Widgets selects QApplication, which the org.kde.desktop style needs.
 target_link_libraries(atlas-visual-tests PRIVATE
-    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets atlas-variant)
 # The demos import Atlas.Ui: it must be built first.
 add_dependencies(atlas-visual-tests atlasui)
 
 # The contrast variant needs a settings portal to say "high contrast" (see
 # visual/fake-portal.cpp).
 add_executable(atlas-fake-portal visual/fake-portal.cpp)
-set_target_properties(atlas-fake-portal PROPERTIES AUTOMOC ON)
-target_link_libraries(atlas-fake-portal PRIVATE Qt6::Core Qt6::DBus)
+target_link_libraries(atlas-fake-portal PRIVATE atlas-variant)
 
 foreach(variant light dark accent opaque contrast rtl compact text200)
     add_test(NAME visual-${variant}
@@ -280,3 +279,10 @@ add_test(NAME window
 set_tests_properties(window PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-window-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/window-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
+# atlas-preview on small pages (tests/preview/run.sh): 8 pictures, warnings
+# exit 1, a broken file exit 2. Runs offscreen in the tool's own environment.
+add_test(NAME preview COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/preview/run.sh $<TARGET_FILE:atlas-preview>)
+set_tests_properties(preview PROPERTIES
+    TIMEOUT 180
+    ENVIRONMENT "QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
