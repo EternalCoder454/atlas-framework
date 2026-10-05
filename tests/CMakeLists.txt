@@ -63,3 +63,13 @@ if(Qt6LinguistTools_FOUND AND ATLAS_UI_DEV_BUILD)
         TIMEOUT 120
         ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-i18n-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/i18n-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR};LANGUAGE=de;LANG=de_DE.UTF-8;LC_ALL=de_DE.UTF-8;ATLAS_UI_TRANSLATIONS_DIR=${CMAKE_BINARY_DIR}/i18n-qm")
 endif()
+
+# The shortcut registry (ui/atlasshortcuts.cpp, compiled into the test):
+# add, remove, conflicts, destroyed actions.
+find_package(Qt6 6.11 REQUIRED COMPONENTS Test)
+add_executable(atlas-shortcuts-tests shortcuts/tst_shortcuts.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlasshortcuts.h ${PROJECT_SOURCE_DIR}/ui/atlasshortcuts.cpp)
+target_include_directories(atlas-shortcuts-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-shortcuts-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+add_test(NAME shortcuts COMMAND atlas-shortcuts-tests)
+set_tests_properties(shortcuts PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
