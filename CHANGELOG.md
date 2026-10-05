@@ -8,6 +8,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasClipboard (text, rich text and image on the system clipboard
+  from QML), AtlasCodeView (read-only monospace text with copy button, line
+  numbers and a height cap), AtlasCopyButton and AtlasCommandPalette (a
+  Ctrl+K search over the app's AtlasActions).
 - Atlas.Ui: AtlasUrlValidator, AtlasEmailValidator, AtlasPathValidator and
   AtlasNumberValidator, validators for an AtlasTextField; AtlasDoubleSpinBox
   (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,

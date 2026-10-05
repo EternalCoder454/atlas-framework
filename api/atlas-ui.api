@@ -95,6 +95,20 @@ AtlasChipGroup.property content: QQmlListProperty<QObject> [readonly]
 AtlasChipGroup.property exclusive: bool
 AtlasChipGroup.property spacing: double
 AtlasChipGroup.type
+AtlasClipboard.method setImage(QVariant image): bool
+AtlasClipboard.method setRichText(QString html, QString plainFallback): void
+AtlasClipboard.method setText(QString text): void
+AtlasClipboard.method text(): QString
+AtlasClipboard.property hasImage: bool [readonly]
+AtlasClipboard.property hasText: bool [readonly]
+AtlasClipboard.type
+AtlasCodeView.property framed: bool
+AtlasCodeView.property lineNumbers: bool
+AtlasCodeView.property maximumHeight: double
+AtlasCodeView.property showCopy: bool
+AtlasCodeView.property text: QString
+AtlasCodeView.property wrap: bool
+AtlasCodeView.type
 AtlasColorField.property color: QColor
 AtlasColorField.property hex: QString [readonly]
 AtlasColorField.property showAlpha: bool
@@ -104,6 +118,18 @@ AtlasColorField.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
+AtlasCommandPalette.property actions: QQmlListProperty<QObject> [readonly]
+AtlasCommandPalette.property placeholderText: QString
+AtlasCommandPalette.property query: QString
+AtlasCommandPalette.property recentCount: int
+AtlasCommandPalette.signal triggered(QObject* action)
+AtlasCommandPalette.type
+AtlasCopyButton.property focusable: bool
+AtlasCopyButton.property iconRotation: double
+AtlasCopyButton.property shortcutText: QString
+AtlasCopyButton.property symbol: int
+AtlasCopyButton.signal copied()
+AtlasCopyButton.type
 AtlasDatePicker.method close(): QVariant
 AtlasDatePicker.method open(): QVariant
 AtlasDatePicker.property clearable: bool

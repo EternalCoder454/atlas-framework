@@ -104,6 +104,9 @@ qt_add_qml_module(atlasui
         AtlasToolbar.qml
         AtlasFloatingToolbar.qml
         AtlasFlowLayout.qml
+        AtlasCodeView.qml
+        AtlasCopyButton.qml
+        AtlasCommandPalette.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp
@@ -112,6 +115,7 @@ qt_add_qml_module(atlasui
         atlasshortcuts.h atlasshortcuts.cpp
         atlasvalidators.h atlasvalidators.cpp
         atlasapp.h atlasapp.cpp
+        atlasclipboard.h atlasclipboard.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         translations.cpp atlasuiplugin.cpp
 )

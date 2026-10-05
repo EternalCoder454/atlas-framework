@@ -127,3 +127,12 @@ target_include_directories(atlas-validators-tests PRIVATE ${PROJECT_SOURCE_DIR}/
 target_link_libraries(atlas-validators-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
 add_test(NAME validators COMMAND atlas-validators-tests)
 set_tests_properties(validators PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# The clipboard singleton (ui/atlasclipboard.cpp, compiled into the test):
+# text, rich text and image round trips, and what setImage() refuses.
+add_executable(atlas-clipboard-tests clipboard/tst_clipboard.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlasclipboard.h ${PROJECT_SOURCE_DIR}/ui/atlasclipboard.cpp)
+target_include_directories(atlas-clipboard-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-clipboard-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+add_test(NAME clipboard COMMAND atlas-clipboard-tests)
+set_tests_properties(clipboard PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
