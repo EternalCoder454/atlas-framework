@@ -158,3 +158,11 @@ target_include_directories(atlas-format-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
 target_link_libraries(atlas-format-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
 add_test(NAME format COMMAND atlas-format-tests)
 set_tests_properties(format PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+# AtlasSparklineItem (ui/atlassparkline.cpp, compiled into the test): the
+# automatic scale and its limits, and no repaint for equal values.
+add_executable(atlas-sparkline-tests sparkline/tst_sparkline.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlassparkline.h ${PROJECT_SOURCE_DIR}/ui/atlassparkline.cpp)
+target_include_directories(atlas-sparkline-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-sparkline-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+add_test(NAME sparkline COMMAND atlas-sparkline-tests)
+set_tests_properties(sparkline PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

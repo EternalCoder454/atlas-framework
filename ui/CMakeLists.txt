@@ -113,8 +113,15 @@ qt_add_qml_module(atlasui
         AtlasCodeView.qml
         AtlasCopyButton.qml
         AtlasCommandPalette.qml
+        AtlasStat.qml
+        AtlasDetailGrid.qml
+        AtlasSparkline.qml
+        AtlasAvatar.qml
+        AtlasRating.qml
+        AtlasBadge.qml
     SOURCES
         livechart.h livechart.cpp
+        atlassparkline.h atlassparkline.cpp
         repaintarea.h repaintarea.cpp
         accessibilitystate.h accessibilitystate.cpp
         appearance.h appearance.cpp
