@@ -332,11 +332,14 @@ void rebalance(std::vector<Child> &kids)
     }
 }
 
-// Removes [a, b) (relative to n, 0 <= a < b <= n.u16). A null node in the
-// result means nothing is left.
-Child removeRec(const Node &n, qsizetype a, qsizetype b, std::vector<Piece> *removed)
+// Removes [a, b) (relative to n, 0 <= a < b <= n.u16). Gives the nodes that
+// replace n: none when nothing is left, one usually, two or more when a split
+// piece overfills it (each then has MinFan..MaxFan entries, or fewer for a
+// lone node; the caller folds the small ones into siblings).
+std::vector<Child> removeRec(const Node &n, qsizetype a, qsizetype b, std::vector<Piece> *removed)
 {
     qsizetype cum = 0;
+    std::vector<Child> out;
     if (n.leaf) {
         std::vector<Piece> v;
         for (const Piece &p : n.pieces) {
@@ -362,8 +365,10 @@ Child removeRec(const Node &n, qsizetype a, qsizetype b, std::vector<Piece> *rem
                 pushMerged(v, makePiece(p.block, p.off + bh, p.len() - bh));
         }
         if (v.empty())
-            return Child();
-        return makeLeaf(std::move(v));
+            return out;
+        for (auto &g : makeGroups(std::move(v)))
+            out.push_back(makeLeaf(std::move(g)));
+        return out;
     }
     std::vector<Child> nk;
     for (const Child &k : n.kids) {
@@ -375,15 +380,16 @@ Child removeRec(const Node &n, qsizetype a, qsizetype b, std::vector<Piece> *rem
             if (removed)
                 collect(*k.node, *removed);
         } else {
-            Child c = removeRec(*k.node, std::max(a, s) - s, std::min(b, e) - s, removed);
-            if (c.node)
+            for (Child &c : removeRec(*k.node, std::max(a, s) - s, std::min(b, e) - s, removed))
                 nk.push_back(std::move(c));
         }
     }
     if (nk.empty())
-        return Child();
+        return out;
     rebalance(nk);
-    return makeInternal(std::move(nk));
+    for (auto &g : makeGroups(std::move(nk)))
+        out.push_back(makeInternal(std::move(g)));
+    return out;
 }
 
 // ---- Finding a place ----
@@ -881,8 +887,7 @@ TextTree TextTree::withRemoved(qsizetype start, qsizetype end, std::vector<Piece
     end = std::clamp<qsizetype>(end, 0, length());
     if (start >= end)
         return *this;
-    Child c = removeRec(*m_root, start, end, removed);
-    NodePtr root = std::move(c.node);
+    NodePtr root = wrapUp(removeRec(*m_root, start, end, removed));
     while (root && !root->leaf && root->kids.size() == 1)
         root = root->kids.front().node;
     return TextTree(std::move(root));
