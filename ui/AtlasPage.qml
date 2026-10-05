@@ -4,12 +4,16 @@ import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 
 // A scrolling page with a large bold title and generous, centred margins.
+// `headerTrailing` holds items at the trailing end of the title row (a button,
+// a search field); the title elides before them. `maxContentWidth` (default 38
+// grid units) is the widest the content grows.
 Item {
     id: root
 
     property string title
     default property alias content: col.data
-    readonly property real maxContentWidth: Kirigami.Units.gridUnit * 38
+    property real maxContentWidth: Kirigami.Units.gridUnit * 38
+    property alias headerTrailing: headerRow.data
 
     QQC2.ScrollView {
         id: scroll
@@ -57,14 +61,25 @@ Item {
                 x: Math.round((parent.width - width) / 2)
                 spacing: Kirigami.Units.gridUnit * 1.2
 
-                QQC2.Label {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: root.title
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.6
-                    font.bold: true
-                    textFormat: Text.PlainText
-                    elide: Text.ElideRight
-                    Accessible.role: Accessible.Heading
+                    spacing: Kirigami.Units.largeSpacing
+
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        text: root.title
+                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.6
+                        font.bold: true
+                        textFormat: Text.PlainText
+                        elide: Text.ElideRight
+                        Accessible.role: Accessible.Heading
+                    }
+                    Row {
+                        id: headerRow
+                        spacing: Kirigami.Units.smallSpacing
+                        visible: children.length > 0
+                        Layout.alignment: Qt.AlignVCenter
+                    }
                 }
             }
         }

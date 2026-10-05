@@ -45,6 +45,13 @@ its goldens, nothing else. A window demo (`AtlasWindowDemo`) has an
 - `a11y/`: loads every demo and fails on any visible, enabled item that Tab
   reaches without an `Accessible.role` or `Accessible.name`, naming the demo,
   the item type and its path. A new control with a demo is covered at once.
+- `state/`: the state contract of docs/DESIGN.md on every demo, in 4 shards
+  (`state-0` to `state-3`): with the root disabled Tab reaches nothing and the
+  picture changes; each item Tab reaches looks different with keyboard focus
+  (its picture plus 12 px around it, with and without focus; the pictures of
+  a failure go to `build/state-out-<n>/`). The allow-list at the top of
+  `tst_state.qml` names the demos where a check cannot apply, with the reason;
+  a listed demo that passes fails the test until the entry is removed.
 - `i18n/`: with `LANGUAGE=de` and a throwaway `atlas-ui_de.qm` (built from
   `i18n/atlas-ui_de.ts`), a default `SearchField` must show the German string.
   Needs qt6-linguist; skipped without it.

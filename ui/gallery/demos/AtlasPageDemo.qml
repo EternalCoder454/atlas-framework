@@ -18,6 +18,9 @@ Item {
     AtlasPage {
         anchors.fill: parent
         title: "Settings"
+        headerTrailing: [
+            SecondaryButton { text: "Reset" }
+        ]
         Section {
             Layout.fillWidth: true
             title: "General"

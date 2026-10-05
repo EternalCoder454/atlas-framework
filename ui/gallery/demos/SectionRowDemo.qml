@@ -11,7 +11,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 460
-    implicitHeight: 300
+    implicitHeight: 600
     width: implicitWidth
     height: implicitHeight
 
@@ -27,5 +27,31 @@ Item {
         SectionRow { title: "Radio"; radio: true; checkmark: true }
         SectionRow { title: "Switch"; showSwitch: true; switchChecked: false }
         SectionRow { title: "Disclosure"; disclosure: true; expanded: true }
+        SectionRow {
+            title: "Trailing"
+            subtitle: "A button and a spin box"
+            SecondaryButton { text: "Open" }
+            AtlasSpinBox { value: 3 }
+        }
+        SectionRow {
+            title: "Leading"
+            leading: [
+                Rectangle { width: 28; height: 28; radius: 14; color: Kirigami.Theme.highlightColor }
+            ]
+        }
+        SectionRow {
+            title: "Busy"
+            subtitle: "Working"
+            value: "hidden"
+            chevron: true
+            busy: true
+            animated: root.animate
+        }
+        SectionRow {
+            content: [
+                AtlasSlider { Layout.fillWidth: true; value: 0.4 }
+            ]
+        }
+        SectionRow { title: "Disabled"; chevron: true; enabled: false }
     }
 }

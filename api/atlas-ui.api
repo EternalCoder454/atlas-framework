@@ -18,8 +18,9 @@ AtlasAboutPage.method ensureVisible(QVariant item): QVariant
 AtlasAboutPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasAboutPage.property description: QString
 AtlasAboutPage.property extraContent: QQmlListProperty<QObject> [readonly]
+AtlasAboutPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
 AtlasAboutPage.property license: QString
-AtlasAboutPage.property maxContentWidth: double [readonly]
+AtlasAboutPage.property maxContentWidth: double
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
 AtlasAction.property section: QString
@@ -96,7 +97,8 @@ AtlasInstallButton.signal cancelRequested()
 AtlasInstallButton.type
 AtlasPage.method ensureVisible(QVariant item): QVariant
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
-AtlasPage.property maxContentWidth: double [readonly]
+AtlasPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
+AtlasPage.property maxContentWidth: double
 AtlasPage.property title: QString
 AtlasPage.type
 AtlasPasswordField.method hide(): QVariant
@@ -365,16 +367,24 @@ Section.type
 SectionRow.method activate(QVariant event): QVariant
 SectionRow.method ensureVisible(): QVariant
 SectionRow.method step(QVariant forward, QVariant event): QVariant
+SectionRow.property animated: bool
 SectionRow.property atlasRow: bool [readonly]
+SectionRow.property busy: bool
 SectionRow.property byMouse: bool
+SectionRow.property canActivate: bool [readonly]
 SectionRow.property checkmark: bool
 SectionRow.property chevron: bool
 SectionRow.property clickable: bool
+SectionRow.property content: QQmlListProperty<QObject> [readonly]
 SectionRow.property disclosure: bool
 SectionRow.property expanded: bool
+SectionRow.property hasContent: bool [readonly]
+SectionRow.property hasLeading: bool [readonly]
 SectionRow.property iconName: QString
 SectionRow.property isFirst: bool [readonly]
+SectionRow.property leading: QQmlListProperty<QObject> [readonly]
 SectionRow.property mirrored: bool [readonly]
+SectionRow.property ownFocus: bool [readonly]
 SectionRow.property radio: bool
 SectionRow.property showSwitch: bool
 SectionRow.property subtitle: QString
