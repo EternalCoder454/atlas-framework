@@ -8,6 +8,13 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Look changes apps will see without changing code: buttons, text fields,
+  combo boxes and search fields have small rounding (4 px) instead of pills;
+  buttons and fields are 28 px high (24 compact), down from about 30 and 34;
+  hover is grey; the focus ring is a 2 px magenta-violet ring with a gap;
+  validation errors appear after the field loses focus (or on Return), with a
+  red border, faint red fill and an icon; neutrals are tinted violet with
+  tonal steps. Check fixed heights and width-tuned rows in apps.
 - Design pass, fields: text fields, password, text area, search, combo box,
   spin boxes, date, time, colour, font and shortcut fields use small corners
   (`radiusSmall`), `controlHeight` (growing with large text), `control` fill,
