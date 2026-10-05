@@ -31,12 +31,12 @@ AtlasTextField {
 | `clearable` | `bool` | `false` | Shows a small cross that empties the field once there is text. |
 | `errorText` | `string` | `""` | The message under the field; empty for no error. Shows at once and wins over `invalidText`. |
 | `hasError` | `bool` (read-only) | — | `true` while `errorText` or `invalidText` shows. |
-| `invalidText` | `string` | `""` | The message for a text the `validator` (or `inputMask`) does not accept. See below for when it shows. |
-| `prefix` | `string` | `""` | Fixed, muted text inside the field before what is typed (`"$"`). |
+| `invalidText` | `string` | `""` | The message for a text the `validator` (or `inputMask`) does not accept. See below for when it shows. Since 1.4.0. |
+| `prefix` | `string` | `""` | Fixed, muted text inside the field before what is typed (`"$"`). Since 1.4.0. |
 | `rtl` | `bool` (read-only) | — | Whether the layout is mirrored. A `TextField` has no `mirrored` of its own. |
-| `showCounter` | `bool` | `false` | Writes "length/max" under the field at its trailing end. Only when `maximumLength` is set. |
-| `suffix` | `string` | `""` | Fixed, muted text inside the field after what is typed (`"kg"`). |
-| `validateOn` | `string` | `"leaving"` | When `invalidText` first shows: `"leaving"` or `"typing"`. |
+| `showCounter` | `bool` | `false` | Writes "length/max" under the field at its trailing end. Only when `maximumLength` is set. Since 1.4.0. |
+| `suffix` | `string` | `""` | Fixed, muted text inside the field after what is typed (`"kg"`). Since 1.4.0. |
+| `validateOn` | `string` | `"leaving"` | When `invalidText` first shows: `"leaving"` or `"typing"`. Since 1.4.0. |
 
 ## Validation messages
 

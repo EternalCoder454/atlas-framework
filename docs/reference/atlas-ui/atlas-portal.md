@@ -57,14 +57,14 @@ Connections {
 ## Notification arguments
 
 - `body` is plain text; the portal escapes it.
-- `actions` is a list of `{ id, text }`. At most 8, with ids of letters, digits and `.`, `_` or `-`. The id `"default"` is a click on the notification itself.
+- `actions` is a list of `{ id, text }`. At most 8, with ids of ASCII letters, digits and `.`, `_` or `-`, up to 64 characters. An action whose text is empty, over 200 characters or has control characters is skipped, with a warning. The id `"default"` is a click on the notification itself.
 
 The `options` object takes:
 
 | Key | Meaning |
 |---|---|
 | `markup` | `true` says the body is markup that the caller has escaped (use `escape()` on everything that came from outside); the server shows it as markup. |
-| `eventId` | The notifyrc event name: camelCase letters and digits. Default `"notification"`. The user's choice in System Settings is honoured. |
+| `eventId` | The notifyrc event name: ASCII camelCase letters and digits, not starting with a digit, up to 64 characters. Default `"notification"`. The user's choice in System Settings is honoured. |
 | `urgency` | `"low"` or `"normal"` (the default). Anything else is normal. There are no sounds. |
 | `persistent` | Stays until the user acts. Use only when ignoring the notification has consequences. |
 | `icon` | An icon name or an absolute path. Anything else shows the app's own icon. |

@@ -5,7 +5,7 @@ section: Services
 since: "1.4.0"
 ---
 
-The app's own settings, in the file the Rust crate (`atlas_framework_core::settings`) reads and writes: `$XDG_CONFIG_HOME/atlas-<last part of AtlasApp.id>rc` (default `~/.config`), in KConfig's INI format with `[Atlas] Format=1`. Declare one `AtlasSettings` per group. Use it for anything the app remembers between runs, such as view options, and for a split view's sizes ([AtlasSplitView](atlas-split-view.md)).
+The app's own settings, in the file the Rust crate (`atlas_framework_core::settings`) reads and writes: `$XDG_CONFIG_HOME/<short name>rc` (default `~/.config`), in KConfig's INI format with `[Atlas] Format=1`. The short name comes from the app ID (`QGuiApplication::desktopFileName()`): its last dotted part, lower-cased, with every character other than a-z, 0-9, `_` and `-` turned into `_`, cut to 58 characters and given an `atlas-` prefix (not doubled when the part already starts with it). An empty result gives `atlas-app`. Declare one `AtlasSettings` per group. Use it for anything the app remembers between runs, such as view options, and for a split view's sizes ([AtlasSplitView](atlas-split-view.md)).
 
 ## Example
 
@@ -40,8 +40,8 @@ A window saves its own size with `AtlasWindow.stateKey`; see [AtlasWindow](atlas
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `fileName` | `string` | `""` | Empty for the app's own file, or a bare file name in the config directory (no path). |
-| `group` | `string` | `""` | The group (section) of the file. Required; a name with brackets or control characters is refused. |
+| `fileName` | `string` | `""` | Empty for the app's own file, or a bare file name in the config directory. Refused when it has a path separator (`/` or `\`), starts with `.`, has leading or trailing whitespace or control characters, or is over 200 characters. |
+| `group` | `string` | `""` | The group (section) of the file. Required. Refused when empty, over 200 characters, with leading or trailing whitespace, starting with `#` or `;`, containing `[` or `]`, or containing control characters. |
 
 > [!NOTE]
 > Set `group` and `fileName` as literals. `value()` reads the file on first use, so a binding on a sibling that runs while the tree is built sees the saved value, but a `group` or `fileName` set by a binding is not known yet then.
@@ -68,7 +68,7 @@ A window saves its own size with `AtlasWindow.stateKey`; see [AtlasWindow](atlas
 - `setValue` and `remove` are batched (a short timer, `flush()`, or the end of the program) and written atomically: a temp file is renamed over the file.
 - Writes take the same `flock` on `.<name>.lock` beside the file that the Rust crate takes, waiting at most 1 second, so a Rust writer and this one never lose each other's change.
 - Keys the user or an admin marked immutable (`[$i]`) are refused.
-- Values are read as written. `$VARIABLE` expansion (`[$e]`) is not done.
+- A key marked `[$e]` (variable expansion) is dropped with a warning, so it reads as not set; `$VARIABLE` expansion is not done.
 - A file that is not a regular file, or is over 4 MB, is not read (you get defaults) and not written.
 - A new file is created with mode 0600.
 - A settings file that is a symlink pointing out of the config directory is refused, so a planted link cannot make the app write elsewhere. This is stricter than the Rust crate on purpose.

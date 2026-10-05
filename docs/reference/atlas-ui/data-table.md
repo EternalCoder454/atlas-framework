@@ -44,7 +44,7 @@ DataTable {
 | `expandedText` | `string` (read-only) | — | The accessible description of an expanded tree row (translated). |
 | `hiddenColumns` | `QList<int>` | `[]` | The indexes of the hidden columns; writable. At least one column always stays visible. |
 | `mirrored` | `bool` (read-only) | — | True when the layout is mirrored (right-to-left); the table mirrors every cell and the header with it. |
-| `model` | `var` | `null` | The rows: any list model. |
+| `model` | `var` | `undefined` | The rows: any list model. |
 | `padding` | `real` (read-only) | — | The padding around the header and rows inside the card. |
 | `placeholderText` | `string` | `""` | Shown in the middle when there are no rows ("No Apps Match"). |
 | `pointerInside` | `bool` (read-only) | — | True while the pointer is over the rows. A live model should hold its order still then, so the row under the pointer stays put; hold it while a context menu opened on a row is up, too. |

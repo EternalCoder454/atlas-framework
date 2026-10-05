@@ -35,7 +35,7 @@ Escape closes the dialog, and so does a press outside it.
 | `content` | `list<QtObject>` (default, read-only) | — | Items declared inside the dialog: the body. |
 | `footerContent` | `list<QtObject>` (read-only) | — | The buttons, in KDE order (cancel first, the main action last). |
 | `headerTrailing` | `list<QtObject>` (read-only) | — | Items in the header, before the Close button. |
-| `preferredWidth` | `real` | 30 grid units | The body is as wide as this, up to the window's width less the margins. |
+| `preferredWidth` | `real` | 30 grid units | The width of the dialog, capped to the parent's width less 2 grid units; the body is narrower by the padding. |
 | `showBack` | `bool` | `false` | Shows a Back button at the leading edge of the header. |
 | `showClose` | `bool` | `true` | Shows a Close button at the trailing edge; it rejects the dialog. |
 
