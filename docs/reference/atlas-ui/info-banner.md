@@ -1,0 +1,42 @@
+---
+title: InfoBanner
+summary: An inline banner above the content for notices such as "File changed on disk" or "Could not save".
+section: Feedback and status
+---
+
+InfoBanner is an inline banner that slides open above the content. `type` tints it: `"info"` with the accent, `"warning"` and `"error"` with the theme's neutral and negative colours. Each entry of `actions` becomes a button at the trailing end, and `closable` adds a small cross that dismisses it. For a message that goes by itself use [Toast](toast.md).
+
+InfoBanner is an `Item`. Screen readers announce it when it appears or its text changes.
+
+## Example
+
+```qml
+InfoBanner {
+    type: "warning"
+    text: qsTr("The file changed on disk.")
+    closable: true
+    actions: [ QQC2.Action { text: qsTr("Reload"); onTriggered: reload() } ]
+}
+```
+
+## Properties
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `actions` | `list<Item>` (read-only) | — | Qt Quick Controls `Action`s (declare them as children of the list); each becomes a button at the trailing end. |
+| `closable` | `bool` | `false` | Shows a cross that dismisses the banner. |
+| `closeName` | `string` | `qsTr("Close")` | The accessible name and tooltip of the close button. |
+| `iconName` | `string` (read-only) | — | The icon for the `type`. |
+| `shown` | `bool` | `true` | Slides the banner open or shut (at once when animations are off). A dismissed banner sets it to false itself. |
+| `text` | `string` | `""` | The message. |
+| `tint` | `color` (read-only) | — | The colour for the `type`. |
+| `type` | `string` | `"info"` | `"info"`, `"warning"` or `"error"`. |
+
+## Signals
+
+| Name | Description |
+|---|---|
+| `closed()` | Emitted when the user dismisses the banner. |
+
+> [!NOTE]
+> Use `shown`, not `visible`: `visible` cannot be animated.

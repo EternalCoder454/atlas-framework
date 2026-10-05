@@ -45,19 +45,14 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   button or toolbar button has a clear on state. The switch thumb slides with a
   small overshoot and an off switch is visible when disabled. The segmented
   control's highlight springs to the new segment, never on resize, and elides
-  long text. `AtlasSpinner` gains `color`. `AtlasSpringAnimation` is tuned:
+  long text. `AtlasSpinner` gains `color`. New `AtlasSpringAnimation`:
   standard settles in about 240 ms, expressive overshoots about 7%.
 - Atlas.Ui fixes to 1.3.0 controls: `ToolbarButton` with `focusable` now takes
   Return/Enter through the normal click path, so a bound `action` fires and a
   `checked` binding survives. `AtlasProgressBar` fills its height again when it
   has no `text` (the thin centred track only beside a label), no longer
   overflows when narrower than its label room, follows `LayoutMirroring` for
-  the fill side, and warns once about an unknown `status`. `AtlasSettings.value()`
-  reads the file on first use, so a binding evaluated while the tree is built
-  sees the saved value. `AtlasNumberValidator.decimals` now defaults to 15 (was
-  0, which rejected "1.5"); `fixup()` drops a trailing decimal point and clamps
-  to `bottom`/`top`. `AtlasShortcuts` no longer counts an action whose Item has
-  no window yet as a conflict, and `conflicts` is a plain read.
+  the fill side, and warns once about an unknown `status`.
 - Atlas.Ui fixes: ConfirmDialog no longer runs a destructive (or Cancel-first)
   accept when Return is pressed in a field of the body; the date picker's popup
   follows the picker after a pick or clear; pickers give the focus back after
@@ -77,7 +72,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   its own title row: window menu, title, main tools with overflow, and
   `AtlasWindowButtons` matching the AtlasOS KWin decoration, in KWin's button
   layout. The header drags and maximises the window, the window resizes
-  through 6 px edge handles, and `AtlasAppMenu` exports the app's menus to the
+  through 4 px edge handles, and `AtlasAppMenu` exports the app's menus to the
   global menu when there is one (`AtlasWindowChrome`), or shows a menu button.
 - Atlas.Ui: menus, tooltips, popovers, dialogs, toasts, the command palette and
   the combo box and date picker popups are tinted and translucent over the

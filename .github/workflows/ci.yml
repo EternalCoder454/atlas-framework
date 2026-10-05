@@ -129,3 +129,80 @@ jobs:
 
       - name: Type names against the apps' files
         run: tools/check-app-names.sh "$RUNNER_TEMP"/apps/*
+
+  docs:
+    # The reference docs (docs/reference, read by atlasos.eterneon.net/framework):
+    # broken links, missing frontmatter, raw HTML and the rest fail here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Check the docs
+        run: |
+          python3 tools/test_docs.py
+          python3 tools/docs.py check
+
+  publish-docs:
+    # main, and v* tags that point at main's tip: rebuilds the docs-published
+    # branch (the pages, their images and index.json) that the site fetches.
+    # The only job that may write. It needs `docs` but not `framework` on
+    # purpose: the docs describe the source, and the framework job takes far longer.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    needs: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-docs
+      # Not cancelled: a tag run on an older commit would cancel the newest
+      # main run and then skip itself. GitHub keeps one pending run, and the
+      # main-tip guard below skips stale commits.
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # Tags: index.json says whether this commit is the release.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch all tags
+        # Runs are serialised by the group, so a main run that follows the tag
+        # run sees the tag: `released` does not depend on run order. Public repo, no auth.
+        run: git fetch --force --tags origin
+
+      - name: Build the published tree
+        run: python3 tools/docs.py build "$RUNNER_TEMP/docs-published"
+
+      - name: Force-push docs-published
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          # Only main's tip is published: a re-run or an out-of-order run of an
+          # older commit must not roll the branch back.
+          head=$(git rev-parse HEAD)
+          tips=$(git -c http.extraheader="AUTHORIZATION: basic $auth" \
+            ls-remote --exit-code --heads "https://github.com/$REPO.git" refs/heads/main) || tips=
+          if [ -z "$tips" ] || [ "$(printf '%s\n' "$tips" | wc -l)" -ne 1 ]; then
+            echo "::error::cannot read main's tip from $REPO"
+            exit 1
+          fi
+          main=${tips%%[[:space:]]*}
+          if [ "$main" != "$head" ]; then
+            echo "::notice::main is at $main, not $head: not publishing these docs"
+            exit 0
+          fi
+          cd "$RUNNER_TEMP/docs-published" || exit 1
+          git init -q -b docs-published
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Docs from $SHA"
+          git -c http.extraheader="AUTHORIZATION: basic $auth" \
+            push --force "https://github.com/$REPO.git" HEAD:refs/heads/docs-published

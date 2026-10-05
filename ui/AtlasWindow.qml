@@ -40,7 +40,7 @@ import org.kde.kirigami as Kirigami
 //   }
 //
 // Then the window has the Qt.FramelessWindowHint, a hairline border (none when
-// maximised or full screen), and 6 px invisible handles around it that resize
+// maximised or full screen), and 4 px invisible handles around it that resize
 // it through the compositor (startSystemResize), with the right cursors. The
 // header moves the window and maximises it on a double click. The header sits
 // above the content, as with any ApplicationWindow `header`, so it composes
