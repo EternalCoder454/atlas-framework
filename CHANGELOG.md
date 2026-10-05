@@ -72,6 +72,16 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   default, or "si"); `date()` has the styles `longAtTime`, `atTimeSentence`
   and `relativeSentence`. A size that rounds up to the next unit is shown in
   it ("1.0 MB", not "1000.0 kB").
+- Added: `AtlasAboutPage.showSystemRows` (hide the OS and Qt rows) and
+  `links`, rows that replace Source code and Report a problem (https, http
+  and mailto only; when no entry is valid the built-in rows stay).
+- Added: `AtlasDetailGrid.title`, `footer` and `framed` (a heading, a note
+  and a Section-style card). The grid builds only what each cell needs: about
+  half the time and a third of the memory per grid. Fix: a model given as a
+  C++ list (`QVariantList`) is shown; it was empty.
+- Added: `AtlasBreadcrumb.hiddenText` (the "Hidden folders" text) and
+  `AtlasCodeView.inset` (side room for an unframed view).
+- Docs: `TextButton` is not an `AtlasButton` preset and has no `variant`.
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call
   (60 s by default) and an overall deadline) returning `ListOutcome`
