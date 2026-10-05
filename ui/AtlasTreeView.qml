@@ -95,6 +95,7 @@ T.Control {
     QtObject {
         id: priv
         readonly property bool multi: control.selectionMode === AtlasTreeView.MultiSelection
+        readonly property var app: Qt.application
         property int anchorRow: -1
         property string typed
 
@@ -406,7 +407,7 @@ T.Control {
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onTapped: (point, button) => {
                     control.forceActiveFocus(Qt.MouseFocusReason);
-                    const mods = Qt.application["keyboardModifiers"];
+                    const mods = priv.app.keyboardModifiers;
                     if (button === Qt.RightButton) {
                         if (!row.selected)
                             priv.goTo(row.row, false, false);
