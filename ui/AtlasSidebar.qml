@@ -25,9 +25,7 @@ import Atlas.Ui
 // headers not); -1 means none. Its background follows AtlasWindow.sidebarColor().
 // Bind `compact` to the window's `sidebarCollapsed`:
 //
-// `footer` holds entries pinned under the list (Settings, About): they do not
-// scroll, `compact` and `density` apply to them, `currentIndex` counts them
-// after the list's, and the filter leaves them alone.
+// The pinned `footer` and the rest: docs/reference/atlas-ui/atlas-sidebar.md.
 //
 //   AtlasSidebar {
 //       width: compact ? 64 : 240
@@ -66,7 +64,7 @@ FocusScope {
     property color baseColor: AtlasStyle.base
 
     // Text typed in the built-in field is held on filterText for one turn of
-    // the event loop (see docs/reference/atlassidebar.md), so an app binding
+    // the event loop (see docs/reference/atlas-ui/atlas-sidebar.md), so an app binding
     // to it stays bound.
     property string _edit
     property bool _editing: false
@@ -566,7 +564,8 @@ FocusScope {
             id: footerFlick
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(contentHeight, control.height / 2)
-            visible: footerColumn.children.length > 0
+            // Entries that are all hidden leave no strip: the column's height counts visible ones.
+            visible: footerColumn.implicitHeight > 0
             clip: true
             contentWidth: width
             contentHeight: footerColumn.implicitHeight + control.padding * 2

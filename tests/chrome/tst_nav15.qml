@@ -35,6 +35,15 @@ Item {
         }
     }
     Component {
+        id: vetoComp
+        AtlasWindow {
+            width: 400
+            height: 300
+            visible: true
+            onClosing: close => { close.accepted = false; }
+        }
+    }
+    Component {
         id: stackComp
         AtlasNavigationStack {
             anchors.fill: parent
@@ -104,6 +113,16 @@ Item {
             d.scrollToTop();
             compare(fl.contentY, 0);
         }
+
+        function test_an_open_dialog_is_not_scrolled_by_itself() {
+            const d = createTemporaryObject(dialogComp, root);
+            const fl = find(d.contentItem, i => i.contentY !== undefined && i.boundsBehavior !== undefined);
+            d.open();
+            tryVerify(() => d.opened);
+            fl.contentY = 200;
+            wait(150);
+            compare(fl.contentY, 200);
+        }
     }
 
     TestCase {
@@ -163,8 +182,9 @@ Item {
             compare(w._toastItem.text, "a");
             compare(w._toasts.length, 0, "the same text twice is shown once");
             tryVerify(() => w._toastItem.visible);
-            w.toast("b", { actionText: "Undo", onAction: () => { acted++; } });
-            w.toast("b");
+            const act = () => { acted++; };
+            w.toast("b", { actionText: "Undo", onAction: act });
+            w.toast("b", { actionText: "Undo", onAction: act });
             compare(w._toasts.length, 1, "queued behind the first");
             compare(w._toastItem.text, "a");
             w._toastItem.hide();
@@ -222,6 +242,137 @@ Item {
             wait(100);
             compare(calls.length, 2);
             compare(calls[1], "bfalse");
+        }
+    }
+
+    TestCase {
+        name: "WindowConfirmRobust"
+        when: windowShown
+
+        function test_hidden_window_answers_false_at_once() {
+            const w = createTemporaryObject(windowComp, root);
+            w.visible = false;
+            const calls = [];
+            const d = w.confirm({ title: "x" }, r => calls.push(r));
+            compare(d, null);
+            compare(calls.length, 1);
+            compare(calls[0], false);
+        }
+
+        function test_two_open_confirms_each_answer_once() {
+            const w = createTemporaryObject(windowComp, root);
+            const calls = [];
+            const a = w.confirm({ title: "A" }, r => calls.push("a" + r));
+            const b = w.confirm({ title: "B" }, r => calls.push("b" + r));
+            tryVerify(() => a.opened && b.opened);
+            b.accepted();
+            b.close();
+            a.close();
+            tryCompare(calls, "length", 2);
+            wait(100);
+            compare(calls.length, 2);
+            verify(calls.indexOf("btrue") >= 0 && calls.indexOf("afalse") >= 0);
+        }
+
+        function test_caller_destroys_the_dialog() {
+            const w = createTemporaryObject(windowComp, root);
+            const calls = [];
+            const d = w.confirm({ title: "A" }, r => calls.push(r));
+            tryVerify(() => d.opened);
+            d.destroy();
+            tryCompare(calls, "length", 1);
+            wait(100);
+            compare(calls.length, 1);
+            compare(calls[0], false);
+        }
+
+        function test_window_destroyed_while_open() {
+            const w = windowComp.createObject(root);
+            const calls = [];
+            const d = w.confirm({ title: "A" }, r => calls.push(r));
+            tryVerify(() => d.opened);
+            w.destroy();
+            tryCompare(calls, "length", 1);
+            wait(100);
+            compare(calls.length, 1);
+            compare(calls[0], false);
+        }
+
+        function test_a_vetoed_close_keeps_the_confirmation() {
+            const w = createTemporaryObject(vetoComp, root);
+            const calls = [];
+            const d = w.confirm({ title: "A" }, r => calls.push(r));
+            tryVerify(() => d.opened);
+            w.close();
+            wait(150);
+            compare(calls.length, 0);
+            verify(w.visible);
+            d.close();
+            tryCompare(calls, "length", 1);
+        }
+    }
+
+    TestCase {
+        name: "WindowToastRobust"
+        when: windowShown
+
+        function test_queue_is_bounded() {
+            const w = createTemporaryObject(windowComp, root);
+            for (let i = 0; i < 40; ++i) {
+                w.toast("t" + i);
+            }
+            compare(w._toasts.length, 20);
+            compare(w._toasts[19].text, "t39");
+        }
+
+        function test_dedup_compares_the_action() {
+            const w = createTemporaryObject(windowComp, root);
+            const fn = () => {};
+            w.toast("a");
+            w.toast("a", { actionText: "Undo", onAction: fn });
+            compare(w._toasts.length, 1);
+            w.toast("a", { actionText: "Undo", onAction: fn });
+            compare(w._toasts.length, 1, "same text and action");
+            w.toast("a", { actionText: "Undo", onAction: () => {} });
+            compare(w._toasts.length, 2, "another function is another action");
+        }
+
+        function test_timeout_is_clamped() {
+            const w = createTemporaryObject(windowComp, root);
+            w.toast("a", { timeout: 1e9 });
+            compare(w._toastItem.interval, 60000);
+            w.toast("b", { timeout: 0.4 });
+            compare(w._toasts[0].timeout, 1);
+            w.toast("c", { timeout: 1234.6 });
+            compare(w._toasts[1].timeout, 1235);
+        }
+
+        function test_hidden_window_does_not_stall_the_queue() {
+            const w = createTemporaryObject(windowComp, root);
+            w.toast("a", { timeout: 100 });
+            w.visible = false;
+            wait(400);
+            w.visible = true;
+            w.toast("b");
+            compare(w._toastCur.text, "b");
+            compare(w._toastItem.text, "b");
+        }
+
+        function test_nothing_piles_up() {
+            const w = createTemporaryObject(windowComp, root);
+            w.toast("warm", { timeout: 1 });
+            wait(100);
+            const before = w.contentItem.data.length;
+            for (let i = 0; i < 50; ++i) {
+                const d = w.confirm({ title: "c" + i }, () => {});
+                tryVerify(() => d.opened);
+                d.close();
+                w.toast("t" + i, { timeout: 1 });
+            }
+            wait(300);
+            gc();
+            wait(50);
+            verify(w.contentItem.data.length <= before + 2, "objects were freed: " + w.contentItem.data.length + " vs " + before);
         }
     }
 

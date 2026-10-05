@@ -34,6 +34,39 @@ Item {
             badgeText: "1 problem"
         }
     }
+    Component {
+        id: dynComp
+        AtlasSidebar {
+            width: 240
+            height: 300
+            property int lateCount: 0
+            property bool hidden: false
+            property alias firstItem: one
+            footer: [
+                Repeater {
+                    model: lateCount
+                    SidebarItem { required property int index; Layout.fillWidth: true; text: "Late " + index; visible: !hidden }
+                }
+            ]
+            SidebarItem { id: one; Layout.fillWidth: true; text: "One"; selected: true }
+        }
+    }
+    Component {
+        id: tallFooterComp
+        AtlasSidebar {
+            width: 240
+            height: 200
+            property alias last: lastItem
+            footer: [
+                Repeater {
+                    model: 11
+                    SidebarItem { required property int index; Layout.fillWidth: true; text: "F" + index }
+                },
+                SidebarItem { id: lastItem; Layout.fillWidth: true; text: "Last" }
+            ]
+            SidebarItem { Layout.fillWidth: true; text: "One"; selected: true }
+        }
+    }
     QtObject {
         id: appModel
         property string q: ""
@@ -96,6 +129,61 @@ Item {
             sb.first.selected = false;
             wait(50);
             verify(sb.settings.selected);
+        }
+
+        function test_current_index_with_a_filter() {
+            const sb = createTemporaryObject(footerComp, root);
+            sb.filterText = "Two";
+            wait(50);
+            sb.currentIndex = 2;
+            wait(50);
+            verify(sb.settings.visible, "the footer entry at index 2 stays");
+            compare(sb.currentIndex, 2);
+        }
+
+        function test_footer_changed_at_runtime() {
+            const sb = createTemporaryObject(dynComp, root);
+            wait(50);
+            sb.lateCount = 2;
+            tryVerify(() => sb.firstItem.parent && sb.height > 0 && footerEntries(sb).length === 2);
+            const e = footerEntries(sb);
+            tryVerify(() => e[0].height > 0 && e[0].mapToItem(sb, 0, 0).y > sb.firstItem.mapToItem(sb, 0, 0).y + sb.firstItem.height, 2000, "the late entries are pinned below the list");
+            sb.hidden = true;
+            sb.lateCount = 0;
+            tryVerify(() => footerEntries(sb).length === 0);
+        }
+
+        function footerEntries(sb) {
+            const out = [];
+            const walk = it => {
+                for (const c of it.children) {
+                    if (c.selected !== undefined && typeof c.text === "string" && c.text.indexOf("Late") === 0) {
+                        out.push(c);
+                    }
+                    walk(c);
+                }
+            };
+            walk(sb);
+            return out;
+        }
+
+        function test_tab_crosses_from_list_to_footer() {
+            const sb = createTemporaryObject(footerComp, root);
+            sb.first.forceActiveFocus(Qt.TabFocusReason);
+            verify(sb.first.activeFocus);
+            keyClick(Qt.Key_Tab);
+            keyClick(Qt.Key_Tab);
+            tryVerify(() => sb.settings.activeFocus, 1000, "Tab reaches the footer after the list");
+        }
+
+        function test_focus_scrolls_a_footer_entry_into_view() {
+            const sb = createTemporaryObject(tallFooterComp, root);
+            wait(100);
+            sb.last.forceActiveFocus(Qt.TabFocusReason);
+            tryVerify(() => {
+                const y = sb.last.mapToItem(sb, 0, 0).y;
+                return y >= sb.height / 2 - 1 && y + sb.last.height <= sb.height + 1;
+            }, 2000, "the last footer entry is inside the footer region");
         }
 
         function test_group_symbol_and_badge() {

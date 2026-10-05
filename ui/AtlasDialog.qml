@@ -59,6 +59,9 @@ T.Dialog {
 
     // Moves the body to its top, with no animation. Focus does not move.
     function scrollToTop(): void {
+        if (!scroller) {
+            return;
+        }
         scroller.cancelFlick();
         scroller.contentY = scroller.originY;
     }

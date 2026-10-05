@@ -12,7 +12,7 @@ import QtQuick.Layouts
 //
 //   SidebarGroup {
 //       text: qsTr("Disk")
-//       iconName: "drive-harddisk-symbolic"   // or symbol: Symbols.Home
+//       iconName: "drive-harddisk-symbolic"
 //       Repeater {
 //           model: disks
 //           SidebarItem { sub: true; text: model.label; value: model.rate; ... }

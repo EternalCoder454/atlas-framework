@@ -8,8 +8,7 @@ import org.kde.kirigami as Kirigami
 // a search field); the title elides before them. `maxContentWidth` (default 38
 // grid units) is the widest the content grows. Inside an AtlasNavigationStack
 // whose header shows, the header carries the title and the page doesn't
-// repeat it. `subtitle` is one or two muted lines under the title. `busy`
-// shows a spinner row with `busyText` above the content and announces it.
+// repeat it. See docs/reference/atlas-ui/atlas-page.md.
 Item {
     id: root
 
@@ -27,7 +26,10 @@ Item {
     Accessible.description: root.subtitle
 
     onBusyChanged: root._announceBusy()
-    Component.onCompleted: root._announceBusy()
+    onBusyTextChanged: root._announceBusy()
+    // A page created busy announces one turn late, so it does not talk over
+    // the navigation stack's announcement of the page's title.
+    Component.onCompleted: Qt.callLater(root._announceBusy)
     function _announceBusy(): void {
         if (root.busy && root.busyText.length > 0) {
             root.Accessible.announce(root.busyText);
@@ -156,6 +158,8 @@ Item {
                             color: AtlasStyle.textMuted
                             wrapMode: Text.Wrap
                             textFormat: Text.PlainText
+                            // The spinner carries the name; reading both says it twice.
+                            Accessible.ignored: true
                         }
                     }
                 }
