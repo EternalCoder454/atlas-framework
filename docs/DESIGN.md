@@ -116,6 +116,9 @@ control takes `iconName`.
 | `AtlasPage` | A scrolling page with a large bold title and centred margins |
 | `PrimaryButton`, `SecondaryButton`, `TextButton`, `MenuButton` | Buttons (`AtlasButton` is their shared base) |
 | `AtlasSwitch` | Pill switch |
+| `AtlasSegmentedControl` | Joined pill segments, one selected (`model` of strings or `{ text, symbol, toolTip }`, `currentIndex`, `activated(index)`); one Tab stop, arrows, Home/End; a tab list for screen readers (since 1.4.0) |
+| `AtlasSplitButton` | A main pill button joined to an arrow that opens a menu (`items` of `ContextMenuItem`, `action`, `prominent`); two Tab stops, Alt+Down or Menu opens the menu (since 1.4.0) |
+| `AtlasChip`, `AtlasChipGroup` | A small pill (`text`, `symbol`, `checkable`, `closable` with `closeRequested()`), and a wrapping group of them (`exclusive`, roving Tab stop, focus moves to the neighbour of a removed chip) (since 1.4.0) |
 | `Section`, `SectionRow` | A rounded card of rows; a row has a title, subtitle, value, and a checkmark, switch or chevron. A section can fold |
 | `SidebarItem`, `SidebarGroup` | Sidebar entries, with a live value, a badge, and sub-entries; a compact item shows its title (and value) as a tooltip on hover or keyboard focus (since 1.4.0) |
 | `StepItem` | One step in a setup sidebar (done, current or to come) |
