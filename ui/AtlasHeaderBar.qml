@@ -228,6 +228,9 @@ Item {
         anchors.leftMargin: 4
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
+        // At narrow widths each group gets at most half the bar, so they can't overlap.
+        width: Math.min(implicitWidth, Math.max(0, (root.width - 13) / 2))
+        clip: width < implicitWidth
 
         Loader {
             active: root._left.indexOf("menu") >= 0
@@ -252,6 +255,8 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 9
         anchors.verticalCenter: parent.verticalCenter
+        width: Math.min(implicitWidth, Math.max(0, (root.width - 13) / 2))
+        clip: width < implicitWidth
         spacing: 4
 
         Row {
@@ -272,11 +277,15 @@ Item {
     }
 
     // The title: leading after the left group, or centred when there is room.
+    // Placed with anchors (not x), so it mirrors under LayoutMirroring.
     QQC2.Label {
         id: title
-        readonly property real _free: root.width - leftRow.width - rightRow.width - AtlasStyle.spacing * 2
-        readonly property real _maxWidth: root.titleCentered ? root.width - 2 * Math.max(leftRow.width, rightRow.width) - AtlasStyle.spacing * 2 : _free * 0.4
-        x: root.titleCentered ? (root.width - width) / 2 : leftRow.x + leftRow.width + AtlasStyle.spacing
+        readonly property real _free: Math.max(0, root.width - leftRow.width - rightRow.width - AtlasStyle.spacing * 2)
+        // With no actions the title may take all the free width; otherwise 40% of it.
+        readonly property real _maxWidth: root.titleCentered ? Math.max(0, root.width - 2 * Math.max(leftRow.width, rightRow.width) - AtlasStyle.spacing * 2) : (root.actions.length > 0 ? _free * 0.4 : _free)
+        anchors.left: root.titleCentered ? undefined : leftRow.right
+        anchors.leftMargin: AtlasStyle.spacing
+        anchors.horizontalCenter: root.titleCentered ? parent.horizontalCenter : undefined
         anchors.verticalCenter: parent.verticalCenter
         width: Math.max(0, Math.min(implicitWidth, _maxWidth))
         text: root.title
@@ -290,9 +299,15 @@ Item {
     AtlasToolbar {
         id: toolbar
         anchors.verticalCenter: parent.verticalCenter
-        x: root.titleCentered ? leftRow.x + leftRow.width : title.x + title.width + AtlasStyle.spacingSmall
-        width: Math.max(0, (root.titleCentered ? title.x : rightRow.x) - x - AtlasStyle.spacingSmall)
+        anchors.left: root.titleCentered ? leftRow.right : title.right
+        anchors.leftMargin: AtlasStyle.spacingSmall
+        width: root.titleCentered ? Math.max(0, (root.width - title.width) / 2 - leftRow.width - 4 - 2 * AtlasStyle.spacingSmall) : Math.max(0, root.width - leftRow.width - 4 - AtlasStyle.spacing - title.width - rightRow.width - 9 - 3 * AtlasStyle.spacingSmall)
         visible: actions.length > 0
         accessibleName: qsTr("Main tools")
     }
+
+    // Where the window's top resize handle must stop so it does not cover the
+    // window buttons: the free span between the two groups, from the left edge.
+    readonly property real _freeStart: root.LayoutMirroring.enabled ? rightRow.width + 9 : leftRow.width + 4
+    readonly property real _freeEnd: root.LayoutMirroring.enabled ? leftRow.width + 4 : rightRow.width + 9
 }

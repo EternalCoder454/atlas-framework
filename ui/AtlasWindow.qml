@@ -129,7 +129,7 @@ QQC2.ApplicationWindow {
             cursor: Qt.SizeFDiagCursor
         }
     ]
-    readonly property real _grip: 6
+    readonly property real _grip: 4
 
     // An alpha surface only while blurred: an opaque window otherwise, as before.
     color: root.blurred ? "transparent" : Kirigami.Theme.backgroundColor
@@ -157,9 +157,14 @@ QQC2.ApplicationWindow {
             readonly property bool _corner: (_left || _right) && (_top || _bottom)
 
             // Corners are grip x grip squares; sides run between them.
-            x: handle._left ? 0 : handle._right ? root.width - root._grip : root._grip
+            // The top side stops short of the header's window buttons and menu
+            // button, so the handle never covers the top pixels of a button.
+            readonly property bool _topSide: handle._top && !handle._corner
+            readonly property real _from: _topSide && root._atlasHeader ? Math.max(root._grip, root._atlasHeader._freeStart) : root._grip
+            readonly property real _to: _topSide && root._atlasHeader ? Math.max(_from, root.width - Math.max(root._grip, root._atlasHeader._freeEnd)) : root.width - root._grip
+            x: handle._left ? 0 : handle._right ? root.width - root._grip : handle._from
             y: handle._top ? 0 : handle._bottom ? root.height - root._grip : root._grip
-            width: handle._left || handle._right ? root._grip : root.width - 2 * root._grip
+            width: handle._left || handle._right ? root._grip : handle._to - handle._from
             height: handle._top || handle._bottom ? root._grip : root.height - 2 * root._grip
             z: 1000
             acceptedButtons: Qt.LeftButton

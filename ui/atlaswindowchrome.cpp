@@ -13,6 +13,19 @@ namespace
 constexpr auto kGroup = "org.kde.kdecoration2";
 constexpr auto kRegistrar = "com.canonical.AppMenu.Registrar";
 constexpr int kDBusTimeoutMs = 1000;
+
+// Qt exports a menu bar to the global menu only through KDE's platform theme
+// (plasma-integration); another theme would leave the window without any menu.
+// QT_QPA_PLATFORMTHEME names the theme, and on a Plasma session without it
+// Qt picks KDE's from XDG_CURRENT_DESKTOP.
+bool exportCanWork()
+{
+    const QString theme = qEnvironmentVariable("QT_QPA_PLATFORMTHEME");
+    if (!theme.isEmpty()) {
+        return theme.contains(QLatin1String("kde"), Qt::CaseInsensitive);
+    }
+    return qEnvironmentVariable("XDG_CURRENT_DESKTOP").contains(QLatin1String("KDE"), Qt::CaseInsensitive);
+}
 }
 
 AtlasWindowChrome::AtlasWindowChrome(QObject *parent)
@@ -31,13 +44,14 @@ AtlasWindowChrome::AtlasWindowChrome(QObject *parent)
     if (bus.isConnected()) {
         m_serviceWatcher = new QDBusServiceWatcher(QLatin1String(kRegistrar), bus, QDBusServiceWatcher::WatchForOwnerChange, this);
         connect(m_serviceWatcher, &QDBusServiceWatcher::serviceOwnerChanged, this, [this](const QString &, const QString &, const QString &newOwner) {
-            setGlobalMenu(!newOwner.isEmpty());
+            m_ownerKnown = true;
+            setRegistrar(!newOwner.isEmpty());
         });
         checkGlobalMenu();
     }
 }
 
-QStringList AtlasWindowChrome::parseButtons(const QString &letters)
+QStringList AtlasWindowChrome::_parseButtons(const QString &letters)
 {
     QStringList out;
     for (const QChar c : letters) {
@@ -69,12 +83,12 @@ void AtlasWindowChrome::readButtons()
 {
     m_config->reparseConfiguration();
     const KConfigGroup group = m_config->group(QLatin1String(kGroup));
-    QStringList left = parseButtons(group.readEntry("ButtonsOnLeft", QStringLiteral("M")));
-    QStringList right = parseButtons(group.readEntry("ButtonsOnRight", QStringLiteral("HIAX")));
+    QStringList left = _parseButtons(group.readEntry("ButtonsOnLeft", QStringLiteral("M")));
+    QStringList right = _parseButtons(group.readEntry("ButtonsOnRight", QStringLiteral("HIAX")));
     // Without minimize, maximize or close anywhere, use KWin's default.
     const auto hasWindowButton = [](const QStringList &l) { return l.contains(QLatin1String("minimize")) || l.contains(QLatin1String("maximize")) || l.contains(QLatin1String("close")); };
     if (!hasWindowButton(left) && !hasWindowButton(right)) {
-        right = parseButtons(QStringLiteral("IAX"));
+        right = _parseButtons(QStringLiteral("IAX"));
     }
     if (left != m_left || right != m_right) {
         m_left = left;
@@ -95,14 +109,17 @@ void AtlasWindowChrome::checkGlobalMenu()
         const QDBusPendingReply<bool> reply = *w;
         w->deleteLater();
         // An error (no bus, timeout) means: no global menu.
-        if (reply.isValid()) {
-            setGlobalMenu(reply.value());
+        // A late reply must not undo what a owner-change signal already said.
+        if (reply.isValid() && !m_ownerKnown) {
+            m_ownerKnown = true;
+            setRegistrar(reply.value());
         }
     });
 }
 
-void AtlasWindowChrome::setGlobalMenu(bool on)
+void AtlasWindowChrome::setRegistrar(bool owned)
 {
+    const bool on = owned && exportCanWork();
     if (on != m_globalMenu) {
         m_globalMenu = on;
         Q_EMIT globalMenuChanged();

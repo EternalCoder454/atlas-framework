@@ -655,7 +655,6 @@ AtlasWindowButtons.property active: bool
 AtlasWindowButtons.property buttons: QVariant
 AtlasWindowButtons.property maximized: bool [readonly]
 AtlasWindowButtons.type
-AtlasWindowChrome.method parseButtons(QString letters): QStringList
 AtlasWindowChrome.property buttonsOnLeft: QStringList [readonly]
 AtlasWindowChrome.property buttonsOnRight: QStringList [readonly]
 AtlasWindowChrome.property globalMenu: bool [readonly]
