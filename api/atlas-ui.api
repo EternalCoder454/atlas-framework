@@ -31,6 +31,8 @@ AtlasAboutPage.property maxContentWidth: double
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
 AtlasAction.base QQuickAction
+AtlasAction.property menu: QQuickMenu*
+AtlasAction.property popover: QQuickPopup*
 AtlasAction.property section: QString
 AtlasAction.property symbol: int
 AtlasAction.property toolTip: QString
@@ -180,10 +182,17 @@ AtlasCommandPalette.property recentCount: int
 AtlasCommandPalette.signal triggered(QObject* action)
 AtlasCommandPalette.type
 AtlasCopyButton.base QQuickAbstractButton
+AtlasCopyButton.enum TipSide: Below = 0
+AtlasCopyButton.enum TipSide: End = 2
+AtlasCopyButton.enum TipSide: Start = 1
+AtlasCopyButton.property focusOnClick: bool
 AtlasCopyButton.property focusable: bool
 AtlasCopyButton.property iconRotation: double
+AtlasCopyButton.property round: bool
 AtlasCopyButton.property shortcutText: QString
 AtlasCopyButton.property symbol: int
+AtlasCopyButton.property tipSide: int
+AtlasCopyButton.property toolTipText: QString
 AtlasCopyButton.signal copied()
 AtlasCopyButton.type
 AtlasDatePicker.base QQuickControl
@@ -1149,10 +1158,17 @@ Toast.property text: QString
 Toast.signal actionTriggered()
 Toast.type
 ToolbarButton.base QQuickAbstractButton
+ToolbarButton.enum TipSide: Below = 0
+ToolbarButton.enum TipSide: End = 2
+ToolbarButton.enum TipSide: Start = 1
+ToolbarButton.property focusOnClick: bool
 ToolbarButton.property focusable: bool
 ToolbarButton.property iconRotation: double
+ToolbarButton.property round: bool
 ToolbarButton.property shortcutText: QString
 ToolbarButton.property symbol: int
+ToolbarButton.property tipSide: int
+ToolbarButton.property toolTipText: QString
 ToolbarButton.type
 UsageBar.base QQuickColumnLayout
 UsageBar.method colorAt(QVariant i): QVariant

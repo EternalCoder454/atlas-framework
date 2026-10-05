@@ -11,7 +11,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 400
-    implicitHeight: 120
+    implicitHeight: 160
     width: implicitWidth
     height: implicitHeight
 
@@ -33,6 +33,13 @@ Item {
             ToolbarButton { symbol: Symbols.codepoint("format_underlined"); text: "Underline"; checkable: true }
             ToolbarButton { symbol: Symbols.codepoint("link"); text: "Link"; enabled: false }
             ToolbarButton { id: focusable; symbol: Symbols.codepoint("search"); text: "Find"; focusable: true; Component.onCompleted: forceActiveFocus(Qt.TabFocusReason) }
+        }
+        // Round buttons, unchecked, checked and disabled.
+        RowLayout {
+            spacing: 6
+            ToolbarButton { round: true; symbol: Symbols.codepoint("format_bold"); text: "Bold" }
+            ToolbarButton { round: true; symbol: Symbols.codepoint("format_italic"); text: "Italic"; checkable: true; checked: true }
+            ToolbarButton { round: true; symbol: Symbols.codepoint("link"); text: "Link"; enabled: false }
         }
     }
 }

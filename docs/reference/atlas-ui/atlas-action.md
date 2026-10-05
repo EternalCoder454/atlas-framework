@@ -29,6 +29,8 @@ AtlasAction {
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `menu` | `Menu` | `null` | A [ContextMenu](context-menu.md) that the action's [ToolbarButton](toolbar-button.md) opens instead of triggering. In an [AtlasAppMenu](atlas-app-menu.md) it shows as a submenu. If both `menu` and `popover` are set, `menu` wins. |
+| `popover` | `Popup` | `null` | An [AtlasPopover](atlas-popover.md) that the action's toolbar button opens instead of triggering. Its `target` is set to the button. |
 | `section` | `string` | `""` | The group the action shows under in AtlasShortcutsDialog. Empty means the general group. |
 | `symbol` | `int` (a `Symbols.<Name>` value, see [Symbols](symbols.md)) | `0` | The icon; 0 for none. ToolbarButton, ContextMenuItem and MenuButton show it when given this action. |
 | `toolTip` | `string` | `text` without its `&` mnemonic marker | The tooltip of a button that shows this action. |
