@@ -1,0 +1,132 @@
+// The Atlas validators: QValidators for a text field's `validator`, so an
+// AtlasTextField (with `invalidText`) can say what is wrong with what was typed.
+// Acceptable means the text is a complete valid value; Intermediate means it
+// can still become one (the user is typing); Invalid means no continuation
+// helps, so the character is not accepted. Every one of them rejects text
+// longer than a fixed bound (no work grows with hostile input), looks at it
+// without regular expressions, and rejects NUL and other control characters.
+//
+//   AtlasTextField {
+//       validator: AtlasUrlValidator { schemes: ["https"] }
+//       invalidText: qsTr("Enter a web address starting with https://")
+//   }
+#pragma once
+
+#include <QDoubleValidator>
+#include <QStringList>
+#include <QValidator>
+#include <QtQml/qqmlregistration.h>
+
+// A URL with one of `schemes`; http and https also need a host.
+class AtlasUrlValidator : public QValidator
+{
+    Q_OBJECT
+    QML_NAMED_ELEMENT(AtlasUrlValidator)
+
+    Q_PROPERTY(QStringList schemes READ schemes WRITE setSchemes NOTIFY schemesChanged FINAL)
+
+public:
+    explicit AtlasUrlValidator(QObject *parent = nullptr);
+
+    QStringList schemes() const { return m_schemes; }
+    void setSchemes(const QStringList &schemes);
+
+    State validate(QString &input, int &pos) const override;
+    // Trims surrounding whitespace.
+    void fixup(QString &input) const override;
+
+Q_SIGNALS:
+    void schemesChanged();
+
+private:
+    QStringList m_schemes;
+};
+
+// A pragmatic address: one @, a local part, a domain with a dot.
+class AtlasEmailValidator : public QValidator
+{
+    Q_OBJECT
+    QML_NAMED_ELEMENT(AtlasEmailValidator)
+
+public:
+    explicit AtlasEmailValidator(QObject *parent = nullptr);
+
+    State validate(QString &input, int &pos) const override;
+    void fixup(QString &input) const override;
+};
+
+// A file path; "~" and "~/" stand for the home directory.
+class AtlasPathValidator : public QValidator
+{
+    Q_OBJECT
+    QML_NAMED_ELEMENT(AtlasPathValidator)
+
+    Q_PROPERTY(bool absolute READ absolute WRITE setAbsolute NOTIFY absoluteChanged FINAL)
+    Q_PROPERTY(bool mustExist READ mustExist WRITE setMustExist NOTIFY mustExistChanged FINAL)
+    Q_PROPERTY(bool directory READ directory WRITE setDirectory NOTIFY directoryChanged FINAL)
+
+public:
+    explicit AtlasPathValidator(QObject *parent = nullptr);
+
+    bool absolute() const { return m_absolute; }
+    void setAbsolute(bool on);
+    bool mustExist() const { return m_mustExist; }
+    void setMustExist(bool on);
+    bool directory() const { return m_directory; }
+    void setDirectory(bool on);
+
+    State validate(QString &input, int &pos) const override;
+
+Q_SIGNALS:
+    void absoluteChanged();
+    void mustExistChanged();
+    void directoryChanged();
+
+private:
+    bool m_absolute = true;
+    bool m_mustExist = false;
+    bool m_directory = false;
+};
+
+// A number between `bottom` and `top` with at most `decimals` decimals, written
+// the way the validator's locale writes numbers (group separators accepted).
+class AtlasNumberValidator : public QValidator
+{
+    Q_OBJECT
+    QML_NAMED_ELEMENT(AtlasNumberValidator)
+
+    Q_PROPERTY(qreal bottom READ bottom WRITE setBottom NOTIFY bottomChanged FINAL)
+    Q_PROPERTY(qreal top READ top WRITE setTop NOTIFY topChanged FINAL)
+    Q_PROPERTY(int decimals READ decimals WRITE setDecimals NOTIFY decimalsChanged FINAL)
+    // A locale name such as "de_DE"; empty (the default) is the application's locale.
+    Q_PROPERTY(QString locale READ localeName WRITE setLocaleName NOTIFY localeNameChanged FINAL)
+
+public:
+    explicit AtlasNumberValidator(QObject *parent = nullptr);
+
+    qreal bottom() const { return m_bottom; }
+    void setBottom(qreal bottom);
+    qreal top() const { return m_top; }
+    void setTop(qreal top);
+    int decimals() const { return m_decimals; }
+    void setDecimals(int decimals);
+    QString localeName() const { return locale().name(); }
+    void setLocaleName(const QString &name);
+
+    State validate(QString &input, int &pos) const override;
+    void fixup(QString &input) const override;
+
+Q_SIGNALS:
+    void bottomChanged();
+    void topChanged();
+    void decimalsChanged();
+    void localeNameChanged();
+
+private:
+    // A QDoubleValidator configured for each call: it knows the locale rules.
+    void configure(QDoubleValidator &inner) const;
+
+    qreal m_bottom;
+    qreal m_top;
+    int m_decimals = 0;
+};

@@ -8,6 +8,11 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasUrlValidator, AtlasEmailValidator, AtlasPathValidator and
+  AtlasNumberValidator, validators for an AtlasTextField; AtlasDoubleSpinBox
+  (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,
+  a field that records a key combination and reports a conflict with another
+  AtlasAction.
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points

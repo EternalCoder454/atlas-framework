@@ -65,6 +65,11 @@ AtlasCheckBox.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
+AtlasDoubleSpinBox.property prefix: QString
+AtlasDoubleSpinBox.property showButtons: bool
+AtlasDoubleSpinBox.property suffix: QString
+AtlasDoubleSpinBox.type
+AtlasEmailValidator.type
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
 AtlasEmptyState.property symbol: int
@@ -94,6 +99,11 @@ AtlasInstallButton.property progress: double
 AtlasInstallButton.property updateText: QString
 AtlasInstallButton.signal cancelRequested()
 AtlasInstallButton.type
+AtlasNumberValidator.property bottom: double
+AtlasNumberValidator.property decimals: int
+AtlasNumberValidator.property locale: QString
+AtlasNumberValidator.property top: double
+AtlasNumberValidator.type
 AtlasPage.method ensureVisible(QVariant item): QVariant
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property maxContentWidth: double [readonly]
@@ -106,6 +116,10 @@ AtlasPasswordField.property hasError: bool [readonly]
 AtlasPasswordField.property revealed: bool [readonly]
 AtlasPasswordField.property rtl: bool [readonly]
 AtlasPasswordField.type
+AtlasPathValidator.property absolute: bool
+AtlasPathValidator.property directory: bool
+AtlasPathValidator.property mustExist: bool
+AtlasPathValidator.type
 AtlasPlaceholder.property animated: bool
 AtlasPlaceholder.property lineHeight: double
 AtlasPlaceholder.property lines: int
@@ -134,6 +148,14 @@ AtlasSearchResults.property symbolRole: QString
 AtlasSearchResults.property textRole: QString
 AtlasSearchResults.signal activated(int index)
 AtlasSearchResults.type
+AtlasShortcutField.method startRecording(): QVariant
+AtlasShortcutField.property conflictText: QString [readonly]
+AtlasShortcutField.property ignoreAction: QObject*
+AtlasShortcutField.property placeholderText: QString
+AtlasShortcutField.property recording: bool [readonly]
+AtlasShortcutField.property sequence: QString
+AtlasShortcutField.signal edited()
+AtlasShortcutField.type
 AtlasShortcutLabel.property sequence: QVariant
 AtlasShortcutLabel.type
 AtlasShortcuts.method add(QObject* action): void
@@ -201,6 +223,8 @@ AtlasTextField.property validateOn: QString
 AtlasTextField.type
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
+AtlasUrlValidator.property schemes: QStringList
+AtlasUrlValidator.type
 AtlasWindow.method sidebarColor(QColor base): QColor
 AtlasWindow.method syncBlur(): QVariant
 AtlasWindow.method tinted(QColor base, double factor): QColor
