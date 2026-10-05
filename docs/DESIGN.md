@@ -61,7 +61,7 @@ CHANGELOG.md                  what each release brings to apps
 Every Atlas app follows these. Atlas.Ui implements them, so an app that uses
 its controls gets them for free.
 
-1. **macOS-style controls with small rounding.** Buttons with 4 px corners
+1. **Pages built from Atlas controls.** Buttons with 4 px corners
    (`PrimaryButton` filled with `accentStrong`, `SecondaryButton` soft and
    tinted with a hairline border, `TextButton` as a link), round switches
    (`AtlasSwitch`), settings grouped in 6 px cards (`Section` of

@@ -7,9 +7,9 @@ order: 10
 
 Every Atlas app follows these rules. Atlas.Ui implements them, so an app that builds its pages from Atlas.Ui's controls gets them for free. The framework's `tools/lint-app.sh` fails an app on the default buttons and warns on the other default controls.
 
-## 1. macOS-style controls
+## 1. Pages built from Atlas controls
 
-- Small rounded-rectangle buttons (4 px corners): [PrimaryButton](primary-button.md) (filled with the accent), [SecondaryButton](secondary-button.md) (soft and tinted) and [TextButton](text-button.md) (a link).
+- Small rounded-rectangle buttons (4 px corners): [PrimaryButton](primary-button.md) (filled with the accent), [SecondaryButton](secondary-button.md) (soft and tinted, with a hairline border) and [TextButton](text-button.md) (a link).
 - Round switches: [AtlasSwitch](atlas-switch.md).
 - Settings grouped in rounded cards: [Section](section.md) of [SectionRow](section-row.md)s.
 - A sidebar with a rounded-rectangle selection: [SidebarItem](sidebar-item.md) and [SidebarGroup](sidebar-group.md).
