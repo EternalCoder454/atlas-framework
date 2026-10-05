@@ -11,6 +11,12 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Fix: `ConfirmDialog` with `destructive: true` draws the accept button in
   AtlasButton's Destructive look again (error text and border on a faint
   error fill); since 1.4.0 it was drawn in the accent.
+- Fix: `AtlasDialog` puts the focus only on an item inside the body, never on
+  a header or footer button; with nothing focusable in the body it stays on the
+  dialog, so Return right after opening cannot press Back, Close or Cancel.
+- Fix: `ToolbarButton`'s tooltip hides while the button is pressed and after
+  it was clicked (a menu or popup it opened is not covered by the tooltip), and
+  returns once the pointer has left and come back.
 
 ## 1.4.0
 

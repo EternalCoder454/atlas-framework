@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import QtTest
 import Atlas.Ui
@@ -27,6 +28,36 @@ Item {
         id: barComp
         AtlasProgressBar {
             width: 200
+        }
+    }
+
+    Component {
+        id: dialogLabelsComp
+        AtlasDialog {
+            id: labelsDialog
+            property int rejectedCount: 0
+            title: "Info"
+            onRejected: rejectedCount++
+            footerContent: [
+                SecondaryButton {
+                    text: "Cancel"
+                    onClicked: labelsDialog.reject()
+                }
+            ]
+            AtlasLabel {
+                text: "Nothing to edit here"
+            }
+        }
+    }
+    Component {
+        id: dialogFieldComp
+        AtlasDialog {
+            property alias field: edit
+            title: "Name"
+            AtlasTextField {
+                id: edit
+                Layout.fillWidth: true
+            }
         }
     }
 
@@ -64,6 +95,57 @@ Item {
             keyClick(Qt.Key_Return);
             compare(spy.count, 1);
             compare(b.checked, true);
+        }
+    }
+
+    TestCase {
+        name: "ToolbarButtonTooltip"
+        when: windowShown
+
+        function test_tooltip_hides_while_pressed_and_after_use() {
+            const b = createTemporaryObject(buttonComp, root, {
+                "text": "More options"
+            });
+            mouseMove(b, b.width / 2, b.height / 2);
+            tryVerify(() => b.hovered);
+            verify(b._tipShown, "hovered: the tooltip shows");
+            mousePress(b, b.width / 2, b.height / 2);
+            verify(!b._tipShown, "pressed: hidden");
+            mouseRelease(b, b.width / 2, b.height / 2);
+            verify(!b._tipShown, "after the click (a menu may be open): hidden");
+            mouseMove(root, root.width - 2, root.height - 2);
+            tryVerify(() => !b.hovered);
+            mouseMove(b, b.width / 2, b.height / 2);
+            tryVerify(() => b._tipShown, 2000, "back after the pointer left and returned");
+        }
+    }
+
+    TestCase {
+        name: "AtlasDialogFocus"
+        when: windowShown
+
+        function test_labels_only_body_keeps_return_from_closing() {
+            const d = createTemporaryObject(dialogLabelsComp, root);
+            d.open();
+            tryVerify(() => d.opened);
+            verify(d.activeFocus || d.contentItem.activeFocus || d.visibleFocusItem === d, "the dialog holds the focus");
+            const f = Window.window.activeFocusItem;
+            verify(f, "something has focus");
+            verify(!(f.text === "Back" || f.text === "Close" || f.text === "Cancel"), "not a header or footer button");
+            keyClick(Qt.Key_Return);
+            wait(50);
+            verify(d.opened, "Return did not close the dialog");
+            compare(d.rejectedCount, 0);
+            keyClick(Qt.Key_Escape);
+            tryVerify(() => !d.opened, 2000, "Escape closes it");
+        }
+
+        function test_text_field_gets_the_focus() {
+            const d = createTemporaryObject(dialogFieldComp, root);
+            d.open();
+            tryVerify(() => d.opened);
+            tryVerify(() => d.field.activeFocus);
+            d.close();
         }
     }
 

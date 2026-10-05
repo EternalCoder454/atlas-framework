@@ -181,10 +181,10 @@ Every new member gets its line on its docs/reference page in the same commit
   about 14 px of a 64 px sidebar; it is the stock bar, not AtlasScrollBar. A
   focused entry's ring may be clipped next to it. (Monitor)
 - [ ] SidebarItem: the compact tooltip leaves out `badgeText`. (Monitor)
-- [ ] AtlasDialog: with nothing focusable in the body, `onOpened` focus wraps
+- [x] AtlasDialog: with nothing focusable in the body, `onOpened` focus wraps
   to the header's Back or Close, so Return right after opening closes the
   dialog. Focus only an item inside the body, else the dialog. (Monitor)
-- [ ] ToolbarButton: its tooltip stays up while the menu it opened is open.
+- [x] ToolbarButton: its tooltip stays up while the menu it opened is open.
   (Monitor)
 - [x] ConfirmDialog: `destructive` drew the accept button violet since the
   1.4.0 restyle; it uses the Destructive look again (fixed on main, 7dc2806).
