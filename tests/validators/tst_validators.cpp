@@ -63,6 +63,23 @@ private Q_SLOTS:
         v.fixup(s);
         QCOMPARE(s, QStringLiteral("ftp://example.com"));
     }
+    void urlFixupLeavesWhatIsNotABareHost()
+    {
+        AtlasUrlValidator v;
+        v.setSchemes({QStringLiteral("https")});
+        QString s = QStringLiteral("http://x");
+        v.fixup(s);
+        QCOMPARE(s, QStringLiteral("http://x"));
+        s = QStringLiteral("user:pw@host");
+        v.fixup(s);
+        QCOMPARE(s, QStringLiteral("user:pw@host"));
+        s = QStringLiteral("example.com:8080");
+        v.fixup(s);
+        QCOMPARE(s, QStringLiteral("https://example.com:8080"));
+        s = QString();
+        v.fixup(s);
+        QCOMPARE(s, QString());
+    }
     void urlSchemes()
     {
         AtlasUrlValidator v;

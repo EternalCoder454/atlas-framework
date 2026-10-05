@@ -72,6 +72,36 @@ Item {
         Qt.callLater(control._release);
     }
 
+    // The dialog (null until first use), and whether it has been seen open since
+    // Browse was pressed: a dialog that cannot open reports no Loader error, so
+    // the field looks for it shortly after open() and says so if it is not there.
+    readonly property var _dialog: dialogLoader.item
+    property bool _sawOpen: false
+    // A test sets this to a component that never shows, to see the message.
+    property Component _dialogOverride: null
+    function _openDialog(): void {
+        control._dialog.currentFile = control.url;
+        control._dialog.open();
+        openCheck.restart();
+    }
+    Timer {
+        id: openCheck
+        interval: 400
+        onTriggered: {
+            if (!control._sawOpen && !(control._dialog && control._dialog.visible)) {
+                internals.dialogFailed = true;
+            }
+        }
+    }
+    Connections {
+        target: control._dialog
+        function onVisibleChanged(): void {
+            if (control._dialog.visible) {
+                control._sawOpen = true;
+            }
+        }
+    }
+
     QtObject {
         id: internals
 
@@ -108,9 +138,9 @@ Item {
         }
         function browse(): void {
             dialogFailed = false;
-            if (dialogLoader.item) {
-                (dialogLoader.item as FileDialog).currentFile = control.url;
-                (dialogLoader.item as FileDialog).open();
+            control._sawOpen = false;
+            if (control._dialog) {
+                control._openDialog();
             } else {
                 dialogLoader.active = true;
             }
@@ -149,14 +179,18 @@ Item {
     Loader {
         id: dialogLoader
         active: false
-        sourceComponent: FileDialog {
-            id: dialog
-            parentWindow: control.Window.window
-            title: control.title
-            fileMode: control.saveMode ? FileDialog.SaveFile : FileDialog.OpenFile
-            nameFilters: control.nameFilters
-            currentFile: control.url
-            onAccepted: internals.chosen(dialog.selectedFile)
+        sourceComponent: control._dialogOverride ?? defaultDialog
+        Component {
+            id: defaultDialog
+            FileDialog {
+                id: dialog
+                parentWindow: control.Window.window
+                title: control.title
+                fileMode: control.saveMode ? FileDialog.SaveFile : FileDialog.OpenFile
+                nameFilters: control.nameFilters
+                currentFile: control.url
+                onAccepted: internals.chosen(dialog.selectedFile)
+            }
         }
         onStatusChanged: {
             if (status === Loader.Error) {
@@ -164,6 +198,6 @@ Item {
                 active = false;
             }
         }
-        onLoaded: (item as FileDialog).open()
+        onLoaded: control._openDialog()
     }
 }

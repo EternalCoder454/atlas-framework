@@ -418,6 +418,34 @@ Item {
         }
     }
     Component {
+        id: neverDialog
+        Item {
+            property url currentFile
+            property url currentFolder
+            visible: false
+            function open() {
+            }
+        }
+    }
+    Component {
+        id: briefDialog
+        Item {
+            property url currentFile
+            property url currentFolder
+            visible: false
+            function open() {
+                visible = true;
+                Qt.callLater(() => visible = false);
+            }
+        }
+    }
+    Component {
+        id: folderFieldComp
+        AtlasFolderField {
+            width: 300
+        }
+    }
+    Component {
         id: fileFieldComp
         AtlasFileField {
             width: 300
@@ -567,9 +595,32 @@ Item {
 
         function test_combo_box_null_entry_and_missing_role_do_not_throw() {
             const c = createTemporaryObject(comboComp, root, {model: [null, {name: "x"}, undefined], textRole: "name", filterable: true});
+            failOnWarning(new RegExp(".*"));
             c.popup.open();
             tryVerify(() => c.popup.visible);
             compare(c.count, 3);
+            compare(c.textAt(0), "");
+            const list = part(c.popup.contentItem, "choices");
+            compare(list.count, 3, "no filter: every row, including the null ones, is listed");
+            part(c.popup.contentItem, "filterField").text = "x";
+            tryCompare(list, "count", 1);
+            c.popup.close();
+        }
+
+        function test_combo_box_rows_survive_switching_filterable() {
+            const c = createTemporaryObject(comboComp, root, {model: ["One", "Two", "Three"]});
+            c.popup.open();
+            tryVerify(() => c.popup.visible);
+            tryCompare(part(c.popup.contentItem, "choices"), "count", 3);
+            c.filterable = true;
+            tryCompare(part(c.popup.contentItem, "choices"), "count", 3);
+            c.filterable = false;
+            tryCompare(part(c.popup.contentItem, "choices"), "count", 3);
+            c.popup.close();
+            // And opened again in each mode.
+            c.popup.open();
+            tryVerify(() => c.popup.visible);
+            tryCompare(part(c.popup.contentItem, "choices"), "count", 3);
             c.popup.close();
         }
 
@@ -604,23 +655,109 @@ Item {
             verify(!f.activeFocus);
         }
 
-        function test_file_field_symbols_and_validator() {
-            const f = createTemporaryObject(fileFieldComp, root);
-            f.validator = Qt.createQmlObject('import Atlas.Ui; AtlasUrlValidator {}', root);
-            compare(f.invalidText, "");
-            f.invalidText = "Not a path";
-            compare(f.invalidText, "Not a path");
+        function _browseButton(f) {
+            for (const w of walk(f)) {
+                if (w.hasOwnProperty("symbol") && w.hasOwnProperty("clicked") && w.text === "Browse\u2026") {
+                    return w;
+                }
+            }
+            return null;
         }
 
-        function test_spin_box_validator_accepts_only_the_number_between_prefix_and_suffix() {
+        function _textField(f) {
+            for (const w of walk(f)) {
+                if (w.hasOwnProperty("invalidText") && w.hasOwnProperty("hasError")) {
+                    return w;
+                }
+            }
+            return null;
+        }
+
+        function test_file_field_symbols_and_validator() {
+            verify(Symbols.FileOpen !== undefined && Symbols.Save !== undefined);
+            const f = createTemporaryObject(fileFieldComp, root);
+            const b = _browseButton(f);
+            verify(b !== null, "the Browse button exists");
+            compare(b.symbol, Symbols.FileOpen);
+            f.saveMode = true;
+            compare(b.symbol, Symbols.Save);
+            f.validator = Qt.createQmlObject('import Atlas.Ui; AtlasUrlValidator {}', root);
+            f.invalidText = "Not a path";
+            compare(f.invalidText, "Not a path");
+            const tf = _textField(f);
+            verify(tf !== null);
+            verify(!tf.hasError, "nothing shows before the user has typed");
+            tf.forceActiveFocus();
+            keyClick("x");
+            keyClick(Qt.Key_Return);
+            tryVerify(() => tf.hasError, 2000, "invalidText shows for an invalid path");
+        }
+
+        function test_file_and_folder_field_say_a_dialog_that_does_not_open() {
+            for (const comp of [fileFieldComp, folderFieldComp]) {
+                const f = createTemporaryObject(comp, root, {_dialogOverride: neverDialog});
+                const tf = _textField(f);
+                verify(tf !== null);
+                verify(tf.errorText === "");
+                _browseButton(f).clicked();
+                tryVerify(() => tf.errorText === "The dialog could not be opened.", 3000);
+                // A typed path clears it.
+                tf.forceActiveFocus();
+                keyClick("a");
+                tryCompare(tf, "errorText", "");
+            }
+        }
+
+        function test_file_and_folder_field_dialog_that_opens_and_closes_is_no_error() {
+            for (const comp of [fileFieldComp, folderFieldComp]) {
+                const f = createTemporaryObject(comp, root, {_dialogOverride: briefDialog});
+                const tf = _textField(f);
+                _browseButton(f).clicked();
+                wait(800);
+                compare(tf.errorText, "", "a dialog that was shown and cancelled is not an error");
+            }
+        }
+
+        function test_spin_box_validator_refuses_letters() {
             const s = createTemporaryObject(spinComp, root);
             s.contentItem.forceActiveFocus();
             s.contentItem.selectAll();
             keyClick("x");
             verify(s.contentItem.text.indexOf("x") < 0, "a letter is refused");
-            s.contentItem.text = "$ 12 GB";
-            verify(s.contentItem.acceptableInput, "prefix and suffix are accepted");
-            verify(s.contentItem.text === "$ 12 GB");
+        }
+
+        function test_spin_box_number_typed_over_a_selection_commits_with_a_prefix() {
+            const s = createTemporaryObject(spinComp, root, {suffix: ""});
+            s.contentItem.forceActiveFocus();
+            s.contentItem.selectAll();
+            keyClick("4");
+            keyClick("2");
+            compare(s.contentItem.text, "42", "digits typed over the selection are accepted without the prefix");
+            keyClick(Qt.Key_Return);
+            tryCompare(s, "value", 42);
+        }
+
+        function test_spin_box_number_typed_over_a_selection_commits_with_a_suffix() {
+            const s = createTemporaryObject(spinComp, root, {prefix: ""});
+            s.contentItem.forceActiveFocus();
+            s.contentItem.selectAll();
+            keyClick("7");
+            keyClick(Qt.Key_Return);
+            tryCompare(s, "value", 7);
+        }
+
+        function test_spin_box_pattern_takes_prefix_suffix_and_arabic_numbers() {
+            const s = createTemporaryObject(spinComp, root);
+            verify(s._pattern.test("$ 12 GB"), "prefix and suffix");
+            verify(s._pattern.test("12"), "neither");
+            verify(s._pattern.test("$ 12"), "prefix only");
+            verify(s._pattern.test("12 GB"), "suffix only");
+            verify(!s._pattern.test("1x2"), "a letter");
+            // Arabic digits, decimal and group separators, and a direction mark
+            // round the sign. (No ar_EG commit test: whether Number.fromLocaleString
+            // reads these depends on the Qt build's locale data, so only the
+            // pattern is checked here.)
+            verify(s._pattern.test("\u200f-\u0661\u066c\u0662\u0663\u0664\u066b\u0665"));
         }
 
         function test_combo_box_filters_ten_thousand_rows() {

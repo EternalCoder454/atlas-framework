@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import QtQml.Models
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
@@ -191,6 +192,15 @@ T.ComboBox {
             onClicked: internals.choose(modelData)
         }
     }
+    // The list's model in both modes is an instance model (this one, or the
+    // template's delegateModel), so the list never has a `delegate` of its own
+    // set or cleared: setting one on a view that holds an instance model would
+    // replace that model.
+    DelegateModel {
+        id: filteredRows
+        model: control.filterable ? internals.rows : []
+        delegate: filteredChoice
+    }
 
     indicator: Kirigami.Icon {
         x: control.mirrored ? control.leftPadding : control.width - width - control.rightPadding
@@ -297,8 +307,7 @@ T.ComboBox {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 implicitHeight: contentHeight
-                model: !control.popup.visible ? null : control.filterable ? internals.rows : control.delegateModel
-                delegate: control.filterable ? filteredChoice : null
+                model: !control.popup.visible ? null : control.filterable ? filteredRows : control.delegateModel
                 currentIndex: control.filterable ? internals.rows.indexOf(internals.current) : control.highlightedIndex
                 clip: true
                 keyNavigationEnabled: true

@@ -429,7 +429,7 @@ first. Fix in batches by file; every fix gets a test that fails before it.
   AtlasChip and AtlasInstallButton: an `action` isn't triggered and a
   checkable button doesn't toggle. Fixed in AtlasButton, TextButton and
   AtlasChip (which had no Return handler: it now has one); AtlasInstallButton
-  is left to its own branch.
+  is left for the Store branch (w4-store), which reworks it.
 - [x] AtlasSplitButton: no Return/Enter on its parts, though the header says
   so (verify). Fixed: each part now has Return and Enter handlers.
 - [x] Internal assignments break app bindings after the first edit: AtlasRating,
@@ -445,7 +445,8 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 - [x] AtlasAutocompleteField: the clear button leaves the popup open with
   stale suggestions; `mark()` offsets after toLowerCase; rowsMoved; forceAll
   stays on. Fixed.
-- [ ] AtlasInstallButton: NaN progress shows "NaN%".
+- [ ] AtlasInstallButton: NaN progress shows "NaN%". Left for the Store
+  branch (w4-store), which reworks AtlasInstallButton.
 - [x] AtlasDropZone: a Browse click may emit `browseRequested` twice (verify);
   glob `?`/`*` don't match a newline. Fixed the glob; the double Browse emit
   is not a bug: the button accepts its own press, so the zone's tap handler

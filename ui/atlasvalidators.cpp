@@ -70,6 +70,44 @@ static bool bareHost(const QStringList &schemes, const QString &text)
     return url.isValid() && !url.host().isEmpty();
 }
 
+// Text with a colon that is not an allowed scheme: a bare host with a port,
+// "example.com:8080", is the only such text that is a URL.
+static bool hostWithPort(const QStringList &schemes, const QString &text, qsizetype colon)
+{
+    const QString rest = text.mid(colon + 1);
+    qsizetype end = 0;
+    while (end < rest.size() && rest.at(end).isDigit()) {
+        ++end;
+    }
+    const bool port = end > 0 && (end == rest.size() || QStringLiteral("/?#").contains(rest.at(end)));
+    return port && bareHost(schemes, text);
+}
+
+static bool isScheme(const QStringList &schemes, const QString &scheme)
+{
+    for (const QString &s : schemes) {
+        if (s.compare(scheme, Qt::CaseInsensitive) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// True when the (trimmed) text is a host that needs the first scheme put in
+// front: the same conditions validate() accepts a bare host under. Text that
+// has "://", an allowed scheme, or a colon not followed only by a port is not.
+static bool needsScheme(const QStringList &schemes, const QString &text)
+{
+    if (text.isEmpty() || text.contains(QStringLiteral("://"))) {
+        return false;
+    }
+    const qsizetype colon = text.indexOf(QLatin1Char(':'));
+    if (colon < 0) {
+        return bareHost(schemes, text);
+    }
+    return !isScheme(schemes, text.left(colon)) && hostWithPort(schemes, text, colon);
+}
+
 QValidator::State AtlasUrlValidator::validate(QString &input, int &) const
 {
     if (input.size() > kMaxUrl) {
@@ -96,22 +134,8 @@ QValidator::State AtlasUrlValidator::validate(QString &input, int &) const
         return bareHost(m_schemes, text) ? Intermediate : Invalid;
     }
     const QString scheme = lower.left(colon);
-    bool allowed = false;
-    for (const QString &s : m_schemes) {
-        if (s.toLower() == scheme) {
-            allowed = true;
-            break;
-        }
-    }
-    if (!allowed) {
-        // "example.com:8080" has a colon but no scheme: digits follow it.
-        const QString rest = text.mid(colon + 1);
-        qsizetype end = 0;
-        while (end < rest.size() && rest.at(end).isDigit()) {
-            ++end;
-        }
-        const bool port = end > 0 && (end == rest.size() || QStringLiteral("/?#").contains(rest.at(end)));
-        return port && bareHost(m_schemes, text) ? Intermediate : Invalid;
+    if (!isScheme(m_schemes, scheme)) {
+        return hostWithPort(m_schemes, text, colon) ? Intermediate : Invalid;
     }
     const QUrl url(text, QUrl::StrictMode);
     if (!url.isValid()) {
@@ -127,14 +151,9 @@ QValidator::State AtlasUrlValidator::validate(QString &input, int &) const
 void AtlasUrlValidator::fixup(QString &input) const
 {
     input = input.trimmed();
-    // "example.com" becomes "https://example.com" (the first scheme).
-    const qsizetype colon = input.indexOf(QLatin1Char(':'));
-    bool schemed = false;
-    for (const QString &s : m_schemes) {
-        schemed = schemed || (colon >= 0 && s.compare(input.left(colon), Qt::CaseInsensitive) == 0);
-    }
-    // (Only a host with a port or path: a bad scheme such as ftp:// stays as typed.)
-    if (!schemed && bareHost(m_schemes, input)) {
+    // "example.com" becomes "https://example.com" (the first scheme). Only a bare
+    // host, with a port or path: a bad scheme such as ftp:// stays as typed.
+    if (needsScheme(m_schemes, input)) {
         input = m_schemes.first() + QStringLiteral("://") + input;
     }
 }

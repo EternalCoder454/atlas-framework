@@ -29,6 +29,22 @@ T.AbstractButton {
     property Item _tabOwner: null
     onVisibleChanged: _tabOwner?._chipStateChanged()
     onEnabledChanged: _tabOwner?._chipStateChanged()
+    // A chip moved out of its group stops telling the group, and is a Tab stop again.
+    onParentChanged: {
+        const owner = _tabOwner;
+        if (!owner) {
+            return;
+        }
+        let p = parent;
+        while (p && p !== owner) {
+            p = p.parent;
+        }
+        if (!p) {
+            _tabOwner = null;
+            focusPolicy = Qt.StrongFocus;
+            owner._chipStateChanged();
+        }
+    }
 
     readonly property color tint: Kirigami.Theme.textColor
     readonly property bool showsCheck: checkable && checked
