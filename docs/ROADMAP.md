@@ -217,15 +217,15 @@ at or below 162.
 
 ### B0: bugs the apps hit on 1.4.0
 
-- [ ] AtlasSidebar: `priv.watch()` connects the bare `updateTarget` to
+- [x] AtlasSidebar: `priv.watch()` connects the bare `updateTarget` to
   `selectedChanged` and `visibleChanged`, so it runs without scope: "TypeError:
   Property 'findSelected' of object [null] is not a function" at every Atlas
   Monitor start, and the highlight doesn't follow when the selected entry is
   hidden. (Monitor)
-- [ ] AtlasSidebar: the scroll bar shows in compact (icons-only) mode and takes
+- [x] AtlasSidebar: the scroll bar shows in compact (icons-only) mode and takes
   about 14 px of a 64 px sidebar; it is the stock bar, not AtlasScrollBar. A
   focused entry's ring may be clipped next to it. (Monitor)
-- [ ] SidebarItem: the compact tooltip leaves out `badgeText`. (Monitor)
+- [x] SidebarItem: the compact tooltip leaves out `badgeText`. (Monitor)
 - [x] AtlasDialog focus on open: reported by Monitor, then withdrawn (1.4.0
   already kept the focus out of the header). Tightened anyway: a footer button
   no longer counts as the body either, and tests cover a labels-only body.

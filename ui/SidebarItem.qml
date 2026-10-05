@@ -62,7 +62,10 @@ T.AbstractButton {
     }
 
     AtlasToolTip {
-        text: control.value.length > 0 ? control.text + ": " + control.value : control.text
+        text: {
+            const t = control.value.length > 0 ? control.text + ": " + control.value : control.text;
+            return control.badge.length > 0 && control.badgeText.length > 0 ? t + " \u2014 " + control.badgeText : t;
+        }
         shown: control.compact && control.text.length > 0 && (control.hovered || control.visualFocus)
     }
 
@@ -129,6 +132,10 @@ T.AbstractButton {
         Text {
             visible: !control.compact
             Layout.fillWidth: true
+            // Next to the icon: Left flips to the right side when mirrored. In a
+            // left-to-right layout a label in a right-to-left script keeps
+            // aligning by its own direction (Qt's natural alignment).
+            horizontalAlignment: control.mirrored || !/[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(control.text) ? Text.AlignLeft : Text.AlignRight
             text: control.text
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody
