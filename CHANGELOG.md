@@ -8,6 +8,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasSidebar, a scrolling sidebar with selected/focused entry kept in
+  view, `filterText` and a placeholder, `contextMenuRequested`, drop targets and
+  Tab landing on the selected entry; AtlasWindow `widthClass` and
+  `sidebarCollapsed`.
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
