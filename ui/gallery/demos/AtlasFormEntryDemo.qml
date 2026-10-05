@@ -41,7 +41,7 @@ Item {
         AtlasFormEntry {
             label: "Colour"
             AtlasColorField {
-                color: "#3daee9"
+                color: "#3daee9" // atlas-lint: allow-raw (sample value)
             }
         }
         AtlasFormEntry {

@@ -145,8 +145,9 @@ grep "tests passed" /b/ctest.log
 step api
 tools/check-api.sh /b/build
 step lint
-if ! tools/lint-app.sh ui/gallery >/b/lint.log 2>&1; then
-    grep -E ": error: |^lint-app: " /b/lint.log || cat /b/lint.log
+# Strict and with the template, as CI runs it: warnings fail too.
+if ! { tools/lint-app.sh --strict ui/gallery template && tools/check-app-names.sh template; } >/b/lint.log 2>&1; then
+    grep -E ": (error|warning): |^lint-app: |clash" /b/lint.log || cat /b/lint.log
     exit 1
 fi
 tail -n 1 /b/lint.log

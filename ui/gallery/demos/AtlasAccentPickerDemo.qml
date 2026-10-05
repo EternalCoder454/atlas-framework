@@ -28,19 +28,19 @@ Item {
         AtlasAccentPicker {
             Accessible.name: "Accent"
             model: [{
-                    "color": "#3584e4",
+                    "color": "#3584e4", // atlas-lint: allow-raw (sample swatch)
                     "name": "Blue"
                 }, {
-                    "color": "#26a269",
+                    "color": "#26a269", // atlas-lint: allow-raw (sample swatch)
                     "name": "Green"
                 }, {
-                    "color": "#e5a50a",
+                    "color": "#e5a50a", // atlas-lint: allow-raw (sample swatch)
                     "name": "Yellow"
                 }, {
-                    "color": "#e5487a",
+                    "color": "#e5487a", // atlas-lint: allow-raw (sample swatch)
                     "name": "Pink"
                 }, {
-                    "color": "#9141ac",
+                    "color": "#9141ac", // atlas-lint: allow-raw (sample swatch)
                     "name": "Purple"
                 }]
             currentIndex: 3
@@ -48,14 +48,14 @@ Item {
         Caption { text: "Plain colours, pale one chosen" }
         AtlasAccentPicker {
             Accessible.name: "Plain"
-            model: ["#c01c28", "#ffffff", "#241f31"]
+            model: ["#c01c28", "#ffffff", "#241f31"] // atlas-lint: allow-raw (sample swatches)
             currentIndex: 1
         }
         Caption { text: "Disabled" }
         AtlasAccentPicker {
             Accessible.name: "Disabled"
             enabled: false
-            model: ["#3584e4", "#26a269"]
+            model: ["#3584e4", "#26a269"] // atlas-lint: allow-raw (sample swatches)
             currentIndex: 0
         }
     }
