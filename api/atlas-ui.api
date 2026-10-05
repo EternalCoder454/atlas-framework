@@ -72,6 +72,16 @@ AtlasCalendar.property year: int
 AtlasCalendar.signal activated(QDateTime date)
 AtlasCalendar.type
 AtlasCheckBox.type
+AtlasChip.property closable: bool
+AtlasChip.property showsCheck: bool [readonly]
+AtlasChip.property symbol: int
+AtlasChip.property tint: QColor [readonly]
+AtlasChip.signal closeRequested()
+AtlasChip.type
+AtlasChipGroup.property content: QQmlListProperty<QObject> [readonly]
+AtlasChipGroup.property exclusive: bool
+AtlasChipGroup.property spacing: double
+AtlasChipGroup.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
@@ -188,6 +198,11 @@ AtlasShortcutField.property recording: bool [readonly]
 AtlasShortcutField.property sequence: QString
 AtlasShortcutField.signal edited()
 AtlasShortcutField.type
+AtlasSegmentedControl.property count: int [readonly]
+AtlasSegmentedControl.property currentIndex: int
+AtlasSegmentedControl.property model: QVariant
+AtlasSegmentedControl.signal activated(int index)
+AtlasSegmentedControl.type
 AtlasShortcutLabel.property sequence: QVariant
 AtlasShortcutLabel.type
 AtlasShortcuts.method add(QObject* action): void
@@ -208,6 +223,16 @@ AtlasSpinBox.property suffix: QString
 AtlasSpinBox.type
 AtlasSpinner.property animated: bool
 AtlasSpinner.type
+AtlasSplitButton.method openMenu(): QVariant
+AtlasSplitButton.property action: QQuickAction*
+AtlasSplitButton.property items: QQmlListProperty<QObject> [readonly]
+AtlasSplitButton.property menu: ContextMenu_QMLTYPE_79* [readonly]
+AtlasSplitButton.property mirrored: bool [readonly]
+AtlasSplitButton.property prominent: bool
+AtlasSplitButton.property symbol: int
+AtlasSplitButton.property text: QString
+AtlasSplitButton.signal clicked()
+AtlasSplitButton.type
 AtlasStyle.enum Density: Compact = 1
 AtlasStyle.enum Density: Normal = 0
 AtlasStyle.property accent: QColor [readonly]

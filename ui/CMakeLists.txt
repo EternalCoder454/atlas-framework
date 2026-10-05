@@ -82,6 +82,10 @@ qt_add_qml_module(atlasui
         AtlasLabel.qml
         AtlasFocusRing.qml
         AtlasAction.qml
+        AtlasSegmentedControl.qml
+        AtlasSplitButton.qml
+        AtlasChip.qml
+        AtlasChipGroup.qml
         AtlasShortcutLabel.qml
         AtlasShortcutsDialog.qml
         AtlasDoubleSpinBox.qml

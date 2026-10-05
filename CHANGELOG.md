@@ -16,6 +16,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Atlas.Ui: AtlasCalendar (month grid with keyboard navigation, minimum and
   maximum), AtlasDatePicker (a pill that opens it) and AtlasTimePicker (hours,
   minutes, `minuteStep`, 12 or 24 h from the locale, optional day of week).
+- Atlas.Ui: AtlasSegmentedControl (joined pill segments, one selected),
+  AtlasSplitButton (a main button with an arrow menu), AtlasChip (plain,
+  checkable or closable) and AtlasChipGroup (a wrapping, exclusive-capable
+  group with one Tab stop).
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
