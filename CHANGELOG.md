@@ -140,6 +140,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Added: `AtlasAppMenu` nested submenus, model-driven rows,
   `exportShortcuts` (shortcuts in the global menu) and `modelActivated`;
   rows bound to a checkable Action stay in step with it.
+- New: `AtlasForm` and `AtlasFormEntry` (a label, a field, its help and its
+  error, validated together; `settingKey` loads and saves an entry in
+  `AtlasSettings`, never a password), and `AtlasPreferencesDialog` with
+  `AtlasPreferencesPage`, a searchable settings dialog (items 25 to 27).
 - New: `AtlasActionCollection` declares an app's actions once (`AtlasAction`
   gains `category`); `AtlasCommandPalette`, `AtlasShortcutsDialog` and
   `AtlasAppMenu` read it through `collection`, and shortcuts the user changes
