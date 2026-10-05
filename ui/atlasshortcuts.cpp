@@ -1,4 +1,5 @@
 #include "atlasshortcuts.h"
+#include "atlaslogsafe.h"
 
 #include <QHash>
 #include <QLoggingCategory>
@@ -295,7 +296,7 @@ void AtlasShortcuts::recompute()
         const QString id = key + QLatin1Char('\n') + sorted.join(QLatin1Char('\n'));
         now.insert(id);
         if (!m_warned.contains(id)) {
-            qCWarning(lcShortcuts).noquote() << "Shortcut conflict:" << key << "is used by" << texts.join(QStringLiteral(", "));
+            qCWarning(lcShortcuts).noquote() << "Shortcut conflict:" << logSafe(key) << "is used by" << logSafe(texts.join(QStringLiteral(", ")));
         }
     }
     // A conflict that went away and comes back is a new one.

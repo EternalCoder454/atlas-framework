@@ -63,7 +63,7 @@ Item {
         },
         {
             title: qsTr("Style and services"),
-            types: ["AtlasStyle", "AtlasFormat", "AtlasAction", "AtlasValidators", "Section", "SectionRow", "Symbol", "AtlasFocusRing"]
+            types: ["AtlasStyle", "AtlasFormat", "AtlasAction", "AtlasActionCollection", "AtlasValidators", "Section", "SectionRow", "Symbol", "AtlasFocusRing"]
         }
     ]
 

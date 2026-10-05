@@ -154,6 +154,7 @@ Every type has a page. The groups below are the sidebar sections.
 - [ContextMenuSeparator](context-menu-separator.md): A divider line in a context menu.
 - [AtlasAppMenu](atlas-app-menu.md): The app's menus for the header bar or the desktop's global menu.
 - [AtlasAction](atlas-action.md): One user action shared by buttons, menus and the keyboard.
+- [AtlasActionCollection](atlas-action-collection.md): The app's actions declared once, with user-changeable shortcuts.
 - [AtlasDialog](atlas-dialog.md): The general modal dialog.
 - [ConfirmDialog](confirm-dialog.md): A modal question with small rounded buttons.
 - [AtlasPopover](atlas-popover.md): A raised card that opens next to a control.

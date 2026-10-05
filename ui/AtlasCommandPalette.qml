@@ -11,8 +11,9 @@ import org.kde.kirigami as Kirigami
 // actions are listed. With an empty query the actions run most recently come
 // first. Each row shows the symbol, text, section and shortcut of the action.
 //
-// `actions` defaults to every AtlasAction of the app (AtlasShortcuts.actions);
-// give it a list to offer fewer. The palette is a popup: declare it anywhere
+// `actions` defaults to every AtlasAction of the app (AtlasShortcuts.actions),
+// or the actions of `collection` when one is set; give it a list to offer
+// fewer (a list that is not empty wins over the collection). The palette is a popup: declare it anywhere
 // and call open().
 //
 //   AtlasCommandPalette { id: palette }
@@ -26,7 +27,10 @@ QQC2.Popup {
 
     // The actions on offer: anything with `text`, `enabled`, `trigger()`, and
     // optionally `symbol`, `section` and `shortcut` (an AtlasAction does).
-    property list<QtObject> actions: AtlasShortcuts.actions
+    property list<QtObject> actions: palette.collection ? palette.collection._all : AtlasShortcuts.actions
+    // The app's AtlasActionCollection: its actions are offered when `actions`
+    // is empty, with the user's shortcuts shown.
+    property AtlasActionCollection collection: null
     property string placeholderText: qsTr("Type a command")
     // How many recently run actions lead the empty list.
     property int recentCount: 5
@@ -38,7 +42,8 @@ QQC2.Popup {
 
     // Most recent first. In memory only.
     property var _recent: []
-    readonly property var _rows: palette._compute(palette.actions, field.text, palette._recent, palette.recentCount)
+    readonly property var _source: palette.actions.length > 0 || !palette.collection ? palette.actions : palette.collection._all
+    readonly property var _rows: palette._compute(palette._source, field.text, palette._recent, palette.recentCount)
 
     function _plain(a): string {
         return AtlasShortcuts.plainText(String(a.text ?? ""));
@@ -56,7 +61,7 @@ QQC2.Popup {
             if (title.length === 0) {
                 continue;
             }
-            const section = String(a.section ?? "");
+            const section = String(a.category ?? a.section ?? "");
             const hay = (title + " " + section).toLowerCase();
             if (!words.every(w => hay.includes(w))) {
                 continue;
