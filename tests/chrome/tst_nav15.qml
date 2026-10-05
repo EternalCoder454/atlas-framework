@@ -79,6 +79,19 @@ Item {
             compare(p.Accessible.description, "Two muted lines");
         }
 
+        function test_page_created_busy_announces_once() {
+            const spoken = [];
+            const p = createTemporaryObject(pageComp, root, { busy: true, busyText: "Working", _announceHook: t => spoken.push(t) });
+            wait(200);
+            compare(spoken.length, 1);
+            compare(spoken[0], "Working");
+            p.busyText = "50%";
+            p.busyText = "60%";
+            wait(100);
+            compare(spoken.length, 2, "text changes in one turn are coalesced");
+            compare(spoken[1], "60%");
+        }
+
         function test_busy_row() {
             const p = createTemporaryObject(pageComp, root);
             const spinner = find(p, i => i.running !== undefined && i.animated !== undefined);
@@ -120,7 +133,11 @@ Item {
             d.open();
             tryVerify(() => d.opened);
             fl.contentY = 200;
-            wait(150);
+            // Things that change or re-lay-out an open dialog must not reset it.
+            d.preferredWidth += 20;
+            d.title = "Changed";
+            d.forceActiveFocus();
+            wait(200);
             compare(fl.contentY, 200);
         }
     }
@@ -265,8 +282,9 @@ Item {
             const a = w.confirm({ title: "A" }, r => calls.push("a" + r));
             const b = w.confirm({ title: "B" }, r => calls.push("b" + r));
             tryVerify(() => a.opened && b.opened);
-            b.accepted();
-            b.close();
+            const ok = find(b.contentItem, i => i.text === b.acceptText && i.click !== undefined) || find(b.footer, i => i.text === b.acceptText && i.click !== undefined);
+            verify(ok, "the accept button");
+            ok.click();
             a.close();
             tryCompare(calls, "length", 2);
             wait(100);

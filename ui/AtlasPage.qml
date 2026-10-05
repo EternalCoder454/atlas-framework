@@ -25,14 +25,32 @@ Item {
 
     Accessible.description: root.subtitle
 
+    // False until one turn after creation: initial values are not announced
+    // one by one. The first announcement comes late, so it does not talk over
+    // the navigation stack's announcement of the page's title.
+    property bool _ready: false
+    // Test hook: replaces Accessible.announce().
+    property var _announceHook: null
     onBusyChanged: root._announceBusy()
     onBusyTextChanged: root._announceBusy()
-    // A page created busy announces one turn late, so it does not talk over
-    // the navigation stack's announcement of the page's title.
-    Component.onCompleted: Qt.callLater(root._announceBusy)
+    Component.onCompleted: Qt.callLater(root._start)
+    function _start(): void {
+        root._ready = true;
+        root._speak();
+    }
+    // Coalesced: only the text that has settled for a turn is announced.
     function _announceBusy(): void {
+        if (root._ready) {
+            Qt.callLater(root._speak);
+        }
+    }
+    function _speak(): void {
         if (root.busy && root.busyText.length > 0) {
-            root.Accessible.announce(root.busyText);
+            if (root._announceHook) {
+                root._announceHook(root.busyText);
+            } else {
+                root.Accessible.announce(root.busyText);
+            }
         }
     }
 

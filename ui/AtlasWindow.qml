@@ -153,7 +153,11 @@ QQC2.ApplicationWindow {
             finished: false
         };
         root._confirms.push(entry);
-        raw["_gone"] = () => root._finishConfirm(entry, true);
+        raw["_gone"] = () => {
+            if (!entry.finished) {
+                root._finishConfirm(entry, true);
+            }
+        };
         dlg.accepted.connect(() => {
             entry.result = true;
         });
@@ -168,6 +172,8 @@ QQC2.ApplicationWindow {
 
     // Toast and confirm state; the host items are made on first use.
     readonly property int _maxToasts: 20
+    // Set when the window is being destroyed; a late callback does nothing.
+    property bool _gone: false
     property var _toasts: []
     property var _toastCur: null
     property var _toastItem: null
@@ -204,6 +210,9 @@ QQC2.ApplicationWindow {
         }
     }
     function _toastEnded(): void {
+        if (root._gone) {
+            return;
+        }
         if (root._toastItem !== null && !root._toastItem._showing && root._toastCur !== null) {
             root._toastCur = null;
             root._nextToast();
@@ -367,7 +376,10 @@ QQC2.ApplicationWindow {
     }
     // The platform window (on Wayland, the surface) exists from here on.
     onSceneGraphInitialized: syncBlur()
-    Component.onDestruction: root._finishAllConfirms(true)
+    Component.onDestruction: {
+        root._gone = true;
+        root._finishAllConfirms(true);
+    }
     Component.onCompleted: {
         _restoreSize();
         if (visible) {
