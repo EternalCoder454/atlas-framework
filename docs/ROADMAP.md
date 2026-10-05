@@ -226,9 +226,9 @@ at or below 162.
   about 14 px of a 64 px sidebar; it is the stock bar, not AtlasScrollBar. A
   focused entry's ring may be clipped next to it. (Monitor)
 - [ ] SidebarItem: the compact tooltip leaves out `badgeText`. (Monitor)
-- [x] AtlasDialog: with nothing focusable in the body, `onOpened` focus wraps
-  to the header's Back or Close, so Return right after opening closes the
-  dialog. Focus only an item inside the body, else the dialog. (Monitor)
+- [x] AtlasDialog focus on open: reported by Monitor, then withdrawn (1.4.0
+  already kept the focus out of the header). Tightened anyway: a footer button
+  no longer counts as the body either, and tests cover a labels-only body.
 - [x] ToolbarButton: its tooltip stays up while the menu it opened is open.
   (Monitor)
 - [x] ConfirmDialog: `destructive` drew the accept button violet since the
