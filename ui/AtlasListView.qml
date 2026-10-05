@@ -579,7 +579,8 @@ ListView {
         Accessible.ignored: true
     }
 
-    // The rows are hidden while a status shows; the header stays.
+    // The rows are hidden while a status shows; the header stays. (An app's own
+    // section headings show through.)
     readonly property bool _statusActive: control.status !== AtlasStatus.Ready
     on_StatusActiveChanged: control._hookRows()
     // Rows are hidden by a Binding on each one's `visible`, so an app's own
@@ -598,18 +599,26 @@ ListView {
             return;
         }
         if (control._hooked === null) {
-            control._hooked = new WeakSet();
+            control._hooked = new WeakMap();
         }
         const kids = control.contentItem.children;
         for (let i = 0; i < kids.length; ++i) {
             const k = kids[i];
             if (k.ListView.view === control && !control._hooked.has(k)) {
-                control._hooked.add(k);
-                hiderComp.createObject(k, {
+                const binder = hiderComp.createObject(k, {
                     "target": k,
                     "when": Qt.binding(() => control._statusActive)
                 });
+                control._hooked.set(k, binder);
+                // A row the view reuses may come back shown: apply it again.
+                k.ListView.reused.connect(() => control._reapply(binder));
             }
+        }
+    }
+    function _reapply(binder: var): void {
+        if (binder && control._statusActive) {
+            binder.when = false;
+            binder.when = Qt.binding(() => control._statusActive);
         }
     }
     Connections {

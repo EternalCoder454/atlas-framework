@@ -40,6 +40,7 @@ QQC2.SplitView {
     // ignored). The pane slides in, instantly under reduced motion.
     function showPane(i: int): void {
         if (i >= 0 && i < control.count) {
+            control._snapFocus();
             control.currentPane = i;
         }
     }
@@ -175,15 +176,27 @@ QQC2.SplitView {
         }
         return null;
     }
-    // Focus that was in a pane or the Back row when it hid moves to the
-    // shown pane.
-    function _restoreFocus(): void {
+    // Whether focus is inside the view now. Taken just before a pane or the
+    // Back row hides: afterwards Qt has moved focus to the enclosing focus
+    // scope. Used once by _restoreFocus().
+    function _snapFocus(): void {
         const win = control.Window.window;
-        if (!control._hadFocus || !win) {
+        const f = win ? win.activeFocusItem : null;
+        if (f && f !== win.contentItem && control._contains(f)) {
+            control._hadFocus = true;
+        }
+    }
+    // Focus that was in a pane or the Back row when it hid moves to the
+    // shown pane. Runs a turn after the change, and clears the record.
+    function _restoreFocus(): void {
+        const had = control._hadFocus;
+        control._hadFocus = false;
+        const win = control.Window.window;
+        if (!had || !win) {
             return;
         }
         const f = win.activeFocusItem;
-        if (f && f !== win.contentItem) {
+        if (f && f !== win.contentItem && control._contains(f) && f.visible) {
             return;
         }
         const pane = control.itemAt(control._paneShown());
@@ -193,14 +206,13 @@ QQC2.SplitView {
         const target = control._firstFocusable(pane, 0) ?? pane;
         target.forceActiveFocus();
     }
-    Connections {
-        target: control.Window.window
-        function onActiveFocusItemChanged() {
-            const f = control.Window.window.activeFocusItem;
-            if (f && f !== control.Window.window.contentItem) {
-                control._hadFocus = control._contains(f);
-            }
-        }
+    onCollapsibleChanged: {
+        control._snapFocus();
+        Qt.callLater(control._restoreFocus);
+    }
+    onCollapseWidthChanged: {
+        control._snapFocus();
+        Qt.callLater(control._restoreFocus);
     }
 
     // Whether Back would go somewhere.
@@ -223,12 +235,14 @@ QQC2.SplitView {
             }
         }
         control._history = h;
+        control._snapFocus();
         control._goingBack = true;
         control.currentPane = to;
         control._goingBack = false;
     }
 
     onCurrentPaneChanged: {
+        control._snapFocus();
         if (control.collapsed && !control._goingBack && control._previous !== control.currentPane) {
             const h = control._history.slice();
             if (h[h.length - 1] !== control._previous) {
@@ -291,7 +305,14 @@ QQC2.SplitView {
     // (`padding` still counts; set it rather than `topPadding`.)
     topPadding: control.padding + (backRow.visible ? backRow.height : 0)
     // A pane sliding in stays inside the view.
-    clip: control.collapsed
+    // (Binding keeps an app's own `clip`.)
+    Binding {
+        target: control
+        property: "clip"
+        value: true
+        when: control.collapsed
+        restoreMode: Binding.RestoreBindingOrValue
+    }
     Item {
         id: backRow
         parent: control
@@ -356,7 +377,11 @@ QQC2.SplitView {
     onResizingChanged: if (!resizing) {
         _scheduleSave();
     }
-    onWidthChanged: _scheduleSave()
+    onWidthChanged: {
+        control._snapFocus();
+        Qt.callLater(control._restoreFocus);
+        _scheduleSave();
+    }
     onHeightChanged: _scheduleSave()
 
     Component.onCompleted: {

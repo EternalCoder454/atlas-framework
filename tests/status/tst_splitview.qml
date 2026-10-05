@@ -98,6 +98,35 @@ Item {
             }
         }
     }
+    Component {
+        id: scopeComp
+        FocusScope {
+            id: scope
+            width: 300
+            height: 300
+            property alias sv: inner
+            property alias in0: a
+            property alias in1: b
+            property alias outside: other
+            AtlasSplitView {
+                id: inner
+                width: 300
+                height: 250
+                collapsible: true
+                collapseWidth: 400
+                _pushDuration: 0
+                Rectangle {
+                    QQC2.SplitView.preferredWidth: 150
+                    TextInput { id: a; activeFocusOnTab: true; width: 50 }
+                }
+                Rectangle {
+                    QQC2.SplitView.fillWidth: true
+                    TextInput { id: b; activeFocusOnTab: true; width: 50 }
+                }
+            }
+            TextInput { id: other; y: 270; width: 50; activeFocusOnTab: true }
+        }
+    }
     SignalSpy {
         id: paneSpy
         signalName: "currentPaneChanged"
@@ -433,6 +462,30 @@ Item {
         function test_current_pane_beyond_the_count_is_clamped() {
             const sv = make({ width: 300, currentPane: 9 });
             compare(shown(sv), [false, false, true]);
+        }
+
+        function test_focus_is_restored_inside_a_focus_scope() {
+            const scope = createTemporaryObject(scopeComp, root);
+            verify(scope !== null);
+            scope.in0.forceActiveFocus();
+            verify(scope.in0.activeFocus);
+            scope.sv.showPane(1);
+            tryVerify(() => scope.in1.activeFocus, 1000);
+        }
+
+        function test_focus_outside_is_not_stolen() {
+            const scope = createTemporaryObject(scopeComp, root);
+            scope.outside.forceActiveFocus();
+            verify(scope.outside.activeFocus);
+            scope.sv.showPane(1);
+            wait(100);
+            verify(scope.outside.activeFocus, "focus stayed outside");
+            verify(!scope.in1.activeFocus);
+            // And a stale record does not pull it in later.
+            scope.sv.width = 500;
+            scope.sv.width = 300;
+            wait(100);
+            verify(scope.outside.activeFocus);
         }
     }
 }

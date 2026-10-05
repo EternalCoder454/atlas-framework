@@ -379,5 +379,24 @@ Item {
             keyClick(Qt.Key_Down);
             compare(t.selectionModel.hasSelection, false);
         }
+
+        function test_reused_rows_stay_hidden() {
+            const l = createTemporaryObject(bindComp, root);
+            verify(l !== null);
+            l.model = 300;
+            tryVerify(() => l.itemAtIndex(0) !== null);
+            const rows = () => l.contentItem.children.filter(c => c.ListView.view === l);
+            l.status = AtlasStatus.Empty;
+            verify(rows().every(r => !r.visible), "rows hidden");
+            // Scrolling reuses the delegates: they stay hidden, with new rows too.
+            l.contentY = 1500;
+            wait(100);
+            l.contentY = 3000;
+            wait(100);
+            verify(rows().length > 0);
+            verify(rows().every(r => !r.visible), "reused rows hidden");
+            l.status = AtlasStatus.Ready;
+            verify(rows().every(r => r.visible), "rows back");
+        }
     }
 }
