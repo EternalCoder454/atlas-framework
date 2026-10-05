@@ -67,7 +67,6 @@ Item {
     Accessible.name: qsTr("Setup")
 
     function next(): void {
-        control._pending = false;
         if (!priv.canAdvanceNow) {
             return;
         }
@@ -81,22 +80,15 @@ Item {
     // The Next button: tells the app, then moves on unless the app keeps the
     // turn. next() itself is the move and does not signal.
     function _nextPressed(): void {
-        if (control.busy || control._pending || !priv.canAdvanceNow) {
+        if (control.busy || !priv.canAdvanceNow) {
             return;
         }
         control.advanceRequested(control.currentIndex);
+        // An app that answers later sets `busy` in its handler, which holds
+        // off a second press; one that refuses leaves Next free to try again.
         if (control.autoAdvance) {
             control.next();
-        } else {
-            // The app has the turn: a second press waits until it moves on or
-            // sets `busy` and clears it again.
-            control._pending = true;
         }
-    }
-    // True between a Next the app has not answered yet and its answer.
-    property bool _pending: false
-    onBusyChanged: if (!control.busy) {
-        control._pending = false;
     }
 
     function back(): void {
@@ -122,7 +114,6 @@ Item {
             control.currentIndex = clamped;
             return;
         }
-        control._pending = false;
         priv.show(true);
     }
     onPagesChanged: {

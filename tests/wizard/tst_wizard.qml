@@ -165,7 +165,7 @@ Item {
             compare(o.currentIndex, 0);
         }
 
-        function test_second_next_waits_for_the_app() {
+        function test_second_next_waits_for_busy() {
             const o = make({
                 autoAdvance: false
             });
@@ -174,18 +174,25 @@ Item {
                 signalName: "advanceRequested"
             });
             const next = button(o, "Next");
+            // An app that refuses (a check failed) leaves Next free.
             mouseClick(next);
             mouseClick(next);
-            compare(spy.count, 1, "the second press waits");
-            o.busy = true;
+            compare(spy.count, 2, "a refused Next can be pressed again");
+            compare(o.currentIndex, 0);
+            // An app that answers later sets busy in its handler.
+            const answer = () => {
+                o.busy = true;
+            };
+            o.advanceRequested.connect(answer);
             mouseClick(next);
-            compare(spy.count, 1);
+            mouseClick(next);
+            compare(spy.count, 3, "the second press waits while busy");
+            o.advanceRequested.disconnect(answer);
             o.busy = false;
-            mouseClick(next);
-            compare(spy.count, 2, "asks again once busy has fallen");
             o.next();
+            compare(o.currentIndex, 1);
             mouseClick(button(o, "Finish"));
-            compare(spy.count, 3, "next() clears it");
+            compare(spy.count, 4, "asks again once busy has fallen");
         }
 
         function test_can_go_back() {
