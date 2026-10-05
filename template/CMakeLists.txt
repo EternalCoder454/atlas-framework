@@ -23,12 +23,14 @@ corrosion_set_env_vars(atlas_app_template QMAKE=${QMAKE6})
 # cargo put them (this checkout, or a git checkout in ~/.cargo).
 find_program(CARGO NAMES cargo REQUIRED)
 execute_process(
-    COMMAND ${CARGO} metadata --format-version 1 --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml
+    COMMAND ${CARGO} metadata --format-version 1 --locked --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml
     OUTPUT_VARIABLE CARGO_METADATA
     RESULT_VARIABLE CARGO_METADATA_RESULT
+    ERROR_VARIABLE CARGO_METADATA_ERROR
     TIMEOUT 300)
 if(NOT CARGO_METADATA_RESULT EQUAL 0)
-    message(FATAL_ERROR "cargo metadata failed (${CARGO_METADATA_RESULT})")
+    message(FATAL_ERROR "cargo metadata failed (${CARGO_METADATA_RESULT}): ${CARGO_METADATA_ERROR}\n"
+        "Run `cargo fetch --locked` first, or check the network/vendoring.")
 endif()
 string(JSON NPACKAGES LENGTH "${CARGO_METADATA}" packages)
 math(EXPR LAST_PACKAGE "${NPACKAGES} - 1")

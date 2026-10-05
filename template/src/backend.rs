@@ -51,10 +51,14 @@ struct BusyGuard(cxx_qt::CxxQtThread<qobject::Backend>);
 
 impl Drop for BusyGuard {
     fn drop(&mut self) {
-        if std::thread::panicking() {
+        let panicked = std::thread::panicking();
+        if panicked {
             log::error!("the worker thread panicked");
         }
-        let _ = self.0.queue(|mut obj| {
+        let _ = self.0.queue(move |mut obj| {
+            if panicked {
+                obj.as_mut().set_status(QString::from("Failed (see the log)"));
+            }
             obj.as_mut().set_busy(false);
         });
     }

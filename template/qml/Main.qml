@@ -27,7 +27,7 @@ AtlasWindow {
         showHeader: stack.canGoBack
         initialItem: MainPage {
             backend: root.backend
-            onAboutRequested: stack.push(aboutPage, { title: qsTr("About") })
+            onAboutRequested: stack.push(aboutPage)
         }
     }
 
