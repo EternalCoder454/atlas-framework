@@ -321,10 +321,24 @@ jobs:
       - name: Clone the apps
         run: |
           mkdir -p "$RUNNER_TEMP/apps"
-          while read -r app; do
-            [ -z "$app" ] && continue
-            git clone --depth 1 "https://github.com/EternalCoder454/$app" "$RUNNER_TEMP/apps/$app"
-          done < tools/apps.txt
+          # As in release.yml: a repository with no commits yet (a new app) is
+          # left out with a notice; one that can't be reached fails.
+          for app in $(grep -vE '^[[:space:]]*(#|$)' tools/apps.txt); do
+            if ! [[ $app =~ ^[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then
+              echo "::error::tools/apps.txt has a name that is not a repository name: $app"; exit 1
+            fi
+            url="https://github.com/EternalCoder454/$app.git"
+            rc=0
+            GIT_TERMINAL_PROMPT=0 timeout 60 git ls-remote --exit-code "$url" HEAD >/dev/null || rc=$?
+            case $rc in
+              0) GIT_TERMINAL_PROMPT=0 git clone --depth 1 "$url" "$RUNNER_TEMP/apps/$app" ;;
+              2) echo "::notice::$app has no commits yet: not checked" ;;
+              *) echo "::error::could not reach EternalCoder454/$app (git ls-remote exit $rc)"; exit 1 ;;
+            esac
+          done
+          if [ -z "$(ls -A "$RUNNER_TEMP/apps")" ]; then
+            echo "::error::no app could be checked: is tools/apps.txt right?"; exit 1
+          fi
 
       - name: Design rule 6 findings (informational)
         # Exit 1 is findings, which belong to the apps; anything else (a
