@@ -76,13 +76,17 @@ fi
 # Each test starts looking for a free X display at its own number: tests run
 # in parallel (ctest -j), and two `xvfb-run -a` started at once can pick the
 # same display and draw into each other's screen.
+# The test bus: no service directories, and its socket in this run's own
+# private directory (removed with $tmp by the trap above).
+busconf=$tmp/bus.conf
+sed "s|unix:tmpdir=/tmp|unix:dir=$tmp|" "$here/../private-bus.conf" >"$busconf"
 display=$((100 + $(printf '%s' "$ATLAS_TEST_BIN $variant $ATLAS_OUT_DIR" | cksum | cut -d' ' -f1) % 800))
 rc=0
 if [ "$variant" = contrast ]; then
     # Start the portal stand-in inside the bus, wait until it answers, run the
     # test, then stop it. $1 is the portal, $2 the ready file; the rest is the
     # test command.
-    dbus-run-session --config-file="$here/../private-bus.conf" -- bash -c '
+    dbus-run-session --config-file="$busconf" -- bash -c '
         portal=$1 ready=$2
         shift 2
         "$portal" "$ready" &
@@ -98,6 +102,6 @@ if [ "$variant" = contrast ]; then
     ' bash "$ATLAS_FAKE_PORTAL" "$tmp/portal-ready" \
         xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
 else
-    dbus-run-session --config-file="$here/../private-bus.conf" -- xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
+    dbus-run-session --config-file="$busconf" -- xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
 fi
 exit "$rc"

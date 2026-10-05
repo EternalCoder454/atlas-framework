@@ -221,6 +221,8 @@ GlobalShortcutSession::GlobalShortcutSession(const QDBusConnection &bus, const Q
     registerTypes();
     m_timeout.setSingleShot(true);
     connect(&m_timeout, &QTimer::timeout, this, [this] { fail(tr("The desktop did not answer the shortcut request in time.")); });
+    m_stable.setSingleShot(true);
+    connect(&m_stable, &QTimer::timeout, this, [this] { m_failures = 0; });
     m_retry.setSingleShot(true);
     connect(&m_retry, &QTimer::timeout, this, [this] { schedule(); });
     if (QCoreApplication::instance()) {
@@ -239,8 +241,12 @@ GlobalShortcutSession::GlobalShortcutSession(const QDBusConnection &bus, const Q
             if (m_kind != Kind::None) {
                 finishRequest();
             }
+            m_retry.stop(); // a retry now could start the portal by activation
             dropSession(false); // the session went with the portal: nothing to close
             failAll(tr("The desktop portal stopped."));
+        }
+        if (!newOwner.isEmpty()) {
+            m_failures = 0; // a portal that is back gets a fresh start
         }
         if (!newOwner.isEmpty() && !m_items.isEmpty()) {
             schedule();
@@ -287,7 +293,6 @@ void GlobalShortcutSession::sync(AtlasGlobalShortcut *item)
     const QString name = item->name();
     const QPointer<AtlasGlobalShortcut> self(item);
     m_refused.removeAll(self);
-    m_failures = 0;
     // Forget the old name first: it may have changed.
     if (!item->m_registeredName.isEmpty() && m_items.value(item->m_registeredName) == item) {
         m_items.remove(item->m_registeredName);
@@ -307,7 +312,11 @@ void GlobalShortcutSession::sync(AtlasGlobalShortcut *item)
     }
     m_items.insert(name, item);
     item->m_registeredName = name;
-    schedule();
+    // While a retry is waiting for its backoff, the edit rides on it: a broken
+    // portal gets one request per backoff, not one per edit.
+    if (!m_retry.isActive()) {
+        schedule();
+    }
 }
 
 void GlobalShortcutSession::remove(AtlasGlobalShortcut *item)
@@ -356,7 +365,7 @@ void GlobalShortcutSession::schedule()
 void GlobalShortcutSession::run()
 {
     m_scheduled = false;
-    if (m_items.isEmpty()) {
+    if (m_shutdown || m_items.isEmpty()) {
         return;
     }
     if (m_kind != Kind::None) {
@@ -432,6 +441,7 @@ void GlobalShortcutSession::dropSession(bool close)
     }
     const QString path = m_session;
     m_session.clear();
+    m_stable.stop();
     m_bus.disconnect(m_service, path, QString::fromLatin1(kSession), QStringLiteral("Closed"), this, SLOT(onSessionClosed(QDBusMessage)));
     if (close) {
         sendClose(path);
@@ -598,6 +608,7 @@ void GlobalShortcutSession::onSessionResults(const QVariantMap &results)
         return;
     }
     m_session = path;
+    m_stable.start(m_stableMs);
     m_bus.connect(m_service, m_session, QString::fromLatin1(kSession), QStringLiteral("Closed"), this, SLOT(onSessionClosed(QDBusMessage)));
     m_dirty = false;
     run();
@@ -620,13 +631,18 @@ void GlobalShortcutSession::onBindResults(const QVariantMap &results)
     }
     const QList<PortalShortcut> shortcuts = qdbus_cast<QList<PortalShortcut>>(arg);
     int seen = 0;
+    int unknown = 0;
+    QStringList examples;
     for (const PortalShortcut &s : shortcuts) {
         if (++seen > kMaxShortcuts) {
             break;
         }
         // Only ids this app registered, however they are spelled.
         if (!AtlasGlobalShortcut::validName(s.id) || !m_sent.contains(s.id) || !m_items.contains(s.id)) {
-            qWarning("AtlasGlobalShortcut: the portal reported a shortcut this app has not registered: %s", qPrintable(PortalLog::text(s.id, 80)));
+            // One log line per reply, not one per id.
+            if (++unknown <= 3) {
+                examples << PortalLog::text(s.id, 40);
+            }
             continue;
         }
         QString trigger;
@@ -645,6 +661,9 @@ void GlobalShortcutSession::onBindResults(const QVariantMap &results)
         QString trigger;
     };
     QList<Result> outcome;
+    if (unknown > 0) {
+        qWarning("AtlasGlobalShortcut: %d shortcut ids this app did not register were ignored (e.g. %s)", unknown, qPrintable(examples.join(QStringLiteral(", "))));
+    }
     for (auto it = m_items.cbegin(); it != m_items.cend(); ++it) {
         if (!m_sent.contains(it.key())) {
             continue; // added or renamed since the call: the next bind answers for it
@@ -653,7 +672,6 @@ void GlobalShortcutSession::onBindResults(const QVariantMap &results)
         outcome.append({it.value(), b != bound.cend(), b != bound.cend() ? *b : QString()});
     }
     const QPointer<GlobalShortcutSession> self(this);
-    m_failures = 0;
     m_retry.stop();
     for (const Result &r : std::as_const(outcome)) {
         if (!r.item) {
@@ -676,6 +694,9 @@ void GlobalShortcutSession::onSessionClosed(const QDBusMessage &message)
     if (m_session.isEmpty() || message.path() != m_session) {
         return;
     }
+    // A session that closes soon after it was made counts as a failure, so a
+    // portal that closes every one is retried with backoff, not in a loop.
+    const bool lived = !m_stable.isActive();
     dropSession(false); // it is closed already
     if (m_kind != Kind::None) {
         // An answer to a request on the old session would bind nothing.
@@ -683,7 +704,12 @@ void GlobalShortcutSession::onSessionClosed(const QDBusMessage &message)
     }
     failAll(tr("The desktop closed the shortcuts session."));
     // A new session, without anyone having to edit a property.
-    schedule();
+    if (lived) {
+        m_failures = 0;
+        schedule();
+    } else {
+        scheduleRetry();
+    }
 }
 
 void GlobalShortcutSession::onActivated(const QDBusMessage &message)

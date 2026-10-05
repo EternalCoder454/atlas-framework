@@ -105,10 +105,15 @@ public:
     static GlobalShortcutSession *shared();
     // For tests: replaces the shared session (not owned); nullptr goes back to
     // the default.
+    // For tests only: items of the session it replaces keep raw pointers to it.
     static void setShared(GlobalShortcutSession *session);
 
     // Tests: the first retry after a failure waits this long (default 2000).
     void setRetryBaseMs(int ms) { m_retryBaseMs = ms; }
+    // Tests: how long a session must live before it counts as healthy (default 60 s).
+    void setStableMs(int ms) { m_stableMs = ms; }
+    bool retryPending() const { return m_retry.isActive(); }
+    int failures() const { return m_failures; }
     // Closes the session and stops all work; the app is quitting.
     void shutdown();
 
@@ -155,6 +160,10 @@ private:
     QTimer m_retry;
     int m_failures = 0;
     int m_retryBaseMs = 2000;
+    int m_stableMs = 60000;
+    // Running while the session is younger than m_stableMs; when it fires the
+    // failures are forgotten.
+    QTimer m_stable;
     bool m_shutdown = false;
     // The names in the bind call in flight or last answered.
     QSet<QString> m_sent;

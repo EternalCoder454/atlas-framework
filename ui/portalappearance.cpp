@@ -88,6 +88,9 @@ void PortalAppearance::readAll()
         const QDBusMessage reply = w->reply();
         if (reply.type() != QDBusMessage::ReplyMessage) {
             // No portal, or one without this interface: the defaults.
+            // An error means there is no portal (or none with this interface):
+            // the values go back to the defaults. A reply that is malformed or
+            // too big, below, is not trusted either way: the last good values stay.
             qDebug("PortalAppearance: ReadAll: %s", qPrintable(PortalLog::text(reply.errorMessage(), 200)));
             commit(Values());
             return;
@@ -136,14 +139,15 @@ void PortalAppearance::readAll()
                 }
                 arg.endMap();
             } else {
-                // Not ours: skip the entry's value.
-                QVariantMap skip;
-                arg >> skip;
+                // Only our namespace was asked for: anything else is not a
+                // reply to our question, and is not walked at all.
+                clean = false;
+                break;
             }
             arg.endMapEntry();
         }
         if (!clean) {
-            qWarning("PortalAppearance: ReadAll: too many entries; the reply is not used");
+            qWarning("PortalAppearance: ReadAll: too many entries or an unexpected namespace; the reply is not used");
             return;
         }
         arg.endMap();
@@ -162,6 +166,7 @@ void PortalAppearance::onSettingChanged(const QDBusMessage &message)
     if (args.at(0).toString() != QLatin1String(kNamespace)) {
         return;
     }
+    ++m_generation; // a ReadAll still on its way is older than this change
     Values v{m_highContrast, m_reducedMotion, m_accent};
     apply(args.at(1).toString(), args.at(2).value<QDBusVariant>().variant(), v);
     commit(v);
