@@ -153,6 +153,8 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   qmllint budget is an exact ratchet; the perf job no longer restores the
   template's CMake tree.
 - CI: a new rpm job builds the RPMs and keeps them for 7 days.
+- CI: the apps job skips an app repository with no commits yet (with a
+  notice), like the release workflow; an unreachable one still fails.
 - Release: the tag format, version and newest-release checks run before the
   CI wait and again after it.
 - Packaging: `build-rpm.sh` packages the committed tree only (git archive of
