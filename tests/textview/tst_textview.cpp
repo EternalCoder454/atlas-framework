@@ -6,6 +6,8 @@
 #include <QAccessible>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QQmlComponent>
+#include <QQmlEngine>
 #include <QQuickWindow>
 #include <QSignalSpy>
 #include <QtTest>
@@ -82,6 +84,16 @@ private slots:
     void lineNumbersAndHighlighter();
     void keyboardNavigation();
     void accessible();
+    void accessibleName();
+    void rowIndexDropAndGrow();
+    void resizeKeepsAnchor();
+    void maximumLinesWrapKeepsPosition();
+    void maximumLinesAfterLoad();
+    void ungrabStopsAutoscroll();
+    void gutterClipsText();
+    void hasSelectionAndBounds();
+    void surrogateKeys();
+    void tabsCountInContentWidth();
 };
 
 void TestTextView::emptyView()
@@ -714,6 +726,269 @@ void TestTextView::accessible()
     v->setText(QString());
     QCOMPARE(text->characterCount(), 0);
     QCOMPARE(text->text(0, 10), QString());
+}
+
+void TestTextView::accessibleName()
+{
+    qmlRegisterType<AtlasTextView>("TestTv", 1, 0, "AtlasTextView");
+    Fixture f;
+    QQmlEngine engine;
+    QQmlComponent comp(&engine);
+    comp.setData("import QtQuick\nimport TestTv\nAtlasTextView { Accessible.name: \"Build log\"; Accessible.description: \"Output of the build\" }\n", QUrl());
+    QObject *o = comp.create();
+    QVERIFY2(o, qPrintable(comp.errorString()));
+    auto *v = qobject_cast<AtlasTextView *>(o);
+    QVERIFY(v);
+    v->setParentItem(f.win.contentItem());
+    QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(v);
+    QVERIFY(iface);
+    QCOMPARE(iface->text(QAccessible::Name), QStringLiteral("Build log"));
+    QCOMPARE(iface->text(QAccessible::Description), QStringLiteral("Output of the build"));
+    QVERIFY(iface->text(QAccessible::Value).isEmpty());
+    // Without the attached object the name is empty and nothing breaks.
+    QAccessibleInterface *plain = QAccessible::queryAccessibleInterface(f.view);
+    QVERIFY(plain);
+    QVERIFY(plain->text(QAccessible::Name).isEmpty());
+    // Answers are bounded: a very long line is not built whole.
+    f.view->setText(QString(3 * 1024 * 1024, QLatin1Char('x')));
+    QAccessibleTextInterface *ti = plain->textInterface();
+    QVERIFY(ti);
+    QVERIFY(ti->text(0, 3 * 1024 * 1024).size() <= (1 << 20));
+    int a = 0, b = 0;
+    QVERIFY(ti->textAtOffset(5, QAccessible::LineBoundary, &a, &b).size() <= (1 << 20));
+    QCOMPARE(b - a, 1 << 20);
+    delete v;
+}
+
+void TestTextView::rowIndexDropAndGrow()
+{
+    using AtlasTextViewDetail::RowIndex;
+    RowIndex r;
+    std::vector<int> ref;
+    auto check = [&] {
+        QCOMPARE(r.lines(), qsizetype(ref.size()));
+        qint64 sum = 0;
+        for (qsizetype i = 0; i < r.lines(); i += 37) {
+            sum = 0;
+            for (qsizetype k = 0; k < i; ++k)
+                sum += ref[size_t(k)];
+            QCOMPARE(r.before(i), sum);
+            QCOMPARE(r.lineAtRow(sum), i);
+        }
+    };
+    r.reset(0);
+    r.resize(10000);
+    ref.assign(10000, 1);
+    for (int i = 0; i < 10000; i += 7) {
+        r.set(i, 1 + i % 5);
+        ref[size_t(i)] = 1 + i % 5;
+    }
+    check();
+    r.dropFront(100);
+    ref.erase(ref.begin(), ref.begin() + 100);
+    check();
+    r.resize(r.lines() + 500); // grows without a rebuild
+    ref.resize(ref.size() + 500, 1);
+    check();
+    r.dropFront(6000); // compacts
+    ref.erase(ref.begin(), ref.begin() + 6000);
+    check();
+    r.set(3, 9);
+    ref[3] = 9;
+    r.resize(100);
+    ref.resize(100);
+    check();
+    r.dropFront(1000); // more than there is
+    QCOMPARE(r.lines(), qsizetype(0));
+    QCOMPARE(r.total(), qint64(0));
+}
+
+void TestTextView::resizeKeepsAnchor()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setWrap(true);
+    QString text;
+    for (int i = 0; i < 100; ++i)
+        text += QStringLiteral("word word word word word word word word word word word word word word word %1\n").arg(i);
+    v->setText(text);
+    f.settle();
+    // Walk down so that the lines above get their rows measured.
+    for (int y = 0; y < 3000; y += 150) {
+        v->setContentY(y);
+        f.settle();
+    }
+    v->setContentY(v->lineY(30) + v->rowHeight());
+    f.settle();
+    QCOMPARE(v->firstVisibleLine(), qsizetype(30));
+    v->setWidth(220);
+    f.settle();
+    QCOMPARE(v->firstVisibleLine(), qsizetype(30));
+    QVERIFY2(qAbs(v->contentY() - v->lineY(30) - v->rowHeight()) < 1.0, qPrintable(QString::number(v->contentY() - v->lineY(30))));
+    v->setWidth(400);
+    f.settle();
+    QCOMPARE(v->firstVisibleLine(), qsizetype(30));
+    // A font change keeps the line too.
+    QFont big = v->font();
+    big.setPointSize(big.pointSize() + 6);
+    v->setFont(big);
+    f.settle();
+    QCOMPARE(v->firstVisibleLine(), qsizetype(30));
+    // And line numbers.
+    v->setShowLineNumbers(true);
+    f.settle();
+    QCOMPARE(v->firstVisibleLine(), qsizetype(30));
+}
+
+void TestTextView::maximumLinesWrapKeepsPosition()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setWrap(true);
+    QString text;
+    for (int i = 0; i < 100; ++i)
+        text += QStringLiteral("word word word word word word word word word word word word word word word %1\n").arg(i);
+    v->setText(text);
+    f.settle();
+    QVERIFY(v->lineY(11) > 11 * v->rowHeight() + 1); // the first lines wrap and are measured
+    v->setContentY(v->lineY(50));
+    f.settle();
+    QCOMPARE(v->firstVisibleLine(), qsizetype(50));
+    v->setMaximumLines(89); // drops 12 lines (101 lines with the last, empty one)
+    f.settle();
+    QCOMPARE(v->lineCount(), qsizetype(89));
+    QCOMPARE(v->firstVisibleLine(), qsizetype(50 - 12));
+    // Appending at the limit keeps the position as well.
+    v->appendText(QStringLiteral("more\nmore\n"));
+    f.settle();
+    QCOMPARE(v->lineCount(), qsizetype(89));
+    QCOMPARE(v->firstVisibleLine(), qsizetype(50 - 14));
+}
+
+void TestTextView::maximumLinesAfterLoad()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setMaximumLines(10);
+    v->beginLoad();
+    v->appendBytes(lines(100).toUtf8());
+    v->endLoad();
+    QTRY_VERIFY_WITH_TIMEOUT(!v->loading(), 5000);
+    QCOMPARE(v->lineCount(), qsizetype(10));
+    QVERIFY(v->text().contains(QStringLiteral("line 99")));
+    v->setText(lines(100));
+    QCOMPARE(v->lineCount(), qsizetype(10));
+    QVERIFY(v->text().contains(QStringLiteral("line 99")));
+}
+
+void TestTextView::ungrabStopsAutoscroll()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setText(lines(400));
+    f.settle();
+    QTest::mousePress(&f.win, Qt::LeftButton, {}, pointAt(v, 1).toPoint());
+    QTest::mouseMove(&f.win, QPoint(20, 195));
+    QTest::mouseMove(&f.win, QPoint(20, 260));
+    QVERIFY(v->dragging());
+    QVERIFY(v->autoScrolling());
+    v->ungrabMouse();
+    QVERIFY(!v->dragging());
+    QVERIFY(!v->autoScrolling());
+    QTest::mouseRelease(&f.win, Qt::LeftButton, {}, QPoint(20, 100));
+    // Hidden mid-drag.
+    v->setContentY(0);
+    QTest::mousePress(&f.win, Qt::LeftButton, {}, pointAt(v, 1).toPoint());
+    QTest::mouseMove(&f.win, QPoint(20, 195));
+    QTest::mouseMove(&f.win, QPoint(20, 260));
+    QVERIFY2(v->dragging(), "dragging");
+    QVERIFY(v->autoScrolling());
+    v->setVisible(false);
+    QVERIFY(!v->dragging());
+    QVERIFY(!v->autoScrolling());
+    v->setVisible(true);
+    QTest::mouseRelease(&f.win, Qt::LeftButton, {}, QPoint(20, 100));
+    // Focus lost mid-drag.
+    v->setContentY(0);
+    QTest::mousePress(&f.win, Qt::LeftButton, {}, pointAt(v, 1).toPoint());
+    QTest::mouseMove(&f.win, QPoint(20, 195));
+    QTest::mouseMove(&f.win, QPoint(20, 260));
+    QVERIFY(v->autoScrolling());
+    v->setFocus(false);
+    v->window()->contentItem()->forceActiveFocus();
+    QVERIFY(!v->hasActiveFocus());
+    QVERIFY(!v->dragging());
+    QVERIFY(!v->autoScrolling());
+    QTest::mouseRelease(&f.win, Qt::LeftButton, {}, QPoint(20, 100));
+}
+
+void TestTextView::gutterClipsText()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setShowLineNumbers(true);
+    QString text;
+    for (int i = 0; i < 5; ++i)
+        text += QString(400, QLatin1Char('X')) + QLatin1Char('\n');
+    v->setText(text);
+    v->setContentX(0);
+    f.settle();
+    const int gw = int(3 * v->characterWidth());
+    const QImage a = f.win.grabWindow().copy(0, 0, gw, 100);
+    v->setContentX(120);
+    f.settle();
+    QCOMPARE(v->contentX(), 120.0);
+    const QImage b = f.win.grabWindow().copy(0, 0, gw, 100);
+    QVERIFY(a == b);
+}
+
+void TestTextView::hasSelectionAndBounds()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setText(lines(10));
+    QVERIFY(!v->property("hasSelection").toBool());
+    QSignalSpy spy(v, SIGNAL(selectionChanged()));
+    v->selectAll();
+    QVERIFY(v->property("hasSelection").toBool());
+    QVERIFY(spy.count() >= 1);
+    QCOMPARE(v->selectedText(), v->text());
+    v->copy();
+    QCOMPARE(QGuiApplication::clipboard()->text(), v->text());
+    QCOMPARE(v->boundedText(0, 1000, 5), QStringLiteral("line "));
+    // A bound that falls inside a surrogate pair is moved back.
+    v->setText(QString::fromUtf8("a\xF0\x9F\x98\x80z"));
+    QCOMPARE(v->boundedText(0, 4, 2), QStringLiteral("a"));
+    QCOMPARE(v->boundedText(-5, 100, 100), v->text());
+}
+
+void TestTextView::surrogateKeys()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setText(QString::fromUtf8("\xF0\x9F\x98\x80\xF0\x9F\x98\x80 \xF0\x9F\x98\x80"));
+    v->forceActiveFocus();
+    v->setCursorPosition(v->length());
+    for (int i = 0; i < 6; ++i)
+        QTest::keyClick(&f.win, Qt::Key_Left, Qt::ControlModifier);
+    QCOMPARE(v->cursorPosition(), qsizetype(0));
+    for (int i = 0; i < 6; ++i)
+        QTest::keyClick(&f.win, Qt::Key_Right, Qt::ControlModifier);
+    QCOMPARE(v->cursorPosition(), v->length());
+    // A position inside a pair is aligned and does not crash.
+    v->setCursorPosition(1);
+    QTest::keyClick(&f.win, Qt::Key_Right, Qt::ControlModifier);
+    QVERIFY(v->cursorPosition() >= 0);
+}
+
+void TestTextView::tabsCountInContentWidth()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setTabWidth(8);
+    v->setText(QStringLiteral("\t\t\tx"));
+    f.settle();
+    QVERIFY(v->contentWidth() >= 25 * v->characterWidth());
 }
 
 int main(int argc, char **argv)

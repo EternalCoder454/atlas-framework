@@ -31,15 +31,20 @@ class RowIndex
 {
 public:
     void reset(qsizetype lines);
-    void resize(qsizetype lines); // keeps the values it has
-    qsizetype lines() const { return qsizetype(m_value.size()); }
-    int rows(qsizetype line) const { return m_value[size_t(line)]; }
+    void resize(qsizetype lines); // keeps the values it has; growing is O(log n) per line
+    void dropFront(qsizetype lines); // removes the first lines, keeping the rest; amortised O(1) per line
+    qsizetype lines() const { return qsizetype(m_value.size()) - m_head; }
+    int rows(qsizetype line) const { return m_value[size_t(m_head + line)]; }
     void set(qsizetype line, int rows);
     qint64 before(qsizetype line) const; // rows of lines [0, line)
     qint64 total() const { return before(lines()); }
     qsizetype lineAtRow(qint64 row) const; // clamped
 private:
     void rebuild();
+    void pushOne(int rows);
+    // Dropped lines stay at the front with 0 rows until the next compaction, so
+    // the sums of the lines that are left do not change.
+    qsizetype m_head = 0;
     std::vector<int> m_value;
     std::vector<qint64> m_tree;
 };
@@ -74,6 +79,7 @@ class AtlasTextView : public QQuickItem, public AtlasTextViewInterface
     Q_PROPERTY(qsizetype cursorPosition READ cursorPosition WRITE setCursorPosition NOTIFY cursorPositionChanged FINAL)
     Q_PROPERTY(qsizetype selectionStart READ selectionStart NOTIFY selectionChanged FINAL)
     Q_PROPERTY(qsizetype selectionEnd READ selectionEnd NOTIFY selectionChanged FINAL)
+    Q_PROPERTY(bool hasSelection READ hasSelection NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QString selectedText READ selectedText NOTIFY selectionChanged FINAL)
     Q_PROPERTY(qreal contentX READ contentX WRITE setContentX NOTIFY contentXChanged FINAL)
     Q_PROPERTY(qreal contentY READ contentY WRITE setContentY NOTIFY contentYChanged FINAL)
@@ -116,6 +122,10 @@ public:
     qsizetype length() const override { return m_buf.tree().length(); }
     qsizetype lineCount() const override { return m_buf.tree().lineCount(); }
     Q_INVOKABLE QString textInRange(qsizetype start, qsizetype end) const override;
+    // At most `limit` units of [start, end), never cut inside a surrogate pair
+    // and empty when the memory is not there. For the accessible.
+    QString boundedText(qsizetype start, qsizetype end, qsizetype limit) const;
+    qsizetype alignedPosition(qsizetype position) const { return m_buf.tree().alignDown(position); }
     Q_INVOKABLE qsizetype positionAt(const QPointF &itemPoint) const override;
     Q_INVOKABLE QRectF rectangleAt(qsizetype position) const override;
     Q_INVOKABLE qsizetype positionOfLine(qsizetype line) const override;
@@ -127,7 +137,7 @@ public:
     Q_INVOKABLE void beginLoad() override;
     void appendData(const char *utf8, qsizetype size) override;
     using AtlasTextViewInterface::appendData;
-    Q_INVOKABLE void appendBytes(const QByteArray &utf8) { appendData(utf8.constData(), utf8.size()); }
+    Q_INVOKABLE void appendBytes(const QByteArray &utf8);
     Q_INVOKABLE void endLoad() override;
     Q_INVOKABLE void appendText(const QString &text) override;
     Q_INVOKABLE void markSaved(quint64 revision) override;
@@ -154,6 +164,7 @@ public:
     void setCursorPosition(qsizetype position) override;
     qsizetype selectionStart() const override { return std::min(m_anchor, m_cursor); }
     qsizetype selectionEnd() const override { return std::max(m_anchor, m_cursor); }
+    bool hasSelection() const { return m_anchor != m_cursor; }
     QString selectedText() const override;
     Q_INVOKABLE void select(qsizetype start, qsizetype end) override;
     Q_INVOKABLE void selectAll() override;
@@ -224,6 +235,8 @@ public:
     qreal characterWidth() const { return m_cw; }
     // Test hook: the number of cached line layouts.
     int cachedLayouts() const { return int(m_cache.size()); }
+    bool dragging() const { return m_dragging; }
+    bool autoScrolling() const { return m_scrollTimer.isActive(); }
 
 signals:
     void textChanged();
@@ -273,6 +286,8 @@ protected:
     void focusInEvent(QFocusEvent *event) override;
     void focusOutEvent(QFocusEvent *event) override;
     void timerEvent(QTimerEvent *event) override;
+    void mouseUngrabEvent() override;
+    void itemChange(ItemChange change, const ItemChangeData &value) override;
 
 private slots:
     void onLoadNotify();
@@ -313,7 +328,11 @@ private:
     bool runsFor(qsizetype line, QList<AtlasText::FormatRun> *runs) const;
     qsizetype lineRowCount(qsizetype line) const;
     void scrollTo(qreal x, qreal y);
-    void documentChanged(bool appended, qsizetype oldLength, qsizetype oldLines);
+    // `droppedLines` > 0: that many lines were removed from the front.
+    void documentChanged(bool appended, qsizetype oldLength, qsizetype oldLines, qsizetype droppedLines = 0);
+    void stopDrag();
+    void notifyReplaced(const QString &oldHead);
+    void recordAnchor();
     void finishLoad(qsizetype oldLength);
     void invalidateLayouts();
     void applyMaximumLines();
@@ -352,13 +371,16 @@ private:
 
     mutable AtlasTextViewDetail::RowIndex m_rows;
     mutable bool m_rowsValid = false;
+    // The line at the top of the view and how far into it (in rows), kept while
+    // the rows are measured again after a resize, a font change or a wrap switch.
+    qsizetype m_anchorLine = -1;
+    qreal m_anchorRows = 0;
     mutable std::unordered_map<qsizetype, std::unique_ptr<LineBox>> m_cache;
     mutable quint64 m_generation = 1; // bumps when width, font, wrap or tabs change
 
     std::vector<Decorations> m_layers;
     std::shared_ptr<const AtlasTextHighlighterInterface> m_highlighter;
     mutable std::vector<int> m_states; // the state each line starts in, from line 1
-    mutable quint64 m_stateRevision = 0;
 
     bool m_dragging = false;
     QPointF m_lastMouse;

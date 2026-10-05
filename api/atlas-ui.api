@@ -921,6 +921,7 @@ AtlasTextView.property loading: bool [readonly]
 AtlasTextView.property maximumLines: qlonglong
 AtlasTextView.property modified: bool [readonly]
 AtlasTextView.property readOnly: bool
+AtlasTextView.property hasSelection: bool [readonly]
 AtlasTextView.property selectedText: QString [readonly]
 AtlasTextView.property selectionColor: QColor
 AtlasTextView.property selectionEnd: qlonglong [readonly]

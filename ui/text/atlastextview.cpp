@@ -11,6 +11,7 @@
 #include <QMouseEvent>
 #include <QPalette>
 #include <QQuickWindow>
+#include <QSGClipNode>
 #include <QSGNode>
 #include <QSGRectangleNode>
 #include <QSGTextNode>
@@ -21,8 +22,10 @@
 #include <QWheelEvent>
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
 #include <mutex>
+#include <new>
 
 using AtlasTextDetail::TextTree;
 using AtlasTextViewDetail::LineBox;
@@ -32,14 +35,54 @@ namespace AtlasTextViewDetail {
 
 void RowIndex::reset(qsizetype lines)
 {
+    m_head = 0;
     m_value.assign(size_t(std::max<qsizetype>(0, lines)), 1);
     rebuild();
 }
 
 void RowIndex::resize(qsizetype lines)
 {
-    m_value.resize(size_t(std::max<qsizetype>(0, lines)), 1);
-    rebuild();
+    lines = std::max<qsizetype>(0, lines);
+    if (lines < this->lines()) {
+        m_value.resize(size_t(m_head + lines));
+        rebuild();
+        return;
+    }
+    while (this->lines() < lines)
+        pushOne(1);
+}
+
+void RowIndex::pushOne(int rows)
+{
+    if (m_tree.empty())
+        m_tree.push_back(0);
+    m_value.push_back(rows);
+    const size_t i = m_value.size();
+    qint64 t = rows;
+    for (size_t k = 1; k < (i & (~i + 1)); k <<= 1)
+        t += m_tree[i - k];
+    m_tree.push_back(t);
+}
+
+void RowIndex::dropFront(qsizetype count)
+{
+    count = std::clamp<qsizetype>(count, 0, lines());
+    const size_t n = m_value.size();
+    for (qsizetype k = 0; k < count; ++k) {
+        const size_t idx = size_t(m_head + k);
+        const int v = m_value[idx];
+        if (v == 0)
+            continue;
+        m_value[idx] = 0;
+        for (size_t i = idx + 1; i <= n; i += i & (~i + 1))
+            m_tree[i] -= v;
+    }
+    m_head += count;
+    if (m_head > 4096 && size_t(m_head) > n / 2) {
+        m_value.erase(m_value.begin(), m_value.begin() + m_head);
+        m_head = 0;
+        rebuild();
+    }
 }
 
 void RowIndex::rebuild()
@@ -59,12 +102,13 @@ void RowIndex::set(qsizetype line, int rows)
     rows = std::max(1, rows);
     if (line < 0 || line >= lines())
         return;
-    const int d = rows - m_value[size_t(line)];
+    const size_t idx = size_t(m_head + line);
+    const int d = rows - m_value[idx];
     if (d == 0)
         return;
-    m_value[size_t(line)] = rows;
+    m_value[idx] = rows;
     const size_t n = m_value.size();
-    for (size_t i = size_t(line) + 1; i <= n; i += i & (~i + 1))
+    for (size_t i = idx + 1; i <= n; i += i & (~i + 1))
         m_tree[i] += d;
 }
 
@@ -72,7 +116,7 @@ qint64 RowIndex::before(qsizetype line) const
 {
     line = std::clamp<qsizetype>(line, 0, lines());
     qint64 sum = 0;
-    for (size_t i = size_t(line); i > 0; i -= i & (~i + 1))
+    for (size_t i = size_t(m_head + line); i > 0; i -= i & (~i + 1))
         sum += m_tree[i];
     return sum;
 }
@@ -80,7 +124,7 @@ qint64 RowIndex::before(qsizetype line) const
 qsizetype RowIndex::lineAtRow(qint64 row) const
 {
     const size_t n = m_value.size();
-    if (n == 0)
+    if (lines() == 0)
         return 0;
     size_t pos = 0, step = 1;
     while (step * 2 <= n)
@@ -92,7 +136,7 @@ qsizetype RowIndex::lineAtRow(qint64 row) const
             rem -= m_tree[pos];
         }
     }
-    return qsizetype(std::min(pos, n - 1));
+    return std::max<qsizetype>(0, qsizetype(std::min(pos, n - 1)) - m_head);
 }
 
 } // namespace AtlasTextViewDetail
@@ -105,9 +149,27 @@ constexpr int MaxLayouts = 600;
 constexpr int MaxStateGap = 20000;
 constexpr qreal Pad = 4;
 
+// The most a screen reader gets in one answer; a 5M-character line is not
+// built for every query.
+constexpr qsizetype MaxAccessibleText = 1 << 20;
+// The most selectedText and copy() build (UTF-16 units).
+constexpr qsizetype MaxSelectionText = qsizetype(1) << 27;
+
 bool isWordChar(QChar c)
 {
     return c.isLetterOrNumber() || c == u'_';
+}
+
+int clampInt(qsizetype v)
+{
+    return int(std::clamp<qsizetype>(v, 0, INT_MAX));
+}
+
+// The unit at `position`, or a null character when there is none to read.
+QChar unitAt(const TextTree &t, qsizetype position)
+{
+    const QString s = t.text(position, position + 1);
+    return s.isEmpty() ? QChar() : s.at(0);
 }
 
 } // namespace
@@ -141,7 +203,21 @@ public:
     QAccessibleInterface *child(int) const override { return nullptr; }
     int childCount() const override { return 0; }
     int indexOfChild(const QAccessibleInterface *) const override { return -1; }
-    QString text(QAccessible::Text) const override { return QString(); }
+    // The name and the description come from the item's Accessible attached
+    // object (Accessible.name, Accessible.description), as Qt Quick's own
+    // accessible does. There is no value text: it would be the whole file.
+    QString text(QAccessible::Text t) const override
+    {
+        const char *prop = t == QAccessible::Name ? "name" : t == QAccessible::Description ? "description" : nullptr;
+        QObject *o = object();
+        if (!prop || !o)
+            return QString();
+        for (QObject *c : o->children()) {
+            if (c->inherits("QQuickAccessibleAttached"))
+                return c->property(prop).toString();
+        }
+        return QString();
+    }
     QRect rect() const override
     {
         AtlasTextView *v = view();
@@ -176,7 +252,7 @@ public:
         *endOffset = offset;
         return QString();
     }
-    int cursorPosition() const override { return int(view() ? view()->cursorPosition() : 0); }
+    int cursorPosition() const override { return view() ? clampInt(view()->cursorPosition()) : 0; }
     QRect characterRect(int offset) const override
     {
         AtlasTextView *v = view();
@@ -191,7 +267,7 @@ public:
     int offsetAtPoint(const QPoint &point) const override
     {
         AtlasTextView *v = view();
-        return v ? int(v->positionAt(v->mapFromGlobal(QPointF(point)))) : 0;
+        return v ? clampInt(v->positionAt(v->mapFromGlobal(QPointF(point)))) : 0;
     }
     void selection(int selectionIndex, int *startOffset, int *endOffset) const override
     {
@@ -200,12 +276,12 @@ public:
             *startOffset = *endOffset = 0;
             return;
         }
-        *startOffset = int(v->selectionStart());
-        *endOffset = int(v->selectionEnd());
+        *startOffset = clampInt(v->selectionStart());
+        *endOffset = clampInt(v->selectionEnd());
     }
     QString text(int startOffset, int endOffset) const override
     {
-        return view() ? view()->textInRange(startOffset, endOffset) : QString();
+        return view() ? view()->boundedText(startOffset, endOffset, MaxAccessibleText) : QString();
     }
     void removeSelection(int selectionIndex) override
     {
@@ -222,7 +298,7 @@ public:
         if (selectionIndex == 0)
             select(startOffset, endOffset);
     }
-    int characterCount() const override { return int(view() ? view()->length() : 0); }
+    int characterCount() const override { return view() ? clampInt(view()->length()) : 0; }
     void scrollToSubstring(int startIndex, int) override
     {
         if (view())
@@ -256,7 +332,7 @@ private:
         if (!v)
             return QString();
         const qsizetype len = v->length();
-        offset = int(std::clamp<qsizetype>(offset, 0, len));
+        offset = clampInt(std::clamp<qsizetype>(offset, 0, len));
         qsizetype a = offset, b = offset;
         if (type == QAccessible::CharBoundary) {
             a = std::clamp<qsizetype>(offset + which, 0, len);
@@ -267,9 +343,11 @@ private:
             a = v->positionOfLine(line);
             b = line + 1 < v->lineCount() ? v->positionOfLine(line + 1) : len;
         }
-        *startOffset = int(a);
-        *endOffset = int(b);
-        return v->textInRange(a, b);
+        if (b - a > MaxAccessibleText)
+            b = std::max(a, v->alignedPosition(a + MaxAccessibleText));
+        *startOffset = clampInt(a);
+        *endOffset = clampInt(b);
+        return v->boundedText(a, b, MaxAccessibleText);
     }
 };
 
@@ -680,7 +758,9 @@ LineBox &AtlasTextView::layoutLine(qsizetype line) const
         const int rows = isLong ? int(std::min<qsizetype>(1 << 28, (len + cpr - 1) / cpr)) : b.layout->lineCount();
         m_rows.set(line, rows);
     } else {
-        m_maxCols = std::max(m_maxCols, len);
+        // Columns, with the tab stops counted; a long line's window is only part of it.
+        const qsizetype cols = isLong ? len : qsizetype(std::ceil(b.layout->maximumWidth() / m_cw));
+        m_maxCols = std::max(m_maxCols, std::max(cols, len > 0 ? qsizetype(1) : qsizetype(0)));
     }
     return b;
 }
@@ -701,7 +781,7 @@ QRectF AtlasTextView::contentRectOf(qsizetype position) const
             const qreal ox = m_wrap ? 0 : qreal(b.sliceStart) * m_cw;
             const qreal y = top + qreal(b.rowOffset) * m_rowH + tl.y();
             qreal w = 1;
-            if (local < b.len) {
+            if (local < b.len && l < b.layout->text().size()) {
                 const QString &s = b.layout->text();
                 const int next = (l + 1 < s.size() && s[l].isHighSurrogate() && s[l + 1].isLowSurrogate()) ? l + 2 : l + 1;
                 w = std::max<qreal>(1, tl.cursorToX(next) - x);
@@ -757,18 +837,44 @@ void AtlasTextView::geometryChange(const QRectF &newGeometry, const QRectF &oldG
     QQuickItem::geometryChange(newGeometry, oldGeometry);
     if (newGeometry.size() == oldGeometry.size())
         return;
-    if (m_wrap && newGeometry.width() != oldGeometry.width())
+    if (m_wrap && newGeometry.width() != oldGeometry.width()) {
+        recordAnchor();
         m_rowsValid = false;
+    }
     invalidateLayouts();
     scheduleUpdate();
+}
+
+// Remembers the line at the top of the view, from the rows as they are now:
+// call it before anything that measures the rows again.
+void AtlasTextView::recordAnchor()
+{
+    if (m_anchorLine >= 0 || (m_wrap && !m_rowsValid))
+        return;
+    m_anchorLine = lineAtY(m_contentY);
+    m_anchorRows = (m_contentY - lineTop(m_anchorLine)) / m_rowH;
 }
 
 void AtlasTextView::updatePolish()
 {
     if (m_cache.size() > size_t(MaxLayouts))
         m_cache.clear();
-    const qsizetype aLine = lineAtY(m_contentY);
-    const qreal aOff = m_contentY - lineTop(aLine);
+    const qreal shownY = m_contentY;
+    qsizetype aLine;
+    qreal aOff;
+    if (m_anchorLine >= 0) {
+        // The rows were measured again: put the same line back at the top. The
+        // line is kept as it is: the offset can be past the one row it has until
+        // it is laid out.
+        aLine = std::min(m_anchorLine, lineCount() - 1);
+        aOff = m_anchorRows * m_rowH;
+        m_contentY = lineTop(aLine) + aOff;
+        m_anchorLine = -1;
+        m_anchorRows = 0;
+    } else {
+        aLine = lineAtY(m_contentY);
+        aOff = m_contentY - lineTop(aLine);
+    }
     const qsizetype lo = lineAtY(std::max<qreal>(0, m_contentY - viewHeight()));
     const qsizetype hi = std::min(lineAtY(m_contentY + 2 * viewHeight()), lo + 300);
     for (qsizetype l = lo; l <= hi; ++l)
@@ -779,14 +885,14 @@ void AtlasTextView::updatePolish()
     if (m_pinned && m_follow)
         ny = maxContentY();
     ny = std::clamp<qreal>(ny, 0, maxContentY());
+    m_contentY = ny;
     const qreal maxX = m_wrap ? 0 : std::max<qreal>(0, contentWidth() - viewWidth());
     const qreal nx = std::clamp<qreal>(m_contentX, 0, maxX);
     if (nx != m_contentX) {
         m_contentX = nx;
         emit contentXChanged();
     }
-    if (ny != m_contentY) {
-        m_contentY = ny;
+    if (ny != shownY) {
         emit contentYChanged();
         polish(); // lay out around the new position
     }
@@ -821,14 +927,31 @@ QSGNode *AtlasTextView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         return root;
 
     const TextTree &t = m_buf.tree();
-    auto addRect = [&](const QRectF &r, const QColor &c) {
+    // The text, the selection and the caret are clipped at the gutter's edge,
+    // so a scrolled line does not slide under the numbers. The current-line
+    // tint spans the whole width and goes below, the numbers on top.
+    QSGNode *under = new QSGNode;
+    root->appendChildNode(under);
+    QSGNode *body = root;
+    if (m_lineNumbers) {
+        const qreal gw = std::min(gutterWidth(), width());
+        QSGClipNode *clip = new QSGClipNode;
+        clip->setIsRectangular(true);
+        clip->setClipRect(QRectF(gw, 0, width() - gw, height()));
+        root->appendChildNode(clip);
+        body = clip;
+    }
+    QSGNode *numbers = new QSGNode;
+    root->appendChildNode(numbers);
+    auto addRectTo = [&](QSGNode *parent, const QRectF &r, const QColor &c) {
         if (r.width() <= 0 || r.height() <= 0 || !c.isValid())
             return;
         QSGRectangleNode *n = window()->createRectangleNode();
         n->setRect(r);
         n->setColor(c);
-        root->appendChildNode(n);
+        parent->appendChildNode(n);
     };
+    auto addRect = [&](const QRectF &r, const QColor &c) { addRectTo(body, r, c); };
     const qsizetype lo = firstVisibleLine(), hi = lastVisibleLine();
     const qsizetype selA = selectionStart(), selB = selectionEnd();
     const qsizetype cursorLine = t.lineAt(m_cursor);
@@ -867,7 +990,7 @@ QSGNode *AtlasTextView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         if (m_currentLine && line == cursorLine && selA == selB) {
             QColor c = m_textColor;
             c.setAlpha(22);
-            addRect(QRectF(0, top, width(), qreal(rowsHere) * m_rowH), c);
+            addRectTo(under, QRectF(0, top, width(), qreal(rowsHere) * m_rowH), c);
         }
         // Decorations of every layer that touch this line.
         const qsizetype lineEnd = b.start + b.len;
@@ -906,7 +1029,7 @@ QSGNode *AtlasTextView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         QSGTextNode *tn = window()->createTextNode();
         tn->setColor(m_textColor);
         tn->addTextLayout(QPointF(ox, oy), b.layout.get());
-        root->appendChildNode(tn);
+        body->appendChildNode(tn);
 
         if (m_lineNumbers) {
             QTextLayout nl(QString::number(line + 1), m_font);
@@ -918,7 +1041,7 @@ QSGNode *AtlasTextView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
             QSGTextNode *gn = window()->createTextNode();
             gn->setColor(m_numberColor);
             gn->addTextLayout(QPointF(gutterWidth() - m_cw - l.naturalTextWidth(), top), &nl);
-            root->appendChildNode(gn);
+            numbers->appendChildNode(gn);
         }
     }
     if (hasActiveFocus() && selA == selB) {
@@ -934,17 +1057,42 @@ QSGNode *AtlasTextView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
 QString AtlasTextView::text() const
 {
     const TextTree &t = m_buf.tree();
-    return t.text(0, t.length());
+    try {
+        return t.text(0, t.length());
+    } catch (const std::bad_alloc &) {
+        qWarning("AtlasTextView: not enough memory to build the whole text");
+        return QString();
+    }
 }
 
 QString AtlasTextView::textInRange(qsizetype start, qsizetype end) const
 {
-    return m_buf.tree().text(start, end);
+    try {
+        return m_buf.tree().text(start, end);
+    } catch (const std::bad_alloc &) {
+        qWarning("AtlasTextView: not enough memory to build the text range");
+        return QString();
+    }
 }
 
+QString AtlasTextView::boundedText(qsizetype start, qsizetype end, qsizetype limit) const
+{
+    const TextTree &t = m_buf.tree();
+    start = std::clamp<qsizetype>(start, 0, t.length());
+    end = std::clamp<qsizetype>(end, start, t.length());
+    if (end - start > limit)
+        end = std::max(start, t.alignDown(start + limit));
+    return textInRange(start, end);
+}
+
+// Over MaxSelectionText units it is empty: a notifying property must not build
+// a whole huge file whenever the selection changes. hasSelection tells whether
+// there is one, and copy() has the same limit.
 QString AtlasTextView::selectedText() const
 {
-    return m_buf.tree().text(selectionStart(), selectionEnd());
+    if (selectionEnd() - selectionStart() > MaxSelectionText)
+        return QString();
+    return textInRange(selectionStart(), selectionEnd());
 }
 
 void AtlasTextView::setReadOnly(bool readOnly)
@@ -969,6 +1117,7 @@ void AtlasTextView::setWrap(bool wrap)
 {
     if (m_wrap == wrap)
         return;
+    recordAnchor();
     m_wrap = wrap;
     m_rowsValid = false;
     m_contentX = 0;
@@ -992,6 +1141,7 @@ void AtlasTextView::setShowLineNumbers(bool show)
 {
     if (m_lineNumbers == show)
         return;
+    recordAnchor();
     m_lineNumbers = show;
     invalidateLayouts();
     m_rowsValid = false;
@@ -1012,6 +1162,7 @@ void AtlasTextView::setFont(const QFont &font)
 {
     if (m_font == font)
         return;
+    recordAnchor();
     m_font = font;
     updateMetrics();
     m_rowsValid = false;
@@ -1130,11 +1281,16 @@ void AtlasTextView::clearDecorations(const QString &layer)
 
 // ---- Loading ----
 
-void AtlasTextView::documentChanged(bool appended, qsizetype oldLength, qsizetype oldLines)
+void AtlasTextView::documentChanged(bool appended, qsizetype oldLength, qsizetype oldLines, qsizetype droppedLines)
 {
     m_cache.clear();
     ++m_generation;
-    if (!appended) {
+    if (droppedLines > 0) {
+        // Lines went from the front: keep the rows of the rest and the widest line.
+        if (m_wrap && m_rowsValid)
+            m_rows.dropFront(droppedLines);
+        m_states.clear();
+    } else if (!appended) {
         m_rowsValid = false;
         m_states.clear();
         m_maxCols = 0;
@@ -1153,19 +1309,39 @@ void AtlasTextView::documentChanged(bool appended, qsizetype oldLength, qsizetyp
     scheduleUpdate();
 }
 
+// The text was replaced or cleared: tell the screen readers. The texts are the
+// first part only, as appendText does.
+void AtlasTextView::notifyReplaced(const QString &oldHead)
+{
+    if (!QAccessible::isActive())
+        return;
+    if (!oldHead.isEmpty()) {
+        QAccessibleTextRemoveEvent ev(this, 0, oldHead);
+        QAccessible::updateAccessibility(&ev);
+    }
+    if (length() > 0) {
+        QAccessibleTextInsertEvent ev(this, 0, textInRange(0, 4096));
+        QAccessible::updateAccessibility(&ev);
+    }
+}
+
 void AtlasTextView::beginLoad()
 {
     const qsizetype oldLen = length(), oldLines = lineCount();
     const bool wasLoading = m_loading;
+    const QString oldHead = QAccessible::isActive() ? textInRange(0, 4096) : QString();
     if (!wasLoading)
         m_loadOldLength = oldLen;
     m_buf.beginLoad();
     m_loading = true;
     m_inputEnded = false;
     m_pinned = false;
+    m_anchorLine = -1;
+    m_layers.clear();
     m_contentX = m_contentY = 0;
     setCursorAndAnchor(0, 0);
     documentChanged(false, oldLen, oldLines);
+    notifyReplaced(oldHead);
     emit contentXChanged();
     emit contentYChanged();
     if (!wasLoading)
@@ -1183,13 +1359,23 @@ void AtlasTextView::appendData(const char *utf8, qsizetype size)
     emit loadProgressChanged();
 }
 
+void AtlasTextView::appendBytes(const QByteArray &utf8)
+{
+    if (!m_loading || m_inputEnded || utf8.isEmpty())
+        return;
+    m_buf.appendData(utf8); // shares the bytes: a big chunk is not copied
+    emit loadProgressChanged();
+}
+
 void AtlasTextView::onLoadNotify()
 {
     if (!m_loading)
         return;
     const qsizetype oldLen = length(), oldLines = lineCount();
+    const quint64 oldRevision = m_buf.revision();
     const bool done = m_buf.pollLoad();
-    documentChanged(true, oldLen, oldLines);
+    if (m_buf.revision() != oldRevision)
+        documentChanged(true, oldLen, oldLines);
     emit loadProgressChanged();
     if (done)
         finishLoad(m_loadOldLength);
@@ -1201,8 +1387,10 @@ void AtlasTextView::endLoad()
         return;
     m_inputEnded = true;
     const qsizetype oldLen = length(), oldLines = lineCount();
+    const quint64 oldRevision = m_buf.revision();
     const bool done = m_buf.endLoad(false);
-    documentChanged(true, oldLen, oldLines);
+    if (m_buf.revision() != oldRevision)
+        documentChanged(true, oldLen, oldLines);
     if (done)
         finishLoad(m_loadOldLength);
 }
@@ -1214,7 +1402,13 @@ void AtlasTextView::finishLoad(qsizetype oldLength)
     emit loadProgressChanged();
     emit hadInvalidTextChanged();
     emit loadFailedChanged();
+    // The text arrived in pieces that were not reported one by one.
+    if (QAccessible::isActive() && length() > 0) {
+        QAccessibleTextInsertEvent ev(this, 0, textInRange(0, 4096));
+        QAccessible::updateAccessibility(&ev);
+    }
     emit contentsChange(0, oldLength, length());
+    applyMaximumLines();
     emit loaded();
 }
 
@@ -1222,13 +1416,17 @@ void AtlasTextView::setText(const QString &text)
 {
     const qsizetype oldLen = loading() ? m_loadOldLength : length(), oldLines = lineCount();
     const bool wasLoading = m_loading;
+    const QString oldHead = QAccessible::isActive() ? textInRange(0, 4096) : QString();
     m_buf.setText(text);
     m_loading = false;
     m_inputEnded = true;
     m_contentX = m_contentY = 0;
     m_pinned = false;
+    m_anchorLine = -1;
+    m_layers.clear();
     setCursorAndAnchor(0, 0);
     documentChanged(false, oldLen, oldLines);
+    notifyReplaced(oldHead);
     if (wasLoading)
         emit loadingChanged();
     emit contentXChanged();
@@ -1236,6 +1434,7 @@ void AtlasTextView::setText(const QString &text)
     emit hadInvalidTextChanged();
     emit loadFailedChanged();
     emit contentsChange(0, oldLen, length());
+    applyMaximumLines();
     emit loaded();
 }
 
@@ -1271,12 +1470,23 @@ void AtlasTextView::applyMaximumLines()
     const qsizetype drop = lineCount() - m_maxLines;
     const qsizetype cut = positionOfLine(drop);
     const qsizetype oldLen = length(), oldLines = lineCount();
+    // The height of what goes: its real rows when they are measured.
+    qint64 droppedRows = drop;
+    if (m_wrap && m_rowsValid) {
+        ensureRows();
+        droppedRows = m_rows.before(drop);
+    }
+    const QString head = QAccessible::isActive() ? textInRange(0, std::min<qsizetype>(cut, 4096)) : QString();
     m_buf.remove(0, cut);
     m_cursor = std::max<qsizetype>(0, m_cursor - cut);
     m_anchor = std::max<qsizetype>(0, m_anchor - cut);
     if (!m_pinned)
-        m_contentY = std::max<qreal>(0, m_contentY - qreal(drop) * m_rowH);
-    documentChanged(false, oldLen, oldLines);
+        m_contentY = std::max<qreal>(0, m_contentY - qreal(droppedRows) * m_rowH);
+    documentChanged(false, oldLen, oldLines, drop);
+    if (QAccessible::isActive() && !head.isEmpty()) {
+        QAccessibleTextRemoveEvent ev(this, 0, head);
+        QAccessible::updateAccessibility(&ev);
+    }
     emit contentsChange(0, cut, 0);
     emit selectionChanged();
     emit cursorPositionChanged();
@@ -1298,7 +1508,7 @@ void AtlasTextView::setCursorAndAnchor(qsizetype cursor, qsizetype anchor, bool 
     if (cursorMoved) {
         emit cursorPositionChanged();
         if (QAccessible::isActive()) {
-            QAccessibleTextCursorEvent ev(this, int(cursor));
+            QAccessibleTextCursorEvent ev(this, clampInt(cursor));
             QAccessible::updateAccessibility(&ev);
         }
     }
@@ -1330,8 +1540,15 @@ void AtlasTextView::copy()
 {
     if (selectionStart() == selectionEnd())
         return;
-    if (QClipboard *cb = QGuiApplication::clipboard())
-        cb->setText(selectedText());
+    if (selectionEnd() - selectionStart() > MaxSelectionText) {
+        qWarning("AtlasTextView: the selection is too large to copy");
+        return;
+    }
+    if (QClipboard *cb = QGuiApplication::clipboard()) {
+        const QString text = textInRange(selectionStart(), selectionEnd());
+        if (!text.isEmpty())
+            cb->setText(text);
+    }
 }
 
 void AtlasTextView::moveCursor(qsizetype position, bool extend, bool keepGoal)
@@ -1501,14 +1718,14 @@ void AtlasTextView::keyPressEvent(QKeyEvent *e)
         case 9: pos = n; break;
         case 10: {
             qsizetype p = pos;
-            while (p > 0 && !isWordChar(t.text(p - 1, p).at(0)))
+            while (p > 0 && !isWordChar(unitAt(t, p - 1)))
                 --p;
             pos = p > 0 ? wordStart(p - 1) : 0;
             break;
         }
         case 11: {
             qsizetype p = pos;
-            while (p < n && !isWordChar(t.text(p, p + 1).at(0)))
+            while (p < n && !isWordChar(unitAt(t, p)))
                 ++p;
             pos = p < n ? wordEnd(p) : n;
             break;
@@ -1581,11 +1798,30 @@ void AtlasTextView::mouseMoveEvent(QMouseEvent *e)
     e->accept();
 }
 
-void AtlasTextView::mouseReleaseEvent(QMouseEvent *e)
+void AtlasTextView::stopDrag()
 {
     m_dragging = false;
     m_scrollTimer.stop();
+}
+
+void AtlasTextView::mouseReleaseEvent(QMouseEvent *e)
+{
+    stopDrag();
     e->accept();
+}
+
+// The grab was taken away mid-drag (a popup, a touch, a window switch): no
+// release comes, so the drag and its autoscroll end here.
+void AtlasTextView::mouseUngrabEvent()
+{
+    stopDrag();
+}
+
+void AtlasTextView::itemChange(ItemChange change, const ItemChangeData &value)
+{
+    if (change == ItemVisibleHasChanged && !value.boolValue)
+        stopDrag();
+    QQuickItem::itemChange(change, value);
 }
 
 void AtlasTextView::timerEvent(QTimerEvent *e)
@@ -1598,8 +1834,8 @@ void AtlasTextView::timerEvent(QTimerEvent *e)
 
 void AtlasTextView::autoScroll()
 {
-    if (!m_dragging) {
-        m_scrollTimer.stop();
+    if (!m_dragging || !isVisible()) {
+        stopDrag();
         return;
     }
     qreal d = 0;
@@ -1640,5 +1876,6 @@ void AtlasTextView::focusInEvent(QFocusEvent *e)
 void AtlasTextView::focusOutEvent(QFocusEvent *e)
 {
     QQuickItem::focusOutEvent(e);
+    stopDrag();
     update();
 }
