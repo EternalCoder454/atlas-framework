@@ -22,6 +22,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
+use std::thread::JoinHandle;
 use std::time::Duration;
 
 use tokio::runtime::Handle;
@@ -71,24 +72,24 @@ impl TaskHandle {
         self.inner.wake.notify_one();
     }
 
+    /// Whether [`cancel`](Self::cancel) has been called. It does not mean the
+    /// task ended as `Cancelled`: a task that finished first (or timed out)
+    /// keeps its own outcome.
     pub fn is_cancelled(&self) -> bool {
         self.inner.cancelled.load(Ordering::SeqCst)
     }
 }
 
-static RUNTIME: Mutex<Option<Handle>> = Mutex::new(None);
+struct Running {
+    handle: Handle,
+    thread: JoinHandle<()>,
+}
 
-/// The app's one runtime: a thread named `atlas-tasks` running a
-/// current-thread tokio runtime (timers on, no network I/O), started on the
-/// first call. A failed start (no threads left) is an error here and is
-/// tried again on the next call.
-pub fn runtime() -> io::Result<Handle> {
-    let mut slot = RUNTIME.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some(h) = slot.as_ref() {
-        return Ok(h.clone());
-    }
+static RUNTIME: Mutex<Option<Running>> = Mutex::new(None);
+
+fn start() -> io::Result<Running> {
     let (tx, rx) = mpsc::channel();
-    std::thread::Builder::new()
+    let thread = std::thread::Builder::new()
         .name("atlas-tasks".into())
         .spawn(move || {
             match tokio::runtime::Builder::new_current_thread()
@@ -105,11 +106,42 @@ pub fn runtime() -> io::Result<Handle> {
                 }
             }
         })?;
-    let h = rx
+    let handle = rx
         .recv()
         .map_err(|_| io::Error::other("the task thread ended at start"))??;
-    *slot = Some(h.clone());
+    Ok(Running { handle, thread })
+}
+
+/// The handle in `slot` if its thread still runs; otherwise starts the
+/// runtime again (once per call) and stores that.
+fn live(
+    slot: &mut Option<Running>,
+    start: impl FnOnce() -> io::Result<Running>,
+) -> io::Result<Handle> {
+    if let Some(r) = slot.as_ref()
+        && !r.thread.is_finished()
+    {
+        return Ok(r.handle.clone());
+    }
+    if slot.take().is_some() {
+        log::error!("the atlas-tasks thread ended; starting it again");
+    }
+    let r = start()?;
+    let h = r.handle.clone();
+    *slot = Some(r);
     Ok(h)
+}
+
+/// The app's one runtime: a thread named `atlas-tasks` running a
+/// current-thread tokio runtime (timers on, no I/O driver), started on the
+/// first call. A failed start (no threads left) is an error here and is
+/// tried again on the next call; if the thread has ended (it should not),
+/// the next call logs it and starts a new one. Tasks of the old one are lost.
+pub fn runtime() -> io::Result<Handle> {
+    live(
+        &mut RUNTIME.lock().unwrap_or_else(|e| e.into_inner()),
+        start,
+    )
 }
 
 /// Runs `future` on the app's runtime for at most `timeout`, then posts
@@ -178,6 +210,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::AtomicBool;
     use std::sync::mpsc::{Receiver, Sender, channel};
 
     struct Ui(u32);
@@ -268,18 +301,52 @@ mod tests {
 
     #[test]
     fn a_gone_ui_is_ignored_and_a_panic_is_reported() {
-        // post fails: nothing happens, and the runtime still works after.
+        // post fails: on_done never runs, and the runtime still works after.
+        let ran = Arc::new(AtomicBool::new(false));
+        let ran2 = ran.clone();
         spawn_ui(
             |_job: UiJob<Ui>| Err::<(), _>("gone"),
             Duration::from_secs(5),
             async { 1 },
-            |_: Pin<&mut Ui>, _| panic!("must not run"),
+            move |_: Pin<&mut Ui>, _| ran2.store(true, Ordering::SeqCst),
         )
         .unwrap();
         let (_h, r) = run(Duration::from_secs(5), async { panic!("boom") });
         assert_eq!(r.recv_timeout(WAIT).unwrap(), Outcome::Panicked);
         let (_h, r) = run(Duration::from_secs(5), async { 2 });
         assert_eq!(r.recv_timeout(WAIT).unwrap(), Outcome::Done(2));
+        assert!(!ran.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn a_dead_runtime_thread_is_replaced() {
+        let dead = std::thread::spawn(|| {});
+        let (tx, rx) = mpsc::channel();
+        let keep = std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap();
+            tx.send(rt.handle().clone()).unwrap();
+            std::thread::sleep(Duration::from_millis(300));
+        });
+        let old = rx.recv().unwrap();
+        while !dead.is_finished() {
+            std::thread::yield_now();
+        }
+        let mut slot = Some(Running {
+            handle: old,
+            thread: dead,
+        });
+        let mut started = 0;
+        live(&mut slot, || {
+            started += 1;
+            start()
+        })
+        .unwrap();
+        assert_eq!(started, 1);
+        // a live one is kept
+        live(&mut slot, || panic!("must not start")).unwrap();
+        let _ = keep.join();
     }
 
     #[test]

@@ -95,18 +95,26 @@ impl Settings {
     /// `SchemaVersion` is version 0. Call it once at start, before reading.
     ///
     /// - Everything runs in memory under the writer lock. The old file is
-    ///   copied to `<name>.bak` (atomically, with its mode; one per call, the
-    ///   last call's wins) only after every step succeeded, then the new text replaces the file atomically. A
+    ///   copied to `<name>.bak` (atomically, with its mode; the latest call's
+    ///   copy) and to `<name>.bak.v<found>`, the copy that later calls do not
+    ///   replace (the 3 highest versions are kept), only after every step
+    ///   succeeded; then the new text replaces the file atomically. A
     ///   failing step returns [`MigrateError::Failed`] naming its version and
     ///   writes nothing, not even the `.bak`.
     /// - A file newer than the app is never changed: `Err(Newer)`. Choose
     ///   what the app does: read it and keep from calling `set`, or quit with
     ///   a message.
+    /// - A step runs under the file lock: it must not use [`Settings`] on any
+    ///   file or call `migrate` (both return an error at once, from inside a
+    ///   step). Work on the text it is given.
     /// - A panic in a step is caught like an error (with `panic = "unwind"`).
     /// - A missing or empty file is created at the current version, so a
     ///   later start does not run the migrations on new data.
     pub fn migrate(&self, migrations: &[Migration]) -> Result<Migrated, MigrateError> {
         let known = u32::try_from(migrations.len()).unwrap_or(u32::MAX);
+        if migrating() {
+            return Err(reentry().into());
+        }
         if self.path.starts_with(super::NO_HOME) {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
@@ -152,6 +160,7 @@ impl Settings {
             .into());
         }
         let mut cur = text.clone();
+        let _in_step = StepGuard::enter();
         if !fresh {
             for n in found..known {
                 let step = migrations[n as usize];
@@ -170,11 +179,15 @@ impl Settings {
                 cur = next;
             }
         }
+        drop(_in_step);
         let out = set_in(&cur, SCHEMA_GROUP, SCHEMA_KEY, Some(&known.to_string()));
         let out = super::with_format(&text, out);
         if meta.is_some() && !fresh {
-            let bak = backup_path(&target);
+            let bak = backup_path(&target, None);
             replace(&bak, text.as_bytes(), meta.as_ref())?;
+            let keep = backup_path(&target, Some(found));
+            replace(&keep, text.as_bytes(), meta.as_ref())?;
+            prune_backups(&target, found);
             log::info!(
                 "settings: kept the version {found} file as {}",
                 bak.display()
@@ -192,9 +205,77 @@ impl Settings {
     }
 }
 
-fn backup_path(target: &std::path::Path) -> PathBuf {
+fn backup_path(target: &std::path::Path, version: Option<u32>) -> PathBuf {
     let name = target.file_name().unwrap_or_default().to_string_lossy();
-    target.with_file_name(format!("{name}.bak"))
+    match version {
+        None => target.with_file_name(format!("{name}.bak")),
+        Some(v) => target.with_file_name(format!("{name}.bak.v{v}")),
+    }
+}
+
+/// How many `<name>.bak.v<N>` files are kept.
+const KEEP_BACKUPS: usize = 3;
+
+/// Removes all but the [`KEEP_BACKUPS`] highest-version `<name>.bak.v<N>`
+/// files, never `just_written`'s. Best effort.
+fn prune_backups(target: &std::path::Path, just_written: u32) {
+    let (Some(dir), Some(name)) = (target.parent(), target.file_name()) else {
+        return;
+    };
+    let prefix = format!("{}.bak.v", name.to_string_lossy());
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut found: Vec<(u32, PathBuf)> = entries
+        .flatten()
+        .filter_map(|e| {
+            let f = e.file_name().to_string_lossy().into_owned();
+            let v = f.strip_prefix(&prefix)?;
+            (!v.is_empty() && v.bytes().all(|b| b.is_ascii_digit()))
+                .then(|| v.parse().ok())
+                .flatten()
+                .map(|v| (v, e.path()))
+        })
+        .collect();
+    found.sort_by_key(|f| std::cmp::Reverse(f.0));
+    let mut kept = 0;
+    for (v, p) in found {
+        if v == just_written || kept < KEEP_BACKUPS - 1 {
+            if v != just_written {
+                kept += 1;
+            }
+        } else {
+            let _ = fs::remove_file(p);
+        }
+    }
+}
+
+thread_local! {
+    static IN_STEP: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether this thread is inside a migration step.
+pub(super) fn migrating() -> bool {
+    IN_STEP.with(|c| c.get())
+}
+
+pub(super) fn reentry() -> io::Error {
+    io::Error::other("settings used from inside a migration step (it runs under the file lock)")
+}
+
+struct StepGuard;
+
+impl StepGuard {
+    fn enter() -> StepGuard {
+        IN_STEP.with(|c| c.set(true));
+        StepGuard
+    }
+}
+
+impl Drop for StepGuard {
+    fn drop(&mut self) {
+        IN_STEP.with(|c| c.set(false));
+    }
 }
 
 #[cfg(test)]
@@ -314,6 +395,57 @@ mod tests {
         let (_d, s) = file(&format!("[Atlas]\nSchemaVersion={}\n", "x".repeat(5000)));
         let e = s.migrate(&[m0]).unwrap_err();
         assert!(e.to_string().len() < 200, "{}", e.to_string().len());
+    }
+
+    #[test]
+    fn older_backups_are_kept_up_to_three() {
+        let (d, s) = file("[General]\nLang=nl\n");
+        for v in [7, 8, 9] {
+            fs::write(d.path().join(format!("atlas-xrc.bak.v{v}")), "old").unwrap();
+        }
+        s.migrate(&[m0, m1]).unwrap();
+        let has = |n: &str| d.path().join(n).exists();
+        assert_eq!(
+            fs::read_to_string(d.path().join("atlas-xrc.bak.v0")).unwrap(),
+            "[General]\nLang=nl\n"
+        );
+        assert!(has("atlas-xrc.bak") && has("atlas-xrc.bak.v9") && has("atlas-xrc.bak.v8"));
+        assert!(!has("atlas-xrc.bak.v7"));
+        // a later migration does not replace the older version's backup
+        let (d, s) = file("[General]\nLang=nl\n");
+        s.migrate(&[m0]).unwrap();
+        s.migrate(&[m0, m1]).unwrap();
+        assert!(
+            fs::read_to_string(d.path().join("atlas-xrc.bak.v0"))
+                .unwrap()
+                .contains("Lang")
+        );
+        assert!(
+            fs::read_to_string(d.path().join("atlas-xrc.bak.v1"))
+                .unwrap()
+                .contains("Language")
+        );
+    }
+
+    #[test]
+    fn a_step_using_settings_fails_fast_instead_of_hanging() {
+        fn uses_set(_: &str) -> R {
+            let s = Settings::at(std::env::temp_dir().join("atlas-never-written-rc"));
+            s.set("G", "A", Some("1"))?;
+            Ok(String::new())
+        }
+        fn uses_migrate(_: &str) -> R {
+            Settings::at(std::env::temp_dir().join("atlas-never-written-rc")).migrate(&[])?;
+            Ok(String::new())
+        }
+        for step in [uses_set as Migration, uses_migrate] {
+            let (_d, s) = file("[General]\nLang=nl\n");
+            let t = std::time::Instant::now();
+            let e = s.migrate(&[step]).unwrap_err();
+            assert!(matches!(e, MigrateError::Failed { from: 0, .. }), "{e}");
+            assert!(t.elapsed() < std::time::Duration::from_secs(1));
+        }
+        assert!(!std::env::temp_dir().join("atlas-never-written-rc").exists());
     }
 
     #[test]

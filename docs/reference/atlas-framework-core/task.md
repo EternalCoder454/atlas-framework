@@ -37,7 +37,8 @@ let handle = spawn_ui(
 - If `post` fails (for `queue`: the QObject is gone) the result is dropped quietly.
 - Dropping a `TaskHandle` does not cancel the task.
 - A panic in the future is logged and reported as `Outcome::Panicked`; the runtime goes on. A panic in `post` or `on_done` is caught and logged too. All of this needs `panic = "unwind"` (the default); with `"abort"` the process ends.
-- Errors: `spawn_ui` and `runtime` fail only if the runtime thread cannot start (they try again on the next call).
+- Errors: `spawn_ui` and `runtime` fail only if the runtime thread cannot start (they try again on the next call). If the runtime thread has ended (it should not), the next call logs it and starts a new one; tasks of the old one are lost.
+- `TaskHandle::is_cancelled()` is true once `cancel` has been called, even if the task had already finished or timed out first: the outcome tells how it ended.
 
 ## Items
 

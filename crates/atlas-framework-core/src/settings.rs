@@ -91,6 +91,9 @@ impl Settings {
         if let Some(dir) = target.parent() {
             fs::create_dir_all(dir)?;
         }
+        if migrate::migrating() {
+            return Err(migrate::reentry());
+        }
         // The file lock first, with its deadline: a stuck holder of one file
         // must not make writers of other files wait on the thread lock.
         let _file = lock(&target)?;
