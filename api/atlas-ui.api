@@ -66,6 +66,18 @@ AtlasCheckBox.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
+AtlasDropZone.property acceptedKeys: QStringList
+AtlasDropZone.property allowRemote: bool
+AtlasDropZone.property browseText: QString
+AtlasDropZone.property dragAccepted: bool [readonly]
+AtlasDropZone.property dragRejected: bool [readonly]
+AtlasDropZone.property nameFilters: QStringList
+AtlasDropZone.property subtitle: QString
+AtlasDropZone.property symbol: int
+AtlasDropZone.property text: QString
+AtlasDropZone.signal browseRequested()
+AtlasDropZone.signal dropped(QList<QUrl> urls)
+AtlasDropZone.type
 AtlasEmptyState.property actionSymbol: int
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
@@ -103,6 +115,17 @@ AtlasLabel.enum TextStyle: Mono = 4
 AtlasLabel.enum TextStyle: Title = 1
 AtlasLabel.property textStyle: int
 AtlasLabel.type
+AtlasOnboarding.method back(): QVariant
+AtlasOnboarding.method next(): QVariant
+AtlasOnboarding.method skip(): QVariant
+AtlasOnboarding.property count: int [readonly]
+AtlasOnboarding.property currentIndex: int
+AtlasOnboarding.property pages: QQmlListProperty<QQuickItem> [readonly]
+AtlasOnboarding.property showSkip: bool
+AtlasOnboarding.property showSteps: bool
+AtlasOnboarding.signal finished()
+AtlasOnboarding.signal skipped(int index)
+AtlasOnboarding.type
 AtlasPage.method ensureVisible(QVariant item): QVariant
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property maxContentWidth: double [readonly]

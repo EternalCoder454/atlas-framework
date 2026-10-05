@@ -8,6 +8,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasDropZone (a dashed drop area with symbol, text, optional Browse
+  button, MIME and name filters, accepted URLs only) and AtlasOnboarding (a
+  setup scaffold: steps, one page at a time, Back, Skip and Next or Finish).
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
