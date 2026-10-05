@@ -84,6 +84,14 @@ AtlasCalendar.property today: QDateTime
 AtlasCalendar.property year: int
 AtlasCalendar.signal activated(QDateTime date)
 AtlasCalendar.type
+AtlasCard.property clickable: bool
+AtlasCard.property content: QQmlListProperty<QObject> [readonly]
+AtlasCard.property footer: QQmlListProperty<QObject> [readonly]
+AtlasCard.property headerTrailing: QQmlListProperty<QObject> [readonly]
+AtlasCard.property subtitle: QString
+AtlasCard.property title: QString
+AtlasCard.signal clicked()
+AtlasCard.type
 AtlasCheckBox.type
 AtlasChip.property closable: bool
 AtlasChip.property showsCheck: bool [readonly]
@@ -133,6 +141,14 @@ AtlasDropZone.signal browseRequested()
 AtlasDropZone.signal dropped(QList<QUrl> urls)
 AtlasDropZone.type
 AtlasEmailValidator.type
+AtlasDialog.property content: QQmlListProperty<QObject> [readonly]
+AtlasDialog.property footerContent: QQmlListProperty<QObject> [readonly]
+AtlasDialog.property headerTrailing: QQmlListProperty<QObject> [readonly]
+AtlasDialog.property preferredWidth: double
+AtlasDialog.property showBack: bool
+AtlasDialog.property showClose: bool
+AtlasDialog.signal backRequested()
+AtlasDialog.type
 AtlasEmptyState.property actionSymbol: int
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
@@ -161,6 +177,13 @@ AtlasFloatingToolbar.type
 AtlasFlowLayout.property rowSpacing: double
 AtlasFlowLayout.property spacing: double
 AtlasFlowLayout.type
+AtlasExpandableSection.property content: QQmlListProperty<QObject> [readonly]
+AtlasExpandableSection.property expanded: bool
+AtlasExpandableSection.property subtitle: QString
+AtlasExpandableSection.property symbol: int
+AtlasExpandableSection.property title: QString
+AtlasExpandableSection.signal toggled(bool expanded)
+AtlasExpandableSection.type
 AtlasFocusRing.property gap: double
 AtlasFocusRing.property shown: bool
 AtlasFocusRing.type
@@ -247,6 +270,11 @@ AtlasPlaceholder.property animated: bool
 AtlasPlaceholder.property lineHeight: double
 AtlasPlaceholder.property lines: int
 AtlasPlaceholder.type
+AtlasPopover.property above: bool [readonly]
+AtlasPopover.property content: QQmlListProperty<QObject> [readonly]
+AtlasPopover.property showArrow: bool
+AtlasPopover.property target: QQuickItem*
+AtlasPopover.type
 AtlasProgressBar.property indeterminate: bool
 AtlasProgressBar.property status: QString
 AtlasProgressBar.property text: QString
@@ -258,6 +286,7 @@ AtlasScreenshotCarousel.property count: int [readonly]
 AtlasScreenshotCarousel.property currentIndex: int
 AtlasScreenshotCarousel.property sources: QVariant
 AtlasScreenshotCarousel.type
+AtlasScrollBar.type
 AtlasSearchResults.method activateCurrent(): QVariant
 AtlasSearchResults.method handleKey(QVariant event): QVariant
 AtlasSearchResults.method moveCurrent(QVariant delta): QVariant
