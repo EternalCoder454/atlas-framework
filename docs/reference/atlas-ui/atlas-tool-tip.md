@@ -7,7 +7,7 @@ since: "1.3.0"
 
 AtlasToolTip is the tool tip for Atlas apps. Declare it inside the item it describes, set `text`, and bind `shown` to the hover state of its parent. Bind it to the keyboard focus too, so keyboard users get the hint.
 
-AtlasToolTip is a Qt Quick Templates `ToolTip` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-tooltip.html)); its inherited properties (`text`, `delay`, `timeout`) work as usual. It opens after the hover delay, closes at once when `shown` ends and goes by itself after a while.
+AtlasToolTip is a Qt Quick Templates `ToolTip` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-tooltip.html)); its inherited properties (`text`, `delay`, `timeout`) work as usual. It opens after the hover delay, closes at once when `shown` ends and goes by itself after a while. It sits above its item, or below it when there is no room above. With no `text` it draws nothing and `shown` does not open it.
 
 ## Example
 

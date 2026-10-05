@@ -48,7 +48,7 @@ FocusScope {
     // The row itself has keyboard focus, not an item inside it (activeFocus is
     // also true while a trailing control has it).
     readonly property bool _ownFocus: Window.window !== null && Window.window.activeFocusItem === root
-    readonly property bool _canActivate: clickable && !busy
+    readonly property bool _canActivate: clickable && !busy && enabled
     readonly property bool _hasLeading: leadingRow.children.length > 0
     readonly property bool _hasContent: contentRow.children.length > 0
     readonly property bool mirrored: LayoutMirroring.enabled

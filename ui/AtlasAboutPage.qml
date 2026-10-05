@@ -163,7 +163,7 @@ AtlasPage {
 
     Section {
         title: qsTr("Links")
-        visible: page._customLinks || AtlasApp.sourceUrl.length > 0
+        visible: page._customLinks || AtlasApp.sourceUrl.length > 0 || AtlasApp.issuesUrl.length > 0
         SectionRow {
             title: qsTr("Source code")
             chevron: true

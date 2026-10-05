@@ -117,7 +117,8 @@ T.Control {
             const at = priv.focused;
             const title = at === -1 ? control.hiddenText : (control.segments[at]?.title ?? "");
             if (title.length > 0) {
-                Accessible.announce(title);
+                // On the control (an Item): a QtObject has no accessible to announce from.
+                control.Accessible.announce(title);
             }
         }
         function press(stop) {
@@ -205,6 +206,7 @@ T.Control {
 
                     T.AbstractButton {
                         id: button
+                        objectName: "segmentButton"
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(implicitWidth, seg.implicitWidth - (seg.last ? 0 : priv.chevronWidth))
@@ -263,9 +265,12 @@ T.Control {
                             }
                         }
                     }
+                    // Anchored, not placed by x, so it follows the button when mirrored.
                     Symbol {
+                        objectName: "segmentChevron"
                         visible: !seg.last
-                        x: button.width + Math.round((priv.chevronWidth - width) / 2)
+                        anchors.left: button.right
+                        anchors.leftMargin: Math.round((priv.chevronWidth - width) / 2)
                         anchors.verticalCenter: parent.verticalCenter
                         icon: control.mirrored ? Symbols.ChevronLeft : Symbols.ChevronRight
                         size: Kirigami.Units.iconSizes.smallMedium
@@ -275,7 +280,8 @@ T.Control {
                     Loader {
                         id: moreSlot
                         active: seg.index === 0 && priv.collapsed
-                        x: seg.implicitWidth
+                        anchors.left: parent.left
+                        anchors.leftMargin: seg.implicitWidth
                         anchors.verticalCenter: parent.verticalCenter
                         sourceComponent: Item {
                             width: priv.moreWidth
@@ -283,6 +289,7 @@ T.Control {
                             Component.onCompleted: priv.moreItem = more
                             T.AbstractButton {
                                 id: more
+                                anchors.left: parent.left
                                 width: priv.moreWidth - priv.chevronWidth
                                 height: parent.height
                                 hoverEnabled: true
@@ -317,7 +324,8 @@ T.Control {
                                 }
                             }
                             Symbol {
-                                x: more.width + Math.round((priv.chevronWidth - width) / 2)
+                                anchors.left: more.right
+                                anchors.leftMargin: Math.round((priv.chevronWidth - width) / 2)
                                 anchors.verticalCenter: parent.verticalCenter
                                 icon: control.mirrored ? Symbols.ChevronLeft : Symbols.ChevronRight
                                 size: Kirigami.Units.iconSizes.smallMedium

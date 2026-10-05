@@ -35,8 +35,10 @@ T.Menu {
         readonly property real windowHeight: Window.window ? Window.window.height : Number.POSITIVE_INFINITY
         implicitWidth: {
             let w = 0;
-            for (let i = 0; i < count; ++i) {
-                const item = itemAtIndex(i);
+            // The menu's own items, not the list's delegates: the list makes
+            // only the rows in view, so a long label further down would elide.
+            for (let i = 0; i < control.count; ++i) {
+                const item = control.itemAt(i);
                 if (item) {
                     w = Math.max(w, item.implicitWidth);
                 }

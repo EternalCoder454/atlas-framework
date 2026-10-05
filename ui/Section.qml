@@ -60,8 +60,17 @@ ColumnLayout {
         text: root.title
         onClicked: root.foldRequested(!root.folded)
         // A button takes Space only; a fold header also takes Return and Enter.
-        Keys.onReturnPressed: root.foldRequested(!root.folded)
-        Keys.onEnterPressed: root.foldRequested(!root.folded)
+        // A held key folds once, not on every repeat.
+        Keys.onReturnPressed: event => {
+            if (!event.isAutoRepeat) {
+                root.foldRequested(!root.folded);
+            }
+        }
+        Keys.onEnterPressed: event => {
+            if (!event.isAutoRepeat) {
+                root.foldRequested(!root.folded);
+            }
+        }
         Accessible.role: Accessible.Button
         Accessible.name: root.title
         // As SidebarGroup's header says it: QML's Accessible has no

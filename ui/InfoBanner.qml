@@ -139,7 +139,7 @@ Item {
                         id: firstButton
                         SecondaryButton {
                             text: slot.modelData.text
-                            icon.name: slot.modelData.icon.name
+                            icon.name: slot.modelData.icon?.name ?? ""
                             enabled: slot.modelData.enabled
                             onClicked: slot.modelData.trigger()
                         }
@@ -164,9 +164,10 @@ Item {
                 focusPolicy: Qt.TabFocus // a click must not take the editor's focus
                 Accessible.role: Accessible.Button
                 Accessible.name: control.closeName
-                QQC2.ToolTip.text: control.closeName
-                QQC2.ToolTip.visible: closeButton.hovered || closeButton.visualFocus
-                QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                AtlasToolTip {
+                    text: control.closeName
+                    shown: closeButton.hovered || closeButton.visualFocus
+                }
                 onClicked: {
                     priv.dismissed = true;
                     control.closed();

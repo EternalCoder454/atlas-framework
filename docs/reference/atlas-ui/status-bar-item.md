@@ -25,4 +25,4 @@ StatusBarItem { text: qsTr("UTF-8"); clickable: true; menu: encodingMenu }
 | `toolTip` | `string` | `""` | A tooltip shown on hover; also the accessible description. |
 
 > [!NOTE]
-> The cell never takes keyboard focus. The text elides when the cell is narrower than the text.
+> A clickable cell is reached with Tab (with a focus ring; Space and Return press it), and a click does not take the focus. A cell that is not clickable never takes it. The text elides when the cell is narrower than the text.

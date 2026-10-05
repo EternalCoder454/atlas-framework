@@ -485,33 +485,33 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 
 #### Dialogs, popups, menus and the window
 
-- [ ] ContextMenuItem shows "&Save" for an action's mnemonic text (also its
+- [x] ContextMenuItem shows "&Save" for an action's mnemonic text (also its
   accessible name).
-- [ ] AtlasNavigationStack: the RTL Back arrow flips around the stack's
+- [x] AtlasNavigationStack: the RTL Back arrow flips around the stack's
   middle, not the button's (verify).
-- [ ] AtlasBreadcrumb: `Accessible.announce` on a QtObject (verify); the
+- [x] AtlasBreadcrumb: `Accessible.announce` on a QtObject (verify); the
   chevron and "…" use absolute x in RTL (verify).
-- [ ] ContextMenu's width doesn't follow its items' widths, so long labels
+- [x] ContextMenu's width doesn't follow its items' widths, so long labels
   elide (verify).
-- [ ] AtlasPopover isn't re-placed on a window resize or a target move, and
+- [x] AtlasPopover isn't re-placed on a window resize or a target move, and
   opens at 0,0 with no target.
-- [ ] AtlasDialog's body doesn't scroll to the focused field.
-- [ ] FindBar: Enter in the replace field with no matches.
-- [ ] Low: high contrast leaves selection, hover and pressed faint;
-  StatusBarItem not keyboard reachable; SectionRow's press action when
-  disabled; AtlasEdgeGlow's gradient in RTL (verify); AtlasShortcutsDialog's
-  section "constructor"; AtlasToolTip with empty text, and no flip below;
-  AtlasAppMenu's native items (shortcut, icon, checked binding) and teardown;
-  AtlasToolbar's text-only actions; AtlasWindowButtons draws an unknown name
-  as Maximize; AtlasWindow overrides app `flags`; AtlasHeaderBar's fixed 32 px
-  at 200 % text and Maximize on a fixed-size window; AtlasAboutPage's links
-  section with only `issuesUrl`; Section's Return auto-repeat; stock
-  QQC2.ToolTip in ToolbarButton, StatusBarItem, TabBar, InfoBanner and stock
-  ScrollBar in ConfirmDialog, AtlasShortcutsDialog; InfoBanner reads
-  `icon.name` of a non-Action; ConfirmDialog's accessible text; negative
-  dialog width in a tiny window; Toast `show(undefined)`; AtlasPage's scroll
-  bar in RTL; AtlasPortal stale notification ids after a server restart;
-  AtlasWindowChrome reads kwinrc on the GUI thread.
+- [x] AtlasDialog's body doesn't scroll to the focused field.
+- [x] FindBar: Enter in the replace field with no matches.
+- [ ] Low, what is left: high contrast leaves selection, hover and pressed
+  faint (the tokens are AtlasStyle's: deferred to its owner); deferred while
+  other branches own the files: AtlasEdgeGlow's gradient in RTL (verify),
+  AtlasShortcutsDialog's section "constructor" and its stock ScrollBar,
+  AtlasAppMenu's native items (shortcut, icon, checked binding) and teardown,
+  AtlasWindowButtons draws an unknown name as Maximize, AtlasWindow overrides
+  app `flags`, AtlasHeaderBar's fixed 32 px at 200 % text and Maximize on a
+  fixed-size window, AtlasPage's scroll bar in RTL; AtlasWindowChrome reads
+  kwinrc on the GUI thread (a small one-time read, left: needs a C++ build to
+  move to a worker). Done in 1.5.0: StatusBarItem keyboard, SectionRow press
+  when disabled, AtlasToolTip (empty text, flip below), AtlasToolbar's
+  text-only actions, AtlasAboutPage's links, Section's Return repeat, stock
+  tooltips (ToolbarButton, StatusBarItem, TabBar, InfoBanner) and ConfirmDialog's
+  ScrollBar, InfoBanner's `icon`, ConfirmDialog's accessible text, negative
+  dialog width, Toast `show(undefined)`, AtlasPortal stale ids.
 
 #### Crates (study 5)
 

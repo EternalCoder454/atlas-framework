@@ -250,4 +250,340 @@ Item {
             compare(distinctAlongFill(p), 1);
         }
     }
+
+    // 1.5.0 study B2: dialogs, popups, menus.
+    Component {
+        id: menuItemComp
+        ContextMenuItem {}
+    }
+    Component {
+        id: menuComp
+        ContextMenu {}
+    }
+    Component {
+        id: tipHostComp
+        Item {
+            width: 60
+            height: 20
+        }
+    }
+    Component {
+        id: tipComp
+        AtlasToolTip {}
+    }
+    Component {
+        id: statusItemComp
+        StatusBarItem {
+            text: "Ln 1"
+            property int count: 0
+            onClicked: count++
+        }
+    }
+    Component {
+        id: sectionRowComp
+        SectionRow {
+            title: "Row"
+            property int count: 0
+            onClicked: count++
+        }
+    }
+    Component {
+        id: toolbarComp
+        AtlasToolbar {
+            width: 300
+        }
+    }
+    Component {
+        id: plainActionComp
+        QQC2.Action {}
+    }
+    Component {
+        id: tallDialogComp
+        AtlasDialog {
+            property alias last: lastField
+            title: "Tall"
+            AtlasTextField { Layout.fillWidth: true }
+            Item { Layout.preferredHeight: 600 }
+            AtlasTextField { id: lastField; Layout.fillWidth: true }
+        }
+    }
+    Component {
+        id: confirmComp
+        ConfirmDialog {
+            title: "T"
+            text: "Delete the file?"
+        }
+    }
+    Component {
+        id: bannerComp
+        InfoBanner {
+            width: 300
+            text: "Hi"
+        }
+    }
+    Component {
+        id: toastComp
+        Toast {}
+    }
+
+    TestCase {
+        name: "PopupsMenus"
+        when: windowShown
+
+        function test_context_menu_item_hides_the_mnemonic() {
+            const i = createTemporaryObject(menuItemComp, root, {
+                text: "&Save"
+            });
+            compare(i.Accessible.name, "Save");
+            i.text = "Fish && &Chips";
+            compare(i.Accessible.name, "Fish & Chips");
+        }
+
+        function test_context_menu_width_counts_rows_out_of_view() {
+            const m = createTemporaryObject(menuComp, root);
+            let last = null;
+            for (let n = 0; n < 40; ++n) {
+                last = createTemporaryObject(menuItemComp, root, {
+                    text: n === 39 ? "x".repeat(300) : "Row " + n
+                });
+                m.addItem(last);
+            }
+            verify(last.implicitWidth > 400);
+            verify(m.implicitWidth >= last.implicitWidth, "the menu is as wide as its widest row");
+        }
+
+        function test_tooltip_with_no_text_never_opens() {
+            const host = createTemporaryObject(tipHostComp, root, {
+                y: 100
+            });
+            const tip = createTemporaryObject(tipComp, host, {
+                text: ""
+            });
+            tip.shown = true;
+            wait(tip.delay + 200);
+            verify(!tip.visible, "nothing to say, nothing shown");
+            tip.text = "Hint";
+            tip.shown = false;
+            tip.shown = true;
+            tryVerify(() => tip.visible, tip.delay + 2000);
+        }
+
+        function test_tooltip_goes_below_when_there_is_no_room_above() {
+            const host = createTemporaryObject(tipHostComp, root, {
+                y: 0
+            });
+            const tip = createTemporaryObject(tipComp, host, {
+                text: "Hint"
+            });
+            tip.open();
+            tryVerify(() => tip.visible);
+            verify(tip.y >= host.height, "below the item: " + tip.y);
+            tip.close();
+            host.y = 150;
+            tip.open();
+            tryVerify(() => tip.visible);
+            verify(tip.y < 0, "above the item when it fits: " + tip.y);
+            tip.close();
+        }
+
+        function test_status_item_is_a_tab_stop_and_takes_return() {
+            const c = createTemporaryObject(statusItemComp, root, {
+                clickable: true
+            });
+            verify(c.focusPolicy & Qt.TabFocus, "a clickable cell is reached with Tab");
+            verify(!(c.focusPolicy & Qt.ClickFocus), "a click does not take the editor's focus");
+            c.forceActiveFocus(Qt.TabFocusReason);
+            keyClick(Qt.Key_Return);
+            compare(c.count, 1);
+            const t = createTemporaryObject(statusItemComp, root);
+            compare(t.focusPolicy, Qt.NoFocus);
+        }
+
+        function test_disabled_row_ignores_the_accessible_press() {
+            const r = createTemporaryObject(sectionRowComp, root, {
+                clickable: true,
+                enabled: false
+            });
+            a11y.press(r);
+            compare(r.count, 0);
+            r.enabled = true;
+            a11y.press(r);
+            compare(r.count, 1);
+        }
+
+        function test_toolbar_text_only_action_draws_its_first_letter() {
+            const a = createTemporaryObject(plainActionComp, root, {
+                text: "&Open"
+            });
+            const bar = createTemporaryObject(toolbarComp, root, {
+                actions: [a]
+            });
+            verify(bar);
+            wait(50);
+            const found = [];
+            const walk = item => {
+                for (const c of item.children) {
+                    if (c._letterFallback === true) {
+                        found.push(c);
+                    }
+                    walk(c);
+                }
+            };
+            walk(bar);
+            verify(found.length > 0, "the action's button is made");
+            compare(found[0]._label, "O");
+            compare(found[0].Accessible.name, "Open", "the spoken name stays whole");
+        }
+
+        function test_dialog_scrolls_to_the_field_that_takes_the_focus() {
+            const d = createTemporaryObject(tallDialogComp, root);
+            d.open();
+            tryVerify(() => d.opened);
+            const scroller = d.contentItem.children[0];
+            tryVerify(() => scroller.contentHeight > scroller.height, 2000, "the body is taller than the dialog");
+            compare(scroller.contentY, 0);
+            d.last.forceActiveFocus(Qt.TabFocusReason);
+            tryVerify(() => scroller.contentY > 0, 2000, "the last field is brought into view");
+            d.close();
+        }
+
+        function test_dialogs_have_no_negative_width() {
+            const holder = createTemporaryObject(tipHostComp, root, {
+                width: 10,
+                height: 10
+            });
+            const c = createTemporaryObject(confirmComp, root);
+            c.parent = holder;
+            verify(c.width >= 0, "ConfirmDialog width " + c.width);
+            const d = createTemporaryObject(tallDialogComp, root);
+            d.parent = holder;
+            verify(d.width >= 0, "AtlasDialog width " + d.width);
+            verify(d.height >= 0, "AtlasDialog height " + d.height);
+        }
+
+        function test_confirm_dialog_exposes_its_text() {
+            const c = createTemporaryObject(confirmComp, root);
+            compare(c.contentItem.Accessible.description, "Delete the file?");
+        }
+
+        function test_banner_action_without_an_icon_property() {
+            const plain = createTemporaryObject(plainObjectComp, root);
+            const b = createTemporaryObject(bannerComp, root, {
+                actions: [plain]
+            });
+            verify(b, "a banner with an action that has no icon still loads");
+        }
+
+        function test_toast_show_with_nothing_shows_nothing() {
+            const t = createTemporaryObject(toastComp, root);
+            t.show(undefined);
+            verify(!t._showing);
+            t.show(null);
+            verify(!t._showing);
+            compare(t.text, "");
+            t.show("Saved");
+            verify(t._showing);
+            compare(t.text, "Saved");
+        }
+    }
+    Component {
+        id: plainObjectComp
+        QtObject {
+            property string text: "Retry"
+            function trigger() {}
+        }
+    }
+
+    Component {
+        id: rtlStackComp
+        Item {
+            LayoutMirroring.enabled: true
+            LayoutMirroring.childrenInherit: true
+            width: 400
+            height: 200
+            property alias stack: navStack
+            AtlasNavigationStack {
+                id: navStack
+                anchors.fill: parent
+                initialItem: Item {
+                    property string title: "First"
+                }
+            }
+        }
+    }
+    Component {
+        id: rtlCrumbComp
+        Item {
+            LayoutMirroring.enabled: true
+            LayoutMirroring.childrenInherit: true
+            width: 500
+            height: 40
+            property alias crumb: bc
+            AtlasBreadcrumb {
+                id: bc
+                width: 500
+                segments: [{ title: "Home" }, { title: "Documents" }, { title: "Projects" }]
+            }
+        }
+    }
+    Component {
+        id: findBarComp
+        FindBar {
+            width: 600
+            opened: true
+            replaceVisible: true
+            property int replaced: 0
+            onReplaceOne: replaced++
+        }
+    }
+
+    function findAll(item, name, out) {
+        for (const c of item.children) {
+            if (c.objectName === name) {
+                out.push(c);
+            }
+            findAll(c, name, out);
+        }
+        return out;
+    }
+
+    TestCase {
+        name: "PopupsMenusRtl"
+        when: windowShown
+
+        function test_back_arrow_flips_around_the_button() {
+            const w = createTemporaryObject(rtlStackComp, root);
+            const btn = findAll(w, "backButton", [])[0];
+            verify(btn);
+            const left = btn.parent.mapToItem(w, btn.x, 0).x;
+            const a = btn.mapToItem(w, 0, 0).x;
+            const b = btn.mapToItem(w, btn.width, 0).x;
+            verify(Math.min(a, b) >= left - 1 && Math.max(a, b) <= left + btn.width + 1, "the button stays where it is: " + a + ", " + b + " in " + left + ".." + (left + btn.width));
+        }
+
+        function test_breadcrumb_chevron_sits_beside_its_button_in_rtl() {
+            const w = createTemporaryObject(rtlCrumbComp, root);
+            const crumb = w.crumb;
+            tryVerify(() => findAll(crumb, "segmentChevron", []).length > 0);
+            const btn = findAll(crumb, "segmentButton", [])[0];
+            const chev = findAll(crumb, "segmentChevron", [])[0];
+            const bx = btn.mapToItem(crumb, 0, 0).x;
+            const cx = chev.mapToItem(crumb, 0, 0).x;
+            verify(cx + chev.width <= bx + 1 || cx >= bx + btn.width - 1, "the chevron does not sit on the button: button " + bx + "+" + btn.width + ", chevron " + cx);
+            verify(cx + chev.width <= bx + 1, "in right-to-left it is on the left of the button");
+        }
+
+        function test_enter_in_the_replace_field_with_no_match_replaces_nothing() {
+            const f = createTemporaryObject(findBarComp, root);
+            tryCompare(f, "height", f.fullHeight);
+            const field = findAll(f, "", []).find(c => c.hasOwnProperty("placeholderText") && c.placeholderText === "Replace");
+            verify(field);
+            field.forceActiveFocus();
+            keyClick(Qt.Key_Return);
+            compare(f.replaced, 0, "no match: nothing to replace");
+            f.matchCount = 2;
+            keyClick(Qt.Key_Return);
+            compare(f.replaced, 1);
+        }
+    }
 }

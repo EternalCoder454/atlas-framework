@@ -375,6 +375,7 @@ Item {
                             anchors.top: parent.top
                             anchors.topMargin: root._vertical ? entry._lead : 0
                             action: entry.action
+                            _letterFallback: true
                             focusable: root.focusable
                             focusOnClick: root.focusOnClick
                             _beside: root._vertical

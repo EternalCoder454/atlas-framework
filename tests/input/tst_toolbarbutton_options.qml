@@ -67,7 +67,8 @@ Item {
                 shortcutText: "Ctrl+B",
                 toolTipText: "Make the text bold"
             });
-            compare(b.QQC2.ToolTip.text, "Make the text bold (Ctrl+B)");
+            b._ensureTip();
+            compare(b._tip.text, "Make the text bold (Ctrl+B)");
             compare(b.Accessible.name, "Bold");
         }
 
@@ -89,8 +90,12 @@ Item {
                 tipSide: ToolbarButton.End
             });
             verify(b._tip !== null);
-            b.tipSide = ToolbarButton.Below;
-            verify(b._tip === null);
+            const c = createTemporaryObject(buttonComp, root, {
+                text: "Bold"
+            });
+            verify(c._tip === null, "a tip below is made when first wanted");
+            mouseMove(c, c.width / 2, c.height / 2);
+            tryVerify(() => c._tip !== null);
         }
 
         function test_plain_action_triggers() {

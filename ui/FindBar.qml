@@ -11,7 +11,7 @@ import org.kde.kirigami as Kirigami
 // for a regular expression that does not compile.
 //
 // Enter finds the next match, Shift+Enter the previous one, Escape closes it
-// and Enter in the replace field replaces. Open it with open(withReplace).
+// and Enter in the replace field replaces (when there is a match). Open it with open(withReplace).
 Item {
     id: control
 
@@ -352,8 +352,9 @@ Item {
                         control._replaceEditing = true;
                         Qt.callLater(control._release);
                     }
-                    Keys.onReturnPressed: control.replaceOne()
-                    Keys.onEnterPressed: control.replaceOne()
+                    // As the Replace button: nothing to replace with no match.
+                    Keys.onReturnPressed: if (control.matchCount > 0) control.replaceOne()
+                    Keys.onEnterPressed: if (control.matchCount > 0) control.replaceOne()
                     Keys.onEscapePressed: control.close()
                 }
                 SecondaryButton {

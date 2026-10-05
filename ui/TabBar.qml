@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls as QQC2
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
@@ -351,9 +350,10 @@ Item {
                     }
                 }
 
-                QQC2.ToolTip.visible: tab.hovered && tab.toolTipText.length > 0 && !dragHandler.active && !closeButton.hovered
-                QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
-                QQC2.ToolTip.text: tab.toolTipText
+                AtlasToolTip {
+                    text: tab.toolTipText
+                    shown: tab.hovered && tab.toolTipText.length > 0 && !dragHandler.active && !closeButton.hovered
+                }
 
                 HoverHandler {
                     id: hoverTracker

@@ -71,9 +71,9 @@ QQC2.Popup {
     modal: true
     focus: true
     closePolicy: QQC2.Popup.CloseOnEscape | QQC2.Popup.CloseOnPressOutside
-    width: Math.min(parent ? parent.width - Kirigami.Units.gridUnit * 2 : 0, Kirigami.Units.gridUnit * 25)
+    width: Math.min(parent ? Math.max(0, parent.width - Kirigami.Units.gridUnit * 2) : 0, Kirigami.Units.gridUnit * 25)
     padding: Math.round(Kirigami.Units.gridUnit * 1.3)
-    height: Math.min(implicitHeight, parent ? parent.height - Kirigami.Units.gridUnit * 2 : implicitHeight)
+    height: Math.min(implicitHeight, parent ? Math.max(0, parent.height - Kirigami.Units.gridUnit * 2) : implicitHeight)
     onOpened: internals.button(dialog.focusReject && dialog.showReject ? "reject" : internals.defaultName).forceActiveFocus()
 
     enter: Transition {
@@ -108,6 +108,8 @@ QQC2.Popup {
     contentItem: ColumnLayout {
         Accessible.role: Accessible.Dialog
         Accessible.name: dialog.title
+        // The question, so a screen reader reads it with the title.
+        Accessible.description: dialog.text
         spacing: AtlasStyle.spacingLarge
         // From a field in the body, Return reaches here; buttons take it themselves.
         Keys.onReturnPressed: event => {
@@ -143,7 +145,7 @@ QQC2.Popup {
             contentHeight: bodyContent.implicitHeight
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
+            QQC2.ScrollBar.vertical: AtlasScrollBar {}
             ColumnLayout {
                 id: bodyContent
                 width: scroller.width

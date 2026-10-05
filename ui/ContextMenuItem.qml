@@ -56,7 +56,10 @@ T.MenuItem {
     icon.width: Kirigami.Units.iconSizes.small
     icon.height: Kirigami.Units.iconSizes.small
 
-    Accessible.name: text
+    // The text without an action's "&" mnemonic marker ("&&" is one "&").
+    readonly property string _plainText: control.text.replace(/&(&|.)/g, "$1")
+
+    Accessible.name: control._plainText
     Accessible.description: _effectiveShortcut
     Accessible.checkable: checkable
     Accessible.checked: checked
@@ -103,7 +106,7 @@ T.MenuItem {
         }
         Text {
             Layout.fillWidth: true
-            text: control.text
+            text: control._plainText
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody
             color: control.tint

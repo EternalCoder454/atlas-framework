@@ -13,7 +13,7 @@ A bar can be `Qt.Vertical`: buttons run top to bottom, `leading` is at the top, 
 
 With `overflow: AtlasToolbar.Scroll` buttons that do not fit are not moved to a menu: the strip shows whole buttons, one button per step, with a chevron at each end (shown only while there is more in that direction; its room is kept while the strip scrolls). Dividers are left out while it scrolls. The mouse wheel steps one button per notch, with partial turns of a touchpad added up. The chevrons ("Scroll back", "Scroll forward") are mouse targets and not Tab stops: Tab moves through the buttons and the strip follows the focus, so a button out of view is still reachable. The step is instant under reduced motion. There is no "more" menu in this mode.
 
-An action with a `menu` or `popover` ([AtlasAction](atlas-action.md)) is a button that opens it. In the "more" menu a `menu` is a submenu with the same title (set from the action's text when empty) and symbol, and a `popover` is an item that opens the popover from the "more" button. While such a menu or popover is open, [AtlasFloatingToolbar](atlas-floating-toolbar.md) counts the bar as active.
+An action with no symbol and no icon draws the first letter of its text (its tooltip and spoken name stay the whole text). An action with a `menu` or `popover` ([AtlasAction](atlas-action.md)) is a button that opens it. In the "more" menu a `menu` is a submenu with the same title (set from the action's text when empty) and symbol, and a `popover` is an item that opens the popover from the "more" button. While such a menu or popover is open, [AtlasFloatingToolbar](atlas-floating-toolbar.md) counts the bar as active.
 
 ## Example
 

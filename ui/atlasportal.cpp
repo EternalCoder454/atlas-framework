@@ -9,6 +9,7 @@
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
+#include <QDBusServiceWatcher>
 #include <QDesktopServices>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -327,6 +328,15 @@ void AtlasPortal::ensureConnected()
     // program cannot invent an action.
     bus.connect(QString::fromLatin1(kService), QString::fromLatin1(kPath), QString::fromLatin1(kInterface), QStringLiteral("ActionInvoked"), this, SLOT(onServerAction(uint, QString)));
     bus.connect(QString::fromLatin1(kService), QString::fromLatin1(kPath), QString::fromLatin1(kInterface), QStringLiteral("NotificationClosed"), this, SLOT(onServerClosed(uint, uint)));
+    // A restarted server numbers from the start again: the old numbers would
+    // match other notifications, so forget them when the server's owner goes.
+    auto *owner = new QDBusServiceWatcher(QString::fromLatin1(kService), bus, QDBusServiceWatcher::WatchForOwnerChange, this);
+    connect(owner, &QDBusServiceWatcher::serviceOwnerChanged, this, [this](const QString &, const QString &oldOwner, const QString &) {
+        if (!oldOwner.isEmpty()) {
+            m_byServerId.clear();
+            m_order.clear();
+        }
+    });
 }
 
 QString AtlasPortal::notify(const QString &title, const QString &body, const QVariantList &actions, const QVariantMap &options)
