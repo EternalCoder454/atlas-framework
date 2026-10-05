@@ -82,7 +82,7 @@ if [ "$variant" = contrast ]; then
     # Start the portal stand-in inside the bus, wait until it answers, run the
     # test, then stop it. $1 is the portal, $2 the ready file; the rest is the
     # test command.
-    dbus-run-session -- bash -c '
+    dbus-run-session --config-file="$here/../private-bus.conf" -- bash -c '
         portal=$1 ready=$2
         shift 2
         "$portal" "$ready" &
@@ -98,6 +98,6 @@ if [ "$variant" = contrast ]; then
     ' bash "$ATLAS_FAKE_PORTAL" "$tmp/portal-ready" \
         xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
 else
-    dbus-run-session -- xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
+    dbus-run-session --config-file="$here/../private-bus.conf" -- xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
 fi
 exit "$rc"

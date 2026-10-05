@@ -1,20 +1,7 @@
 // AtlasGlobalShortcut: a system-wide shortcut through the desktop portal's
-// GlobalShortcuts interface (docs/reference/atlas-ui/atlas-global-shortcut.md).
-//
-//   AtlasGlobalShortcut {
-//       name: "show-window"
-//       description: qsTr("Show the window")
-//       preferredTrigger: "Meta+Shift+M"
-//       onActivated: window.raise()
-//   }
-//
-// One portal session per app, made when the first shortcut is ready. Every
-// shortcut declared in the same turn of the event loop goes into one
-// BindShortcuts call (KDE activates them only then). Every D-Bus call is
-// asynchronous with a timeout, a response that never comes is given up on, and
-// everything that comes back is checked: the shortcut ids must be ones this app
-// registered and match [A-Za-z0-9_.-]+, and every variant has its type checked.
-// Without a portal or a session bus the type stays unavailable and says why.
+// GlobalShortcuts interface. Behaviour and API: docs/reference/atlas-ui/atlas-global-shortcut.md.
+// GlobalShortcutSession (below) is the implementation: one portal session per
+// app, one bind call per event-loop turn, every reply checked.
 #pragma once
 
 #include <QDBusArgument>
@@ -23,6 +10,7 @@
 #include <QHash>
 #include <QObject>
 #include <QPointer>
+#include <QSet>
 #include <QQmlParserStatus>
 #include <QTimer>
 #include <QVariantMap>
@@ -57,7 +45,6 @@ public:
     bool available() const { return m_available; }
     QString errorString() const { return m_errorString; }
 
-    // [A-Za-z0-9_.-]+, at most 64 characters.
     static bool validName(const QString &name);
 
     void classBegin() override {}
@@ -120,6 +107,11 @@ public:
     // the default.
     static void setShared(GlobalShortcutSession *session);
 
+    // Tests: the first retry after a failure waits this long (default 2000).
+    void setRetryBaseMs(int ms) { m_retryBaseMs = ms; }
+    // Closes the session and stops all work; the app is quitting.
+    void shutdown();
+
     void sync(AtlasGlobalShortcut *item);
     void remove(AtlasGlobalShortcut *item);
 
@@ -146,6 +138,9 @@ private:
     void sendClose(const QString &path);
     void dropSession(bool close);
     QList<QPointer<AtlasGlobalShortcut>> snapshot() const;
+    void scheduleRetry();
+    void retryRefused();
+    QString expectedSession() const;
 
     QDBusConnection m_bus;
     QString m_service;
@@ -157,6 +152,14 @@ private:
     QString m_path;
     QString m_actualPath;
     QTimer m_timeout;
+    QTimer m_retry;
+    int m_failures = 0;
+    int m_retryBaseMs = 2000;
+    bool m_shutdown = false;
+    // The names in the bind call in flight or last answered.
+    QSet<QString> m_sent;
+    // Items refused for a duplicate name: tried again when the name is free.
+    QList<QPointer<AtlasGlobalShortcut>> m_refused;
     bool m_scheduled = false;
     bool m_dirty = false;
     qulonglong m_counter = 0;

@@ -7,7 +7,7 @@ since: "1.5.0"
 
 AtlasGlobalShortcut asks the desktop (the xdg-desktop-portal GlobalShortcuts interface) for a shortcut that works in every window. The user can change the key in System Settings. It has no visuals.
 
-One portal session is made for the app, when the first shortcut is ready. Every shortcut declared in the same turn of the event loop goes into one `BindShortcuts` call (KDE activates a shortcut only then); one declared later is bound with another call on the same session. Every D-Bus call is asynchronous and has a timeout, so nothing blocks the interface. Without a session bus or portal the type stays unavailable, and `errorString` says why in plain words.
+One portal session is made for the app, when the first shortcut is ready. Every shortcut declared in the same turn of the event loop goes into one `BindShortcuts` call (KDE activates a shortcut only then); one declared later is bound with another call on the same session. Every D-Bus call is asynchronous and has a timeout, so nothing blocks the interface. Without a session bus or portal the type is unavailable, and `errorString` says why in plain words. It is not final: when the portal appears or restarts the shortcuts are bound again, and after a failed attempt (a timeout, a refusal, an unreadable answer) the session tries again by itself, after 2, 4, 8, 16 and 32 seconds, starting over after a success or when a shortcut is added or changed. A session the portal closes is made again at once.
 
 ## Example
 
@@ -23,7 +23,10 @@ AtlasGlobalShortcut {
 ```
 
 > [!NOTE]
-> `name` is the id the portal and the user's settings know the shortcut by, so keep it stable. It is letters, digits, `.`, `_` and `-`, at most 64 characters, and unique in the app; anything else leaves the shortcut unavailable, with a warning. Everything the portal sends back is checked: only the names this app declared are accepted, and every value must have the type the portal's specification gives.
+> `name` is the id the portal and the user's settings know the shortcut by, so keep it stable. It is letters, digits, `.`, `_` and `-`, at most 64 characters, and unique in the app; anything else leaves the shortcut unavailable, with a warning. A shortcut refused for a name already in use is tried again when that name is free. Everything the portal sends back is checked: only the names this app declared are accepted, and every value must have the type the portal's specification gives.
+
+> [!NOTE]
+> The portal has no way to unbind. Removing or renaming a shortcut stops this app from using it, but the desktop keeps the old entry in System Settings until the app's session ends.
 
 > [!WARNING]
 > `trigger` and `errorString` come from outside the app (the portal). Show them with `textFormat: Text.PlainText`, never as rich text. `activated()` carries no proof that a person pressed the key: a program that can talk to the portal may be the one that caused it, so an action that deletes or sends something should ask for confirmation first.

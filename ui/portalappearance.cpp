@@ -40,9 +40,17 @@ PortalAppearance::PortalAppearance(const QDBusConnection &bus, const QString &se
         return;
     }
     m_bus.connect(m_service, QString::fromLatin1(kPath), QString::fromLatin1(kSettings), QStringLiteral("SettingChanged"), this, SLOT(onSettingChanged(QDBusMessage)));
-    // A portal that starts later (or restarts) is read again.
-    m_watcher = new QDBusServiceWatcher(m_service, m_bus, QDBusServiceWatcher::WatchForRegistration, this);
-    connect(m_watcher, &QDBusServiceWatcher::serviceRegistered, this, [this] { readAll(); });
+    // A portal that starts later, restarts or is replaced is read again; one
+    // that goes away takes its values with it.
+    m_watcher = new QDBusServiceWatcher(m_service, m_bus, QDBusServiceWatcher::WatchForOwnerChange, this);
+    connect(m_watcher, &QDBusServiceWatcher::serviceOwnerChanged, this, [this](const QString &, const QString &oldOwner, const QString &newOwner) {
+        if (!oldOwner.isEmpty()) {
+            commit(Values());
+        }
+        if (!newOwner.isEmpty()) {
+            readAll();
+        }
+    });
     readAll();
 }
 
@@ -55,20 +63,37 @@ PortalAppearance *PortalAppearance::shared()
     return instance;
 }
 
+void PortalAppearance::commit(const Values &v)
+{
+    const bool same = v.highContrast == m_highContrast && v.reducedMotion == m_reducedMotion && v.accent == m_accent && v.accent.isValid() == m_accent.isValid();
+    m_highContrast = v.highContrast;
+    m_reducedMotion = v.reducedMotion;
+    m_accent = v.accent;
+    if (!same) {
+        Q_EMIT changed();
+    }
+}
+
 void PortalAppearance::readAll()
 {
     QDBusMessage call = QDBusMessage::createMethodCall(m_service, QString::fromLatin1(kPath), QString::fromLatin1(kSettings), QStringLiteral("ReadAll"));
     call << QStringList{QString::fromLatin1(kNamespace)};
+    const qulonglong gen = ++m_generation;
     auto *watcher = new QDBusPendingCallWatcher(m_bus.asyncCall(call, kCallTimeoutMs), this);
-    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *w) {
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, gen](QDBusPendingCallWatcher *w) {
         w->deleteLater();
+        if (gen != m_generation) {
+            return; // a newer read is on its way
+        }
         const QDBusMessage reply = w->reply();
         if (reply.type() != QDBusMessage::ReplyMessage) {
-            // No portal, or one without this interface: the defaults stay.
+            // No portal, or one without this interface: the defaults.
             qDebug("PortalAppearance: ReadAll: %s", qPrintable(PortalLog::text(reply.errorMessage(), 200)));
+            commit(Values());
             return;
         }
-        // a{sa{sv}}: namespace -> key -> value.
+        // a{sa{sv}}: namespace -> key -> value. Parsed into a local; nothing
+        // is kept unless the whole walk is clean.
         const QList<QVariant> args = reply.arguments();
         if (args.size() != 1 || !args.first().canConvert<QDBusArgument>()) {
             qWarning("PortalAppearance: ReadAll: an unexpected reply");
@@ -79,30 +104,35 @@ void PortalAppearance::readAll()
             qWarning("PortalAppearance: ReadAll: an unexpected reply");
             return;
         }
-        // A good reply is the whole truth: what it does not mention is back at
-        // its default. Compare with the old values at the end.
-        const bool oldContrast = m_highContrast;
-        const bool oldMotion = m_reducedMotion;
-        const QColor oldAccent = m_accent;
-        m_highContrast = false;
-        m_reducedMotion = false;
-        m_accent = QColor();
+        Values v;
         int entries = 0;
+        bool clean = true;
         arg.beginMap();
-        while (!arg.atEnd() && ++entries <= kMaxEntries) {
+        while (!arg.atEnd()) {
+            if (++entries > kMaxEntries) {
+                clean = false;
+                break;
+            }
             QString ns;
             arg.beginMapEntry();
             arg >> ns;
             if (ns == QLatin1String(kNamespace) && arg.currentType() == QDBusArgument::MapType) {
                 arg.beginMap();
                 int keys = 0;
-                while (!arg.atEnd() && ++keys <= kMaxEntries) {
+                while (!arg.atEnd()) {
+                    if (++keys > kMaxEntries) {
+                        clean = false;
+                        break;
+                    }
                     QString key;
                     QDBusVariant value;
                     arg.beginMapEntry();
                     arg >> key >> value;
                     arg.endMapEntry();
-                    apply(key, value.variant());
+                    apply(key, value.variant(), v);
+                }
+                if (!clean) {
+                    break;
                 }
                 arg.endMap();
             } else {
@@ -112,10 +142,12 @@ void PortalAppearance::readAll()
             }
             arg.endMapEntry();
         }
-        arg.endMap();
-        if (m_highContrast != oldContrast || m_reducedMotion != oldMotion || m_accent != oldAccent || m_accent.isValid() != oldAccent.isValid()) {
-            Q_EMIT this->changed();
+        if (!clean) {
+            qWarning("PortalAppearance: ReadAll: too many entries; the reply is not used");
+            return;
         }
+        arg.endMap();
+        commit(v);
     });
 }
 
@@ -130,30 +162,24 @@ void PortalAppearance::onSettingChanged(const QDBusMessage &message)
     if (args.at(0).toString() != QLatin1String(kNamespace)) {
         return;
     }
-    if (apply(args.at(1).toString(), args.at(2).value<QDBusVariant>().variant())) {
-        Q_EMIT changed();
-    }
+    Values v{m_highContrast, m_reducedMotion, m_accent};
+    apply(args.at(1).toString(), args.at(2).value<QDBusVariant>().variant(), v);
+    commit(v);
 }
 
-// Returns whether a cached value changed.
-bool PortalAppearance::apply(const QString &key, const QVariant &raw)
+// Puts one checked value into `v`; a value of the wrong type changes nothing.
+void PortalAppearance::apply(const QString &key, const QVariant &raw, Values &v)
 {
     const QVariant value = unwrap(raw);
     if (key == QLatin1String("contrast") || key == QLatin1String("reduced-motion")) {
         if (value.metaType() != QMetaType::fromType<uint>()) {
             qWarning("PortalAppearance: %s is not a number; ignored", qPrintable(PortalLog::text(key, 40)));
-            return false;
+            return;
         }
-        const bool on = value.toUInt() == 1;
-        bool &slot = key == QLatin1String("contrast") ? m_highContrast : m_reducedMotion;
-        if (slot == on) {
-            return false;
-        }
-        slot = on;
-        return true;
+        (key == QLatin1String("contrast") ? v.highContrast : v.reducedMotion) = value.toUInt() == 1;
+        return;
     }
     if (key == QLatin1String("accent-color")) {
-        QColor color; // invalid: none
         if (value.canConvert<QDBusArgument>()) {
             const QDBusArgument arg = value.value<QDBusArgument>();
             if (arg.currentType() == QDBusArgument::StructureType && arg.currentSignature() == QLatin1String("(ddd)")) {
@@ -164,22 +190,10 @@ bool PortalAppearance::apply(const QString &key, const QVariant &raw)
                 arg >> r >> g >> b;
                 arg.endStructure();
                 // Out of 0..1 (or NaN) means no accent, as the portal says.
-                if (r >= 0 && r <= 1 && g >= 0 && g <= 1 && b >= 0 && b <= 1) {
-                    color = QColor::fromRgbF(r, g, b);
-                }
-            } else {
-                qWarning("PortalAppearance: accent-color has the wrong type; ignored");
-                return false;
+                v.accent = r >= 0 && r <= 1 && g >= 0 && g <= 1 && b >= 0 && b <= 1 ? QColor::fromRgbF(r, g, b) : QColor();
+                return;
             }
-        } else {
-            qWarning("PortalAppearance: accent-color has the wrong type; ignored");
-            return false;
         }
-        if (color == m_accent && color.isValid() == m_accent.isValid()) {
-            return false;
-        }
-        m_accent = color;
-        return true;
+        qWarning("PortalAppearance: accent-color has the wrong type; ignored");
     }
-    return false;
 }

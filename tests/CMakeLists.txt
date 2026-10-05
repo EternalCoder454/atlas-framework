@@ -266,6 +266,9 @@ target_include_directories(atlas-platform-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui
 target_link_libraries(atlas-platform-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::DBus
     KF6::WindowSystem KF6::ConfigCore)
 add_test(NAME platform COMMAND atlas-platform-tests)
+# A skip (no private bus, or not the private one) is a failure here: the test
+# must really run. The container has dbus-daemon.
+set_tests_properties(platform PROPERTIES FAIL_REGULAR_EXPRESSION "SKIP   :")
 # Its own config dir; the bus is the test's private one (see the file).
 set_tests_properties(platform PROPERTIES TIMEOUT 120 ENVIRONMENT
     "QT_QPA_PLATFORM=offscreen;DBUS_SESSION_BUS_ADDRESS=disabled:;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/platform-config")

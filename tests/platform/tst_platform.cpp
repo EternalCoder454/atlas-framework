@@ -12,6 +12,8 @@
 #include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusReply>
+#include <QDir>
+#include <vector>
 #include <QDBusObjectPath>
 #include <QDBusVariant>
 #include <QDBusVirtualObject>
@@ -416,12 +418,15 @@ private Q_SLOTS:
         QTRY_COMPARE(m_portal->binds, 3);
 
         // The portal closes the session: unavailable, then a new one for the next change.
+        QSignalSpy errors(a.get(), &AtlasGlobalShortcut::errorStringChanged);
         m_portal->closeSession();
-        QTRY_VERIFY(!a->available());
-        QVERIFY(a->errorString().contains(QLatin1String("closed")));
-        a->setPreferredTrigger(QStringLiteral("Meta+K"));
+        // No property is touched: a new session is made by itself.
+        QTRY_COMPARE(m_portal->creates, 2);
+        QVERIFY(errors.count() >= 1);
         QTRY_VERIFY(a->available());
-        QCOMPARE(m_portal->creates, 2);
+        QVERIFY(a->errorString().isEmpty());
+        m_portal->activate(m_portal->session, QStringLiteral("one"));
+        QTRY_COMPARE(on.count(), 2);
         GlobalShortcutSession::setShared(nullptr);
     }
 
@@ -470,6 +475,8 @@ private Q_SLOTS:
         QVERIFY2(a->errorString().contains(QLatin1String("could not be understood")), qPrintable(a->errorString()));
         // And it recovers when the portal behaves.
         m_portal->mode = FakePortal::Bind::Good;
+        // Nobody edits anything: the session tries again by itself.
+        session.setRetryBaseMs(50);
         a->setDescription(QStringLiteral("again"));
         QTRY_VERIFY(a->available());
         GlobalShortcutSession::setShared(nullptr);
@@ -743,7 +750,8 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 2000);
         GlobalShortcutSession::setShared(&session);
         // A bidi override, a zero-width space, a line separator and a newline.
-        m_portal->triggerOverride = QStringLiteral("Meta‮+X​ \ny");
+        // Also the tag characters U+E0041 and U+E007F, outside the BMP.
+        m_portal->triggerOverride = QStringLiteral("Meta‮+X​ \ny") + QString::fromUcs4(U"\U000E0041\U000E007F");
         std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(a->available());
         QCOMPARE(a->trigger(), QStringLiteral("Meta+Xy"));
@@ -771,6 +779,206 @@ private Q_SLOTS:
         QTRY_VERIFY(m_portal->readAlls >= 1);
         QTest::qWait(100);
         QCOMPARE(spy.count(), 1);
+    }
+
+    void retriesByItselfAfterAFailure()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        session.setRetryBaseMs(50);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = FakePortal::Bind::Malformed;
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_VERIFY(!a->errorString().isEmpty());
+        m_portal->mode = FakePortal::Bind::Good;
+        QTRY_VERIFY_WITH_TIMEOUT(a->available(), 5000); // no edit, no new item
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void sessionClosedWhileBindIsInFlight()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 5000);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = FakePortal::Bind::Silent;
+        m_portal->creates = m_portal->binds = 0;
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QSignalSpy on(a.get(), &AtlasGlobalShortcut::activated);
+        QTRY_COMPARE(m_portal->binds, 1);
+        m_portal->mode = FakePortal::Bind::Good; // for the bind on the new session
+        m_portal->closeSession();
+        QTRY_COMPARE(m_portal->creates, 2);
+        QTRY_VERIFY(a->available());
+        // The new session is the one presses are routed for.
+        m_portal->activate(m_portal->session, QStringLiteral("a"));
+        QTRY_COMPARE(on.count(), 1);
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void refusedDuplicateIsRetriedWhenTheNameFrees()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        GlobalShortcutSession::setShared(&session);
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("dup")));
+        std::unique_ptr<AtlasGlobalShortcut> b(item(QStringLiteral("dup")));
+        QTRY_VERIFY(a->available());
+        QVERIFY(!b->available());
+        a.reset(); // a Loader drops the first one
+        QTRY_VERIFY(b->available());
+        QVERIFY(b->errorString().isEmpty());
+        // Or it is renamed.
+        std::unique_ptr<AtlasGlobalShortcut> c(item(QStringLiteral("dup")));
+        QVERIFY(!c->errorString().isEmpty());
+        b->setName(QStringLiteral("moved"));
+        QTRY_VERIFY(c->available());
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void anItemMayDeleteItselfInItsOwnHandler_data()
+    {
+        QTest::addColumn<int>("mode");
+        QTest::newRow("during failAll") << int(FakePortal::Bind::Cancelled);
+        QTest::newRow("during onBindResults") << int(FakePortal::Bind::Good);
+    }
+
+    void anItemMayDeleteItselfInItsOwnHandler()
+    {
+        QFETCH(int, mode);
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = static_cast<FakePortal::Bind>(mode);
+        QPointer<AtlasGlobalShortcut> a = item(QStringLiteral("a"), QString(), false);
+        QPointer<AtlasGlobalShortcut> b = item(QStringLiteral("b"), QString(), false);
+        const auto die = [&a] { delete a.data(); };
+        connect(a.data(), &AtlasGlobalShortcut::errorStringChanged, this, die);
+        connect(a.data(), &AtlasGlobalShortcut::availableChanged, this, die);
+        a->componentComplete();
+        b->componentComplete();
+        QTRY_VERIFY(!a);
+        // A rename whose handler deletes the item, too.
+        QPointer<AtlasGlobalShortcut> c = item(QStringLiteral("c"));
+        connect(c.data(), &AtlasGlobalShortcut::nameChanged, this, [&c] { delete c.data(); });
+        c->setName(QStringLiteral("c2"));
+        QVERIFY(!c);
+        QTest::qWait(50);
+        delete b.data();
+        m_portal->mode = FakePortal::Bind::Good;
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void portalRestartsMidBind()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 5000);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = FakePortal::Bind::Silent;
+        m_portal->binds = 0;
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_COMPARE(m_portal->binds, 1);
+        stopPortal();
+        QTRY_VERIFY(!a->errorString().isEmpty());
+        startPortal(); // a new portal, answering at once
+        QTRY_VERIFY(a->available());
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void portalRestartsMidCreate()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 5000);
+        session.setRetryBaseMs(50);
+        GlobalShortcutSession::setShared(&session);
+        stopPortal(); // the call finds no one: a failure, then a retry when it is back
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_VERIFY(!a->errorString().isEmpty());
+        startPortal();
+        QTRY_VERIFY_WITH_TIMEOUT(a->available(), 5000);
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void lateResponseAfterTimeoutIsIgnored()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 200);
+        session.setRetryBaseMs(100000); // no retry in this test
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = FakePortal::Bind::Silent;
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_VERIFY(!a->errorString().isEmpty());
+        m_portal->finishPending(FakePortal::Bind::Good); // really sent, too late
+        QVERIFY(!flush(m_fakeConn).isEmpty());
+        QTest::qWait(150);
+        QVERIFY(!a->available());
+        m_portal->mode = FakePortal::Bind::Good;
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void manyRestartsLeakNothing()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        session.setRetryBaseMs(20);
+        GlobalShortcutSession::setShared(&session);
+        PortalAppearance appearance(m_client);
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_VERIFY(a->available());
+        const auto fds = [] { return QDir(QStringLiteral("/proc/self/fd")).entryList(QDir::NoDotAndDotDot).size(); };
+        const int before = fds();
+        for (int i = 0; i < 100; ++i) {
+            stopPortal();
+            startPortal();
+            QTest::qWait(5);
+        }
+        QTRY_VERIFY_WITH_TIMEOUT(a->available(), 5000);
+        QVERIFY2(fds() <= before + 3, qPrintable(QStringLiteral("%1 descriptors before, %2 after").arg(before).arg(fds())));
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void manyShortcutsAtStartup()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 5000);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->binds = 0;
+        std::vector<std::unique_ptr<AtlasGlobalShortcut>> all;
+        for (int i = 0; i < 300; ++i) {
+            all.emplace_back(item(QStringLiteral("s%1").arg(i), QString()));
+        }
+        QTRY_VERIFY(all.back()->available());
+        QCOMPARE(m_portal->binds, 1);
+        QCOMPARE(m_portal->lastBound.size(), 300);
+        for (const auto &s : all) {
+            QVERIFY(s->available());
+        }
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void quittingWithABindInFlightClosesTheSession()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 5000);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = FakePortal::Bind::Silent;
+        m_portal->binds = m_portal->closes = m_portal->creates = 0;
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_COMPARE(m_portal->binds, 1);
+        QVERIFY(QMetaObject::invokeMethod(QCoreApplication::instance(), "aboutToQuit")); // the private signal, by name
+        QTRY_COMPARE(m_portal->closes, 1);
+        a->setDescription(QStringLiteral("x")); // nothing starts again
+        QTest::qWait(100);
+        QCOMPARE(m_portal->creates, 1);
+        m_portal->mode = FakePortal::Bind::Good;
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void reducedMotionFromTheEnvironment()
+    {
+        qputenv("ATLAS_REDUCED_MOTION", "1");
+        AccessibilityState state;
+        QVERIFY(state.reducedMotion());
+        qunsetenv("ATLAS_REDUCED_MOTION");
     }
 };
 

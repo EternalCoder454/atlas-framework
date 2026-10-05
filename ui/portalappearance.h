@@ -1,14 +1,8 @@
-// PortalAppearance: the accessibility and accent settings of the desktop
-// portal's org.freedesktop.appearance namespace (Settings interface, ReadAll
-// once, then SettingChanged), cached:
-//   contrast       1 = the user wants more contrast  -> highContrast
-//   reduced-motion 1 = the user wants less motion    -> reducedMotion
-//   accent-color   (ddd) red, green, blue in 0..1    -> accentColor (invalid
-//                  when none, or when a value is out of range)
-// Without a portal or a session bus nothing is read and every value stays at
-// its default; nothing blocks (the calls are asynchronous with a timeout).
-// Everything from the bus is checked: the type of each variant, and the range.
-// Appearance and AccessibilityState share one instance (shared()).
+// PortalAppearance: the desktop portal's org.freedesktop.appearance values
+// that Appearance and AccessibilityState use (contrast, reduced-motion,
+// accent-color), read once with ReadAll and followed through SettingChanged.
+// Every value from the bus is type- and range-checked; without a portal the
+// defaults stay. Described in docs/reference/atlas-ui/accessibility-state.md.
 #pragma once
 
 #include <QColor>
@@ -43,13 +37,18 @@ private Q_SLOTS:
 
 private:
     void readAll();
-    // Takes one value (already checked to be an appearance key); false when its
-    // type is wrong.
-    bool apply(const QString &key, const QVariant &value);
+    struct Values {
+        bool highContrast = false;
+        bool reducedMotion = false;
+        QColor accent;
+    };
+    void apply(const QString &key, const QVariant &value, Values &into);
+    void commit(const Values &v);
 
     QDBusConnection m_bus;
     QString m_service;
     QDBusServiceWatcher *m_watcher = nullptr;
+    qulonglong m_generation = 0;
     bool m_highContrast = false;
     bool m_reducedMotion = false;
     QColor m_accent;

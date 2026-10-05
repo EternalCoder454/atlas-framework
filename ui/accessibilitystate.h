@@ -1,12 +1,7 @@
 // AccessibilityState.active: whether an assistive technology (a screen
 // reader) is listening, so a component can leave out text only one would
 // read. Qt keeps the answer and says when it changes.
-//
-// highContrast, reducedMotion and accentColor are what the platform asks for
-// (since 1.5.0): Qt's QStyleHints accessibility contrast preference and the
-// desktop portal's org.freedesktop.appearance (see portalappearance.h), each
-// with a NOTIFY signal. Appearance.highContrast and Appearance.reducedMotion
-// include these and more (Plasma's own settings).
+// See docs/reference/atlas-ui/accessibility-state.md.
 #pragma once
 
 #include <QAccessible>
