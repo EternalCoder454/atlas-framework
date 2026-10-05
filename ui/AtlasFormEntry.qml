@@ -40,8 +40,9 @@ FocusScope {
     // control (a text area, a list).
     property bool stacked: entry._autoStacked
 
-    // No error of any kind (an entry that is disabled has none).
-    readonly property bool valid: !entry.enabled || (entry.errorText.length === 0 && !entry._missing && !entry._unacceptable)
+    // No error of any kind. An entry that is disabled or not visible (a hidden
+    // page, say) has none.
+    readonly property bool valid: !entry.enabled || !entry.visible || (entry.errorText.length === 0 && !entry._missing && !entry._unacceptable)
     // The error on screen, or "".
     readonly property string shownError: {
         if (entry.errorText.length > 0) {
@@ -58,7 +59,35 @@ FocusScope {
     readonly property bool _isEmpty: entry._emptyOf(entry._control)
     readonly property bool _missing: entry.required && entry._isEmpty
     readonly property bool _unacceptable: !entry._isEmpty && entry._control !== null && entry._control["acceptableInput"] === false
-    readonly property bool _autoStacked: (entry.width > 0 && entry.width < Kirigami.Units.gridUnit * 22) || (entry._control !== null && entry._control.implicitHeight > AtlasStyle.controlHeight * 2.5)
+    readonly property bool _autoStacked: entry._narrow || (entry._control !== null && entry._control.implicitHeight > AtlasStyle.controlHeight * 2.5)
+    // Narrow: below 22 grid units, and not wide again until 24 (no flapping at
+    // the threshold).
+    property bool _narrow: false
+    onWidthChanged: {
+        if (entry.width > 0 && entry.width < Kirigami.Units.gridUnit * 22) {
+            entry._narrow = true;
+        } else if (entry.width > Kirigami.Units.gridUnit * 24) {
+            entry._narrow = false;
+        }
+    }
+    // A password, or anything that holds one: never loaded, never saved.
+    readonly property bool _secret: entry._isSecret(entry._control)
+    property var _warned: ({})
+    property var _links: []
+    property bool _a11yTaken: false
+    property string _ownName: ""
+    property string _ownDesc: ""
+    // Where the control is, in the entry's coordinates (for the error outline).
+    readonly property rect _controlRect: {
+        const c = entry._control;
+        if (!c) {
+            return Qt.rect(0, 0, 0, 0);
+        }
+        // Read so that the rectangle follows every layout change.
+        const follow = [entry.width, entry.height, grid.x, grid.y, grid.width, grid.height, host.x, host.y, host.width, host.height, c.x, c.y, c.width, c.height];
+        const p = c.mapToItem(entry, 0, 0);
+        return Qt.rect(p.x, p.y, c.width + follow.length * 0, c.height);
+    }
     // The user has left the control once / validate() asked to show errors.
     property bool _leftOnce: false
     property bool _revealed: false
@@ -83,10 +112,9 @@ FocusScope {
     // rule as a user edit, docs/api-1.5.0.md Part 1).
     readonly property var _store: entry._form ? entry._form._settings : null
     readonly property string _prop: entry._propOf(entry._control, entry.settingProperty)
-    readonly property bool _keyed: entry.settingKey.length > 0 && entry._prop.length > 0 && entry._prop !== "password"
+    readonly property bool _keyed: entry.settingKey.length > 0 && entry._prop.length > 0 && !entry._secret
     property bool _ready: false
     property var _wiredTo: null
-    property string _warnedKey: ""
     property var _applyValue: null
     property bool _applying: false
     property bool _guard: false
@@ -102,18 +130,23 @@ FocusScope {
     Layout.minimumHeight: entry.implicitHeight
     implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 2.5), grid.implicitHeight + Math.round(AtlasStyle.spacingLarge * 1.6))
 
+    // Leaving counts only while the window stays active and the entry stays
+    // visible: not a window switch, a closing dialog or a page change.
     onActiveFocusChanged: {
         if (entry.activeFocus) {
             entry._hadFocus = true;
-        } else if (entry._hadFocus && !entry._popupOpen()) {
+        } else if (entry._hadFocus && entry.visible && Window.window && Window.window.active && !entry._popupOpen()) {
             entry._leftOnce = true;
         }
     }
     onShownErrorChanged: {
+        entry._syncA11y();
         if (entry.shownError.length > 0) {
             entry._announce(entry.shownError);
         }
     }
+    onLabelChanged: entry._syncA11y()
+    onHelpChanged: entry._syncA11y()
     on_ControlChanged: if (entry._ready) {
         entry._attach();
     }
@@ -251,7 +284,7 @@ FocusScope {
         return false;
     }
 
-    // The property a settingKey saves ("password" marks one that never is).
+    // The property a settingKey saves.
     function _propOf(c: var, custom: string): string {
         if (custom.length > 0) {
             return custom;
@@ -268,9 +301,6 @@ FocusScope {
         if (c["showAlpha"] !== undefined) {
             return "color";
         }
-        if (c["revealed"] !== undefined || c["echoMode"] === TextInput.Password) {
-            return "password";
-        }
         if (typeof c["checked"] === "boolean") {
             return "checked";
         }
@@ -286,22 +316,43 @@ FocusScope {
         return "";
     }
 
+    function _link(c: var, name: string, fn: var): void {
+        const sig = c[name];
+        if (sig && typeof sig.connect === "function") {
+            sig.connect(entry, fn);
+            entry._links.push({sig: sig, fn: fn});
+        }
+    }
+
+    function _detach(): void {
+        for (const l of entry._links) {
+            try {
+                l.sig.disconnect(entry, l.fn);
+            } catch (e) {
+                // the old control is already gone
+            }
+        }
+        entry._links = [];
+        entry._a11yTaken = false;
+    }
+
     // Names the control for a screen reader, and connects what saves its edits.
     function _attach(): void {
         const c = entry._control;
-        if (!c || entry._wiredTo === c) {
+        if (entry._wiredTo === c) {
             return;
         }
+        entry._detach();
         entry._wiredTo = c;
-        // The control's own name stays when the entry has no label.
-        const own = c.Accessible.name;
-        c.Accessible.name = Qt.binding(() => entry.label.length > 0 ? entry.label : own);
-        c.Accessible.description = Qt.binding(() => [entry.help, entry.shownError].filter(t => t.length > 0).join(", "));
+        if (!c) {
+            return;
+        }
+        entry._syncA11y();
         const p = entry._prop;
         if (c["echoMode"] !== undefined && c["accepted"] !== undefined) {
-            c["accepted"].connect(entry, entry._returned);
+            entry._link(c, "accepted", entry._returned);
         }
-        if (p.length === 0 || p === "password") {
+        if (p.length === 0) {
             return;
         }
         let names = ["edited"];
@@ -317,11 +368,29 @@ FocusScope {
             names = [c["textEdited"] !== undefined ? "textEdited" : "textChanged"];
         }
         for (const n of names) {
-            const s = c[n];
-            if (s && typeof s.connect === "function") {
-                s.connect(entry, entry._userEdited);
-            }
+            entry._link(c, n, entry._userEdited);
         }
+    }
+
+    // The control's name is the label (its own name stays without one); its
+    // description is the help and the error, then the app's own.
+    function _syncA11y(): void {
+        const c = entry._control;
+        if (!c || entry._wiredTo !== c) {
+            return;
+        }
+        const parts = [entry.help, entry.shownError];
+        if (!entry._a11yTaken) {
+            if (entry.label.length === 0 && parts.every(t => t.length === 0)) {
+                return;
+            }
+            entry._ownName = c.Accessible.name;
+            entry._ownDesc = c.Accessible.description;
+            entry._a11yTaken = true;
+        }
+        c.Accessible.name = entry.label.length > 0 ? entry.label : entry._ownName;
+        parts.push(entry._ownDesc);
+        c.Accessible.description = parts.filter((t, i) => t.length > 0 && parts.indexOf(t) === i).join(", ");
     }
 
     function _returned(): void {
@@ -346,7 +415,54 @@ FocusScope {
     }
 
     function _warn(text: string): void {
-        console.warn("AtlasFormEntry: settingKey \"" + entry.settingKey + "\": " + text);
+        console.warn("AtlasFormEntry: settingKey " + JSON.stringify(entry.settingKey.slice(0, 200)) + ": " + text);
+    }
+
+    function _warnOnce(text: string): void {
+        if (entry._warned[text] !== true) {
+            entry._warned[text] = true;
+            entry._warn(text);
+        }
+    }
+
+    // The same rule as AtlasSettings.validKey().
+    function _validKey(k: string): bool {
+        return k.length > 0 && k.length <= 200 && k === k.trim() && !/^[#;]/.test(k) && !/[\[\]=]/.test(k) && !/[\u0000-\u001f\u007f]/.test(k);
+    }
+
+    // A password, or something that holds one: the item or anything in it (a
+    // bounded look) is a password field, hides what is typed, asks for no
+    // prediction of it or says it is a password to a screen reader.
+    function _isSecret(item: var): bool {
+        return entry._secretIn(item, 0, {n: 0});
+    }
+    function _secretIn(item: var, depth: int, budget: var): bool {
+        if (!item || depth > 4 || budget.n >= 64) {
+            return false;
+        }
+        budget.n += 1;
+        if (item["revealed"] !== undefined) {
+            return true;
+        }
+        const mode = item["echoMode"];
+        if (mode !== undefined && mode !== TextInput.Normal) {
+            return true;
+        }
+        const hints = item["inputMethodHints"];
+        if (typeof hints === "number" && (hints & Qt.ImhSensitiveData) !== 0) {
+            return true;
+        }
+        if (item.Accessible.passwordEdit === true) {
+            return true;
+        }
+        const kids = item.children;
+        for (let i = 0; i < kids.length; ++i) {
+            if (entry._secretIn(kids[i], depth + 1, budget)) {
+                return true;
+            }
+        }
+        const inner = item["contentItem"];
+        return !!inner && inner !== item && entry._secretIn(inner, depth + 1, budget);
     }
 
     // The stored value as the control's property takes it, or {ok: false}.
@@ -369,7 +485,8 @@ FocusScope {
             return /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw) ? {ok: true, value: raw} : {ok: false};
         }
         if (typeof cur === "string") {
-            return {ok: true, value: s.value(key, "")};
+            const text = s.value(key, "");
+            return text.length <= 65536 ? {ok: true, value: text} : {ok: false};
         }
         return {ok: false};
     }
@@ -386,14 +503,15 @@ FocusScope {
         if (key.length === 0 || !c) {
             return;
         }
-        const p = entry._prop;
-        if (p === "password") {
-            if (entry._warnedKey !== key) {
-                entry._warnedKey = key;
-                entry._warn("a password is not a setting, so it is neither loaded nor saved");
-            }
+        if (!entry._validKey(key)) {
+            entry._warnOnce("this is not a valid settings key");
             return;
         }
+        if (entry._secret) {
+            entry._warnOnce("a password is not a setting, so it is neither loaded nor saved");
+            return;
+        }
+        const p = entry._prop;
         if (p.length === 0) {
             entry._warn("the control has no property to save; set settingProperty");
             return;
@@ -412,7 +530,8 @@ FocusScope {
             entry._warn("the stored value does not fit " + p + " and is ignored");
             return;
         }
-        entry._applyValue = r.value;
+        // A stored shortcut is untrusted text: only its portable form is used.
+        entry._applyValue = p === "sequence" ? AtlasShortcuts.portable(r.value) : r.value;
         entry._applying = true;
         Qt.callLater(entry._endApply);
     }
@@ -436,7 +555,8 @@ FocusScope {
         }
         const s = entry._store;
         const c = entry._control;
-        if (!s || !c) {
+        if (!s || !c || entry._unacceptable || entry._missing) {
+            // A value the entry calls invalid is not saved.
             return;
         }
         const p = entry._prop;
@@ -451,6 +571,10 @@ FocusScope {
             }
         } else if (typeof v !== "boolean" && typeof v !== "string") {
             entry._warn("the value of " + p + " cannot be stored");
+            return;
+        }
+        if (typeof v === "string" && v.length > 65536) {
+            entry._warnOnce("the text is over 64 KiB and is not saved");
             return;
         }
         s.setValue(entry.settingKey, v);
@@ -566,12 +690,15 @@ FocusScope {
         }
     }
 
-    // The control's outline turns red, for a control that draws no error of its own.
+    // The control's outline turns red, for a control that draws no error of its
+    // own. It is drawn here, over the control, not inside it, so it never takes
+    // part in the control's own layout.
     Rectangle {
-        parent: entry._control
+        x: entry._controlRect.x
+        y: entry._controlRect.y
+        width: entry._controlRect.width
+        height: entry._controlRect.height
         z: 10
-        width: parent ? parent.width : 0
-        height: parent ? parent.height : 0
         visible: entry.shownError.length > 0 && entry._control !== null && entry._control["hasError"] !== true
         radius: AtlasStyle.radiusSmall
         color: "transparent"

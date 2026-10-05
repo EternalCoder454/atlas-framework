@@ -68,6 +68,9 @@ AtlasDialog {
 
     property bool _ready: false
     property var _pending: null
+    property int _tries: 0
+    // Only made when stateKey is set.
+    property var _store: null
     readonly property bool _narrow: control.width < Kirigami.Units.gridUnit * 36
     readonly property string _query: search.query.trim().toLowerCase()
     readonly property bool _searching: control._query.length > 0
@@ -81,6 +84,11 @@ AtlasDialog {
         for (let i = 0; i < control.pages.length; ++i) {
             const page = control.pages[i];
             for (const e of page.entries) {
+                // Not an entry that is disabled or hidden by its app. (One on a page
+                // that is not shown is invisible too, and is found.)
+                if (!e.enabled || (page.visible && !e.visible)) {
+                    continue;
+                }
                 if (e.label.toLowerCase().includes(q) || e.help.toLowerCase().includes(q)) {
                     out.push({
                         entry: e,
@@ -99,6 +107,7 @@ AtlasDialog {
         search.clear();
         control._choose(result.page);
         control._pending = result.entry;
+        control._tries = 0;
         settle.restart();
     }
 
@@ -115,7 +124,10 @@ AtlasDialog {
             page.visible = Qt.binding(() => control.currentIndex === index);
         }
         if (control.stateKey.length > 0) {
-            const saved = control._store.value("Page", 0);
+            control._store = storeComp.createObject(control, {
+                "group": "AtlasPreferencesDialog-" + control.stateKey
+            });
+            const saved = control._store ? control._store.value("Page", 0) : 0;
             if (typeof saved === "number") {
                 control._choose(saved);
             }
@@ -123,24 +135,32 @@ AtlasDialog {
         control._ready = true;
     }
     onCurrentIndexChanged: {
-        if (control._ready && control.stateKey.length > 0) {
+        if (control._ready && control._store) {
             control._store.setValue("Page", control.currentIndex);
         }
     }
 
-    // Only read and written when stateKey is set.
-    readonly property AtlasSettings _store: AtlasSettings {
-        group: control.stateKey.length > 0 ? "AtlasPreferencesDialog-" + control.stateKey : ""
+    Component {
+        id: storeComp
+        AtlasSettings {
+        }
     }
 
-    // The page has to be laid out before the entry can be scrolled to.
+    // The page has to be laid out before the entry can be scrolled to: look
+    // every 30 ms (at most 10 times) until the entry is on screen.
     Timer {
         id: settle
-        interval: 50
+        interval: 30
+        repeat: true
         onTriggered: {
-            if (control._pending) {
-                control._pending._show();
+            const e = control._pending;
+            control._tries += 1;
+            if (!e) {
+                settle.stop();
+            } else if ((e.visible && e.width > 0 && e.height > 0) || control._tries >= 10) {
+                settle.stop();
                 control._pending = null;
+                e._show();
             }
         }
     }

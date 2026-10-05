@@ -256,6 +256,14 @@ TestCase {
         tryVerify(() => f.entries.length === 3);
     }
 
+    function test_a_hidden_entry_is_valid() {
+        const f = make();
+        verify(!f.eName.valid);
+        f.eName.visible = false;
+        verify(f.eName.valid);
+        verify(!f.fName.activeFocus, "a hidden entry takes no focus");
+    }
+
     function test_a_disabled_entry_is_valid() {
         const f = make();
         f.eName.enabled = false;

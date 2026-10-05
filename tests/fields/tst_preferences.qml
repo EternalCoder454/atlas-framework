@@ -49,6 +49,12 @@ TestCase {
                             id: hidden
                         }
                     }
+                    AtlasFormEntry {
+                        label: "Disabled thing"
+                        enabled: false
+                        AtlasSwitch {
+                        }
+                    }
                 }
             }
             AtlasPreferencesPage {
@@ -170,6 +176,13 @@ TestCase {
         const row = find(d.contentItem, i => i.atlasRow === true && i.title === "Show hidden files");
         verify(row);
         compare(row.subtitle, "General");
+    }
+
+    function test_search_skips_disabled_entries() {
+        const d = open(dialogComp);
+        search(d).text = "thing";
+        tryVerify(() => d._searching);
+        compare(d._results.length, 0);
     }
 
     function test_search_with_no_match_shows_the_empty_state() {

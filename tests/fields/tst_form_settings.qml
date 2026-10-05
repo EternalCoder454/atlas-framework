@@ -17,6 +17,8 @@ TestCase {
     when: windowShown
 
     property int groups: 0
+    // One group per run, so what an earlier run left in the file is not read.
+    readonly property string run: "R" + Date.now()
 
     QtObject {
         id: app
@@ -32,7 +34,7 @@ TestCase {
 
     function newStore() {
         tc.groups += 1;
-        return createTemporaryObject(storeComp, tc, {group: "Form" + tc.groups});
+        return createTemporaryObject(storeComp, tc, {group: tc.run + "_" + tc.groups});
     }
 
     property var made: []
@@ -45,8 +47,8 @@ TestCase {
     }
 
     // A form with one keyed entry round `controlSrc`, using store `st`.
-    function makeForm(controlSrc, st, entryProps) {
-        const src = "import QtQuick\nimport Atlas.Ui\nAtlasForm {\n width: 500\n property alias entry: e\n AtlasFormEntry {\n id: e\n label: \"L\"\n settingKey: \"K\"\n " + (entryProps || "") + "\n " + controlSrc + "\n }\n}\n";
+    function makeForm(controlSrc, st, entryProps, key) {
+        const src = "import QtQuick\nimport Atlas.Ui\nAtlasForm {\n width: 500\n property alias entry: e\n AtlasFormEntry {\n id: e\n label: \"L\"\n settingKey: " + JSON.stringify(key || "K") + "\n " + (entryProps || "") + "\n " + controlSrc + "\n }\n}\n";
         const f = Qt.createQmlObject(src, tc, "form.qml");
         tc.made.push(f);
         if (st) {
@@ -207,20 +209,6 @@ TestCase {
         verify(!f.entry._control.checked);
     }
 
-    function test_a_password_is_never_saved_and_warns() {
-        const st = newStore();
-        st.setValue("K", "secret");
-        ignoreWarning(/settingKey "K": a password is not a setting/);
-        const f = makeForm("AtlasPasswordField { }", st);
-        const c = f.entry._control;
-        wait(50);
-        compare(c.text, "", "not loaded");
-        c.forceActiveFocus();
-        keyClick("p");
-        wait(30);
-        compare(st.value("K", ""), "secret", "not saved");
-    }
-
     function test_another_property_by_settingProperty() {
         const st = newStore();
         st.setValue("K", 5);
@@ -236,5 +224,63 @@ TestCase {
         const f = makeForm("AtlasSwitch { }", null);
         wait(30);
         verify(f);
+    }
+
+    function test_a_secret_is_never_saved_data() {
+        return [
+            {tag: "settingProperty", src: "AtlasPasswordField { }", props: "settingProperty: \"text\"", type: true},
+            {tag: "noecho", src: "AtlasTextField { echoMode: TextInput.NoEcho }", props: "", type: true},
+            {tag: "echoonedit", src: "AtlasTextField { echoMode: TextInput.PasswordEchoOnEdit }", props: "", type: true},
+            {tag: "sensitive", src: "AtlasTextField { inputMethodHints: Qt.ImhSensitiveData }", props: "", type: true},
+            {tag: "wrapped", src: "Item { implicitWidth: 100; implicitHeight: 20; AtlasPasswordField { } }", props: "settingProperty: \"implicitWidth\"", type: false}
+        ];
+    }
+    function test_a_secret_is_never_saved(row) {
+        const st = newStore();
+        st.setValue("K", "secret");
+        ignoreWarning(/a password is not a setting/);
+        const f = makeForm(row.src, st, row.props);
+        const c = f.entry._control;
+        wait(50);
+        if (row.type) {
+            compare(c.text, "", "not loaded");
+            c.forceActiveFocus();
+            keyClick("p");
+        }
+        wait(30);
+        compare(st.value("K", ""), "secret", "not saved");
+    }
+
+    function test_text_over_64_KiB_is_not_saved() {
+        const st = newStore();
+        const f = makeForm("AtlasTextArea { }", st);
+        wait(30);
+        ignoreWarning(/over 64 KiB/);
+        f.entry._control.text = "x".repeat(70000);
+        wait(30);
+        verify(!st.contains("K"));
+        f.entry._control.text = "short";
+        compare(st.value("K", ""), "short");
+    }
+
+    function test_an_invalid_value_is_not_saved() {
+        const st = newStore();
+        const f = makeForm("AtlasTextField { validator: IntValidator { bottom: 10; top: 99 } }", st);
+        const c = f.entry._control;
+        wait(30);
+        c.forceActiveFocus();
+        keyClick("1");
+        compare(c.text, "1");
+        verify(!c.acceptableInput);
+        verify(!st.contains("K"), "1 is not acceptable");
+        keyClick("5");
+        compare(st.value("K", ""), "15");
+    }
+
+    function test_a_bad_key_warns() {
+        const st = newStore();
+        ignoreWarning(/not a valid settings key/);
+        makeForm("AtlasSwitch { }", st, "", "a=b");
+        wait(30);
     }
 }
