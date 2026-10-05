@@ -37,6 +37,9 @@ T.AbstractButton {
     // The look (see above). Default leaves the choice to `prominent`.
     property int variant: AtlasButton.Default
     property bool prominent: false
+    // The widest the button asks for (its implicit width); a longer text is
+    // elided. 0 means no limit. Since 1.5.0.
+    property real maximumWidth: 0
     // Something is in progress: a spinner, and no presses.
     property bool busy: false
     // A Material Symbol (Symbols.<Name>) to draw instead of icon.name.
@@ -151,6 +154,7 @@ T.AbstractButton {
             spacing: AtlasStyle.spacingSmall
             // The busy spinner takes the symbol's place.
             Loader {
+                id: spinLoader
                 active: control.busy
                 visible: active
                 anchors.verticalCenter: parent.verticalCenter
@@ -163,6 +167,7 @@ T.AbstractButton {
             }
             // Made only when used, so buttons without one never load the fonts.
             Loader {
+                id: symLoader
                 active: control.symbol !== 0 && !control.busy
                 visible: active
                 anchors.verticalCenter: parent.verticalCenter
@@ -175,6 +180,7 @@ T.AbstractButton {
                 }
             }
             Kirigami.Icon {
+                id: themeIcon
                 visible: control.symbol === 0 && control.icon.name.length > 0 && !control.busy
                 source: control.icon.name
                 isMask: true
@@ -192,6 +198,10 @@ T.AbstractButton {
                 font.pointSize: AtlasStyle.fontSizeBody
                 color: control._fg
                 textFormat: Text.PlainText // no mnemonics
+                elide: Text.ElideRight
+                // With maximumWidth the text gives way; else it keeps its own width.
+                readonly property real _others: (spinLoader.visible ? spinLoader.width + AtlasStyle.spacingSmall : 0) + (symLoader.visible ? symLoader.width + AtlasStyle.spacingSmall : 0) + (themeIcon.visible ? themeIcon.width + AtlasStyle.spacingSmall : 0)
+                width: control.maximumWidth > 0 ? Math.min(implicitWidth, Math.max(0, control.maximumWidth - control.leftPadding - control.rightPadding - _others)) : implicitWidth
                 Behavior on color {
                     ColorAnimation {
                         duration: AtlasStyle.durationShort

@@ -62,6 +62,16 @@ T.ComboBox {
             return out;
         }
         readonly property int matchCount: flags.filter(f => f).length
+        // The indexes of the rows that pass the filter.
+        readonly property var rows: {
+            const out = [];
+            for (let i = 0; i < flags.length; ++i) {
+                if (flags[i]) {
+                    out.push(i);
+                }
+            }
+            return out;
+        }
 
         function step(from: int, dir: int): int {
             for (let i = from + dir; i >= 0 && i < flags.length; i += dir) {
@@ -104,31 +114,24 @@ T.ComboBox {
         }
     }
 
-    delegate: T.ItemDelegate {
+    component ChoiceRow: T.ItemDelegate {
         id: row
 
-        required property var model
-        required property int index
+        // The index in the combo box's model (not the row in a filtered list).
+        required property int comboIndex
 
         width: ListView.view ? ListView.view.width : implicitWidth
-        implicitHeight: visible ? Math.round(Kirigami.Units.gridUnit * 1.8) : 0
+        implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.8)
         height: implicitHeight
         leftPadding: AtlasStyle.spacingLarge
         rightPadding: AtlasStyle.spacingLarge
         hoverEnabled: true
-        visible: internals.flags[index] !== false
-        highlighted: control.filterable ? internals.current === index : control.highlightedIndex === index
+        highlighted: control.filterable ? internals.current === comboIndex : control.highlightedIndex === comboIndex
         onHoveredChanged: {
             if (hovered && control.filterable) {
-                internals.current = index;
+                internals.current = comboIndex;
             }
         }
-        // A null entry or a missing role shows an empty row, not a TypeError.
-        text: {
-            const value = control.textRole.length === 0 ? row.model.modelData : Array.isArray(control.model) ? row.model.modelData?.[control.textRole] : row.model[control.textRole];
-            return value === undefined || value === null ? "" : String(value);
-        }
-
         Accessible.name: text
 
         background: Rectangle {
@@ -144,7 +147,7 @@ T.ComboBox {
                 // Only the chosen row makes the symbol.
                 Loader {
                     anchors.centerIn: parent
-                    active: control.currentIndex === row.index
+                    active: control.currentIndex === row.comboIndex
                     sourceComponent: Symbol {
                         name: "check"
                         weight: 600
@@ -163,6 +166,29 @@ T.ComboBox {
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
             }
+        }
+    }
+
+    // The delegate of the template's own list (not filterable): `index` is the model's.
+    delegate: ChoiceRow {
+        required property var model
+        required property int index
+        comboIndex: index
+        // A null entry or a missing role shows an empty row, not a TypeError.
+        text: {
+            const value = control.textRole.length === 0 ? model.modelData : Array.isArray(control.model) ? model.modelData?.[control.textRole] : model[control.textRole];
+            return value === undefined || value === null ? "" : String(value);
+        }
+    }
+    // A filterable list shows only the matching rows: its model is the list of their
+    // indexes, so a model of ten thousand rows builds the few that are on screen.
+    Component {
+        id: filteredChoice
+        ChoiceRow {
+            required property int modelData
+            comboIndex: modelData
+            text: String(control.textAt(modelData) ?? "")
+            onClicked: internals.choose(modelData)
         }
     }
 
@@ -237,6 +263,7 @@ T.ComboBox {
             spacing: AtlasStyle.spacingSmall
             AtlasTextField {
                 id: filterField
+                objectName: "filterField"
                 property bool hadFocus: false
                 Layout.fillWidth: true
                 visible: control.filterable
@@ -266,11 +293,13 @@ T.ComboBox {
             }
             ListView {
                 id: choices
+                objectName: "choices"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 implicitHeight: contentHeight
-                model: control.popup.visible ? control.delegateModel : null
-                currentIndex: control.filterable ? internals.current : control.highlightedIndex
+                model: !control.popup.visible ? null : control.filterable ? internals.rows : control.delegateModel
+                delegate: control.filterable ? filteredChoice : null
+                currentIndex: control.filterable ? internals.rows.indexOf(internals.current) : control.highlightedIndex
                 clip: true
                 keyNavigationEnabled: true
                 // An empty model, or a filter nothing passes, opens a single

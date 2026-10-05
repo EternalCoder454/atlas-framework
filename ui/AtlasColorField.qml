@@ -122,7 +122,8 @@ T.AbstractButton {
         readonly property var swatches: {
             const h = control.hex.toLowerCase();
             const list = palette.slice();
-            if (control.color.a === 1 && list.indexOf(h) < 0 || control.color.a < 1) {
+            // Once: a translucent colour whose hex is in the palette adds no second swatch.
+            if (list.indexOf(h) < 0) {
                 list.unshift(h);
             }
             return list;

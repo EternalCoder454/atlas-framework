@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Templates as T
+import "fontfamilies.js" as Families
 import org.kde.kirigami as Kirigami
 
 // A font chooser: a field like AtlasComboBox with the family drawn in its own face and the size.
@@ -58,6 +59,9 @@ T.AbstractButton {
 
     // The field never draws the picker's own font at the picked size: it uses
     // the application font for everything but the family name.
+    // How far the shared scan for monospace families has got (for the tests).
+    readonly property int _scanned: internals.scanned
+
     readonly property font _nameFont: Qt.font({
         family: control.font.family,
         pointSize: AtlasStyle.fontSizeBody
@@ -67,10 +71,11 @@ T.AbstractButton {
         id: internals
 
         readonly property real fieldHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(sizeMetrics.height) + AtlasStyle.spacing)
-        readonly property var all: Qt.fontFamilies()
+        // Read once for the process, and the monospace scan shared (fontfamilies.js).
+        readonly property var all: Families.all()
         // Families found to be monospace, and how far the scan has got.
-        property var fixed: []
-        property int scanned: 0
+        property var fixed: Families.fixedList()
+        property int scanned: Families.scanned()
         readonly property bool scanning: control.fixedOnly && scanned < all.length
         property string search: ""
         // The row the keyboard is on.
@@ -88,15 +93,18 @@ T.AbstractButton {
         }
         // Looks at a few families per turn of the event loop so the window stays alive.
         function scanSome(): void {
-            const end = Math.min(all.length, scanned + 40);
-            const found = fixed.slice();
-            for (let i = scanned; i < end; ++i) {
+            // Another picker may have scanned since: carry on from the shared place.
+            const from = Families.scanned();
+            const end = Math.min(all.length, from + 40);
+            const found = [];
+            for (let i = from; i < end; ++i) {
                 if (isFixed(all[i])) {
                     found.push(all[i]);
                 }
             }
-            scanned = end;
-            fixed = found;
+            Families.advance(from, end, found);
+            scanned = Families.scanned();
+            fixed = Families.fixedList();
         }
         function choose(index: int): void {
             if (index < 0 || index >= shown.length) {

@@ -206,11 +206,9 @@ Item {
     }
 
     TapHandler {
-        onTapped: eventPoint => {
-            // A click on the Browse button is the button's: it emits once.
-            if (browseButton.visible && browseButton.contains(browseButton.mapFromItem(control, eventPoint.position))) {
-                return;
-            }
+        // The Browse button accepts its own press, so a click on it never reaches
+        // this handler: browseRequested() is emitted once.
+        onTapped: {
             priv.byMouse = true;
             control.forceActiveFocus(Qt.MouseFocusReason);
             control.browseRequested();
@@ -255,6 +253,7 @@ Item {
         }
         SecondaryButton {
             id: browseButton
+            objectName: "browseButton"
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: AtlasStyle.spacingSmall
             visible: control.browseText.length > 0

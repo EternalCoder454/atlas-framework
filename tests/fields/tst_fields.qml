@@ -368,9 +368,9 @@ Item {
         id: chipGroupComp
         AtlasChipGroup {
             width: 300
-            AtlasChip { text: "A" }
-            AtlasChip { text: "B" }
-            AtlasChip { text: "C" }
+            AtlasChip { objectName: "chipA"; text: "A" }
+            AtlasChip { objectName: "chipB"; text: "B" }
+            AtlasChip { objectName: "chipC"; text: "C" }
         }
     }
     Component {
@@ -407,6 +407,31 @@ Item {
             width: 200
         }
     }
+    Component {
+        id: spinComp
+        AtlasSpinBox {
+            from: 0
+            to: 999
+            editable: true
+            prefix: "$ "
+            suffix: " GB"
+        }
+    }
+    Component {
+        id: fileFieldComp
+        AtlasFileField {
+            width: 300
+        }
+    }
+    Component {
+        id: pickerComp
+        AtlasFontPicker {
+            width: 300
+        }
+    }
+    ListModel {
+        id: bigModel
+    }
     ListModel {
         id: segModel
         ListElement { text: "One" }
@@ -416,6 +441,22 @@ Item {
     TestCase {
         name: "FieldsAndButtons"
         when: windowShown
+
+        // Every item under `item`, itself first.
+        function walk(item) {
+            const out = [item];
+            for (let i = 0; i < item.children.length; ++i) {
+                out.push(...walk(item.children[i]));
+            }
+            return out;
+        }
+
+        // The first item inside `parent` with this objectName.
+        function part(parent, name) {
+            const item = findChild(parent, name);
+            verify(item !== null, name + " exists");
+            return item;
+        }
 
         function test_return_clicks_through_click_not_clicked() {
             const b = createTemporaryObject(buttonWithAction, root);
@@ -434,9 +475,9 @@ Item {
         function test_split_button_return_presses_the_focused_part() {
             const b = createTemporaryObject(splitComp, root);
             const spy = createTemporaryObject(signalSpyComp, root, {target: b, signalName: "clicked"});
-            const part = b.children[0].children[0];
-            part.forceActiveFocus();
-            verify(part.activeFocus);
+            const main = part(b, "mainPart");
+            main.forceActiveFocus();
+            verify(main.activeFocus);
             keyClick(Qt.Key_Return);
             compare(spy.count, 1);
         }
@@ -448,12 +489,15 @@ Item {
 
         function test_chip_group_tab_stop_moves_when_the_chip_hides() {
             const g = createTemporaryObject(chipGroupComp, root);
-            tryCompare(g.children[0].children[0], "focusPolicy", Qt.StrongFocus);
-            g.children[0].children[0].visible = false;
-            tryCompare(g.children[0].children[1], "focusPolicy", Qt.StrongFocus);
-            compare(g.children[0].children[0].focusPolicy, Qt.ClickFocus);
-            g.children[0].children[1].enabled = false;
-            tryCompare(g.children[0].children[2], "focusPolicy", Qt.StrongFocus);
+            const a = part(g, "chipA");
+            const b = part(g, "chipB");
+            const c = part(g, "chipC");
+            tryCompare(a, "focusPolicy", Qt.StrongFocus);
+            a.visible = false;
+            tryCompare(b, "focusPolicy", Qt.StrongFocus);
+            compare(a.focusPolicy, Qt.ClickFocus);
+            b.enabled = false;
+            tryCompare(c, "focusPolicy", Qt.StrongFocus);
         }
 
         function test_autocomplete_mark_survives_a_length_changing_lowercase() {
@@ -479,7 +523,7 @@ Item {
             verify(z._accepts("file:///tmp/a%0A.txt"), "? matches a newline");
             verify(!z._accepts("file:///tmp/a.jpg"));
             const spy = createTemporaryObject(signalSpyComp, root, {target: z, signalName: "browseRequested"});
-            const button = z.children[z.children.length - 1].children[3];
+            const button = part(z, "browseButton");
             mouseClick(button, button.width / 2, button.height / 2);
             compare(spy.count, 1, "one browseRequested per click");
         }
@@ -527,6 +571,95 @@ Item {
             tryVerify(() => c.popup.visible);
             compare(c.count, 3);
             c.popup.close();
+        }
+
+        function test_color_field_duplicate_swatch() {
+            // A translucent colour that is in the palette adds no second swatch.
+            const f = createTemporaryObject(colorField, root, {showAlpha: true, color: Qt.rgba(218 / 255, 68 / 255, 83 / 255, 0.5)});
+            f.forceActiveFocus();
+            mouseClick(f);
+            const swatches = [];
+            for (const w of walk(f.Window.window.contentItem)) {
+                if (w.hasOwnProperty("modelData") && typeof w.modelData === "string" && w.modelData.charAt(0) === "#" && w.hasOwnProperty("current")) {
+                    swatches.push(w.modelData);
+                }
+            }
+            compare(swatches.filter(h => h === "#da4453").length, 1);
+        }
+
+        function test_popup_close_with_focus_moving_does_not_throw() {
+            const f = createTemporaryObject(colorField, root, {x: 10, y: 10});
+            const other = createTemporaryObject(emailField, root, {x: 10, y: 200});
+            f.forceActiveFocus();
+            failOnWarning(new RegExp(".*"));
+            mouseClick(f);
+            tryVerify(() => f.Window.window.activeFocusItem !== f, 2000);
+            keyClick(Qt.Key_Escape);
+            tryVerify(() => f.activeFocus, 2000, "focus comes back to the field when it was in the popup");
+            // Open again and click elsewhere: focus stays where the user put it.
+            mouseClick(f);
+            tryVerify(() => f.Window.window.activeFocusItem !== f, 2000);
+            mouseClick(other);
+            tryVerify(() => other.activeFocus, 2000);
+            verify(!f.activeFocus);
+        }
+
+        function test_file_field_symbols_and_validator() {
+            const f = createTemporaryObject(fileFieldComp, root);
+            f.validator = Qt.createQmlObject('import Atlas.Ui; AtlasUrlValidator {}', root);
+            compare(f.invalidText, "");
+            f.invalidText = "Not a path";
+            compare(f.invalidText, "Not a path");
+        }
+
+        function test_spin_box_validator_accepts_only_the_number_between_prefix_and_suffix() {
+            const s = createTemporaryObject(spinComp, root);
+            s.contentItem.forceActiveFocus();
+            s.contentItem.selectAll();
+            keyClick("x");
+            verify(s.contentItem.text.indexOf("x") < 0, "a letter is refused");
+            s.contentItem.text = "$ 12 GB";
+            verify(s.contentItem.acceptableInput, "prefix and suffix are accepted");
+            verify(s.contentItem.text === "$ 12 GB");
+        }
+
+        function test_combo_box_filters_ten_thousand_rows() {
+            const rows = [];
+            for (let i = 0; i < 10000; ++i) {
+                rows.push("Item " + i);
+            }
+            const c = createTemporaryObject(comboComp, root, {model: rows, filterable: true});
+            c.popup.open();
+            tryVerify(() => c.popup.visible);
+            const list = part(c.popup.contentItem, "choices");
+            compare(list.count, 10000);
+            verify(list.contentItem.children.length < 200, "only the visible rows are built, not 10000");
+            part(c.popup.contentItem, "filterField").text = "99";
+            const expected = rows.filter(r => r.toLowerCase().indexOf("99") >= 0).length;
+            tryCompare(list, "count", expected);
+            verify(expected > 0 && expected < 10000);
+            c.popup.close();
+        }
+
+        function test_font_picker_pixel_font_shows_no_minus_one_pt() {
+            const f = createTemporaryObject(pickerComp, root);
+            f.font.pixelSize = 14;
+            compare(f.font.pointSize, -1);
+            const texts = [];
+            for (const t of walk(f)) {
+                if (typeof t.text === "string") {
+                    texts.push(t.text);
+                }
+            }
+            verify(texts.every(t => t.indexOf("-1") < 0), "no -1 anywhere: " + texts.join("|"));
+            verify(f.Accessible.description.indexOf("-1") < 0);
+        }
+
+        function test_font_picker_scan_is_shared() {
+            const a = createTemporaryObject(pickerComp, root, {fixedOnly: true});
+            tryVerify(() => a._scanned > 0, 5000);
+            const b = createTemporaryObject(pickerComp, root, {fixedOnly: true});
+            verify(b._scanned >= a._scanned, "a second picker starts where the first got to");
         }
 
         function test_color_field_label_for_alpha_999() {

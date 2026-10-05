@@ -55,6 +55,21 @@ void AtlasUrlValidator::setSchemes(const QStringList &schemes)
     Q_EMIT changed();
 }
 
+// True when scheme-less text such as "example.com" or "example.com:8080/a" is a
+// host and path of an http(s) URL; fixup() then puts the first scheme in front.
+static bool bareHost(const QStringList &schemes, const QString &text)
+{
+    if (schemes.isEmpty()) {
+        return false;
+    }
+    const QString first = schemes.first().toLower();
+    if (first != QLatin1String("http") && first != QLatin1String("https")) {
+        return false;
+    }
+    const QUrl url(first + QStringLiteral("://") + text, QUrl::StrictMode);
+    return url.isValid() && !url.host().isEmpty();
+}
+
 QValidator::State AtlasUrlValidator::validate(QString &input, int &) const
 {
     if (input.size() > kMaxUrl) {
@@ -78,7 +93,7 @@ QValidator::State AtlasUrlValidator::validate(QString &input, int &) const
                 return Intermediate;
             }
         }
-        return Invalid;
+        return bareHost(m_schemes, text) ? Intermediate : Invalid;
     }
     const QString scheme = lower.left(colon);
     bool allowed = false;
@@ -89,7 +104,14 @@ QValidator::State AtlasUrlValidator::validate(QString &input, int &) const
         }
     }
     if (!allowed) {
-        return Invalid;
+        // "example.com:8080" has a colon but no scheme: digits follow it.
+        const QString rest = text.mid(colon + 1);
+        qsizetype end = 0;
+        while (end < rest.size() && rest.at(end).isDigit()) {
+            ++end;
+        }
+        const bool port = end > 0 && (end == rest.size() || QStringLiteral("/?#").contains(rest.at(end)));
+        return port && bareHost(m_schemes, text) ? Intermediate : Invalid;
     }
     const QUrl url(text, QUrl::StrictMode);
     if (!url.isValid()) {
@@ -105,6 +127,16 @@ QValidator::State AtlasUrlValidator::validate(QString &input, int &) const
 void AtlasUrlValidator::fixup(QString &input) const
 {
     input = input.trimmed();
+    // "example.com" becomes "https://example.com" (the first scheme).
+    const qsizetype colon = input.indexOf(QLatin1Char(':'));
+    bool schemed = false;
+    for (const QString &s : m_schemes) {
+        schemed = schemed || (colon >= 0 && s.compare(input.left(colon), Qt::CaseInsensitive) == 0);
+    }
+    // (Only a host with a port or path: a bad scheme such as ftp:// stays as typed.)
+    if (!schemed && bareHost(m_schemes, input)) {
+        input = m_schemes.first() + QStringLiteral("://") + input;
+    }
 }
 
 // Email

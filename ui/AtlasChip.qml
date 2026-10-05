@@ -19,6 +19,9 @@ T.AbstractButton {
     // A Material Symbol (Symbols.<Name>); 0 for none.
     property int symbol: 0
     property bool closable: false
+    // The widest the chip asks for (its implicit width); a longer text is
+    // elided. 0 means no limit. Since 1.5.0.
+    property real maximumWidth: 0
     signal closeRequested
 
     // The AtlasChipGroup that holds the chip, set by the group; it is told when
@@ -73,6 +76,7 @@ T.AbstractButton {
     contentItem: Row {
         spacing: AtlasStyle.spacingSmall
         Loader {
+            id: symbolSlot
             active: control.symbol !== 0 || control.showsCheck
             visible: active
             anchors.verticalCenter: parent.verticalCenter
@@ -91,9 +95,13 @@ T.AbstractButton {
             font.pointSize: AtlasStyle.fontSizeBody
             color: !control.enabled ? AtlasStyle.textDisabled : control.showsCheck ? AtlasStyle.accent : control.tint
             textFormat: Text.PlainText
+            elide: Text.ElideRight
+            // With maximumWidth the text gives way; else it keeps its own width.
+            width: control.maximumWidth > 0 ? Math.min(implicitWidth, Math.max(0, control.maximumWidth - control.leftPadding - control.rightPadding - (symbolSlot.visible ? symbolSlot.width + AtlasStyle.spacingSmall : 0) - (closeSpace.visible ? closeSpace.width + AtlasStyle.spacingSmall : 0))) : implicitWidth
         }
         // Room for the close button, which sits over it.
         Item {
+            id: closeSpace
             visible: control.closable
             width: closeButton.width
             height: 1

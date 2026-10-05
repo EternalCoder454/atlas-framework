@@ -78,6 +78,16 @@ T.SpinBox {
         event.accepted = true;
     }
 
+    // Only the number is checked: the text may be the prefix, digits (with a
+    // sign and the locale's separators) and the suffix, so what is typed
+    // between them cannot be a letter. Since 1.5.0.
+    readonly property var _pattern: {
+        const esc = s => s.replace(/[.*+?^${}()|[\]\\\/]/g, "\\$&");
+        return new RegExp("^" + esc(prefix) + "[-+\u2212]?[0-9\u0660-\u0669\u06f0-\u06f9,.\\s\u00a0\u202f'\u2019]*" + esc(suffix) + "$");
+    }
+    validator: RegularExpressionValidator {
+        regularExpression: control._pattern
+    }
     textFromValue: (value, locale) => prefix + Number(value).toLocaleString(locale, 'f', 0) + suffix
     valueFromText: (text, locale) => {
         let t = text;

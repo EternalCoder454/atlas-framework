@@ -448,13 +448,14 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 - [ ] AtlasInstallButton: NaN progress shows "NaN%".
 - [x] AtlasDropZone: a Browse click may emit `browseRequested` twice (verify);
   glob `?`/`*` don't match a newline. Fixed the glob; the double Browse emit
-  is guarded (the tap handler ignores a tap on the button), unverified until
-  the build.
-- [ ] AtlasComboBox: filtering hides delegates instead of filtering the model
+  is not a bug: the button accepts its own press, so the zone's tap handler
+  never sees it (a test checks one emit).
+- [x] AtlasComboBox: filtering hides delegates instead of filtering the model
   (10k rows are all built); null entries or a missing textRole throw.
-  Null entries and a missing textRole are fixed; the 10k rows need a filtered
-  model for the list and are still open.
-- [ ] AtlasSpinBox has no validator; SearchField's `query` lags on Return and
+  Fixed: a filterable list now takes the list of matching indexes as its
+  model, so only the visible rows are built; null entries and a missing
+  textRole are fixed too.
+- [x] AtlasSpinBox has no validator; SearchField's `query` lags on Return and
   its clear button works on a read-only field; AtlasShortcutField can't record
   Ctrl+Delete, Shift+Delete, Ctrl+Escape; AtlasSegmentedControl with a
   ListModel or number, and a click doesn't focus it; AtlasFontPicker reads the
@@ -464,13 +465,14 @@ first. Fix in batches by file; every fix gets a test that fails before it.
   AtlasSplitButton and MenuButton don't flip in RTL; AtlasSwitch's indicator in
   a wide RTL switch; AtlasRating's count text replace; AtlasFileField's
   folder symbol, silent dialog failure, no validator hook. (Low)
-  Done: SearchField (query on Return, clear when read-only), AtlasShortcutField
-  keys, AtlasSegmentedControl (ListModel, number, click focus), AtlasFontPicker
-  "-1 pt", AtlasColorField alpha 0.999. Not a bug: AtlasRating's count replace
-  (it replaces the first number only). Not done: AtlasSpinBox validator (it
-  would reject the prefix and suffix text), duplicate swatches, UrlValidator,
-  elide on AtlasChip and AtlasButton, RTL flips (SplitButton, MenuButton,
-  Switch), FileField, FontPicker families read once.
+  Done: SearchField, AtlasShortcutField keys, AtlasSegmentedControl,
+  AtlasFontPicker (-1 pt, families read once and the scan shared), AtlasColorField
+  (alpha 0.999, one swatch), AtlasUrlValidator ("example.com" gets https://),
+  AtlasChip and AtlasButton `maximumWidth` with elide, the RTL menu of
+  AtlasSplitButton and MenuButton, AtlasSwitch's indicator in RTL,
+  AtlasFileField and AtlasFolderField (symbol, a dialog that cannot open says
+  so, `validator` and `invalidText`), AtlasSpinBox's validator (only the number
+  between prefix and suffix). Not a bug: AtlasRating's count replace.
 
 #### Lists, tables and data
 

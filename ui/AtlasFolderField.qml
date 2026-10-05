@@ -28,6 +28,10 @@ Item {
     // The path as a file URL; empty when `path` is empty or not absolute.
     readonly property url url: internals.toUrl(control.path)
     property string placeholderText
+    // Checks the typed path (any QValidator, such as AtlasPathValidator), and
+    // the message the field shows for a path it does not accept.
+    property alias validator: field.validator
+    property alias invalidText: field.invalidText
     // False: the path cannot be typed, only chosen.
     property bool editable: true
     // The dialog's title; empty for the system's own.
@@ -88,6 +92,7 @@ Item {
                 return "";
             }
         }
+        property bool dialogFailed: false
         function chosen(u: url): void {
             const p = fromUrl(u);
             if (p.length > 0 && p !== control.path) {
@@ -95,6 +100,7 @@ Item {
             }
         }
         function browse(): void {
+            dialogFailed = false;
             if (dialogLoader.item) {
                 (dialogLoader.item as FolderDialog).currentFolder = control.url;
                 (dialogLoader.item as FolderDialog).open();
@@ -117,8 +123,11 @@ Item {
             Layout.fillWidth: true
             placeholderText: control.placeholderText
             readOnly: !control.editable
+            // Said when the dialog cannot be made; a typed or chosen path clears it.
+            errorText: internals.dialogFailed ? qsTr("The dialog could not be opened.") : ""
             Accessible.name: control.placeholderText.length > 0 ? control.placeholderText : qsTr("Folder path")
             onTextEdited: {
+                internals.dialogFailed = false;
                 control._userSet(text);
             }
         }
@@ -139,6 +148,12 @@ Item {
             title: control.title
             currentFolder: control.url
             onAccepted: internals.chosen(dialog.selectedFolder)
+        }
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                internals.dialogFailed = true;
+                active = false;
+            }
         }
         onLoaded: (item as FolderDialog).open()
     }
