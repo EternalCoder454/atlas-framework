@@ -130,7 +130,20 @@ T.Control {
             const p = card.mapToItem(list.contentItem, 1, 1);
             return list.indexAt(p.x, p.y);
         }
-        function focusIndex(i) {
+        // The last Tab stop of a card: the first one, or the last inside it.
+        function lastStop(card) {
+            let stop = priv.focusTarget(card);
+            for (let n = 0; stop && n < 100; ++n) {
+                const next = stop.nextItemInFocusChain(true);
+                if (!next || next === stop || priv.cardOf(next) !== card) {
+                    break;
+                }
+                stop = next;
+            }
+            return stop;
+        }
+        // Focuses card `i`, its first Tab stop or (`last`) its last one.
+        function focusIndex(i, last) {
             if (i < 0 || i >= list.count) {
                 return;
             }
@@ -138,10 +151,55 @@ T.Control {
             list.positionViewAtIndex(i, ListView.Contain);
             list.forceLayout();
             priv.order();
-            const target = priv.focusTarget(list.itemAtIndex(i));
+            const card = list.itemAtIndex(i);
+            const target = last === true ? priv.lastStop(card) : priv.focusTarget(card);
             if (target) {
-                target.forceActiveFocus(Qt.TabFocusReason);
+                target.forceActiveFocus(last === true ? Qt.BacktabFocusReason : Qt.TabFocusReason);
             }
+        }
+        function inList(item) {
+            for (let it = item; it; it = it.parent) {
+                if (it === list) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        // Tab (or Shift+Tab, `forward` false) from `item`, a stop in a card.
+        // Between cards it goes by index, not by the children's order: a
+        // ListView reuses and re-adds cards as it scrolls, and only the
+        // cards near the view exist. Within a card Qt's own chain is right.
+        // Returns whether it moved the focus.
+        function tab(item, forward) {
+            const card = priv.cardOf(item);
+            const i = card ? priv.indexOfCard(card) : -1;
+            if (i < 0) {
+                return false;
+            }
+            const next = item.nextItemInFocusChain(forward);
+            if (next && next !== item && priv.cardOf(next) === card) {
+                return false;
+            }
+            const j = i + (forward ? 1 : -1);
+            if (j >= 0 && j < list.count) {
+                priv.focusIndex(j, !forward);
+                return true;
+            }
+            // Out of the row: the first stop outside the list that way. The
+            // list's items are together in the chain, so walking through them
+            // in any order leaves at the same place.
+            let it = item;
+            for (let n = 0; n < 1000; ++n) {
+                it = it.nextItemInFocusChain(forward);
+                if (!it || it === item) {
+                    return false;
+                }
+                if (!priv.inList(it)) {
+                    it.forceActiveFocus(forward ? Qt.TabFocusReason : Qt.BacktabFocusReason);
+                    return true;
+                }
+            }
+            return false;
         }
         // Keeps the cards in index order among the list's children. Qt's
         // Tab chain follows that order, and a ListView adds a card it makes
@@ -241,6 +299,10 @@ T.Control {
 
             Keys.onPressed: event => {
                 if (list.count === 0) {
+                    return;
+                }
+                if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+                    event.accepted = priv.tab(scope.Window.window.activeFocusItem, event.key === Qt.Key_Tab);
                     return;
                 }
                 // Left and Right are physical; the mirrored row reads the other way.
