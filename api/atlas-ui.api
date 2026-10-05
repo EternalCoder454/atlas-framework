@@ -66,12 +66,12 @@ AtlasCheckBox.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
-AtlasEmptyState.property actionSymbol: int
 AtlasDoubleSpinBox.property prefix: QString
 AtlasDoubleSpinBox.property showButtons: bool
 AtlasDoubleSpinBox.property suffix: QString
 AtlasDoubleSpinBox.type
 AtlasEmailValidator.type
+AtlasEmptyState.property actionSymbol: int
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
 AtlasEmptyState.property symbol: int
