@@ -309,6 +309,7 @@ pub fn list_updates_with(refresh: bool, no_interaction: bool) -> Result<Vec<AppU
 
 /// How [`list_updates_report`] runs.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ListOptions {
     /// Update remote summaries and appstream data first, and look up
     /// download sizes (network). Default `false`.
@@ -327,6 +328,33 @@ pub struct ListOptions {
     pub deadline: Option<Duration>,
 }
 
+impl ListOptions {
+    pub fn with_refresh(mut self, refresh: bool) -> Self {
+        self.refresh = refresh;
+        self
+    }
+
+    pub fn with_no_interaction(mut self, no_interaction: bool) -> Self {
+        self.no_interaction = no_interaction;
+        self
+    }
+
+    pub fn with_cancel(mut self, cancel: CancelToken) -> Self {
+        self.cancel = Some(cancel);
+        self
+    }
+
+    pub fn with_call_timeout(mut self, call_timeout: Option<Duration>) -> Self {
+        self.call_timeout = call_timeout;
+        self
+    }
+
+    pub fn with_deadline(mut self, deadline: Option<Duration>) -> Self {
+        self.deadline = deadline;
+        self
+    }
+}
+
 impl Default for ListOptions {
     fn default() -> Self {
         ListOptions {
@@ -341,6 +369,7 @@ impl Default for ListOptions {
 
 /// An installation that could not be checked.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct InstallationError {
     pub installation: InstallationKind,
     /// flatpak's id for it (`default`, `user`, an extra one's name); empty
@@ -351,6 +380,7 @@ pub struct InstallationError {
 
 /// What [`list_updates_report`] found.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ListOutcome {
     /// Updates from every installation that could be checked.
     pub updates: Vec<AppUpdate>,
