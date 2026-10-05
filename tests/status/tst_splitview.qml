@@ -327,6 +327,17 @@ Item {
             compare(sv.currentPane, 0);
         }
 
+        // Saved sizes keep the format Qt.btoa() wrote (bytes as UTF-8 code
+        // points), so values saved by 1.4 still load.
+        function test_sizes_format_matches_what_qt_btoa_wrote() {
+            const sv = make({});
+            compare(sv._toBase64([0, 0x7f, 0x80, 0xff]), "AH/CgMO/");
+            compare(sv._fromBase64("AH/CgMO/"), [0, 0x7f, 0x80, 0xff]);
+            compare(sv._fromBase64("not base64!"), null);
+            compare(sv.restoreSizes("not base64!"), false);
+            verify(sv.restoreSizes(sv.saveSizes()));
+        }
+
         function test_current_pane_signal() {
             const sv = make({ width: 300 });
             paneSpy.target = sv;
