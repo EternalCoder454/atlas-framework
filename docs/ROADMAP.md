@@ -222,3 +222,8 @@ Non-blocking findings (Medium and Low) filed while shipping 1.4.0.
 - libatlasui.so is 28 MB in Release (43 MB with no build type): .dynstr/.dynsym hold every qmlcachegen AOT symbol. Try -fvisibility=hidden / a version script exporting only the plugin entry points; measure PSS (Release 1.4.0: ~110 MB vs 114.8 budget, startup 174-193 ms vs 190).
 - perf/measure.sh: first start in a run is cold and noisy (170 ms to 3 s); the median of 3 hides it. Consider 5 starts after one warm-up.
 - qmllint 162 warnings (baseline 161).
+
+### From the reference docs
+- apidump leaves out a signal that is also a NOTIFY signal (AtlasClipboard.changed()): it is public and documented; include it in api/.
+- AtlasSparklineItem.color defaults to Breeze blue #3daee9 (ui/atlassparkline.h:78); AtlasSparkline sets AtlasStyle.accent, but the C++ base used directly is blue.
+- Public members that look like internal helpers (permanent API now, documented plainly): AtlasButton.accent/textTint, AtlasChip.tint/showsCheck, AtlasAppCard.defaultAction, AtlasShortcuts.add/remove, AtlasPage.ensureVisible, AtlasSidebar.win, AtlasSplitButton.mirrored.
