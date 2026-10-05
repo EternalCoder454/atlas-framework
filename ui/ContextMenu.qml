@@ -20,8 +20,8 @@ T.Menu {
 
     implicitWidth: Math.max(Kirigami.Units.gridUnit * 11, contentItem.implicitWidth + leftPadding + rightPadding)
     // The window's height less the margins bounds the menu; it scrolls past that.
-    readonly property real maxHeight: list.windowHeight - topMargin - bottomMargin
-    implicitHeight: Math.min(contentItem.implicitHeight + topPadding + bottomPadding, Math.max(maxHeight, 0))
+    readonly property real _maxHeight: list.windowHeight - topMargin - bottomMargin
+    implicitHeight: Math.min(contentItem.implicitHeight + topPadding + bottomPadding, Math.max(_maxHeight, 0))
     padding: Kirigami.Units.smallSpacing
     margins: Kirigami.Units.smallSpacing
     overlap: 1

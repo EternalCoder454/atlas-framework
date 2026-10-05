@@ -20,7 +20,7 @@ T.AbstractButton {
     // Opened above the item on a click; leave unset for none.
     property QtObject menu: null
     // The menu, untyped: a QQC2.Menu or ContextMenu.
-    readonly property var menuObject: control.menu
+    readonly property var _menuObject: control.menu
     // Set by the StatusBar.
     property bool leadingSeparator: false
 
@@ -36,7 +36,7 @@ T.AbstractButton {
 
     onClicked: {
         if (control.clickable && control.menu) {
-            const m = control.menuObject;
+            const m = control._menuObject;
             const w = m.width > 0 ? m.width : m.implicitWidth;
             const h = m.height > 0 ? m.height : m.implicitHeight;
             let x = control.mirrored ? control.width - w : 0;

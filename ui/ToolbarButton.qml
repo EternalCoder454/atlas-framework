@@ -23,27 +23,27 @@ T.AbstractButton {
     property real iconRotation: 0
     // A Material Symbol (Symbols.<Name>) to draw instead of icon.name; the
     // action's symbol when it has one.
-    property int symbol: actionObject && actionObject.symbol !== undefined ? actionObject.symbol : 0
+    property int symbol: _actionObject && _actionObject.symbol !== undefined ? _actionObject.symbol : 0
     // The action, read duck-typed so a plain Qt Action works too.
-    readonly property var actionObject: control.action
+    readonly property var _actionObject: control.action
     // True lets Tab reach the button; false (the default) keeps the editor's focus.
     property bool focusable: false
 
     // The shortcut shown: shortcutText, else the action's.
-    readonly property string effectiveShortcut: {
+    readonly property string _effectiveShortcut: {
         if (control.shortcutText.length > 0) {
             return control.shortcutText;
         }
-        const seq = actionObject ? actionObject.shortcut : undefined;
-        return seq !== undefined && seq !== null ? String(seq) : "";
+        const seq = _actionObject ? _actionObject.shortcut : undefined;
+        return seq !== undefined && seq !== null ? AtlasShortcuts.readable(seq) : "";
     }
     // The tooltip's name: action.toolTip, else action.text, else text, without mnemonics.
-    readonly property string tipName: {
-        const a = actionObject;
+    readonly property string _tipName: {
+        const a = _actionObject;
         const raw = a && a.toolTip !== undefined && String(a.toolTip).length > 0 ? String(a.toolTip) : a && a.text ? String(a.text) : control.text;
         return raw.replace(/&(.)/g, "$1");
     }
-    readonly property color iconColor: control.checked ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
+    readonly property color _iconColor: control.checked ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
 
     implicitWidth: Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
@@ -51,8 +51,8 @@ T.AbstractButton {
     display: T.AbstractButton.IconOnly
     hoverEnabled: true
     focusPolicy: control.focusable ? Qt.StrongFocus : Qt.NoFocus
-    Accessible.name: control.tipName
-    Accessible.description: control.effectiveShortcut
+    Accessible.name: control._tipName
+    Accessible.description: control._effectiveShortcut
     Accessible.checkable: control.checkable
     Accessible.checked: control.checked
 
@@ -73,10 +73,10 @@ T.AbstractButton {
         }
     }
 
-    QQC2.ToolTip.visible: control.hovered && control.tipName.length > 0
+    QQC2.ToolTip.visible: control.hovered && control._tipName.length > 0
     QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
     //: Tooltip: %1 is the action ("Bold"), %2 its keyboard shortcut ("Ctrl+B")
-    QQC2.ToolTip.text: control.effectiveShortcut.length > 0 ? qsTr("%1 (%2)").arg(control.tipName).arg(control.effectiveShortcut) : control.tipName
+    QQC2.ToolTip.text: control._effectiveShortcut.length > 0 ? qsTr("%1 (%2)").arg(control._tipName).arg(control._effectiveShortcut) : control._tipName
 
     background: Rectangle {
         radius: 6
@@ -110,7 +110,7 @@ T.AbstractButton {
                     // A symbol fills about 5/6 of its square: a little larger
                     // matches a theme icon of the same slot.
                     size: Math.round(Kirigami.Units.iconSizes.small * 1.2)
-                    color: control.iconColor
+                    color: control._iconColor
                     opacity: control.enabled ? 1 : 0.4
                 }
             }
@@ -118,7 +118,7 @@ T.AbstractButton {
                 visible: control.symbol === 0 && control.display !== T.AbstractButton.TextOnly && (control.icon.name.length > 0 || control.icon.source.toString().length > 0)
                 source: control.icon.name.length > 0 ? control.icon.name : control.icon.source
                 isMask: true
-                color: control.iconColor
+                color: control._iconColor
                 opacity: control.enabled ? 1 : 0.4
                 width: Kirigami.Units.iconSizes.small
                 height: width

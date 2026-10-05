@@ -19,7 +19,7 @@ Item {
     // "normal" | "paused" | "error"
     property string status: "normal"
 
-    readonly property color fillColor: status === "error" ? AtlasStyle.error : status === "paused" ? Qt.alpha(Kirigami.Theme.textColor, 0.4) : Kirigami.Theme.highlightColor
+    readonly property color _fillColor: status === "error" ? AtlasStyle.error : status === "paused" ? Qt.alpha(Kirigami.Theme.textColor, 0.4) : Kirigami.Theme.highlightColor
 
     implicitWidth: Kirigami.Units.gridUnit * 16
     implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 0.45), label.visible ? label.implicitHeight : 0)
@@ -56,7 +56,7 @@ Item {
                     radius: height / 2
                     x: Qt.locale().textDirection === Qt.RightToLeft ? parent.width - width : 0
                     width: root.indeterminate ? 0 : root.value > 0 ? Math.max(height, parent.width * Math.min(1, root.value)) : 0
-                    color: root.fillColor
+                    color: root._fillColor
                     Behavior on width {
                         NumberAnimation {
                             duration: Kirigami.Units.longDuration
@@ -71,7 +71,7 @@ Item {
                     height: parent.height
                     radius: height / 2
                     width: parent.width * 0.3
-                    color: root.fillColor
+                    color: root._fillColor
                     SequentialAnimation on x {
                         running: root.indeterminate && root.status !== "paused" && root.visible && Kirigami.Units.longDuration > 0
                         loops: Animation.Infinite

@@ -119,7 +119,6 @@ AtlasPlaceholder.property animated: bool
 AtlasPlaceholder.property lineHeight: double
 AtlasPlaceholder.property lines: int
 AtlasPlaceholder.type
-AtlasProgressBar.property fillColor: QColor [readonly]
 AtlasProgressBar.property indeterminate: bool
 AtlasProgressBar.property status: QString
 AtlasProgressBar.property text: QString
@@ -234,15 +233,11 @@ ConfirmDialog.property title: QString
 ConfirmDialog.signal accepted()
 ConfirmDialog.signal alternative()
 ConfirmDialog.type
-ContextMenu.property maxHeight: double [readonly]
 ContextMenu.type
-ContextMenuItem.property actionObject: QVariant [readonly]
 ContextMenuItem.property destructive: bool
-ContextMenuItem.property effectiveShortcut: QString [readonly]
 ContextMenuItem.property radio: bool
 ContextMenuItem.property shortcutText: QString
 ContextMenuItem.property showsCheck: bool [readonly]
-ContextMenuItem.property showsDot: bool [readonly]
 ContextMenuItem.property symbol: int
 ContextMenuItem.property tint: QColor [readonly]
 ContextMenuItem.type
@@ -335,7 +330,6 @@ LiveChartItem.property values2: QList<double>
 LiveChartItem.property values: QList<double>
 LiveChartItem.type
 MenuButton.property accent: QColor [readonly]
-MenuButton.property actionObject: QVariant [readonly]
 MenuButton.property items: QQmlListProperty<QObject> [readonly]
 MenuButton.property prominent: bool
 MenuButton.property symbol: int
@@ -432,7 +426,6 @@ StatusBar.type
 StatusBarItem.property clickable: bool
 StatusBarItem.property leadingSeparator: bool
 StatusBarItem.property menu: QObject*
-StatusBarItem.property menuObject: QVariant [readonly]
 StatusBarItem.property symbol: int
 StatusBarItem.property toolTip: QString
 StatusBarItem.type
@@ -499,14 +492,10 @@ Toast.property interval: int
 Toast.property text: QString
 Toast.signal actionTriggered()
 Toast.type
-ToolbarButton.property actionObject: QVariant [readonly]
-ToolbarButton.property effectiveShortcut: QString [readonly]
 ToolbarButton.property focusable: bool
-ToolbarButton.property iconColor: QColor [readonly]
 ToolbarButton.property iconRotation: double
 ToolbarButton.property shortcutText: QString
 ToolbarButton.property symbol: int
-ToolbarButton.property tipName: QString [readonly]
 ToolbarButton.type
 UsageBar.method colorAt(QVariant i): QVariant
 UsageBar.property barHeight: double

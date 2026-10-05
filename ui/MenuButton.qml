@@ -8,8 +8,8 @@ SecondaryButton {
     id: control
 
     // Read duck-typed, so a plain Qt Action works too.
-    readonly property var actionObject: control.action
-    symbol: actionObject && actionObject.symbol !== undefined ? actionObject.symbol : 0
+    readonly property var _actionObject: control.action
+    symbol: _actionObject && _actionObject.symbol !== undefined ? _actionObject.symbol : 0
 
     default property alias items: menu.contentData
 
