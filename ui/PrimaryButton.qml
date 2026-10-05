@@ -1,6 +1,7 @@
 import QtQuick
 
-// Filled accent button with white text.
+// Filled accent button: `accentStrong` with `accentStrongText` (white in Light,
+// near-black in Dark).
 AtlasButton {
     prominent: true
 }

@@ -61,12 +61,14 @@ CHANGELOG.md                  what each release brings to apps
 Every Atlas app follows these. Atlas.Ui implements them, so an app that uses
 its controls gets them for free.
 
-1. **macOS-style controls.** Pill buttons (`PrimaryButton` filled with the
-   accent, `SecondaryButton` soft and tinted, `TextButton` as a link), pill
-   switches (`AtlasSwitch`), settings grouped in rounded cards (`Section` of
-   `SectionRow`s), a sidebar of rounded selection pills (`SidebarItem`,
-   `SidebarGroup`), a large bold page title (`AtlasPage`), and a big centred
-   status (`StatusHero`).
+1. **macOS-style controls with small rounding.** Buttons with 4 px corners
+   (`PrimaryButton` filled with `accentStrong`, `SecondaryButton` soft and
+   tinted with a hairline border, `TextButton` as a link), round switches
+   (`AtlasSwitch`), settings grouped in 6 px cards (`Section` of
+   `SectionRow`s), a sidebar whose selection is a 4 px highlight
+   (`SidebarItem`, `SidebarGroup`), a large bold page title (`AtlasPage`), and
+   a big centred status (`StatusHero`). The tokens are on the
+   [Style and theming](reference/atlas-ui/style-and-theming.md) page.
 2. **Windows 11 caption buttons.** The title bar is the window manager's:
    AtlasOS's Aurorae themes draw minimize, maximize and close as rounded
    squares on the right, tinted at rest, accent on hover, red for close (see

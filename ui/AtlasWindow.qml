@@ -4,8 +4,8 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 
-// The window of an Atlas app. With "Transparency effects" on (and the
-// compositor blurring), the window background is the theme's background at
+// The window of an Atlas app. With "Transparency and blur" on (and the
+// compositor blurring), the window background is `AtlasStyle.base` at
 // `blurAlpha` over a blurred desktop, Mica style; otherwise it is the plain
 // opaque background, exactly as before. Put `sidebarColor(base)` on a sidebar
 // so it is a little more see-through; Section cards stay nearly opaque.

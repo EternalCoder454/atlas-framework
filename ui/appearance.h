@@ -1,5 +1,5 @@
 // Appearance: the look switches every Atlas app shares. `transparency` is
-// the "Transparency effects" setting, `Transparency` under `[Appearance]` in
+// the "Transparency and blur" setting, `Transparency` under `[Appearance]` in
 // `atlasrc` (default true). A KConfigWatcher keeps every open Atlas app in
 // step when one of them, or the user, changes the file.
 //
