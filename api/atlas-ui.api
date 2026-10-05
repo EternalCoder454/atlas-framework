@@ -120,7 +120,6 @@ AtlasDoubleSpinBox.property prefix: QString
 AtlasDoubleSpinBox.property showButtons: bool
 AtlasDoubleSpinBox.property suffix: QString
 AtlasDoubleSpinBox.type
-AtlasEmailValidator.type
 AtlasDropZone.property acceptedKeys: QStringList
 AtlasDropZone.property allowRemote: bool
 AtlasDropZone.property browseText: QString
@@ -133,6 +132,7 @@ AtlasDropZone.property text: QString
 AtlasDropZone.signal browseRequested()
 AtlasDropZone.signal dropped(QList<QUrl> urls)
 AtlasDropZone.type
+AtlasEmailValidator.type
 AtlasEmptyState.property actionSymbol: int
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
@@ -326,7 +326,7 @@ AtlasSpinner.type
 AtlasSplitButton.method openMenu(): QVariant
 AtlasSplitButton.property action: QQuickAction*
 AtlasSplitButton.property items: QQmlListProperty<QObject> [readonly]
-AtlasSplitButton.property menu: ContextMenu_QMLTYPE_91* [readonly]
+AtlasSplitButton.property menu: ContextMenu_QMLTYPE* [readonly]
 AtlasSplitButton.property mirrored: bool [readonly]
 AtlasSplitButton.property prominent: bool
 AtlasSplitButton.property symbol: int
@@ -392,6 +392,16 @@ AtlasTimePicker.signal edited()
 AtlasTimePicker.type
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
+AtlasToolbar.property accessibleName: QString
+AtlasToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
+AtlasToolbar.property flat: bool
+AtlasToolbar.property focusable: bool
+AtlasToolbar.property leading: QQmlListProperty<QObject> [readonly]
+AtlasToolbar.property moreMenu: QVariant [readonly]
+AtlasToolbar.property overflowCount: int [readonly]
+AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
+AtlasToolbar.property visibleCount: int [readonly]
+AtlasToolbar.type
 AtlasUrlValidator.property schemes: QStringList
 AtlasUrlValidator.type
 AtlasViewSwitcher.property count: int [readonly]
@@ -403,16 +413,6 @@ AtlasViewSwitcher.type
 AtlasWindow.enum WidthClass: Compact = 0
 AtlasWindow.enum WidthClass: Medium = 1
 AtlasWindow.enum WidthClass: Wide = 2
-AtlasToolbar.property accessibleName: QString
-AtlasToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
-AtlasToolbar.property flat: bool
-AtlasToolbar.property focusable: bool
-AtlasToolbar.property leading: QQmlListProperty<QObject> [readonly]
-AtlasToolbar.property moreMenu: QVariant [readonly]
-AtlasToolbar.property overflowCount: int [readonly]
-AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
-AtlasToolbar.property visibleCount: int [readonly]
-AtlasToolbar.type
 AtlasWindow.method sidebarColor(QColor base): QColor
 AtlasWindow.method syncBlur(): QVariant
 AtlasWindow.method tinted(QColor base, double factor): QColor
