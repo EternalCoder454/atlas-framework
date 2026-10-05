@@ -6,7 +6,7 @@
 #   visual-<variant>   every ui/gallery/demos/*Demo.qml against its golden
 #                      (tests/visual/golden/<variant>/<Demo>.png)
 #                      variants: light dark accent opaque contrast rtl compact text200
-#   ATLAS_UPDATE_GOLDENS=1 ctest ...   rewrites the goldens
+#   ATLAS_UPDATE_GOLDENS=1 ctest ...   rewrites the goldens that fail
 #   i18n               a throwaway German catalogue: Atlas.Ui's qsTr() strings
 #                      come back translated (tests/i18n)
 #   state-<n>          every demo against the state contract of docs/DESIGN.md

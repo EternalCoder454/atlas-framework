@@ -27,7 +27,9 @@ its goldens, nothing else. A window demo (`AtlasWindowDemo`) has an
 - A failure writes `<Demo>.actual.png` and `<Demo>.diff.png` (differences in
   red) to `build/visual-out/<variant>/` and names them.
 - `ATLAS_UPDATE_GOLDENS=1 ctest --test-dir build -R visual` rewrites the
-  goldens. Approving a change means committing them: the reviewer sees the new
+  goldens that fail (one that still matches within the tolerance is left
+  alone, so the diff holds only real changes); `tools/dev-check.sh` passes
+  the variable through. Approving a change means committing them: the reviewer sees the new
   pictures in the pull request.
 - Variants, each in its own temporary `XDG_CONFIG_HOME`: `light` (Breeze
   Light), `dark` (Breeze Dark), `accent` (Breeze Light with `#e5487a` as the
