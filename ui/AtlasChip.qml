@@ -27,7 +27,8 @@ T.AbstractButton {
 
     // The AtlasChipGroup that holds the chip, set by the group; it is told when
     // the chip is shown, hidden, enabled or disabled (the roving Tab stop).
-    property Item _tabOwner: null
+    // var, not Item: the group's _chipStateChanged() is not on Item (qmllint).
+    property var _tabOwner: null
     onVisibleChanged: _tabOwner?._chipStateChanged()
     onEnabledChanged: _tabOwner?._chipStateChanged()
     // A chip moved out of its group stops telling the group, and is a Tab stop again.

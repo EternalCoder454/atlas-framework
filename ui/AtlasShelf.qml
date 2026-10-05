@@ -151,6 +151,9 @@ T.Control {
             list.positionViewAtIndex(i, ListView.Contain);
             list.forceLayout();
             priv.order();
+            // Current first: a ListView gives the focus to a new current
+            // card, which would take it back from a stop inside the card.
+            list.currentIndex = i;
             const card = list.itemAtIndex(i);
             const target = last === true ? priv.lastStop(card) : priv.focusTarget(card);
             if (target) {
@@ -164,6 +167,18 @@ T.Control {
                 }
             }
             return false;
+        }
+        // A Tab key in the row: between cards by index, within a card along
+        // Qt's own chain.
+        function tabKey(forward) {
+            const item = scope.Window.window ? scope.Window.window.activeFocusItem : null;
+            if (!item || priv.tab(item, forward)) {
+                return;
+            }
+            const next = item.nextItemInFocusChain(forward);
+            if (next && next !== item) {
+                next.forceActiveFocus(forward ? Qt.TabFocusReason : Qt.BacktabFocusReason);
+            }
         }
         // Tab (or Shift+Tab, `forward` false) from `item`, a stop in a card.
         // Between cards it goes by index, not by the children's order: a
@@ -188,18 +203,21 @@ T.Control {
             // Out of the row: the first stop outside the list that way. The
             // list's items are together in the chain, so walking through them
             // in any order leaves at the same place.
+            // Nothing outside takes the focus: wrap round to the other end
+            // of the row by index, as Qt's chain wraps.
             let it = item;
             for (let n = 0; n < 1000; ++n) {
                 it = it.nextItemInFocusChain(forward);
                 if (!it || it === item) {
-                    return false;
+                    break;
                 }
                 if (!priv.inList(it)) {
                     it.forceActiveFocus(forward ? Qt.TabFocusReason : Qt.BacktabFocusReason);
                     return true;
                 }
             }
-            return false;
+            priv.focusIndex(forward ? 0 : list.count - 1, !forward);
+            return true;
         }
         // Keeps the cards in index order among the list's children. Qt's
         // Tab chain follows that order, and a ListView adds a card it makes
@@ -281,10 +299,11 @@ T.Control {
             clip: true
             model: control.model
             boundsBehavior: Flickable.StopAtBounds
-            // At least the next card on each side exists, so Tab from the
-            // last stop of the card in view reaches the next one (the
-            // default buffer is platform-dependent and can be narrower).
-            cacheBuffer: Math.ceil(control.cardWidth + list.spacing)
+            // A shelf is a short row: keep up to 24 cards alive, so Tab
+            // reaches the next card and a card keeps its identity (and a
+            // screen reader its focus object) when the row scrolls back.
+            // Past that, at least the next card on each side exists.
+            cacheBuffer: Math.ceil(Math.max(1, Math.min(list.count, 24)) * (control.cardWidth + list.spacing))
             delegate: control.delegate
             // The row takes the height of the tallest card; cards come and
             // go as it scrolls, so measure again when the content changes.
@@ -299,10 +318,6 @@ T.Control {
 
             Keys.onPressed: event => {
                 if (list.count === 0) {
-                    return;
-                }
-                if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-                    event.accepted = priv.tab(scope.Window.window.activeFocusItem, event.key === Qt.Key_Tab);
                     return;
                 }
                 // Left and Right are physical; the mirrored row reads the other way.
@@ -346,6 +361,20 @@ T.Control {
                     priv.order();
                 }
             }
+        }
+
+        // Tab and Shift+Tab: the focused stop in a card takes a Tab key
+        // itself (it never comes up to the list), so they are caught as
+        // shortcuts, which come before the key, while the row has the focus.
+        Shortcut {
+            sequences: ["Tab"]
+            enabled: list.activeFocus && list.count > 0
+            onActivated: priv.tabKey(true)
+        }
+        Shortcut {
+            sequences: ["Backtab", "Shift+Tab", "Shift+Backtab"]
+            enabled: list.activeFocus && list.count > 0
+            onActivated: priv.tabKey(false)
         }
 
         // Cards made while scrolling go to the end of the children; put

@@ -339,7 +339,8 @@ Item {
         // others among the list's children (the order Qt's focus chain
         // follows); Tab and Shift+Tab still go card by card in index order.
         function test_tab_goes_by_index_after_scrolling() {
-            const s = make();
+            // More cards than the shelf keeps alive (24), so card 0 is released.
+            const s = make(null, { model: 40 });
             const list = findChild(s, "list");
             tryVerify(() => list.contentWidth > list.width);
             list.contentX = list.originX + list.contentWidth - list.width;

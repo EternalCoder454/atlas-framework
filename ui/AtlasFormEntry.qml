@@ -59,7 +59,9 @@ FocusScope {
     readonly property bool _isEmpty: entry._emptyOf(entry._control)
     readonly property bool _missing: entry.required && entry._isEmpty
     readonly property bool _unacceptable: !entry._isEmpty && entry._control !== null && entry._untyped(entry._control)["acceptableInput"] === false
-    readonly property bool _autoStacked: entry._narrow || (entry._control !== null && entry._control.implicitHeight > AtlasStyle.controlHeight * 2.5)
+    // Stacked when narrow, when the control is tall, or when it does not fit
+    // beside the label's minimum width (it would run past the row's edge).
+    readonly property bool _autoStacked: entry._narrow || (entry._control !== null && (entry._control.implicitHeight > AtlasStyle.controlHeight * 2.5 || (entry.width > 0 && entry._control.implicitWidth > entry.width - AtlasStyle.spacingLarge * 3 - Kirigami.Units.gridUnit * 6)))
     // Narrow: below 22 grid units, and not wide again until 24 (no flapping at
     // the threshold).
     property bool _narrow: false

@@ -5,7 +5,7 @@ section: Layout
 since: "1.5.0"
 ---
 
-An AtlasFormEntry is one row in a [Section](section.md) of an [AtlasForm](atlas-form.md): the label (and `help` under it) on the leading side, the control on the trailing side. The control is the one item declared inside the entry; any Atlas.Ui control works, and so does a plain `Item`. In a narrow row (less than 22 grid units) and for a tall control (a text area) the control goes under the label (`stacked`).
+An AtlasFormEntry is one row in a [Section](section.md) of an [AtlasForm](atlas-form.md): the label (and `help` under it) on the leading side, the control on the trailing side. The control is the one item declared inside the entry; any Atlas.Ui control works, and so does a plain `Item`. In a narrow row (less than 22 grid units), for a tall control (a text area), and for a control too wide to fit beside the label, the control goes under the label (`stacked`).
 
 An entry is valid when it has no `errorText`, is not `required` and empty, and its control's `acceptableInput` is not false (the Atlas validators and `TextField.validator` set it; an optional field that is empty is never unacceptable). The error shows under the row, with an error symbol, and the control gets a red outline (a control that draws its own error, such as AtlasTextField, keeps its own):
 
@@ -41,7 +41,7 @@ AtlasFormEntry {
 | `invalidText` | `string` | `qsTr("Check this value")` | Shown when the control's `acceptableInput` is false. |
 | `valid` | `bool` (read-only) | — | No error of any kind, shown or not. An entry that is disabled, or that the app hid with `visible: false`, is valid, so it never blocks a form. One on a page that is not shown still counts. |
 | `shownError` | `string` (read-only) | — | The error on screen, or `""`. |
-| `stacked` | `bool` | automatic | The control under the label. On in a narrow row and for a tall control; set it to force either. |
+| `stacked` | `bool` | automatic | The control under the label. On in a narrow row, for a tall control and for one too wide to fit beside the label; set it to force either. |
 | `settingKey` | `string` | `""` | The key in the form's `settings` the control is bound to; see below. |
 | `settingProperty` | `string` | `""` | The control's property to save, for a control that is not in the table below. |
 | `atlasRow` | `bool` (read-only) | `true` | Marks the entry as a row of a Section, as [SectionRow](section-row.md) does. |
