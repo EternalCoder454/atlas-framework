@@ -89,13 +89,13 @@ Row {
                     return "#C42B1C";
                 }
                 if (_down) {
-                    return Qt.alpha(Kirigami.Theme.highlightColor, 0.45);
+                    return AtlasStyle.alpha(Kirigami.Theme.highlightColor, 0.45);
                 }
                 if (_hover) {
-                    return Qt.alpha(Kirigami.Theme.highlightColor, 0.28);
+                    return AtlasStyle.alpha(Kirigami.Theme.highlightColor, 0.28);
                 }
                 const a = !enabled ? (root.active ? 0.04 : 0.03) : root.active ? 0.07 : 0.05;
-                return Qt.alpha(Kirigami.Theme.textColor, a);
+                return AtlasStyle.alpha(Kirigami.Theme.textColor, a);
             }
             readonly property real _glyphOpacity: _hover || _down ? 1 : !enabled ? (root.active ? 0.4 : 0.35) : root.active ? 1 : 0.7
             readonly property string _glyphPath: {

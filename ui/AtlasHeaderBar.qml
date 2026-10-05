@@ -228,7 +228,7 @@ Item {
                 width: 26
                 height: 26
                 radius: 7
-                color: menuButton.down ? Qt.alpha(Kirigami.Theme.highlightColor, 0.45) : menuButton.hovered ? Qt.alpha(Kirigami.Theme.highlightColor, 0.28) : "transparent"
+                color: menuButton.down ? AtlasStyle.alpha(Kirigami.Theme.highlightColor, 0.45) : menuButton.hovered ? AtlasStyle.alpha(Kirigami.Theme.highlightColor, 0.28) : "transparent"
             }
             contentItem: Item {
                 Kirigami.Icon {

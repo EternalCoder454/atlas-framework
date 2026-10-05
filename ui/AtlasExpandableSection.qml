@@ -80,7 +80,7 @@ ColumnLayout {
 
         background: Rectangle {
             radius: AtlasStyle.radius
-            color: Qt.alpha(Kirigami.Theme.textColor, header.pressed ? 0.1 : header.hovered ? 0.05 : 0)
+            color: AtlasStyle.alpha(Kirigami.Theme.textColor, header.pressed ? 0.1 : header.hovered ? 0.05 : 0)
             AtlasFocusRing {
                 radius: parent.radius
                 shown: header.visualFocus

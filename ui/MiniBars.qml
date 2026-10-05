@@ -48,7 +48,7 @@ Flow {
                 Rectangle {
                     anchors.fill: parent
                     radius: 3
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+                    color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.1)
                 }
                 Rectangle {
                     anchors.bottom: parent.bottom
@@ -64,7 +64,7 @@ Flow {
                 width: root.barWidth
                 horizontalAlignment: Text.AlignHCenter
                 text: cell.index
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.55)
+                color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.55)
                 font.family: AtlasStyle.fontFamily
                 font.pointSize: AtlasStyle.fontSizeCaption
                 textFormat: Text.PlainText

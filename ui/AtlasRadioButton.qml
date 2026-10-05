@@ -88,7 +88,7 @@ T.RadioButton {
         x: control.mirrored ? control.width - width : 0
         y: Math.round((control.height - height) / 2)
         radius: AtlasStyle.radiusPill
-        color: control.checked ? (control.enabled ? AtlasStyle.accent : Qt.alpha(AtlasStyle.accent, 0.4)) : control.enabled && control.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        color: control.checked ? (control.enabled ? AtlasStyle.accent : AtlasStyle.alpha(AtlasStyle.accent, 0.4)) : control.enabled && control.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
         border.width: control.checked ? 0 : 1
         border.color: AtlasStyle.controlBorder
         Behavior on color {

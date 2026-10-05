@@ -40,7 +40,7 @@ Item {
     // The shimmer shows while the bar is working, and not under reduced motion.
     readonly property bool _working: status !== "paused" && status !== "error" && (indeterminate || (value > 0 && value < 1))
     readonly property bool _shimmer: _working && !AtlasStyle.reducedMotion
-    readonly property color _fillColor: status === "error" ? AtlasStyle.error : status === "paused" ? Qt.alpha(Kirigami.Theme.textColor, 0.4) : AtlasStyle.accent
+    readonly property color _fillColor: status === "error" ? AtlasStyle.error : status === "paused" ? AtlasStyle.alpha(Kirigami.Theme.textColor, 0.4) : AtlasStyle.accent
 
     implicitWidth: Kirigami.Units.gridUnit * 16
     implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 0.45), label.visible ? label.implicitHeight : 0)
@@ -67,9 +67,9 @@ Item {
         x: -width + (parent.width + width) * phase
         gradient: Gradient {
             orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: Qt.alpha(AtlasStyle.sakura, 0) }
-            GradientStop { position: 0.5; color: Qt.alpha(AtlasStyle.sakura, 0.5) }
-            GradientStop { position: 1; color: Qt.alpha(AtlasStyle.accent, 0) }
+            GradientStop { position: 0; color: AtlasStyle.alpha(AtlasStyle.sakura, 0) }
+            GradientStop { position: 0.5; color: AtlasStyle.alpha(AtlasStyle.sakura, 0.5) }
+            GradientStop { position: 1; color: AtlasStyle.alpha(AtlasStyle.accent, 0) }
         }
         NumberAnimation on phase {
             running: band.bar._shimmer && band.bar.animated && band.bar.visible && !AtlasStyle.softwareRendering
@@ -95,7 +95,7 @@ Item {
                 height: label.visible ? Math.round(Kirigami.Units.gridUnit * 0.45) : parent.height
                 anchors.verticalCenter: parent.verticalCenter
                 radius: AtlasStyle.radiusPill
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
+                color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.12)
                 clip: true
 
                 Rectangle {

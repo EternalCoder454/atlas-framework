@@ -90,7 +90,7 @@ T.AbstractButton {
                 radius: AtlasStyle.radiusLarge + control._ring
                 color: "transparent"
                 border.width: control.checked ? 3 : 2
-                border.color: control.checked ? AtlasStyle.accent : control.enabled && (control.hovered || control.visualFocus) ? (AtlasStyle.highContrast ? AtlasStyle.accent : Qt.alpha(AtlasStyle.accent, 0.45)) : "transparent"
+                border.color: control.checked ? AtlasStyle.accent : control.enabled && (control.hovered || control.visualFocus) ? (AtlasStyle.highContrast ? AtlasStyle.accent : AtlasStyle.alpha(AtlasStyle.accent, 0.45)) : "transparent"
                 Accessible.ignored: true
                 Behavior on border.color {
                     ColorAnimation {
@@ -145,7 +145,7 @@ T.AbstractButton {
                 radius: AtlasStyle.radiusLarge
                 color: "transparent"
                 border.width: 1
-                border.color: AtlasStyle.highContrast ? AtlasStyle.controlBorder : Qt.alpha(AtlasStyle.text, 0.15)
+                border.color: AtlasStyle.highContrast ? AtlasStyle.controlBorder : AtlasStyle.alpha(AtlasStyle.text, 0.15)
                 Accessible.ignored: true
             }
         }
@@ -161,7 +161,7 @@ T.AbstractButton {
                 implicitWidth: Math.round(Kirigami.Units.gridUnit * 0.9)
                 implicitHeight: implicitWidth
                 radius: width / 2
-                color: control.checked ? (control.enabled ? AtlasStyle.accent : Qt.alpha(AtlasStyle.accent, 0.4)) : "transparent"
+                color: control.checked ? (control.enabled ? AtlasStyle.accent : AtlasStyle.alpha(AtlasStyle.accent, 0.4)) : "transparent"
                 border.width: control.checked ? 0 : 1
                 border.color: AtlasStyle.controlBorder
                 Accessible.ignored: true

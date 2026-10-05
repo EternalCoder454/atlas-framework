@@ -89,7 +89,7 @@ T.AbstractButton {
             return AtlasStyle.accent;
         }
         if (_variant === AtlasButton.Destructive && enabled) {
-            return Qt.alpha(AtlasStyle.error, 0.5);
+            return AtlasStyle.alpha(AtlasStyle.error, 0.5);
         }
         return AtlasStyle.controlBorder;
     }

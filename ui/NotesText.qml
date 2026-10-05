@@ -16,7 +16,7 @@ Text {
 
     readonly property bool darkTheme: Kirigami.Theme.backgroundColor.hslLightness < 0.5
     readonly property color accent: darkTheme ? Qt.lighter(AtlasStyle.accent, 1.45) : AtlasStyle.accent
-    readonly property string css: "a { color: " + accent + "; text-decoration: underline; } " + "h3 { font-size: large; } h4, h5 { font-size: medium; } h3, h4, h5 { margin-top: 10px; margin-bottom: 2px; font-weight: bold; } " + "p { margin-top: 3px; margin-bottom: 3px; } " + "ul, ol { margin-top: 2px; margin-bottom: 2px; margin-left: 0px; -qt-list-indent: 1; } " + "li { margin-top: 1px; margin-bottom: 1px; } " + "code, pre { font-family: '" + Kirigami.Theme.fixedWidthFont.family + "'; } " + "blockquote { margin-left: 8px; color: " + Qt.alpha(Kirigami.Theme.textColor, 0.7) + "; }"
+    readonly property string css: "a { color: " + accent + "; text-decoration: underline; } " + "h3 { font-size: large; } h4, h5 { font-size: medium; } h3, h4, h5 { margin-top: 10px; margin-bottom: 2px; font-weight: bold; } " + "p { margin-top: 3px; margin-bottom: 3px; } " + "ul, ol { margin-top: 2px; margin-bottom: 2px; margin-left: 0px; -qt-list-indent: 1; } " + "li { margin-top: 1px; margin-bottom: 1px; } " + "code, pre { font-family: '" + Kirigami.Theme.fixedWidthFont.family + "'; } " + "blockquote { margin-left: 8px; color: " + AtlasStyle.alpha(Kirigami.Theme.textColor, 0.7) + "; }"
 
     // The section title already says "What's new in X": drop a leading heading
     // that repeats it.

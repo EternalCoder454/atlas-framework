@@ -210,7 +210,7 @@ T.Popup {
             anchors.topMargin: 1
             anchors.bottomMargin: -3
             radius: AtlasStyle.radius + 1
-            color: Qt.alpha("black", 0.05)
+            color: AtlasStyle.alpha("black", 0.05)
         }
         Rectangle {
             anchors.fill: card
@@ -218,7 +218,7 @@ T.Popup {
             anchors.topMargin: 0
             anchors.bottomMargin: -4
             radius: AtlasStyle.radius + 2
-            color: Qt.alpha("black", 0.035)
+            color: AtlasStyle.alpha("black", 0.035)
         }
         Rectangle {
             anchors.fill: card
@@ -226,7 +226,7 @@ T.Popup {
             anchors.topMargin: -1
             anchors.bottomMargin: -5
             radius: AtlasStyle.radius + 3
-            color: Qt.alpha("black", 0.02)
+            color: AtlasStyle.alpha("black", 0.02)
         }
         Rectangle {
             id: card

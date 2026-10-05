@@ -300,7 +300,7 @@ T.AbstractButton {
                     Accessible.name: modelData
                     background: Rectangle {
                         radius: AtlasStyle.radiusSmall
-                        color: row.highlighted ? Qt.alpha(AtlasStyle.accent, row.down ? 0.28 : 0.18) : "transparent"
+                        color: row.highlighted ? AtlasStyle.alpha(AtlasStyle.accent, row.down ? 0.28 : 0.18) : "transparent"
                     }
                     contentItem: Text {
                         text: row.modelData
@@ -324,7 +324,7 @@ T.AbstractButton {
                         text: internals.scanning ? qsTr("Looking for fonts…") : qsTr("No matches")
                         font.family: AtlasStyle.fontFamily
                         font.pointSize: AtlasStyle.fontSizeBody
-                        color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+                        color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.5)
                         verticalAlignment: Text.AlignVCenter
                         textFormat: Text.PlainText
                         Accessible.ignored: true
@@ -366,7 +366,7 @@ T.AbstractButton {
                 anchors.topMargin: 0
                 anchors.bottomMargin: -3
                 radius: AtlasStyle.radius + 1
-                color: Qt.alpha("black", 0.04)
+                color: AtlasStyle.alpha("black", 0.04)
             }
             Rectangle {
                 anchors.fill: parent
@@ -374,7 +374,7 @@ T.AbstractButton {
                 anchors.topMargin: -1
                 anchors.bottomMargin: -5
                 radius: AtlasStyle.radius + 2
-                color: Qt.alpha("black", 0.025)
+                color: AtlasStyle.alpha("black", 0.025)
             }
             Rectangle {
                 anchors.fill: parent

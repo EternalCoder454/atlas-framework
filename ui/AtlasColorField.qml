@@ -169,7 +169,7 @@ T.AbstractButton {
             radius: width / 2
             color: control.color
             border.width: 1
-            border.color: Qt.alpha(Kirigami.Theme.textColor, 0.3)
+            border.color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.3)
         }
         Text {
             Layout.fillWidth: true
@@ -271,7 +271,7 @@ T.AbstractButton {
                             radius: width / 2
                             color: Qt.color(swatch.modelData)
                             border.width: swatch.current || swatch.hovered ? 2 : 1
-                            border.color: swatch.current ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, swatch.hovered ? 0.5 : 0.25)
+                            border.color: swatch.current ? AtlasStyle.accent : AtlasStyle.alpha(Kirigami.Theme.textColor, swatch.hovered ? 0.5 : 0.25)
                             AtlasFocusRing {
                                 radius: parent.radius + gap
                                 shown: swatch.visualFocus
@@ -333,7 +333,7 @@ T.AbstractButton {
                 anchors.topMargin: 0
                 anchors.bottomMargin: -3
                 radius: AtlasStyle.radius + 1
-                color: Qt.alpha("black", 0.04)
+                color: AtlasStyle.alpha("black", 0.04)
             }
             Rectangle {
                 anchors.fill: parent
@@ -341,7 +341,7 @@ T.AbstractButton {
                 anchors.topMargin: -1
                 anchors.bottomMargin: -5
                 radius: AtlasStyle.radius + 2
-                color: Qt.alpha("black", 0.025)
+                color: AtlasStyle.alpha("black", 0.025)
             }
             Rectangle {
                 anchors.fill: parent

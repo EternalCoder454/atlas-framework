@@ -139,9 +139,9 @@ T.AbstractButton {
         x: -width + (parent.width + width) * phase
         gradient: Gradient {
             orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: Qt.alpha(AtlasStyle.sakura, 0) }
-            GradientStop { position: 0.5; color: Qt.alpha(AtlasStyle.sakura, 0.6) }
-            GradientStop { position: 1; color: Qt.alpha(AtlasStyle.accent, 0) }
+            GradientStop { position: 0; color: AtlasStyle.alpha(AtlasStyle.sakura, 0) }
+            GradientStop { position: 0.5; color: AtlasStyle.alpha(AtlasStyle.sakura, 0.6) }
+            GradientStop { position: 1; color: AtlasStyle.alpha(AtlasStyle.accent, 0) }
         }
         NumberAnimation on phase {
             running: priv.working && control.animated && control.visible && !AtlasStyle.reducedMotion && !AtlasStyle.softwareRendering
@@ -173,12 +173,12 @@ T.AbstractButton {
                 const accent = AtlasStyle.accentStrong;
                 if (priv.filled) {
                     if (!control.enabled) {
-                        return Qt.alpha(Kirigami.Theme.textColor, 0.12);
+                        return AtlasStyle.alpha(Kirigami.Theme.textColor, 0.12);
                     }
                     return control.down ? Qt.darker(accent, 1.2) : control.hovered ? Qt.lighter(accent, 1.12) : accent;
                 }
                 if (priv.failed) {
-                    return Qt.alpha(priv.tint, control.down ? 0.28 : control.hovered ? 0.2 : 0.14);
+                    return AtlasStyle.alpha(priv.tint, control.down ? 0.28 : control.hovered ? 0.2 : 0.14);
                 }
                 return control.down ? AtlasStyle.pressed : control.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control;
             }
@@ -204,7 +204,7 @@ T.AbstractButton {
                 anchors.bottomMargin: AtlasStyle.spacingXSmall
                 height: AtlasStyle.spacingSmall - 1
                 radius: AtlasStyle.radiusPill
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.15)
+                color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.15)
                 clip: true
 
                 Rectangle {

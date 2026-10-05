@@ -394,7 +394,7 @@ T.Control {
                 }
                 background: Rectangle {
                     radius: AtlasStyle.radiusPill
-                    color: Qt.alpha(Kirigami.Theme.backgroundColor, nav.down ? 0.95 : 0.85) // floats over the cards, so it follows the window colour, not a token
+                    color: AtlasStyle.alpha(Kirigami.Theme.backgroundColor, nav.down ? 0.95 : 0.85) // floats over the cards, so it follows the window colour, not a token
                     border.width: 1
                     border.color: AtlasStyle.controlBorder
                 }

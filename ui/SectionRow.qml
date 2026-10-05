@@ -167,14 +167,14 @@ FocusScope {
         anchors.right: parent.right
         anchors.leftMargin: AtlasStyle.spacingLarge + (root._hasLeading ? leadingRow.width + AtlasStyle.spacingLarge : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + AtlasStyle.spacingLarge : 0))
         height: 1
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.1)
     }
 
     Rectangle {
         anchors.fill: parent
         anchors.margins: 3
         radius: 7
-        color: Qt.alpha(Kirigami.Theme.textColor, tap.pressed ? 0.1 : 0.05)
+        color: AtlasStyle.alpha(Kirigami.Theme.textColor, tap.pressed ? 0.1 : 0.05)
         opacity: root._canActivate && hover.hovered ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
@@ -188,7 +188,7 @@ FocusScope {
         radius: 7
         color: "transparent"
         border.width: 2
-        border.color: Qt.alpha(AtlasStyle.focus, 0.85)
+        border.color: AtlasStyle.alpha(AtlasStyle.focus, 0.85)
         visible: root._ownFocus && root.clickable && !root.byMouse
     }
 

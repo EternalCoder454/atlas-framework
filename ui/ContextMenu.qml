@@ -86,7 +86,7 @@ T.Menu {
             anchors.topMargin: 0
             anchors.bottomMargin: -3
             radius: AtlasStyle.radius + 1
-            color: Qt.alpha("black", 0.04)
+            color: AtlasStyle.alpha("black", 0.04)
         }
         Rectangle {
             anchors.fill: parent
@@ -94,7 +94,7 @@ T.Menu {
             anchors.topMargin: -1
             anchors.bottomMargin: -5
             radius: AtlasStyle.radius + 2
-            color: Qt.alpha("black", 0.025)
+            color: AtlasStyle.alpha("black", 0.025)
         }
         Rectangle {
             anchors.fill: parent

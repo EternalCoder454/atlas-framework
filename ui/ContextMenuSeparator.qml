@@ -13,6 +13,6 @@ T.MenuSeparator {
 
     contentItem: Rectangle {
         implicitHeight: 1
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
+        color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.12)
     }
 }

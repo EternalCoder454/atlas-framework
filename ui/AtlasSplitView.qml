@@ -483,7 +483,7 @@ QQC2.SplitView {
             width: handle._vertical ? parent.width : (handle._active ? 3 : 1)
             height: handle._vertical ? (handle._active ? 3 : 1) : parent.height
             radius: handle._active ? width / 2 : 0
-            color: handle.QQC2.SplitHandle.pressed ? AtlasStyle.accent : handle.QQC2.SplitHandle.hovered ? Qt.alpha(AtlasStyle.accent, 0.6) : AtlasStyle.controlBorder
+            color: handle.QQC2.SplitHandle.pressed ? AtlasStyle.accent : handle.QQC2.SplitHandle.hovered ? AtlasStyle.alpha(AtlasStyle.accent, 0.6) : AtlasStyle.controlBorder
         }
         HoverHandler {
             cursorShape: handle._vertical ? Qt.SplitVCursor : Qt.SplitHCursor

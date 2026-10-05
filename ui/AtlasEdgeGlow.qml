@@ -81,19 +81,19 @@ Item {
             orientation: edge.vertical ? Gradient.Vertical : Gradient.Horizontal
             GradientStop {
                 position: 0
-                color: Qt.alpha(edge.tone, edge.reversed ? 0 : edge._a)
+                color: AtlasStyle.alpha(edge.tone, edge.reversed ? 0 : edge._a)
             }
             GradientStop {
                 position: 0.35
-                color: Qt.alpha(edge.tone, edge.reversed ? 0.04 : edge._a * 0.3)
+                color: AtlasStyle.alpha(edge.tone, edge.reversed ? 0.04 : edge._a * 0.3)
             }
             GradientStop {
                 position: 0.65
-                color: Qt.alpha(edge.tone, edge.reversed ? edge._a * 0.3 : 0.04)
+                color: AtlasStyle.alpha(edge.tone, edge.reversed ? edge._a * 0.3 : 0.04)
             }
             GradientStop {
                 position: 1
-                color: Qt.alpha(edge.tone, edge.reversed ? edge._a : 0)
+                color: AtlasStyle.alpha(edge.tone, edge.reversed ? edge._a : 0)
             }
         }
     }

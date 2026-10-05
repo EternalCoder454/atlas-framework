@@ -343,7 +343,7 @@ FocusScope {
                 Accessible.name: modelData
                 background: Rectangle {
                     radius: AtlasStyle.radiusSmall
-                    color: row.highlighted ? Qt.alpha(AtlasStyle.accent, row.down ? 0.28 : 0.18) : "transparent"
+                    color: row.highlighted ? AtlasStyle.alpha(AtlasStyle.accent, row.down ? 0.28 : 0.18) : "transparent"
                 }
                 contentItem: Text {
                     text: internals.mark(row.modelData)
@@ -366,7 +366,7 @@ FocusScope {
                 anchors.topMargin: 0
                 anchors.bottomMargin: -3
                 radius: AtlasStyle.radius + 1
-                color: Qt.alpha("black", 0.04)
+                color: AtlasStyle.alpha("black", 0.04)
             }
             Rectangle {
                 anchors.fill: parent
@@ -374,7 +374,7 @@ FocusScope {
                 anchors.topMargin: -1
                 anchors.bottomMargin: -5
                 radius: AtlasStyle.radius + 2
-                color: Qt.alpha("black", 0.025)
+                color: AtlasStyle.alpha("black", 0.025)
             }
             Rectangle {
                 anchors.fill: parent

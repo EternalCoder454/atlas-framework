@@ -445,7 +445,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: control.win && typeof control.win.sidebarColor === "function" ? control.win.sidebarColor(control.baseColor) : Qt.alpha(control.baseColor, Appearance.effective ? 0.94 : 1)
+        color: control.win && typeof control.win.sidebarColor === "function" ? control.win.sidebarColor(control.baseColor) : AtlasStyle.alpha(control.baseColor, Appearance.effective ? 0.94 : 1)
     }
     readonly property var win: priv.win
 

@@ -79,7 +79,7 @@ T.ScrollBar {
             x: control.vertical ? (control.mirrored ? 0 : parent.width - width) : 0
             y: control.horizontal ? parent.height - height : 0
             radius: Math.min(width, height) / 2
-            color: control.pressed ? AtlasStyle.text : control.hovered ? Qt.alpha(AtlasStyle.text, 0.75) : AtlasStyle.textMuted
+            color: control.pressed ? AtlasStyle.text : control.hovered ? AtlasStyle.alpha(AtlasStyle.text, 0.75) : AtlasStyle.textMuted
             Behavior on thickness {
                 NumberAnimation {
                     duration: AtlasStyle.durationShort

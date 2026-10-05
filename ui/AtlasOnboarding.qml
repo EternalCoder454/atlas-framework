@@ -245,7 +245,7 @@ Item {
                         width: dot.isCurrent ? AtlasStyle.spacingXXLarge : AtlasStyle.spacing
                         height: AtlasStyle.spacing
                         radius: height / 2
-                        color: dot.isCurrent ? AtlasStyle.accent : dot.index < control.currentIndex ? (AtlasStyle.highContrast ? AtlasStyle.accent : Qt.alpha(AtlasStyle.accent, 0.45)) : (AtlasStyle.highContrast ? AtlasStyle.controlBorder : Qt.alpha(AtlasStyle.text, 0.2))
+                        color: dot.isCurrent ? AtlasStyle.accent : dot.index < control.currentIndex ? (AtlasStyle.highContrast ? AtlasStyle.accent : AtlasStyle.alpha(AtlasStyle.accent, 0.45)) : (AtlasStyle.highContrast ? AtlasStyle.controlBorder : AtlasStyle.alpha(AtlasStyle.text, 0.2))
                         Accessible.ignored: true
                         Behavior on width {
                             enabled: !AtlasStyle.reducedMotion

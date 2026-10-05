@@ -43,7 +43,7 @@ Rectangle {
         }
     }
     // The tint pulled toward the text colour, so it reads on its own wash.
-    readonly property color _textColor: type === "neutral" ? Qt.alpha(Kirigami.Theme.textColor, 0.8) : Qt.tint(Kirigami.Theme.textColor, Qt.alpha(_tint, 0.65))
+    readonly property color _textColor: type === "neutral" ? AtlasStyle.alpha(Kirigami.Theme.textColor, 0.8) : Qt.tint(Kirigami.Theme.textColor, AtlasStyle.alpha(_tint, 0.65))
     readonly property string _typeName: {
         switch (type) {
         case "accent":
@@ -62,9 +62,9 @@ Rectangle {
     implicitWidth: dot ? Math.round(Kirigami.Units.gridUnit * 0.6) : content.implicitWidth + 2 * AtlasStyle.spacing
     implicitHeight: dot ? implicitWidth : Math.round(Kirigami.Units.gridUnit * 1.35)
     radius: height / 2
-    color: dot ? _tint : Qt.alpha(_tint, root.type === "neutral" ? 0.1 : 0.16)
+    color: dot ? _tint : AtlasStyle.alpha(_tint, root.type === "neutral" ? 0.1 : 0.16)
     border.width: dot ? 0 : 1
-    border.color: Qt.alpha(_tint, 0.2)
+    border.color: AtlasStyle.alpha(_tint, 0.2)
     opacity: enabled ? 1 : 0.6
 
     Accessible.role: Accessible.StaticText

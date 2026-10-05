@@ -125,7 +125,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 3
                         radius: 10 // atlas-lint: allow-raw swatch tile shape
-                        color: root.selected === cell.modelData ? Qt.alpha(AtlasStyle.accent, 0.18) : Qt.alpha(Kirigami.Theme.textColor, cell.hovered ? 0.06 : 0)
+                        color: root.selected === cell.modelData ? AtlasStyle.alpha(AtlasStyle.accent, 0.18) : AtlasStyle.alpha(Kirigami.Theme.textColor, cell.hovered ? 0.06 : 0)
                     }
                     contentItem: ColumnLayout {
                         spacing: Kirigami.Units.smallSpacing
@@ -210,7 +210,7 @@ Item {
                     Layout.topMargin: Kirigami.Units.largeSpacing
                     implicitHeight: code.implicitHeight + Kirigami.Units.largeSpacing * 2
                     radius: AtlasStyle.radiusLarge
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
+                    color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.06)
                     QQC2.Label {
                         id: code
                         anchors.fill: parent

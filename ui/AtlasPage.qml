@@ -89,7 +89,7 @@ Item {
             contentItem: Rectangle {
                 implicitWidth: 6
                 radius: width / 2
-                color: Qt.alpha(Kirigami.Theme.textColor, vbar.pressed ? 0.45 : vbar.hovered ? 0.35 : 0.22)
+                color: AtlasStyle.alpha(Kirigami.Theme.textColor, vbar.pressed ? 0.45 : vbar.hovered ? 0.35 : 0.22)
                 opacity: vbar.active ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation {

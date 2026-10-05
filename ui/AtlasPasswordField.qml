@@ -174,7 +174,7 @@ T.TextField {
         }
         background: Rectangle {
             radius: width / 2
-            color: Qt.alpha(Kirigami.Theme.textColor, toggle.down ? 0.15 : toggle.hovered ? 0.08 : 0)
+            color: AtlasStyle.alpha(Kirigami.Theme.textColor, toggle.down ? 0.15 : toggle.hovered ? 0.08 : 0)
             AtlasFocusRing {
                 radius: parent.radius + gap
                 shown: toggle.activeFocus && (toggle.focusReason === Qt.TabFocusReason || toggle.focusReason === Qt.BacktabFocusReason)

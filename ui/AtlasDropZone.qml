@@ -103,7 +103,7 @@ Item {
         readonly property bool over: dragOver || control._forceHover || control._forceReject
         readonly property bool rejected: control._forceReject || (dragOver && dragBad)
         readonly property color stroke: rejected ? AtlasStyle.error : over ? AtlasStyle.accent : AtlasStyle.controlBorder
-        readonly property color tint: rejected ? Qt.alpha(AtlasStyle.error, 0.08) : over ? Qt.alpha(AtlasStyle.accent, 0.1) : "transparent"
+        readonly property color tint: rejected ? AtlasStyle.alpha(AtlasStyle.error, 0.08) : over ? AtlasStyle.alpha(AtlasStyle.accent, 0.1) : "transparent"
 
         // A glob such as "*.png" as a case-insensitive whole-name test.
         function globToRegExp(glob: string): var {

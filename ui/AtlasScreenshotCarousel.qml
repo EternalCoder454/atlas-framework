@@ -379,7 +379,7 @@ T.Control {
                     }
                     background: Rectangle {
                         radius: AtlasStyle.radiusPill
-                        color: Qt.alpha(Kirigami.Theme.backgroundColor, nav.down ? 0.95 : 0.8) // floats over the screenshot, so it follows the window colour, not a token
+                        color: AtlasStyle.alpha(Kirigami.Theme.backgroundColor, nav.down ? 0.95 : 0.8) // floats over the screenshot, so it follows the window colour, not a token
                         border.width: 1
                         border.color: AtlasStyle.controlBorder
                     }
@@ -490,7 +490,7 @@ T.Control {
 
             // Dims the window; it follows the window colour, not a token.
             background: Rectangle {
-                color: Qt.alpha(Kirigami.Theme.backgroundColor, AtlasStyle.highContrast ? 1 : 0.94)
+                color: AtlasStyle.alpha(Kirigami.Theme.backgroundColor, AtlasStyle.highContrast ? 1 : 0.94)
             }
 
             component ViewerButton: T.AbstractButton {

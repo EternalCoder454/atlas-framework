@@ -57,7 +57,7 @@ ColumnLayout {
             anchors.fill: parent
             visible: root.showTintCircle
             radius: width / 2
-            color: Qt.alpha(root.tint, 0.14)
+            color: AtlasStyle.alpha(root.tint, 0.14)
         }
         Kirigami.Icon {
             anchors.centerIn: parent
@@ -163,7 +163,7 @@ ColumnLayout {
         Rectangle {
             anchors.fill: parent
             radius: AtlasStyle.radiusPill
-            color: Qt.alpha(root.tint, 0.18)
+            color: AtlasStyle.alpha(root.tint, 0.18)
         }
         Rectangle {
             id: fill

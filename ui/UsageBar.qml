@@ -24,7 +24,7 @@ ColumnLayout {
     // The whole bar. 0 means the sum of `values`.
     property real total: 0
     // One colour per part; parts past the list get the last colour faded.
-    property list<color> colors: [AtlasStyle.accent, Qt.alpha(AtlasStyle.accent, 0.45)]
+    property list<color> colors: [AtlasStyle.accent, AtlasStyle.alpha(AtlasStyle.accent, 0.45)]
     property list<string> labels
     // What the legend shows after each label, already formatted.
     property list<string> texts
@@ -39,7 +39,7 @@ ColumnLayout {
         return s;
     }
     readonly property real whole: total > 0 ? total : sum
-    readonly property color trackColor: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+    readonly property color trackColor: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.1)
 
     // Mirrored, the bar fills from the right.
     readonly property bool mirrored: LayoutMirroring.enabled
@@ -48,7 +48,7 @@ ColumnLayout {
         if (i < colors.length) {
             return colors[i];
         }
-        return Qt.alpha(colors.length > 0 ? colors[colors.length - 1] : AtlasStyle.accent, 0.25);
+        return AtlasStyle.alpha(colors.length > 0 ? colors[colors.length - 1] : AtlasStyle.accent, 0.25);
     }
 
     spacing: AtlasStyle.spacingSmall
@@ -130,7 +130,7 @@ ColumnLayout {
                     width: Kirigami.Units.gridUnit * 0.6
                     height: width
                     radius: width / 2
-                    color: key.index < root.values.length ? root.colorAt(key.index) : Qt.alpha(Kirigami.Theme.textColor, 0.2)
+                    color: key.index < root.values.length ? root.colorAt(key.index) : AtlasStyle.alpha(Kirigami.Theme.textColor, 0.2)
                 }
                 QQC2.Label {
                     text: root.labels[key.index]

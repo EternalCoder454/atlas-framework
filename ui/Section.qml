@@ -83,7 +83,7 @@ ColumnLayout {
             width: Math.min(fold.width, label.implicitWidth + chevron.width + AtlasStyle.spacingSmall + fold.leftPadding + fold.rightPadding)
             height: fold.height
             radius: AtlasStyle.radiusSmall
-            color: Qt.alpha(Kirigami.Theme.textColor, fold.pressed ? 0.1 : fold.hovered ? 0.05 : 0)
+            color: AtlasStyle.alpha(Kirigami.Theme.textColor, fold.pressed ? 0.1 : fold.hovered ? 0.05 : 0)
             border.width: fold.visualFocus ? 2 : 0
             border.color: AtlasStyle.focus
         }

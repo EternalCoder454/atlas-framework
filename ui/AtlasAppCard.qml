@@ -168,7 +168,7 @@ T.AbstractButton {
             Layout.preferredHeight: priv.iconSide
             Layout.alignment: Qt.AlignVCenter
             radius: Math.round(priv.iconSide * 0.225) // proportional to the icon, an app-icon squircle, not a token
-            color: priv.hasIcon ? "transparent" : Qt.alpha(AtlasStyle.accent, 0.14)
+            color: priv.hasIcon ? "transparent" : AtlasStyle.alpha(AtlasStyle.accent, 0.14)
             Kirigami.Icon {
                 anchors.fill: parent
                 visible: priv.hasIcon

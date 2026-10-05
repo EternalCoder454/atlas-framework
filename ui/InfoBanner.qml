@@ -102,9 +102,9 @@ Item {
         width: parent.width
         implicitHeight: row.implicitHeight + AtlasStyle.spacingSmall * 2 + AtlasStyle.spacingLarge
         radius: AtlasStyle.radius
-        color: Qt.alpha(control.tint, 0.14)
+        color: AtlasStyle.alpha(control.tint, 0.14)
         border.width: 1
-        border.color: Qt.alpha(control.tint, 0.4)
+        border.color: AtlasStyle.alpha(control.tint, 0.4)
         opacity: card.progress
 
         RowLayout {
@@ -190,7 +190,7 @@ Item {
                 }
                 background: Rectangle {
                     radius: width / 2
-                    color: Qt.alpha(Kirigami.Theme.textColor, closeButton.down ? 0.16 : closeButton.hovered ? 0.1 : 0)
+                    color: AtlasStyle.alpha(Kirigami.Theme.textColor, closeButton.down ? 0.16 : closeButton.hovered ? 0.1 : 0)
                     AtlasFocusRing {
                         radius: parent.radius + gap
                         shown: closeButton.visualFocus

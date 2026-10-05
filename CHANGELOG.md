@@ -14,7 +14,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   machine without a GPU does not spend its CPU on animation.
 - New: `AtlasStyle.alpha(c, a)` and `AtlasStyle.mix(a, b, t)`, typed colour
   helpers (`Qt.alpha` and `Qt.rgba` return a QVariant, which keeps bindings
-  out of the compiled code). Atlas.Ui's own files move to them later in 1.5.0.
+  out of the compiled code). Atlas.Ui's own files use them.
 - New: `atlas-preview`, installed with Atlas.Ui, renders an app's page or
   component in the visual-test matrix (light, dark, accent, opaque, rtl,
   text200, compact, contrast) on private session buses; exit 1 when QML

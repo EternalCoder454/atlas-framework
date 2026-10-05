@@ -377,7 +377,7 @@ T.Control {
             contentItem: Rectangle {
                 implicitWidth: Math.round(Kirigami.Units.smallSpacing * 1.5)
                 radius: width / 2
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.3)
+                color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.3)
                 opacity: bar.active ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation {

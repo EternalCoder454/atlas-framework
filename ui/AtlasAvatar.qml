@@ -57,7 +57,7 @@ Item {
         id: disc
         anchors.fill: parent
         radius: width / 2
-        color: root._initials.length > 0 ? root._color : Qt.alpha(Kirigami.Theme.textColor, 0.12)
+        color: root._initials.length > 0 ? root._color : AtlasStyle.alpha(Kirigami.Theme.textColor, 0.12)
         visible: !root._hasImage
 
         QQC2.Label {
@@ -75,7 +75,7 @@ Item {
             anchors.centerIn: parent
             icon: root.symbol
             size: Math.round(root.size * 0.55)
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
+            color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.65)
         }
     }
 

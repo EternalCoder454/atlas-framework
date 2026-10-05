@@ -27,7 +27,7 @@ T.Switch {
         // Off: the control fill with a visible edge, so an off switch (also a
         // disabled one) can be seen on any surface. On: the accent, dimmed
         // when disabled (a disabled item's own palette would hide it).
-        color: control.checked ? (control.enabled ? AtlasStyle.accent : Qt.alpha(AtlasStyle.accent, 0.4)) : control.enabled && control.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        color: control.checked ? (control.enabled ? AtlasStyle.accent : AtlasStyle.alpha(AtlasStyle.accent, 0.4)) : control.enabled && control.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
         border.width: control.checked ? 0 : 1
         border.color: AtlasStyle.controlBorder
         Behavior on color {

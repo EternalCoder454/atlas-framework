@@ -158,7 +158,7 @@ Item {
         leftPadding: AtlasStyle.spacingLarge + (rtl ? 0 : fieldIcon.visible ? fieldIcon.width + AtlasStyle.spacingSmall : 0) + AtlasStyle.spacingSmall
         rightPadding: AtlasStyle.spacingLarge + (rtl ? (fieldIcon.visible ? fieldIcon.width + AtlasStyle.spacingSmall : 0) : 0) + AtlasStyle.spacingSmall
         verticalAlignment: TextInput.AlignVCenter
-        placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+        placeholderTextColor: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.5)
         color: Kirigami.Theme.textColor
         selectionColor: AtlasStyle.accent
         selectedTextColor: AtlasStyle.accentText
@@ -172,9 +172,9 @@ Item {
 
         background: Rectangle {
             radius: AtlasStyle.radiusPill
-            color: Qt.alpha(Kirigami.Theme.textColor, field.hovered && !field.activeFocus ? 0.09 : 0.06)
+            color: AtlasStyle.alpha(Kirigami.Theme.textColor, field.hovered && !field.activeFocus ? 0.09 : 0.06)
             border.width: field.activeFocus ? 2 : 1
-            border.color: field.activeFocus ? Qt.alpha(field.invalid ? Kirigami.Theme.negativeTextColor : AtlasStyle.accent, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
+            border.color: field.activeFocus ? AtlasStyle.alpha(field.invalid ? Kirigami.Theme.negativeTextColor : AtlasStyle.accent, 0.7) : AtlasStyle.alpha(Kirigami.Theme.textColor, 0.1)
         }
 
         // A template field draws no placeholder of its own.
@@ -211,7 +211,7 @@ Item {
         radius: AtlasStyle.radiusLarge
         color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06))
         border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
+        border.color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.12)
 
         ColumnLayout {
             id: column

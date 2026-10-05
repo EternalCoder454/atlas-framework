@@ -69,7 +69,7 @@ Item {
                         height: AtlasStyle.spacingSmall
                         radius: height / 2
                         // An empty cell is outlined in high contrast, where the faint fill would vanish.
-                        color: cell.filled ? control._tint : (AtlasStyle.highContrast ? "transparent" : Qt.alpha(AtlasStyle.text, 0.12))
+                        color: cell.filled ? control._tint : (AtlasStyle.highContrast ? "transparent" : AtlasStyle.alpha(AtlasStyle.text, 0.12))
                         border.width: !cell.filled && AtlasStyle.highContrast ? 1 : 0
                         border.color: AtlasStyle.controlBorder
                         Accessible.ignored: true

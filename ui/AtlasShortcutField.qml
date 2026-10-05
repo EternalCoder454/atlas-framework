@@ -282,7 +282,7 @@ T.Control {
             }
             background: Rectangle {
                 radius: width / 2
-                color: Qt.alpha(Kirigami.Theme.textColor, clearButton.down ? 0.15 : clearButton.hovered ? 0.08 : 0)
+                color: AtlasStyle.alpha(Kirigami.Theme.textColor, clearButton.down ? 0.15 : clearButton.hovered ? 0.08 : 0)
             }
             contentItem: Kirigami.Icon {
                 source: "edit-clear"

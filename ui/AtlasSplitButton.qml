@@ -108,7 +108,7 @@ Item {
                 width: 1
                 height: parent.height - 8
                 y: 4
-                color: part.owner.prominent && part.enabled ? Qt.alpha(AtlasStyle.accentStrongText, 0.35) : AtlasStyle.controlBorder
+                color: part.owner.prominent && part.enabled ? AtlasStyle.alpha(AtlasStyle.accentStrongText, 0.35) : AtlasStyle.controlBorder
             }
             AtlasFocusRing {
                 radius: AtlasStyle.radiusSmall + gap

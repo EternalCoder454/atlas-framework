@@ -191,7 +191,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 12 // atlas-lint: allow-raw gallery card shape
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.04)
+                color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.04)
                 clip: true
 
                 Flickable {

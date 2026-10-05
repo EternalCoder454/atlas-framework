@@ -47,7 +47,7 @@ T.BusyIndicator {
             // The shape is a ring track and a quarter arc on it.
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: Qt.alpha(Kirigami.Theme.textColor, 0.12)
+                strokeColor: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.12)
                 strokeWidth: internals.stroke
                 PathAngleArc {
                     centerX: arc.width / 2

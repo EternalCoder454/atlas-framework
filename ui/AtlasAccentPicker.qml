@@ -153,7 +153,7 @@ T.Control {
                     radius: width / 2
                     color: swatch.swatchColor
                     border.width: 1
-                    border.color: AtlasStyle.highContrast ? AtlasStyle.controlBorder : Qt.alpha(AtlasStyle.text, 0.2)
+                    border.color: AtlasStyle.highContrast ? AtlasStyle.controlBorder : AtlasStyle.alpha(AtlasStyle.text, 0.2)
                     opacity: control.enabled ? 1 : 0.5
                     Accessible.ignored: true
                 }
@@ -164,7 +164,7 @@ T.Control {
                     radius: width / 2
                     color: "transparent"
                     border.width: 2
-                    border.color: swatch.selected ? AtlasStyle.text : control.enabled && hover.hovered ? Qt.alpha(AtlasStyle.text, 0.35) : "transparent"
+                    border.color: swatch.selected ? AtlasStyle.text : control.enabled && hover.hovered ? AtlasStyle.alpha(AtlasStyle.text, 0.35) : "transparent"
                     Accessible.ignored: true
                     Behavior on border.color {
                         ColorAnimation {

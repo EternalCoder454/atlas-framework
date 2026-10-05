@@ -85,7 +85,7 @@ QQC2.ApplicationWindow {
     // `base` with the window's alpha (times the sidebar's, for a sidebar), or
     // unchanged when there is no blur.
     function tinted(base: color, factor: real): color {
-        return root.blurred ? Qt.alpha(base, root.blurAlpha * factor) : base;
+        return root.blurred ? AtlasStyle.alpha(base, root.blurAlpha * factor) : base;
     }
     function sidebarColor(base: color): color {
         return tinted(base, root.sidebarFactor);

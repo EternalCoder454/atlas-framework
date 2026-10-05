@@ -55,7 +55,7 @@ Item {
                 width: internals.count > 1 && index === internals.count - 1 ? Math.round(parent.width * 0.6) : parent.width
                 height: control.lineHeight
                 radius: Math.min(8, height / 2)
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.08)
+                color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.08)
                 clip: true
                 Accessible.ignored: true
 
@@ -68,15 +68,15 @@ Item {
                         orientation: Gradient.Horizontal
                         GradientStop {
                             position: 0
-                            color: Qt.alpha(Kirigami.Theme.textColor, 0)
+                            color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0)
                         }
                         GradientStop {
                             position: 0.5
-                            color: Qt.alpha(Kirigami.Theme.textColor, 0.08)
+                            color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.08)
                         }
                         GradientStop {
                             position: 1
-                            color: Qt.alpha(Kirigami.Theme.textColor, 0)
+                            color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0)
                         }
                     }
                 }

@@ -54,7 +54,7 @@ T.Slider {
         width: control.horizontal ? control.availableWidth : thickness
         height: control.horizontal ? thickness : control.availableHeight
         radius: thickness / 2
-        color: Qt.alpha(Kirigami.Theme.textColor, 0.2)
+        color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.2)
 
         Rectangle {
             // The filled part runs from the start to the knob's centre.
@@ -75,7 +75,7 @@ T.Slider {
         radius: width / 2
         color: Kirigami.Theme.backgroundColor
         border.width: 2
-        border.color: Qt.alpha(AtlasStyle.accent, control.pressed ? 1 : 0.8)
+        border.color: AtlasStyle.alpha(AtlasStyle.accent, control.pressed ? 1 : 0.8)
         scale: control.pressed ? 1.1 : 1
         Behavior on scale {
             NumberAnimation {
