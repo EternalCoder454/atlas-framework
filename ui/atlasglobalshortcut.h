@@ -113,6 +113,8 @@ public:
     // Request's Response is waited for (the call itself has its own timeout).
     GlobalShortcutSession(const QDBusConnection &bus, const QString &service, int responseTimeoutMs, QObject *parent = nullptr);
 
+    ~GlobalShortcutSession() override;
+
     static GlobalShortcutSession *shared();
     // For tests: replaces the shared session (not owned); nullptr goes back to
     // the default.
@@ -140,12 +142,17 @@ private:
     void onBindResults(const QVariantMap &results);
     void route(const QDBusMessage &message, bool active);
     QString requestPath(const QString &token) const;
+    QString senderPart() const;
+    void sendClose(const QString &path);
+    void dropSession(bool close);
+    QList<QPointer<AtlasGlobalShortcut>> snapshot() const;
 
     QDBusConnection m_bus;
     QString m_service;
     int m_responseTimeoutMs;
     QHash<QString, AtlasGlobalShortcut *> m_items;
     QString m_session;
+    QString m_sessionToken;
     Kind m_kind = Kind::None;
     QString m_path;
     QString m_actualPath;

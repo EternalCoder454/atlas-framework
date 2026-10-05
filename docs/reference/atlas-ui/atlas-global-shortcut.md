@@ -25,6 +25,9 @@ AtlasGlobalShortcut {
 > [!NOTE]
 > `name` is the id the portal and the user's settings know the shortcut by, so keep it stable. It is letters, digits, `.`, `_` and `-`, at most 64 characters, and unique in the app; anything else leaves the shortcut unavailable, with a warning. Everything the portal sends back is checked: only the names this app declared are accepted, and every value must have the type the portal's specification gives.
 
+> [!WARNING]
+> `trigger` and `errorString` come from outside the app (the portal). Show them with `textFormat: Text.PlainText`, never as rich text. `activated()` carries no proof that a person pressed the key: a program that can talk to the portal may be the one that caused it, so an action that deletes or sends something should ask for confirmation first.
+
 ## Properties
 
 | Name | Type | Default | Description |

@@ -2,8 +2,8 @@
 // against a fake desktop portal on a PRIVATE session bus: the test starts its
 // own dbus-daemon (no service directories, so nothing can be activated on it),
 // and points DBUS_SESSION_BUS_ADDRESS at it before the first use of the
-// session bus. It never talks to the user's bus; it stops if the address it
-// uses is not its own. Compiled straight from the ui/ sources.
+// session bus. It never talks to the user's bus: it skips itself unless the
+// session bus it ends up with has the same id as its private one. Compiled straight from the ui/ sources.
 #include "accessibilitystate.h"
 #include "appearance.h"
 #include "atlasglobalshortcut.h"
@@ -11,6 +11,7 @@
 
 #include <QDBusArgument>
 #include <QDBusConnection>
+#include <QDBusReply>
 #include <QDBusObjectPath>
 #include <QDBusVariant>
 #include <QDBusVirtualObject>
@@ -79,10 +80,16 @@ public:
                 lastBound = qdbus_cast<QList<PortalShortcut>>(args.value(1).value<QDBusArgument>());
                 ++binds;
                 const QString request = requestPath(msg, options);
+                lastRequest = pendingRequest = request;
                 m_conn.send(msg.createReply(QVariant::fromValue(QDBusObjectPath(request))));
                 bindResponse(request);
                 return true;
             }
+        }
+        if (iface == QLatin1String("org.freedesktop.portal.Session") && msg.member() == QLatin1String("Close")) {
+            ++closes;
+            m_conn.send(msg.createReply());
+            return true;
         }
         if (iface == QLatin1String("org.freedesktop.portal.Settings") && msg.member() == QLatin1String("ReadAll")) {
             QMap<QString, QVariantMap> all;
@@ -114,7 +121,19 @@ public:
         m_conn.send(QDBusMessage::createSignal(session, QStringLiteral("org.freedesktop.portal.Session"), QStringLiteral("Closed")));
     }
 
+    // Answers the bind that was left unanswered (mode Silent) with `as`.
+    void finishPending(Bind as)
+    {
+        const Bind before = mode;
+        mode = as;
+        bindResponse(pendingRequest);
+        mode = before;
+    }
+
     Bind mode = Bind::Good;
+    QString triggerOverride; // sent as trigger_description when set
+    QString lastRequest;
+    int closes = 0;
     QString session;
     int creates = 0;
     int binds = 0;
@@ -123,6 +142,8 @@ public:
     QVariantMap appearance;
 
 private:
+    QString pendingRequest;
+
     QString requestPath(const QDBusMessage &msg, const QVariantMap &options) const
     {
         return QStringLiteral("/org/freedesktop/portal/desktop/request/%1/%2").arg(senderPart(msg.service()), options.value(QStringLiteral("handle_token")).toString());
@@ -165,7 +186,8 @@ private:
             if (s.id == QLatin1String("badtrigger")) {
                 r.properties.insert(QStringLiteral("trigger_description"), QVariant::fromValue<uint>(7));
             } else if (s.id != QLatin1String("refused")) {
-                r.properties.insert(QStringLiteral("trigger_description"), QStringLiteral("Press ") + s.properties.value(QStringLiteral("preferred_trigger")).toString());
+                r.properties.insert(QStringLiteral("trigger_description"),
+                                    triggerOverride.isEmpty() ? QStringLiteral("Press ") + s.properties.value(QStringLiteral("preferred_trigger")).toString() : triggerOverride);
             } else {
                 continue;
             }
@@ -193,14 +215,38 @@ class TestPlatform : public QObject
     QString m_address;
     QDBusConnection m_client{QStringLiteral("unset")};
     QDBusConnection m_fakeConn{QStringLiteral("unset")};
+    QDBusConnection m_spoofer{QStringLiteral("unset")};
     FakePortal *m_portal = nullptr;
 
-    void startPortal()
+    void stopPortal()
+    {
+        if (!m_portal) {
+            return;
+        }
+        m_fakeConn.unregisterService(kPortal);
+        m_fakeConn.unregisterObject(kPortalPath);
+        delete m_portal;
+        m_portal = nullptr;
+        flush(m_fakeConn);
+    }
+
+    // A blocking call: when it returns, everything sent on `conn` before has
+    // reached the daemon.
+    static QString flush(QDBusConnection conn)
+    {
+        const QDBusMessage call = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.DBus"), QStringLiteral("/org/freedesktop/DBus"), QStringLiteral("org.freedesktop.DBus"),
+                                                                 QStringLiteral("GetId"));
+        const QDBusReply<QString> id = conn.call(call, QDBus::Block, 5000);
+        return id.isValid() ? id.value() : QString();
+    }
+
+    void startPortal(const QVariantMap &appearance = {})
     {
         if (m_portal) {
             return;
         }
         m_portal = new FakePortal(m_fakeConn);
+        m_portal->appearance = appearance;
         QVERIFY(m_fakeConn.registerVirtualObject(kPortalPath, m_portal, QDBusConnection::SubPath));
         QVERIFY(m_fakeConn.registerService(kPortal));
     }
@@ -244,9 +290,16 @@ private Q_SLOTS:
         qputenv("DBUS_SESSION_BUS_ADDRESS", m_address.toUtf8());
         m_client = QDBusConnection::connectToBus(m_address, QStringLiteral("client"));
         m_fakeConn = QDBusConnection::connectToBus(m_address, QStringLiteral("fake"));
+        m_spoofer = QDBusConnection::connectToBus(m_address, QStringLiteral("spoofer"));
         QVERIFY(m_client.isConnected());
         QVERIFY(m_fakeConn.isConnected());
-        QCOMPARE(qEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS"), m_address);
+        QVERIFY(m_spoofer.isConnected());
+        // The session bus the app's own code will use must be this private one.
+        const QString privateId = flush(m_client);
+        const QString sessionId = flush(QDBusConnection::sessionBus());
+        if (privateId.isEmpty() || privateId != sessionId) {
+            QSKIP("the session bus is not the private one; refusing to run against a real bus");
+        }
     }
 
     void cleanupTestCase()
@@ -534,6 +587,190 @@ private Q_SLOTS:
         // portal's half is checked here).
         m_portal->settingChanged(QStringLiteral("contrast"), QVariant::fromValue<uint>(1));
         QTRY_VERIFY(appearance.highContrast());
+    }
+
+    // ---- spoofing, re-entrancy, teardown ----
+
+    void forgedMessagesFromAnotherProgramAreIgnored()
+    {
+        // The portal is not on the bus when the session is made, and appears later.
+        stopPortal();
+        GlobalShortcutSession session(m_client, QString(), 3000);
+        GlobalShortcutSession::setShared(&session);
+        PortalAppearance appearance(m_client);
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QSignalSpy activated(a.get(), &AtlasGlobalShortcut::activated);
+        QTRY_VERIFY(!a->errorString().isEmpty());
+
+        startPortal();
+        m_portal->mode = FakePortal::Bind::Silent;
+        QTRY_VERIFY(!m_portal->lastRequest.isEmpty()); // the bind is in flight, unanswered
+        QTRY_COMPARE(m_portal->binds, 1);
+        const QString request = m_portal->lastRequest;
+        const QString sessionPath = m_portal->session;
+
+        // The same messages the portal would send, from a program that is not the portal.
+        PortalShortcut forged;
+        forged.id = QStringLiteral("a");
+        forged.properties.insert(QStringLiteral("trigger_description"), QStringLiteral("forged"));
+        QDBusMessage response = QDBusMessage::createSignal(request, QStringLiteral("org.freedesktop.portal.Request"), QStringLiteral("Response"));
+        response << QVariant::fromValue<uint>(0) << QVariantMap{{QStringLiteral("shortcuts"), QVariant::fromValue(QList<PortalShortcut>{forged})}};
+        m_spoofer.send(response);
+        QDBusMessage press = QDBusMessage::createSignal(kPortalPath, QStringLiteral("org.freedesktop.portal.GlobalShortcuts"), QStringLiteral("Activated"));
+        press << QVariant::fromValue(QDBusObjectPath(sessionPath)) << QStringLiteral("a") << QVariant::fromValue<quint64>(1) << QVariantMap();
+        m_spoofer.send(press);
+        QDBusMessage setting = QDBusMessage::createSignal(kPortalPath, QStringLiteral("org.freedesktop.portal.Settings"), QStringLiteral("SettingChanged"));
+        setting << QStringLiteral("org.freedesktop.appearance") << QStringLiteral("contrast") << QVariant::fromValue(QDBusVariant(QVariant::fromValue<uint>(1)));
+        m_spoofer.send(setting);
+        QVERIFY(!flush(m_spoofer).isEmpty());
+        // A sentinel from the real portal, sent after all three.
+        m_portal->settingChanged(QStringLiteral("reduced-motion"), QVariant::fromValue<uint>(1));
+        QTRY_VERIFY(appearance.reducedMotion());
+        QTest::qWait(50);
+        QVERIFY(!appearance.highContrast());
+        QCOMPARE(activated.count(), 0);
+        QVERIFY(!a->available());
+        QVERIFY(a->trigger().isEmpty());
+
+        // The real answer still works, and the real press.
+        m_portal->finishPending(FakePortal::Bind::Good);
+        QTRY_VERIFY(a->available());
+        QCOMPARE(a->trigger(), QStringLiteral("Press Meta+Shift+M"));
+        m_portal->activate(sessionPath, QStringLiteral("a"));
+        QTRY_COMPARE(activated.count(), 1);
+        // And a forged press after binding is still not delivered.
+        m_spoofer.send(press);
+        QVERIFY(!flush(m_spoofer).isEmpty());
+        m_portal->activate(sessionPath, QStringLiteral("a"));
+        QTRY_COMPARE(activated.count(), 2);
+        m_portal->mode = FakePortal::Bind::Good;
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void handlersMayRenameAndDeleteItems_data()
+    {
+        QTest::addColumn<int>("mode");
+        QTest::newRow("while every shortcut is failed") << int(FakePortal::Bind::Cancelled);
+        QTest::newRow("while a bind result is applied") << int(FakePortal::Bind::Good);
+    }
+
+    void handlersMayRenameAndDeleteItems()
+    {
+        QFETCH(int, mode);
+        startPortal();
+        m_portal->binds = 0;
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = static_cast<FakePortal::Bind>(mode);
+        QPointer<AtlasGlobalShortcut> a = item(QStringLiteral("a"), QString(), false);
+        QPointer<AtlasGlobalShortcut> victim = item(QStringLiteral("victim"), QString(), false);
+        QPointer<AtlasGlobalShortcut> renamed = item(QStringLiteral("renamed-soon"), QString(), false);
+        QPointer<AtlasGlobalShortcut> other = item(QStringLiteral("other"), QString(), false);
+        int calls = 0;
+        const auto handler = [&] {
+            ++calls;
+            delete victim.data();
+            if (renamed) {
+                renamed->setName(QStringLiteral("renamed"));
+            }
+        };
+        connect(a.data(), &AtlasGlobalShortcut::errorStringChanged, a.data(), handler);
+        connect(a.data(), &AtlasGlobalShortcut::availableChanged, a.data(), handler);
+        for (AtlasGlobalShortcut *s : {a.data(), victim.data(), renamed.data(), other.data()}) {
+            s->componentComplete(); // all four in one turn, so one bind
+        }
+        QTRY_VERIFY(calls >= 1);
+        QVERIFY(!victim);
+        QCOMPARE(renamed->name(), QStringLiteral("renamed"));
+        if (mode == int(FakePortal::Bind::Good)) {
+            // The renamed item is bound again under its new name.
+            QTRY_VERIFY(renamed->available());
+            QVERIFY(other->available());
+            QTRY_COMPARE(m_portal->binds, 2);
+            bool found = false;
+            for (const PortalShortcut &p : std::as_const(m_portal->lastBound)) {
+                QVERIFY(p.id != QLatin1String("victim"));
+                found |= p.id == QLatin1String("renamed");
+            }
+            QVERIFY(found);
+        } else {
+            QVERIFY(!other->errorString().isEmpty());
+        }
+        delete a.data();
+        delete renamed.data();
+        delete other.data();
+        m_portal->mode = FakePortal::Bind::Good;
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void failedBindClosesTheSession()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = FakePortal::Bind::Malformed;
+        m_portal->closes = 0;
+        m_portal->creates = 0;
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_VERIFY(!a->errorString().isEmpty());
+        QTRY_COMPARE(m_portal->closes, 1);
+        // The next try makes a new session.
+        m_portal->mode = FakePortal::Bind::Good;
+        a->setDescription(QStringLiteral("again"));
+        QTRY_VERIFY(a->available());
+        QCOMPARE(m_portal->creates, 2);
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void closesTheSessionAtTeardown()
+    {
+        startPortal();
+        m_portal->closes = 0;
+        {
+            GlobalShortcutSession session(m_client, QString(), 2000);
+            GlobalShortcutSession::setShared(&session);
+            std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+            QTRY_VERIFY(a->available());
+            GlobalShortcutSession::setShared(nullptr);
+        }
+        QVERIFY(!flush(m_client).isEmpty());
+        QTRY_COMPARE(m_portal->closes, 1);
+    }
+
+    void textFromThePortalIsCleaned()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        GlobalShortcutSession::setShared(&session);
+        // A bidi override, a zero-width space, a line separator and a newline.
+        m_portal->triggerOverride = QStringLiteral("Meta‮+X​ \ny");
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_VERIFY(a->available());
+        QCOMPARE(a->trigger(), QStringLiteral("Meta+Xy"));
+        m_portal->triggerOverride.clear();
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void portalAppearanceForgetsWhatIsGone()
+    {
+        stopPortal();
+        startPortal(QVariantMap{{QStringLiteral("contrast"), QVariant::fromValue<uint>(1)}, {QStringLiteral("accent-color"), colorStruct(1.0, 0.0, 0.0)}});
+        PortalAppearance p(m_client);
+        QTRY_VERIFY(p.highContrast());
+        QVERIFY(p.accentColor().isValid());
+        QSignalSpy spy(&p, &PortalAppearance::changed);
+        // A portal that comes back with nothing set: a new read resets everything.
+        stopPortal();
+        startPortal();
+        QTRY_VERIFY(!p.highContrast());
+        QVERIFY(!p.accentColor().isValid());
+        QCOMPARE(spy.count(), 1);
+        // And one that reads the same again changes nothing.
+        stopPortal();
+        startPortal();
+        QTRY_VERIFY(m_portal->readAlls >= 1);
+        QTest::qWait(100);
+        QCOMPARE(spy.count(), 1);
     }
 };
 

@@ -1,5 +1,7 @@
 #include "atlasglobalshortcut.h"
 
+#include "portallog.h"
+
 #include <QCoreApplication>
 #include <QDBusArgument>
 #include <QDBusError>
@@ -33,7 +35,7 @@ QString clean(const QString &text, int max)
 {
     QString out;
     for (const QChar c : text) {
-        if (c.unicode() >= 0x20 && c.unicode() != 0x7f && !(c.unicode() >= 0x80 && c.unicode() < 0xa0)) {
+        if (!PortalLog::unsafe(c)) {
             out += c;
         }
         if (out.size() >= max) {
@@ -180,6 +182,8 @@ void AtlasGlobalShortcut::changedWhileLive()
 
 void AtlasGlobalShortcut::setState(bool available, const QString &error, const QString &trigger)
 {
+    // A handler of these signals may delete this item: stop at once if so.
+    const QPointer<AtlasGlobalShortcut> self(this);
     const bool wasAvailable = m_available;
     const bool errorChanged = error != m_errorString;
     const bool triggerChanged = trigger != m_trigger;
@@ -188,9 +192,15 @@ void AtlasGlobalShortcut::setState(bool available, const QString &error, const Q
     m_trigger = trigger;
     if (triggerChanged) {
         Q_EMIT this->triggerChanged();
+        if (!self) {
+            return;
+        }
     }
     if (errorChanged) {
         Q_EMIT errorStringChanged();
+        if (!self) {
+            return;
+        }
     }
     if (wasAvailable != available) {
         Q_EMIT availableChanged();
@@ -221,13 +231,18 @@ GlobalShortcutSession::GlobalShortcutSession(const QDBusConnection &bus, const Q
             if (m_kind != Kind::None) {
                 finishRequest();
             }
-            m_session.clear();
+            dropSession(false); // the session went with the portal: nothing to close
             failAll(tr("The desktop portal stopped."));
         }
         if (!newOwner.isEmpty() && !m_items.isEmpty()) {
             schedule();
         }
     });
+}
+
+GlobalShortcutSession::~GlobalShortcutSession()
+{
+    dropSession(true);
 }
 
 GlobalShortcutSession *GlobalShortcutSession::shared()
@@ -256,12 +271,12 @@ void GlobalShortcutSession::sync(AtlasGlobalShortcut *item)
     item->m_registeredName.clear();
     if (!AtlasGlobalShortcut::validName(item->name())) {
         item->setState(false, tr("The name of a global shortcut is letters, digits, \".\", \"_\" and \"-\", at most %1 characters.").arg(kMaxNameLength), QString());
-        qWarning("AtlasGlobalShortcut: %s is not a valid name", qPrintable(item->name().left(80)));
+        qWarning("AtlasGlobalShortcut: %s is not a valid name", qPrintable(PortalLog::text(item->name(), 80)));
         return;
     }
     if (m_items.contains(item->name())) {
         item->setState(false, tr("Another global shortcut in this app already has the name \"%1\".").arg(item->name()), QString());
-        qWarning("AtlasGlobalShortcut: the name %s is used twice", qPrintable(item->name()));
+        qWarning("AtlasGlobalShortcut: the name %s is used twice", qPrintable(PortalLog::text(item->name(), 80)));
         return;
     }
     m_items.insert(item->name(), item);
@@ -303,7 +318,8 @@ void GlobalShortcutSession::run()
     }
     if (m_session.isEmpty()) {
         QVariantMap options;
-        options.insert(QStringLiteral("session_handle_token"), QStringLiteral("atlas_session_%1").arg(++m_counter));
+        m_sessionToken = QStringLiteral("atlas_session_%1").arg(++m_counter);
+        options.insert(QStringLiteral("session_handle_token"), m_sessionToken);
         send(Kind::CreateSession, QStringLiteral("CreateSession"), {}, options);
         return;
     }
@@ -325,12 +341,42 @@ void GlobalShortcutSession::run()
 }
 
 // ":1.42" -> "1_42", the part of a Request's path that names the caller.
-QString GlobalShortcutSession::requestPath(const QString &token) const
+QString GlobalShortcutSession::senderPart() const
 {
     QString sender = m_bus.baseService();
     sender.remove(QLatin1Char(':'));
     sender.replace(QLatin1Char('.'), QLatin1Char('_'));
-    return QStringLiteral("/org/freedesktop/portal/desktop/request/%1/%2").arg(sender, token);
+    return sender;
+}
+
+QString GlobalShortcutSession::requestPath(const QString &token) const
+{
+    return QStringLiteral("/org/freedesktop/portal/desktop/request/%1/%2").arg(senderPart(), token);
+}
+
+// Asks the portal to end a session; nobody waits for the answer.
+void GlobalShortcutSession::sendClose(const QString &path)
+{
+    if (!m_bus.isConnected() || !validPath(path)) {
+        return;
+    }
+    const QDBusMessage call = QDBusMessage::createMethodCall(m_service, path, QString::fromLatin1(kSession), QStringLiteral("Close"));
+    auto *watcher = new QDBusPendingCallWatcher(m_bus.asyncCall(call, kCallTimeoutMs), this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, watcher, &QObject::deleteLater);
+}
+
+// Forgets the session; `close` also tells the portal (not when the portal is gone).
+void GlobalShortcutSession::dropSession(bool close)
+{
+    if (m_session.isEmpty()) {
+        return;
+    }
+    const QString path = m_session;
+    m_session.clear();
+    m_bus.disconnect(m_service, path, QString::fromLatin1(kSession), QStringLiteral("Closed"), this, SLOT(onSessionClosed(QDBusMessage)));
+    if (close) {
+        sendClose(path);
+    }
 }
 
 void GlobalShortcutSession::send(Kind kind, const QString &method, const QList<QVariant> &args, QVariantMap options)
@@ -376,7 +422,7 @@ void GlobalShortcutSession::send(Kind kind, const QString &method, const QList<Q
             default:
                 why = tr("The desktop portal refused the request: %1").arg(clean(error.message(), 200));
             }
-            qWarning("AtlasGlobalShortcut: %s failed: %s", qPrintable(error.name()), qPrintable(error.message().left(200)));
+            qWarning("AtlasGlobalShortcut: %s failed: %s", qPrintable(PortalLog::text(error.name())), qPrintable(PortalLog::text(error.message(), 200)));
             fail(why);
             return;
         }
@@ -384,7 +430,9 @@ void GlobalShortcutSession::send(Kind kind, const QString &method, const QList<Q
         const QList<QVariant> out = reply.arguments();
         if (out.size() == 1 && out.first().metaType() == QMetaType::fromType<QDBusObjectPath>()) {
             const QString actual = out.first().value<QDBusObjectPath>().path();
-            if (actual != m_path && actual.startsWith(QLatin1String("/org/freedesktop/portal/desktop/request/"))) {
+            // Only a request of ours: .../request/<our sender>/<a token>.
+            const QString ours = QStringLiteral("/org/freedesktop/portal/desktop/request/%1/").arg(senderPart());
+            if (actual != m_path && actual.startsWith(ours) && validPath(actual)) {
                 m_actualPath = actual;
                 m_bus.connect(m_service, actual, QString::fromLatin1(kRequest), QStringLiteral("Response"), this, SLOT(onResponse(QDBusMessage)));
             }
@@ -404,16 +452,31 @@ void GlobalShortcutSession::finishRequest()
     m_actualPath.clear();
 }
 
+QList<QPointer<AtlasGlobalShortcut>> GlobalShortcutSession::snapshot() const
+{
+    QList<QPointer<AtlasGlobalShortcut>> out;
+    out.reserve(m_items.size());
+    for (AtlasGlobalShortcut *item : m_items) {
+        out << item;
+    }
+    return out;
+}
+
 void GlobalShortcutSession::failAll(const QString &why)
 {
-    for (AtlasGlobalShortcut *item : std::as_const(m_items)) {
-        item->setState(false, why, QString());
+    // Handlers of the signals may rename or delete items: walk a copy.
+    for (const QPointer<AtlasGlobalShortcut> &item : snapshot()) {
+        if (item) {
+            item->setState(false, why, QString());
+        }
     }
 }
 
 void GlobalShortcutSession::fail(const QString &why)
 {
     finishRequest();
+    // Whatever went wrong, start from a new session next time.
+    dropSession(true);
     m_dirty = false;
     failAll(why);
 }
@@ -459,8 +522,14 @@ void GlobalShortcutSession::onSessionResults(const QVariantMap &results)
     } else if (handle.metaType() == QMetaType::fromType<QDBusObjectPath>()) {
         path = handle.value<QDBusObjectPath>().path();
     }
-    if (!path.startsWith(QLatin1String(kSessionPrefix)) || !validPath(path)) {
-        qWarning("AtlasGlobalShortcut: the session handle is missing or is not a session path");
+    // The portal's rule: .../session/<our sender>/<the token we sent>.
+    const QString expected = QString::fromLatin1(kSessionPrefix) + senderPart() + QLatin1Char('/') + m_sessionToken;
+    if (path != expected) {
+        qWarning("AtlasGlobalShortcut: the session handle %s is not the one asked for", qPrintable(PortalLog::text(path, 120)));
+        // A session the portal may have made all the same: do not leave it open.
+        if (path.startsWith(QLatin1String(kSessionPrefix))) {
+            sendClose(path);
+        }
         fail(tr("The desktop sent an answer that could not be understood."));
         return;
     }
@@ -481,7 +550,7 @@ void GlobalShortcutSession::onBindResults(const QVariantMap &results)
     }
     const QDBusArgument arg = list.value<QDBusArgument>();
     if (arg.currentSignature() != QLatin1String("a(sa{sv})")) {
-        qWarning("AtlasGlobalShortcut: the shortcuts list is %s", qPrintable(arg.currentSignature()));
+        qWarning("AtlasGlobalShortcut: the shortcuts list is %s", qPrintable(PortalLog::text(arg.currentSignature(), 40)));
         fail(tr("The desktop sent an answer that could not be understood."));
         return;
     }
@@ -493,7 +562,7 @@ void GlobalShortcutSession::onBindResults(const QVariantMap &results)
         }
         // Only ids this app registered, however they are spelled.
         if (!AtlasGlobalShortcut::validName(s.id) || !m_items.contains(s.id)) {
-            qWarning("AtlasGlobalShortcut: the portal reported a shortcut this app has not registered: %s", qPrintable(s.id.left(80)));
+            qWarning("AtlasGlobalShortcut: the portal reported a shortcut this app has not registered: %s", qPrintable(PortalLog::text(s.id, 80)));
             continue;
         }
         QString trigger;
@@ -501,19 +570,33 @@ void GlobalShortcutSession::onBindResults(const QVariantMap &results)
         if (t.metaType() == QMetaType::fromType<QString>()) {
             trigger = clean(t.toString(), 200);
         } else if (t.isValid()) {
-            qWarning("AtlasGlobalShortcut: trigger_description of %s is not a string", qPrintable(s.id));
+            qWarning("AtlasGlobalShortcut: trigger_description of %s is not a string", qPrintable(PortalLog::text(s.id, 80)));
         }
         bound.insert(s.id, trigger);
     }
+    // Work out every result first, then apply them: a handler may change m_items.
+    struct Result {
+        QPointer<AtlasGlobalShortcut> item;
+        bool ok;
+        QString trigger;
+    };
+    QList<Result> outcome;
     for (auto it = m_items.cbegin(); it != m_items.cend(); ++it) {
         const auto b = bound.constFind(it.key());
-        if (b == bound.cend()) {
-            it.value()->setState(false, tr("The desktop did not accept this shortcut."), QString());
+        outcome.append({it.value(), b != bound.cend(), b != bound.cend() ? *b : QString()});
+    }
+    const QPointer<GlobalShortcutSession> self(this);
+    for (const Result &r : std::as_const(outcome)) {
+        if (!r.item) {
+            continue;
+        }
+        if (r.ok) {
+            r.item->setState(true, QString(), r.trigger);
         } else {
-            it.value()->setState(true, QString(), *b);
+            r.item->setState(false, tr("The desktop did not accept this shortcut."), QString());
         }
     }
-    if (m_dirty) {
+    if (self && m_dirty) {
         m_dirty = false;
         schedule();
     }
@@ -524,8 +607,7 @@ void GlobalShortcutSession::onSessionClosed(const QDBusMessage &message)
     if (m_session.isEmpty() || message.path() != m_session) {
         return;
     }
-    m_bus.disconnect(m_service, m_session, QString::fromLatin1(kSession), QStringLiteral("Closed"), this, SLOT(onSessionClosed(QDBusMessage)));
-    m_session.clear();
+    dropSession(false); // it is closed already
     failAll(tr("The desktop closed the shortcuts session."));
 }
 

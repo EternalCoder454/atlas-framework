@@ -1,5 +1,7 @@
 #include "portalappearance.h"
 
+#include "portallog.h"
+
 #include <QCoreApplication>
 #include <QDBusArgument>
 #include <QDBusPendingCallWatcher>
@@ -63,7 +65,7 @@ void PortalAppearance::readAll()
         const QDBusMessage reply = w->reply();
         if (reply.type() != QDBusMessage::ReplyMessage) {
             // No portal, or one without this interface: the defaults stay.
-            qDebug("PortalAppearance: ReadAll: %s", qPrintable(reply.errorMessage()));
+            qDebug("PortalAppearance: ReadAll: %s", qPrintable(PortalLog::text(reply.errorMessage(), 200)));
             return;
         }
         // a{sa{sv}}: namespace -> key -> value.
@@ -77,7 +79,14 @@ void PortalAppearance::readAll()
             qWarning("PortalAppearance: ReadAll: an unexpected reply");
             return;
         }
-        bool changed = false;
+        // A good reply is the whole truth: what it does not mention is back at
+        // its default. Compare with the old values at the end.
+        const bool oldContrast = m_highContrast;
+        const bool oldMotion = m_reducedMotion;
+        const QColor oldAccent = m_accent;
+        m_highContrast = false;
+        m_reducedMotion = false;
+        m_accent = QColor();
         int entries = 0;
         arg.beginMap();
         while (!arg.atEnd() && ++entries <= kMaxEntries) {
@@ -93,7 +102,7 @@ void PortalAppearance::readAll()
                     arg.beginMapEntry();
                     arg >> key >> value;
                     arg.endMapEntry();
-                    changed |= apply(key, value.variant());
+                    apply(key, value.variant());
                 }
                 arg.endMap();
             } else {
@@ -104,7 +113,7 @@ void PortalAppearance::readAll()
             arg.endMapEntry();
         }
         arg.endMap();
-        if (changed) {
+        if (m_highContrast != oldContrast || m_reducedMotion != oldMotion || m_accent != oldAccent || m_accent.isValid() != oldAccent.isValid()) {
             Q_EMIT this->changed();
         }
     });
@@ -132,7 +141,7 @@ bool PortalAppearance::apply(const QString &key, const QVariant &raw)
     const QVariant value = unwrap(raw);
     if (key == QLatin1String("contrast") || key == QLatin1String("reduced-motion")) {
         if (value.metaType() != QMetaType::fromType<uint>()) {
-            qWarning("PortalAppearance: %s is not a number; ignored", qPrintable(key));
+            qWarning("PortalAppearance: %s is not a number; ignored", qPrintable(PortalLog::text(key, 40)));
             return false;
         }
         const bool on = value.toUInt() == 1;
