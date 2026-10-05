@@ -58,9 +58,19 @@ T.Control {
     property real _slidePos: _pos
 
     padding: 2
-    // uniformCellSizes makes the row as wide as its widest cell times the count,
-    // a binding, so there is no first frame at width 0.
-    implicitWidth: row.implicitWidth + leftPadding + rightPadding
+    // Every cell is as wide as the widest one: the row's own implicitWidth is
+    // the sum of the cells' natural widths, which would elide the longest label
+    // once the cells are made equal. A binding, so no first frame at width 0.
+    readonly property real _widestCell: {
+        let w = 0;
+        for (let i = 0; i < segments.count; ++i) {
+            const item = segments.itemAt(i);
+            if (item)
+                w = Math.max(w, item.implicitWidth);
+        }
+        return w;
+    }
+    implicitWidth: _widestCell * count + leftPadding + rightPadding
     implicitHeight: Math.max(AtlasStyle.controlHeight, row.implicitHeight + topPadding + bottomPadding)
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
