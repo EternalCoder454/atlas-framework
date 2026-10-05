@@ -6,6 +6,12 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
+## 1.5.0 (unreleased)
+
+- Fix: `ConfirmDialog` with `destructive: true` draws the accept button in
+  AtlasButton's Destructive look again (error text and border on a faint
+  error fill); since 1.4.0 it was drawn in the accent.
+
 ## 1.4.0
 
 - Look changes apps will see without changing code: buttons, text fields,

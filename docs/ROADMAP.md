@@ -162,11 +162,67 @@ animation speed.
 Dropped: AtlasCoreGrid (AtlasCard and MiniBars cover it), AtlasHeading,
 AtlasCaption, AtlasBusyRow, AtlasNumberField, AtlasUrlField, AtlasBigStat.
 
-## 1.4.1: follow-ups from the 1.4.0 gates
+## 1.5.0
+
+Started 2026-10-05. There is no 1.4.1: bug fixes and new API both land here.
+The work runs as for 1.4.0 (above): bug batches first, since they change no
+API, while the new API is sketched in `docs/api-1.5.0.md` and reviewed once.
+Every new member gets its line on its docs/reference page in the same commit
+(`tools/docs.py check` fails otherwise). Versions are bumped at release.
+
+### B0: bugs the apps hit on 1.4.0
+
+- [ ] AtlasSidebar: `priv.watch()` connects the bare `updateTarget` to
+  `selectedChanged` and `visibleChanged`, so it runs without scope: "TypeError:
+  Property 'findSelected' of object [null] is not a function" at every Atlas
+  Monitor start, and the highlight doesn't follow when the selected entry is
+  hidden. (Monitor)
+- [ ] AtlasSidebar: the scroll bar shows in compact (icons-only) mode and takes
+  about 14 px of a 64 px sidebar; it is the stock bar, not AtlasScrollBar. A
+  focused entry's ring may be clipped next to it. (Monitor)
+- [ ] SidebarItem: the compact tooltip leaves out `badgeText`. (Monitor)
+- [ ] AtlasDialog: with nothing focusable in the body, `onOpened` focus wraps
+  to the header's Back or Close, so Return right after opening closes the
+  dialog. Focus only an item inside the body, else the dialog. (Monitor)
+- [ ] ToolbarButton: its tooltip stays up while the menu it opened is open.
+  (Monitor)
+- [x] ConfirmDialog: `destructive` drew the accept button violet since the
+  1.4.0 restyle; it uses the Destructive look again (fixed on main, 7dc2806).
+
+### A1: new API the apps asked for (sketch in docs/api-1.5.0.md first)
+
+- AtlasPopover: open beside the target too (`side`: below, above, start, end)
+  with a matching arrow. (Notepad's code popover beside its vertical capsule)
+- AtlasHeaderBar: a stretch slot for a full-width row such as a TabBar;
+  `leading` and `trailing` are capped at half the bar each. (Notepad)
+- AtlasDialog: expose the scrolling Flickable, or `scrollToTop()`. (Monitor)
+- AtlasPage: a `subtitle` under the title. (Monitor)
+- AtlasSidebar: a footer pinned to the bottom (Settings, About) that shares
+  compact mode, focus order and selection with the entries. (Monitor)
+- ToolbarButton: a round variant, a tooltip side (start/end as well as
+  below), and its own tooltip text (multi-key shortcuts). (Notepad)
+- AtlasFloatingToolbar, so it can replace Notepad's ToolCapsule: vertical
+  `orientation`; a dimmed level (0.35 until the pointer is within 80 px, full
+  while a menu or popover is open or a button has focus); wheel scrolling with
+  chevrons as an alternative to the "more" menu; Esc back to the content, a
+  menu returning focus to its button, Tab-follows-focus scrolling, and a
+  Tab-only focus policy (a click never takes focus); menu and popover buttons
+  in the strip, not only a flat actions list. (Notepad)
+- AtlasAppMenu, so it can replace Notepad's GlobalMenu and FallbackMenu:
+  nested submenus, model-driven entries (Open Recent bound to a list, with a
+  lead item), shortcuts shown in the global-menu export, and tall groups that
+  don't hit the ContextMenu height cap. (Notepad)
+
+### Release
+
+- [ ] `APP_UPDATE_TOKEN` is not set in the "release" environment, so the
+  v1.4.0 Release run opened no app PRs. The user adds the secret.
+
+### Follow-ups from the 1.4.0 gates
 
 Non-blocking findings (Medium and Low) filed while shipping 1.4.0.
 
-### S gate (C++ and file/drop QML)
+#### S gate (C++ and file/drop QML)
 - AtlasTreeModel: node() trusts internalPointer; add checkIndex()/model()==this. Document "small trees" (no node cap, items kept twice).
 - AtlasDropZone: compile nameFilters once per change, cap URLs examined (~10k), collapse repeated `*` (backtracking); say in docs that folders named *.png pass.
 - AtlasFileField/AtlasFolderField toUrl/fromUrl: reject control chars and lone surrogates; require file:/// in fromUrl; show an error when decode fails.
@@ -175,33 +231,33 @@ Non-blocking findings (Medium and Low) filed while shipping 1.4.0.
 - AtlasShortcuts::toSequence: range-check StandardKey ints, isfinite on doubles; conflicts() recomputes and emits from the getter.
 - Appearance.textScale: clamp to 0.5..4.
 
-### Earlier
+#### Earlier
 - AtlasSearchResults is allow-listed in tests/state.
 - AtlasShortcutField.conflictText doesn't refresh when another action's shortcut changes.
 - AtlasExpandableSection sets `expanded` itself (breaks a binding on it); consider Section's ask-the-page pattern.
 
-### Look
+#### Look
 - Stock Qt Quick/Kirigami controls used directly by apps still take Breeze's highlight: set Kirigami.Theme highlight/focus from AtlasStyle at the AtlasWindow root.
 
-### R gate, data controls
+#### R gate, data controls
 - AtlasListView: drag-reorder auto-scroll in long lists.
 - AtlasCodeView: wrapped lines vs line numbers over 5000 lines.
 - Selection API shapes: contextMenuRequested signatures differ (ListView/Tree point vs DataTable x,y); textRole default "text" vs "display".
-### S gate 2
+#### S gate 2
 - Settings: GUI-thread flock wait (now 1 s); consider a worker thread.
 - Settings symlink policy differs from Rust (documented).
 - AtlasSettings: new files briefly exist with default mode before fchmod 0600 (KConfig save); create with umask 077 around sync.
 
-### From chrome/popups review (Low)
+#### From chrome/popups review (Low)
 - AtlasWindow._saveState: maximize geometry may be saved as Windowed size if geometry arrives before visibility; debounce.
 - Alt+Space registered per AtlasHeaderBar: ambiguous with two headers in a window.
 - AtlasWindowButtons focusPolicy NoFocus: keyboard only via Alt+Space (a11y audit note).
 - AtlasPopover arrow seam at alpha 0.85 (arrow overlaps card 1px).
 - ConfirmDialog body now in a Flickable: fillHeight bodies behave differently.
-### From f5-3
+#### From f5-3
 - Variant goldens exactly 700 high (AtlasEmptyState, AtlasTextArea, AtlasTextField, AtlasValidators) and AtlasCalendar 900 wide in the new variants: demos clip under text200/compact.
 
-### From F2/F3 review (Low, not in fix-pickers)
+#### From F2/F3 review (Low, not in fix-pickers)
 - ShortcutField Shift+digit records shifted key; Calendar `today` stale after midnight; TimePicker use24Hour detection with bare "a"; TimePicker edited on snapped-same value
 - Sidebar empty-filter placeholder never shows; filter-expanded groups never collapse; SegmentedControl pill Behavior animates on resize/first show; no elide
 - ChipGroup overwrites app focusPolicy, _restoreFocus when window inactive; FlowLayout mirroring toggle relayout, stale child connections
@@ -209,21 +265,21 @@ Non-blocking findings (Medium and Low) filed while shipping 1.4.0.
 - SplitButton halves scale separately; File/FolderField drop non-file URL silently; Onboarding accessible name not overridable; ColorField applies #abc mid-typing
 - FontPicker fixedOnly model reset during scan
 - AtlasAutocompleteField: no textEdited/editingFinished/validator/maximumLength/inputMethodHints forwarding (additive)
-### From F1 review (Low)
+#### From F1 review (Low)
 - AtlasPathValidator mustExist stats on GUI thread per keystroke (documented in fix-input)
 - ToolbarButton checked icon accent, SectionRow disabled 0.5 opacity: compat notes
 
-### From gallery ui-check
+#### From gallery ui-check
 - "QQmlVMEMetaObject: Internal error - attempted to evaluate a function in an invalid context" x3 per gallery walk, page unknown (probably on page switch)
 - AtlasAvatar demo's deliberate missing image prints a QQuickImage warning
 - Window buttons vs real KWin unchecked (needs a WM)
 
-### P (from the 1.4.0 gate)
+#### P (from the 1.4.0 gate)
 - libatlasui.so is 28 MB in Release (43 MB with no build type): .dynstr/.dynsym hold every qmlcachegen AOT symbol. Try -fvisibility=hidden / a version script exporting only the plugin entry points; measure PSS (Release 1.4.0: ~110 MB vs 114.8 budget, startup 174-193 ms vs 190).
 - perf/measure.sh: first start in a run is cold and noisy (170 ms to 3 s); the median of 3 hides it. Consider 5 starts after one warm-up.
 - qmllint 162 warnings (baseline 161).
 
-### From the reference docs
+#### From the reference docs
 - apidump leaves out a signal that is also a NOTIFY signal (AtlasClipboard.changed()): it is public and documented; include it in api/.
 - AtlasSparklineItem.color defaults to Breeze blue #3daee9 (ui/atlassparkline.h:78); AtlasSparkline sets AtlasStyle.accent, but the C++ base used directly is blue.
 - Public members that look like internal helpers (permanent API now, documented plainly): AtlasButton.accent/textTint, AtlasChip.tint/showsCheck, AtlasAppCard.defaultAction, AtlasShortcuts.add/remove, AtlasPage.ensureVisible, AtlasSidebar.win, AtlasSplitButton.mirrored.
