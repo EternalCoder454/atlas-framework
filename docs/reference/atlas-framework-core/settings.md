@@ -1,6 +1,6 @@
 ---
 title: settings
-summary: An app's own settings file, `~/.config/atlas-<app>rc`, in KConfig INI format, written atomically under a lock shared with Atlas.Ui's AtlasSettings.
+summary: An app's own settings file in ~/.config, in KConfig INI format, written atomically under a lock shared with Atlas.Ui's AtlasSettings.
 order: 20
 ---
 

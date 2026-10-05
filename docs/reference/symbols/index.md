@@ -1,6 +1,6 @@
 ---
 title: Symbols
-summary: Google's Material Symbols as fonts, drawn with the Symbol type and named with `Symbols.<Name>`: styles, filled and outline, size, colour and how to find a name.
+summary: Google's Material Symbols as fonts, drawn with the Symbol type and named by Symbols.Name: styles, filled and outline, size, colour and how to find a name.
 order: 2
 ---
 
