@@ -140,11 +140,6 @@ AtlasLabel.enum TextStyle: Mono = 4
 AtlasLabel.enum TextStyle: Title = 1
 AtlasLabel.property textStyle: int
 AtlasLabel.type
-AtlasNumberValidator.property bottom: double
-AtlasNumberValidator.property decimals: int
-AtlasNumberValidator.property locale: QString
-AtlasNumberValidator.property top: double
-AtlasNumberValidator.type
 AtlasNavigationStack.method pop(): QVariant
 AtlasNavigationStack.method popToRoot(): QVariant
 AtlasNavigationStack.method push(QVariant page, QVariant properties): QVariant
@@ -155,6 +150,11 @@ AtlasNavigationStack.property initialItem: QVariant
 AtlasNavigationStack.property showHeader: bool
 AtlasNavigationStack.signal wentBack()
 AtlasNavigationStack.type
+AtlasNumberValidator.property bottom: double
+AtlasNumberValidator.property decimals: int
+AtlasNumberValidator.property locale: QString
+AtlasNumberValidator.property top: double
+AtlasNumberValidator.type
 AtlasPage.method ensureVisible(QVariant item): QVariant
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
@@ -323,15 +323,15 @@ AtlasToolTip.property shown: bool
 AtlasToolTip.type
 AtlasUrlValidator.property schemes: QStringList
 AtlasUrlValidator.type
-AtlasWindow.enum WidthClass: Compact = 0
-AtlasWindow.enum WidthClass: Medium = 1
-AtlasWindow.enum WidthClass: Wide = 2
 AtlasViewSwitcher.property count: int [readonly]
 AtlasViewSwitcher.property currentIndex: int
 AtlasViewSwitcher.property model: QVariant
 AtlasViewSwitcher.property narrow: bool
 AtlasViewSwitcher.signal activated(int index)
 AtlasViewSwitcher.type
+AtlasWindow.enum WidthClass: Compact = 0
+AtlasWindow.enum WidthClass: Medium = 1
+AtlasWindow.enum WidthClass: Wide = 2
 AtlasWindow.method sidebarColor(QColor base): QColor
 AtlasWindow.method syncBlur(): QVariant
 AtlasWindow.method tinted(QColor base, double factor): QColor
