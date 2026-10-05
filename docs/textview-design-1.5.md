@@ -131,9 +131,11 @@ exported symbols to link against and no soname to manage.
   - It holds everything the QML API has, plus `snapshot()`, `replace()` and the
     edit grouping, called directly with no QMetaObject in between.
 - **`AtlasTextSnapshot`**
-  - It is a header-only value class over an abstract `Impl` that the item
-    implements, with an inline shared pointer, an inline chunk visitor and the
-    offset maps.
+  - It is a small handle: a header-only value class holding a ref-counted
+    pointer to `AtlasTextSnapshotInterface`, an abstract class implemented in
+    the plugin. Its inline methods only forward to that interface's virtuals.
+    No tree walking, and none of the node layout, is compiled into an app, so
+    the piece tree stays private and can change freely.
   - The visitor takes a callback (`std::function` or a template), so the app's
     C++ can hand the chunk pointers to its Rust.
 - **Versioning.** A published interface never changes. A new release that
