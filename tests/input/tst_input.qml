@@ -100,4 +100,31 @@ Item {
             compare(p._warned, true);
         }
     }
+
+    Component {
+        id: atlasButtonComp
+        AtlasButton {
+            text: "Sync"
+        }
+    }
+
+    TestCase {
+        name: "AtlasButtonBusy"
+        when: windowShown
+
+        function test_accessible_press_is_ignored_while_busy() {
+            const b = createTemporaryObject(atlasButtonComp, root);
+            let n = 0;
+            b.clicked.connect(() => n++);
+            verify(a11y.press(b), "the button offers a press action");
+            compare(n, 1, "an idle button clicks");
+            b.busy = true;
+            a11y.press(b);
+            compare(n, 1, "a busy button ignores the press action");
+            b.busy = false;
+            b.enabled = false;
+            a11y.press(b);
+            compare(n, 1, "a disabled button ignores it too");
+        }
+    }
 }

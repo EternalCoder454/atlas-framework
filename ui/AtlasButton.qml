@@ -102,6 +102,12 @@ T.AbstractButton {
 
     Accessible.name: control.text
     Accessible.description: control.busy ? qsTr("Busy") : ""
+    // A screen reader's press must not click a busy or disabled button.
+    Accessible.onPressAction: {
+        if (control.enabled && !control.busy) {
+            control.click();
+        }
+    }
     Keys.onReturnPressed: event => {
         if (enabled && !busy && !event.isAutoRepeat) {
             control.clicked();
