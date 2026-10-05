@@ -23,7 +23,7 @@ jobs:
     env:
       # qmllint warnings, exactly: fewer fails too, so the budget is lowered
       # with every fix and never raised.
-      QMLLINT_MAX: 117
+      QMLLINT_MAX: 3
       # Every step below runs in the dev container, with the checkout at /src.
       # no-new-privileges, but not --cap-drop=all: root in the container needs
       # DAC_OVERRIDE to write the checkout, which the runner user owns.

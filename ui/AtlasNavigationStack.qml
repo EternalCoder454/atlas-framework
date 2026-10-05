@@ -20,6 +20,12 @@ import org.kde.kirigami as Kirigami
 Item {
     id: control
 
+    // The value as `var`: a page is any item, and its `title` is read when it
+    // has one (lint cannot know the page's type).
+    function _untyped(o: var): var {
+        return o;
+    }
+
     // The page shown first.
     property var initialItem: null
     // Shows the Back button and the title row.
@@ -88,7 +94,8 @@ Item {
             id: header
 
             readonly property string title: {
-                const t = stack.currentItem ? stack.currentItem["title"] : undefined;
+                const page = control._untyped(stack.currentItem);
+                const t = page ? page.title : undefined;
                 return t === undefined || t === null ? "" : String(t);
             }
 
