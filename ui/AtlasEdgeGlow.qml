@@ -67,6 +67,7 @@ Item {
     // One edge: strongest at the window's edge, gone by `reach`. `reversed` is
     // for the bottom and trailing edges, whose window edge is at position 1.
     component Edge: Rectangle {
+        id: edge
         required property color tone
         required property bool reversed
         // True for the top and bottom edges (the gradient runs down the strip),
@@ -74,7 +75,7 @@ Item {
         required property bool vertical
         readonly property real _a: AtlasStyle.highContrast ? 0.8 : 0.5
         gradient: Gradient {
-            orientation: vertical ? Gradient.Vertical : Gradient.Horizontal
+            orientation: edge.vertical ? Gradient.Vertical : Gradient.Horizontal
             GradientStop {
                 position: 0
                 color: Qt.alpha(tone, reversed ? 0 : _a)

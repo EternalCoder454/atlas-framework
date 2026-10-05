@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -135,7 +136,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     sourceComponent: slot.index === 0 ? firstButton : otherButton
 
-                                        Component {
+                    Component {
                         id: firstButton
                         SecondaryButton {
                             text: slot.modelData.text

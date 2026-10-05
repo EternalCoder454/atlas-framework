@@ -190,6 +190,11 @@ FocusScope {
         return w;
     }
 
+    // The value as `var`, for a duck-typed lookup lint cannot type.
+    function _untyped(o: var): var {
+        return o;
+    }
+
     function sortBy(i) {
         const c = columns[i];
         if (c.sortable === false) {
@@ -477,9 +482,9 @@ FocusScope {
         case Qt.Key_Left:
         case Qt.Key_Right:
             // Fold or unfold a tree row, the way a file manager does.
-            if (to >= 0 && root.expandableRole && list.currentItem && list.currentItem.expandable) {
+            if (to >= 0 && root.expandableRole && list.currentItem && root._untyped(list.currentItem).expandable) {
                 const open = (event.key === Qt.Key_Right) !== root.mirrored;
-                if (open !== list.currentItem.expanded) {
+                if (open !== root._untyped(list.currentItem).expanded) {
                     root.toggleRequested(to);
                     event.accepted = true;
                 }
@@ -692,14 +697,15 @@ FocusScope {
             id: hover
         }
         QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+            id: vbar
             policy: QQC2.ScrollBar.AsNeeded
             implicitWidth: 10
             padding: 2
             contentItem: Rectangle {
                 implicitWidth: 6
                 radius: width / 2
-                color: Qt.alpha(Kirigami.Theme.textColor, parent.pressed ? 0.45 : parent.hovered ? 0.35 : 0.22)
-                opacity: parent.active ? 1 : 0
+                color: Qt.alpha(Kirigami.Theme.textColor, vbar.pressed ? 0.45 : vbar.hovered ? 0.35 : 0.22)
+                opacity: vbar.active ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation {
                         duration: AtlasStyle.duration

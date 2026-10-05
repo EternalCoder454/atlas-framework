@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls as QQC2
@@ -52,9 +53,14 @@ T.AbstractButton {
             m.popup(control, x, y);
         }
     }
+    // The value as `var`, for a duck-typed lookup lint cannot type.
+    function _untyped(o: var): var {
+        return o;
+    }
+
     onVisibleChanged: {
         // The parent is the bar's row; the bar is above it.
-        const bar = parent ? parent.parent : null;
+        const bar = parent ? control._untyped(parent.parent) : null;
         if (bar && typeof bar.refresh === "function") {
             bar.refresh();
         }

@@ -56,9 +56,12 @@ Item {
     // A bright band, violet to sakura, that crosses its parent (the fill).
     component Shimmer: Rectangle {
         id: band
+        // The bar this band shines in; passed in because an inline component
+        // does not see the ids of the file around it.
+        required property AtlasProgressBar bar
         // 0 to 1 crosses the fill once.
         property real phase: 0.5
-        visible: root._shimmer
+        visible: band.bar._shimmer
         width: Math.max(parent.width * 0.6, Kirigami.Units.gridUnit * 3)
         height: parent.height
         x: -width + (parent.width + width) * phase
@@ -69,7 +72,7 @@ Item {
             GradientStop { position: 1; color: Qt.alpha(AtlasStyle.accent, 0) }
         }
         NumberAnimation on phase {
-            running: root._shimmer && root.animated && root.visible
+            running: band.bar._shimmer && band.bar.animated && band.bar.visible
             from: 0
             to: 1
             duration: AtlasStyle.durationLong * 7
@@ -103,7 +106,7 @@ Item {
                     width: root.indeterminate ? 0 : root.value > 0 ? Math.max(height, parent.width * Math.min(1, root.value)) : 0
                     color: root._fillColor
                     clip: true
-                    Shimmer {}
+                    Shimmer { bar: root }
                     Behavior on width {
                         NumberAnimation {
                             duration: AtlasStyle.duration
@@ -120,7 +123,7 @@ Item {
                     width: parent.width * 0.3
                     color: root._fillColor
                     clip: true
-                    Shimmer {}
+                    Shimmer { bar: root }
                     SequentialAnimation on x {
                         running: root.indeterminate && root.status !== "paused" && root.visible && root.animated && AtlasStyle.duration > 0
                         loops: Animation.Infinite

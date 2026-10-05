@@ -98,13 +98,14 @@ Item {
             spacing: AtlasStyle.spacing
 
             ToolbarButton {
+                id: backButton
                 symbol: Symbols.ArrowBack
                 text: qsTr("Back")
                 focusable: true
                 enabled: control.canGoBack
                 // The arrow points the other way in a right-to-left layout.
                 transform: Scale {
-                    origin.x: width / 2
+                    origin.x: backButton.width / 2
                     xScale: control.LayoutMirroring.enabled ? -1 : 1
                 }
                 Accessible.role: Accessible.Button

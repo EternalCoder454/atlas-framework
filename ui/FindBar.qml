@@ -181,7 +181,7 @@ Item {
         Text {
             x: field.leftPadding
             anchors.verticalCenter: parent.verticalCenter
-            width: field.availableWidth
+            width: field.width - field.leftPadding - field.rightPadding
             visible: field.length === 0 && field.preeditText.length === 0
             text: field.placeholderText
             font: field.font
