@@ -165,10 +165,55 @@ AtlasCaption, AtlasBusyRow, AtlasNumberField, AtlasUrlField, AtlasBigStat.
 ## 1.5.0
 
 Started 2026-10-05. There is no 1.4.1: bug fixes and new API both land here.
-The work runs as for 1.4.0 (above): bug batches first, since they change no
-API, while the new API is sketched in `docs/api-1.5.0.md` and reviewed once.
-Every new member gets its line on its docs/reference page in the same commit
-(`tools/docs.py check` fails otherwise). Versions are bumped at release.
+1.5.0 is a robustness release and runs the full F.S.R.P plan, phase by phase:
+a phase starts only when the one before has no open problems, every finding is
+fixed (not only Critical and High), and the same check runs again on the fixes
+until it comes back clean. Every new member gets its line on its
+docs/reference page in the same commit (`tools/docs.py check` fails
+otherwise). Versions are bumped at release.
+
+### Plan: what done means
+
+**Study (before the F phase closes).** One read-only review per area of the
+whole framework, not just the diff, for wrong behaviour, unhandled states and
+fragile code: (1) fields and inputs, (2) lists, tables, trees and their
+models, (3) dialogs, popups, navigation, window and chrome, (4) the C++
+singletons and services (Appearance, settings, shortcuts, clipboard,
+validators, formatting), (5) the Rust crates, (6) tools, CI and packaging.
+Findings become units below (B1 onwards); the security and performance ones
+wait for their phase.
+
+**F, Functional.** Every B and A item below done and shown working: a test
+for each fix that failed before it, a demo and goldens (looked at) for each
+new member or visible change, the `api/` line and the reference page. Every
+state handled: empty, loading, error, huge (10k rows, 200 sidebar entries,
+very long text), first run, RTL, text at 200 %, compact, high contrast,
+reduced motion. `tools/dev-check.sh` clean, the gallery walked headless with
+no warnings, and the apps CI job building Updater, Installer, Monitor and
+Notepad against it.
+
+**S, Secure.** One security review over everything that takes outside input:
+files and drops (AtlasDropZone, file and folder fields, path and URL
+validators), clipboard, settings files and `atlasrc`, D-Bus (global menu,
+window chrome, notifications), the crates' polkit, Flatpak and crash-report
+paths, the packaging and the CI workflows (tokens, `pull_request_target`,
+pinned actions). Done when every item in "S gate" below is fixed or closed
+with a reason, and the review of the fixes comes back clean.
+
+**R, Reliable.** One reliability review over the whole module: every error
+shown in plain words, no warnings or TypeErrors in normal use (a test fails
+on any QML warning during the visual and state runs), no leaked connections,
+timers or popups when items are created and destroyed many times, settings
+written atomically and surviving a crash or a full disk, D-Bus and file calls
+that can't hang the GUI thread (AtlasPathValidator, settings lock), and
+everything working after a restart and with an older `atlasrc`.
+
+**P, Performant.** Measured with `perf/measure.sh` against `perf/budget.json`
+(startup 190 ms, RSS 129.2 MB, PSS 114.8 MB, idle CPU 1 %): no figure worse
+than 1.4.0. Plus: `libatlasui.so` smaller (28 MB in Release; try hidden
+visibility), list and table scrolling at 10k rows without dropped frames,
+the new floating toolbar and popover idle at zero CPU, and qmllint warnings
+at or below 162.
 
 ### B0: bugs the apps hit on 1.4.0
 
