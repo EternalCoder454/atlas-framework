@@ -32,6 +32,19 @@ Item {
             AtlasAction { text: "Nameless"; shortcut: "Ctrl+N" }
         }
     }
+    Component {
+        id: delComp
+        AtlasActionCollection {
+            AtlasAction { objectName: "del"; text: "Delete"; shortcut: "Delete" }
+        }
+    }
+    Component {
+        id: sharedComp
+        AtlasActionCollection {
+            AtlasAction { objectName: "one"; text: "One"; shortcut: "Ctrl+Alt+K" }
+            AtlasAction { objectName: "two"; text: "Two"; shortcut: "Ctrl+Alt+K" }
+        }
+    }
     property string declaredKey: "Ctrl+Alt+Y"
     Component {
         id: boundComp
@@ -371,6 +384,118 @@ Item {
             compare(AtlasShortcuts.portable(c.action("copy").shortcut), "Ctrl+C");
         }
 
+        function test_dialog_held_escape_does_not_close() {
+            const x = openEditable();
+            const d = x.d;
+            const row = rowFor(d, "Open");
+            mouseClick(button(row, "Change"));
+            const field = inRow(row, it => it.recording !== undefined && it.conflictText !== undefined);
+            tryCompare(field, "recording", true);
+            keyPress(Qt.Key_Escape);
+            tryCompare(field, "recording", false);
+            wait(400);
+            keyRelease(Qt.Key_Escape);
+            tryVerify(() => button(rowFor(d, "Open"), "Change") !== null);
+            compare(d.visible, true);
+        }
+
+        function test_dialog_focus_loss_ends_edit_mode() {
+            const x = openEditable();
+            const d = x.d;
+            const row = rowFor(d, "Open");
+            mouseClick(button(row, "Change"));
+            const field = inRow(row, it => it.recording !== undefined && it.conflictText !== undefined);
+            tryCompare(field, "recording", true);
+            keyClick(Qt.Key_Tab);
+            tryVerify(() => button(rowFor(d, "Open"), "Change") !== null);
+            compare(d.visible, true);
+        }
+
+        function test_dialog_refuse_then_record_again() {
+            const x = openEditable();
+            const c = x.c, d = x.d;
+            record(d, "Copy", Qt.Key_O, Qt.ControlModifier);
+            tryVerify(() => shown(d, "Already used by"));
+            const field = inRow(rowFor(d, "Copy"), it => it.recording !== undefined && it.conflictText !== undefined);
+            tryCompare(field, "recording", true);
+            keyClick(Qt.Key_R, Qt.ControlModifier | Qt.AltModifier);
+            tryCompare(c, "_overrides", { "copy": "Ctrl+Alt+R" });
+        }
+
+        function test_dialog_list_keeps_scroll_position() {
+            let src = "import QtQuick\nimport Atlas.Ui\nAtlasActionCollection {\n shortcutsEditable: true\n";
+            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (let i = 0; i < 26; ++i) {
+                src += ` AtlasAction { objectName: "a${i}"; text: "Act ${letters[i]}"; shortcut: "Ctrl+Alt+${letters[i]}" }\n`;
+            }
+            src += "}";
+            const c = Qt.createQmlObject(src, root);
+            const d = createTemporaryObject(dialogComp, root, { collection: c, parent: root });
+            d.open();
+            tryCompare(d, "visible", true);
+            const lists = walk(d.contentItem, it => it.contentY !== undefined && it.model !== undefined && it.section !== undefined, []);
+            verify(lists.length > 0);
+            const list = lists[0];
+            tryVerify(() => list.contentHeight > list.height);
+            mouseWheel(list, list.width / 2, list.height / 2, 0, -240);
+            tryVerify(() => list.contentY > 0);
+            tryVerify(() => !list.moving);
+            const before = list.contentY;
+            verify(c.setShortcut("a0", "Ctrl+Alt+Home"));
+            wait(100);
+            tryVerify(() => Math.abs(list.contentY - before) < 1);
+            d.close();
+            c.destroy();
+        }
+
+        function test_media_key_is_refused_unless_declared() {
+            const c = createTemporaryObject(plainComp, root);
+            compare(c.setShortcut("save", "Media Play"), false);
+            compare(c.setShortcut("save", "Delete"), false);
+        }
+
+        function test_declared_lone_key_can_be_recorded_back() {
+            const c = createTemporaryObject(delComp, root);
+            verify(c.setShortcut("del", "Ctrl+Alt+D"));
+            verify(c.setShortcut("del", "Delete"));
+            compare(c.hasCustomShortcut("del"), false);
+            compare(AtlasShortcuts.portable(c.action("del").shortcut), AtlasShortcuts.portable("Delete"));
+        }
+
+        function test_swapped_stored_shortcuts_both_load() {
+            ignoreWarning(/has no objectName/);
+            const c = createTemporaryObject(storedComp, root);
+            // save declares Ctrl+S and open Ctrl+O: swap them in the file.
+            c.store.setValue("shortcuts/save", "Ctrl+O");
+            c.store.setValue("shortcuts/open", "Ctrl+S");
+            c.store.flush();
+            ignoreWarning(/has no objectName/);
+            const again = createTemporaryObject(storedComp, root);
+            compare(AtlasShortcuts.portable(again.action("save").shortcut), "Ctrl+O");
+            compare(AtlasShortcuts.portable(again.action("open").shortcut), "Ctrl+S");
+            c.store.remove("shortcuts/save");
+            c.store.remove("shortcuts/open");
+            c.store.flush();
+        }
+
+        function test_reset_all_skips_a_taken_shortcut() {
+            const c = createTemporaryObject(editComp, root);
+            verify(c.setShortcut("save", "Ctrl+Alt+S"));
+            verify(c.setShortcut("open", "Ctrl+Alt+O"));
+            verify(c.setShortcut("copy", "Ctrl+S"));
+            compare(c.resetShortcuts(), false);
+            compare(c.hasCustomShortcut("save"), true);
+            compare(c.hasCustomShortcut("open"), false);
+        }
+
+        function test_shared_declared_shortcut_does_not_block_reset() {
+            const c = createTemporaryObject(sharedComp, root);
+            verify(c.setShortcut("one", "Ctrl+Alt+1"));
+            compare(c.declaredConflict("one"), "");
+            verify(c.resetShortcut("one"));
+            compare(c.hasCustomShortcut("one"), false);
+        }
+
         function test_dialog_escape_cancels_capture_only() {
             const x = openEditable();
             const c = x.c, d = x.d;
@@ -379,11 +504,10 @@ Item {
             const field = inRow(row, it => it.recording !== undefined && it.conflictText !== undefined);
             tryCompare(field, "recording", true);
             keyClick(Qt.Key_Escape);
-            wait(500);
-            compare(d.visible, true);
-            compare(c.hasCustomShortcut("open"), false);
             // Edit mode ended: the Change button is back.
             tryVerify(() => button(rowFor(d, "Open"), "Change") !== null);
+            compare(d.visible, true);
+            compare(c.hasCustomShortcut("open"), false);
             // With nothing being recorded, Escape closes the dialog as before.
             keyClick(Qt.Key_Escape);
             tryCompare(d, "visible", false);

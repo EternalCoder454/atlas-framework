@@ -43,6 +43,8 @@ QtObject {
     property var _declared: ({})
     // Conflicts already warned about, so each is logged once.
     property var _warned: ({})
+    // objectName -> true when another enabled action had the same declared shortcut at creation.
+    property var _shared: ({})
     property bool _ready: false
 
     // The action whose objectName is `name`; null when there is none.
@@ -64,7 +66,8 @@ QtObject {
     function declaredConflict(name: string): string {
         const declared = root._declared[name];
         const self = root.action(name);
-        if (declared === undefined || declared.length === 0 || self === null) {
+        // Two actions declared with the same shortcut on purpose do not block a reset.
+        if (declared === undefined || declared.length === 0 || self === null || root._shared[name] === true) {
             return "";
         }
         const all = AtlasShortcuts.actions;
@@ -87,15 +90,19 @@ QtObject {
     // text that is no such shortcut, or a settings file that refuses the
     // value. It does not check for conflicts: AtlasShortcutsDialog does.
     function setShortcut(name: string, sequence: string): bool {
-        const clean = root._clean(sequence);
+        const clean = root._normalise(sequence);
         if (clean.length === 0 || root.action(name) === null) {
             return false;
         }
+        // The declared shortcut is always allowed back, even a lone key.
         if (clean === root._declared[name]) {
             return root.hasCustomShortcut(name) ? root._drop(name) : true;
         }
-        // Kept first: when it cannot be saved, nothing changed.
-        if (root.settings && !root.settings.setValue(root._key(name), clean)) {
+        if (!root._chordOk(clean)) {
+            return false;
+        }
+        // Written at once, and kept only when it was: nothing changes on failure.
+        if (!root._commit(name, clean)) {
             console.warn("AtlasActionCollection: the shortcut of \"" + root._safe(name) + "\" could not be saved");
             return false;
         }
@@ -116,18 +123,18 @@ QtObject {
         }
         return root._drop(name);
     }
-    // Back to the declared shortcuts. False when a change could not be saved;
-    // that one stays.
+    // Back to the declared shortcuts. False when a change could not be saved,
+    // or another action has the declared shortcut now; those stay.
     function resetShortcuts(): bool {
         let ok = true;
         for (const name of Object.keys(root._overrides)) {
-            ok = root._drop(name) && ok;
+            ok = root.resetShortcut(name) && ok;
         }
         return ok;
     }
 
     function _drop(name: string): bool {
-        if (root.settings && !root.settings.remove(root._key(name))) {
+        if (!root._commit(name, undefined)) {
             console.warn("AtlasActionCollection: the shortcut of \"" + root._safe(name) + "\" could not be reset in the settings");
             return false;
         }
@@ -135,6 +142,31 @@ QtObject {
         delete next[name];
         root._overrides = next;
         return true;
+    }
+    // Writes the user's shortcut of `name` (removes it for undefined) to the
+    // settings now, so a full disk or a read-only file shows. When it cannot
+    // be written, what was there is put back and false is returned.
+    function _commit(name: string, value): bool {
+        const s = root.settings;
+        if (!s) {
+            return true;
+        }
+        const key = root._key(name);
+        const had = s.contains(key);
+        if (value === undefined && !had) {
+            return true;
+        }
+        const old = had ? s.value(key, "") : "";
+        if ((value === undefined ? s.remove(key) : s.setValue(key, value)) && s.flush()) {
+            return true;
+        }
+        if (had) {
+            s.setValue(key, old);
+        } else {
+            s.remove(key);
+        }
+        s.flush();
+        return false;
     }
     // Text from outside, safe for a log line.
     function _safe(text): string {
@@ -163,9 +195,9 @@ QtObject {
         return "shortcuts/" + name;
     }
     // The portable form of `text`; "" when it is not one chord QKeySequence
-    // reads, is longer than _maxLength, has a control, bidi or other format
-    // character, or is not allowed by _chordOk().
-    function _clean(text): string {
+    // reads, is longer than _maxLength, or has a control, bidi or other format
+    // character. Whether the chord is allowed as a user shortcut is _chordOk().
+    function _normalise(text): string {
         const bad = /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff\ufff9-\ufffb]/;
         if (typeof text !== "string" || text.length === 0 || text.length > root._maxLength || bad.test(text)) {
             return "";
@@ -175,7 +207,7 @@ QtObject {
         if (portable.length === 0 || portable.length > root._maxLength || bad.test(portable) || chords < 1 || chords > root._maxChords) {
             return "";
         }
-        return root._chordOk(portable) ? portable : "";
+        return portable;
     }
     // What `b` has now: the user's shortcut, or the declared one.
     function _effective(b, map): string {
@@ -188,9 +220,10 @@ QtObject {
         }
         return AtlasShortcuts.portable(b.shortcut);
     }
-    // Reads the user's shortcuts from the settings. What is not a usable
-    // shortcut, or is one that another enabled action of the collection has,
-    // is ignored (a conflict is warned about once).
+    // Reads the user's shortcuts from the settings, in two passes: every
+    // usable one is collected, then those equal to another enabled action's
+    // final shortcut are dropped (one warning each), so two actions that swap
+    // shortcuts both keep them. What is not usable is ignored.
     function _load(): void {
         const map = {};
         if (root.settings) {
@@ -199,26 +232,31 @@ QtObject {
                 if (name.length === 0) {
                     continue;
                 }
-                const clean = root._clean(root.settings.value(root._key(name), ""));
-                if (clean.length === 0 || clean === root._declared[name]) {
+                const clean = root._normalise(root.settings.value(root._key(name), ""));
+                if (clean.length > 0 && clean !== root._declared[name] && root._chordOk(clean)) {
+                    map[name] = clean;
+                }
+            }
+            const refused = [];
+            for (const a of root._all) {
+                const name = a ? (a.objectName ?? "") : "";
+                if (name.length === 0 || !Object.prototype.hasOwnProperty.call(map, name)) {
                     continue;
                 }
-                let holder = null;
                 for (const b of root._all) {
-                    if (b && b !== a && b.enabled !== false && root._effective(b, map) === clean) {
-                        holder = b;
+                    if (b && b !== a && b.enabled !== false && root._effective(b, map) === map[name]) {
+                        refused.push([name, b]);
                         break;
                     }
                 }
-                if (holder) {
-                    const id = name + "\n" + clean;
-                    if (!root._warned[id]) {
-                        root._warned[id] = true;
-                        console.warn("AtlasActionCollection: the saved shortcut " + clean + " of \"" + root._safe(name) + "\" is used by \"" + root._safe(AtlasShortcuts.plainText(String(holder.text ?? ""))) + "\" and is ignored");
-                    }
-                    continue;
+            }
+            for (const [name, holder] of refused) {
+                const id = name + "\n" + map[name];
+                if (!root._warned[id]) {
+                    root._warned[id] = true;
+                    console.warn("AtlasActionCollection: the saved shortcut " + map[name] + " of \"" + root._safe(name) + "\" is used by \"" + root._safe(AtlasShortcuts.plainText(String(holder.text ?? ""))) + "\" and is ignored");
                 }
-                map[name] = clean;
+                delete map[name];
             }
         }
         root._overrides = map;
@@ -263,6 +301,23 @@ QtObject {
             list.push(a);
         }
         root._all = list;
+        const shared = {};
+        const registered = AtlasShortcuts.actions;
+        for (const a of list) {
+            const name = a.objectName;
+            const d = name.length > 0 ? root._declared[name] : "";
+            if (!d) {
+                continue;
+            }
+            for (let i = 0; i < registered.length; ++i) {
+                const b = registered[i];
+                if (b && b !== a && b.enabled !== false && AtlasShortcuts.portable(b.shortcut) === d) {
+                    shared[name] = true;
+                    break;
+                }
+            }
+        }
+        root._shared = shared;
         root._ready = true;
         root._load();
     }

@@ -1,4 +1,5 @@
 #include "atlassettings.h"
+#include "atlaslogsafe.h"
 
 #include <KConfig>
 #include <KConfigGroup>
@@ -22,24 +23,6 @@
 
 namespace
 {
-// A name from a file or an app, safe for a log line: control, bidi and other
-// format characters become \uXXXX, and a long one is cut.
-QString logSafe(const QString &text)
-{
-    QString out;
-    for (qsizetype i = 0; i < text.size() && out.size() < 120; ++i) {
-        const QChar c = text[i];
-        const auto cat = c.category();
-        if (cat == QChar::Other_Control || cat == QChar::Other_Format || cat == QChar::Other_Surrogate || cat == QChar::Separator_Line
-            || cat == QChar::Separator_Paragraph) {
-            out += QStringLiteral("\\u%1").arg(c.unicode(), 4, 16, QLatin1Char('0'));
-        } else {
-            out += c;
-        }
-    }
-    return out;
-}
-
 constexpr int kWriteDelayMs = 400;
 constexpr int kWatchDelayMs = 100;
 // A writer waits this long for the lock before giving up (and keeping the

@@ -40,10 +40,13 @@ QQC2.Popup {
         // The action being given a new shortcut, and what went wrong last.
         property var editing: null
         property string message
-        // Leaves edit mode a moment after a recording ended without a
-        // shortcut (Escape, focus lost): the key release must not close the dialog.
+        // Edit mode stays until the Escape release was seen after a cancel (or
+        // 2 s), so that release does not close the dialog.
+        property bool escDown: false
         readonly property Timer idle: Timer {
-            interval: 250
+            // Only a fallback for a cancel that sends no Escape release; an
+            // Escape release ends edit mode at once.
+            interval: 2000
             onTriggered: priv.stop()
         }
 
@@ -97,6 +100,7 @@ QQC2.Popup {
         }
         function stop(): void {
             priv.idle.stop();
+            priv.escDown = false;
             priv.editing = null;
             priv.message = "";
         }
@@ -219,14 +223,24 @@ QQC2.Popup {
                 property real _y: 0
                 property string _yQuery: ""
                 property bool _restoring: false
+                // Only the user's own movement (flick, wheel, drag, scroll bar)
+                // is remembered: not what a model reset does to contentY.
                 onContentYChanged: {
-                    if (!list._restoring) {
+                    if (!list._restoring && (list.moving || bar.pressed)) {
                         list._y = list.contentY;
                         list._yQuery = search.query;
                     }
                 }
+                onMovementEnded: {
+                    list._y = list.contentY;
+                    list._yQuery = search.query;
+                }
                 onModelChanged: {
-                    if (list._y > 0 && search.query === list._yQuery) {
+                    if (search.query !== list._yQuery) {
+                        // A new search starts at the top.
+                        list._y = 0;
+                        list._yQuery = search.query;
+                    } else if (list._y > 0) {
                         list._restoring = true;
                         Qt.callLater(list._restore);
                     }
@@ -297,7 +311,13 @@ QQC2.Popup {
                             property bool _handled: false
                             function _checkIdle(): void {
                                 if (!field._handled && !field.recording && row.isEditing) {
-                                    priv.idle.restart();
+                                    if (field.activeFocus) {
+                                        // Escape (still held, perhaps): wait for its release.
+                                        priv.escDown = true;
+                                        priv.idle.restart();
+                                    } else {
+                                        priv.stop();
+                                    }
                                 }
                                 field._handled = false;
                             }
@@ -305,6 +325,9 @@ QQC2.Popup {
                             Keys.onReleased: event => {
                                 if (event.key === Qt.Key_Escape && row.isEditing) {
                                     event.accepted = true;
+                                    if (priv.escDown) {
+                                        priv.stop();
+                                    }
                                 }
                             }
                             sequence: AtlasShortcuts.portable(row.modelData.sequence)
