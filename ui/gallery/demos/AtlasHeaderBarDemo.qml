@@ -1,11 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import Atlas.Ui
 
 // AtlasHeaderBar: wide with a title, tools and the window buttons; centred
-// title; narrow, with tools behind the "more" button; inactive window; and
-// without window buttons. Tests set `animate` to false.
+// title; narrow, with tools behind the "more" button; inactive window;
+// without window buttons; and a stretch row that fills the bar. Tests set `animate` to false.
 Item {
     id: root
 
@@ -60,6 +61,19 @@ Item {
             active: true
             windowButtons: false
             actions: [undo, redo]
+        }
+        AtlasHeaderBar {
+            Layout.preferredWidth: 600
+            showTitle: false
+            active: true
+            actions: [undo, redo]
+            stretch: [
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    text: "A stretch row takes the rest of the bar"
+                    elide: Text.ElideRight
+                }
+            ]
         }
     }
 }

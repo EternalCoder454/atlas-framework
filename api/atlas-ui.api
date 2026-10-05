@@ -322,6 +322,8 @@ AtlasHeaderBar.property active: bool
 AtlasHeaderBar.property centerTitle: bool
 AtlasHeaderBar.property iconName: QString
 AtlasHeaderBar.property leading: QQmlListProperty<QObject> [readonly]
+AtlasHeaderBar.property showTitle: bool
+AtlasHeaderBar.property stretch: QQmlListProperty<QObject> [readonly]
 AtlasHeaderBar.property title: QString
 AtlasHeaderBar.property titleCentered: bool [readonly]
 AtlasHeaderBar.property trailing: QQmlListProperty<QObject> [readonly]

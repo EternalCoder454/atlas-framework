@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Layouts
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
@@ -21,7 +22,8 @@ import org.kde.kirigami as Kirigami
 // AtlasOS default is the window menu on the left, minimise, maximise and
 // close on the right): the window menu button, `leading`, the title, the
 // `actions` in an AtlasToolbar (the ones that don't fit go behind its "more"
-// button), `trailing`, the window buttons. The title leads, left aligned; with
+// button), `stretch` (a row that takes all the free width, for a TabBar),
+// `trailing`, the window buttons. The title leads, left aligned; with
 // `centerTitle` it is centred when the bar is wide (40 grid units), and leads
 // again when it is narrower. The colours are the Header colour set, drawn over
 // the window's blur at the window's own alpha, with a hairline below.
@@ -42,6 +44,13 @@ Item {
     // and items before the window buttons (a search field).
     property alias leading: leadingRow.data
     property alias trailing: trailingRow.data
+    // Items in a row that takes all the free width between the title and
+    // `actions` on one side and `trailing` on the other: a child that sets
+    // Layout.fillWidth (a TabBar) fills the bar. Its empty parts still drag the
+    // window. With no free width the row is 0 wide and its items are hidden.
+    property alias stretch: stretchRow.data
+    // False leaves the title out, for a bar whose `stretch` row is the title.
+    property bool showTitle: true
     // Centres the title when the bar is wide enough.
     property bool centerTitle: false
     // False leaves the window buttons out (the window has its own).
@@ -52,7 +61,8 @@ Item {
     property bool active: Window.active
 
     // True when the title is drawn centred.
-    readonly property bool titleCentered: centerTitle && width >= Kirigami.Units.gridUnit * 40
+    readonly property bool titleCentered: centerTitle && width >= Kirigami.Units.gridUnit * 40 && !root._hasStretch
+    readonly property bool _hasStretch: stretchRow.children.length > 0
 
     // Opens the window menu below the left edge; for keyboard users.
     function openWindowMenu() {
@@ -281,12 +291,13 @@ Item {
         id: title
         readonly property real _free: Math.max(0, root.width - leftRow.width - rightRow.width - AtlasStyle.spacing * 2)
         // With no actions the title may take all the free width; otherwise 40% of it.
-        readonly property real _maxWidth: root.titleCentered ? Math.max(0, root.width - 2 * Math.max(leftRow.width, rightRow.width) - AtlasStyle.spacing * 2) : (root.actions.length > 0 ? _free * 0.4 : _free)
+        readonly property real _maxWidth: root.titleCentered ? Math.max(0, root.width - 2 * Math.max(leftRow.width, rightRow.width) - AtlasStyle.spacing * 2) : (root.actions.length > 0 || root._hasStretch ? _free * 0.4 : _free)
         anchors.left: root.titleCentered ? undefined : leftRow.right
-        anchors.leftMargin: AtlasStyle.spacing
+        anchors.leftMargin: root.showTitle ? AtlasStyle.spacing : 0
         anchors.horizontalCenter: root.titleCentered ? parent.horizontalCenter : undefined
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.max(0, Math.min(implicitWidth, _maxWidth))
+        visible: root.showTitle
+        width: root.showTitle ? Math.max(0, Math.min(implicitWidth, _maxWidth)) : 0
         text: root.title
         elide: Text.ElideRight
         font.pointSize: AtlasStyle.fontSizeWindowTitle
@@ -302,9 +313,28 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: root.titleCentered ? leftRow.right : title.right
         anchors.leftMargin: AtlasStyle.spacingSmall
-        width: root.titleCentered ? Math.max(0, (root.width - title.width) / 2 - leftRow.width - 4 - 2 * AtlasStyle.spacingSmall) : Math.max(0, root.width - leftRow.width - 4 - AtlasStyle.spacing - title.width - rightRow.width - 9 - 3 * AtlasStyle.spacingSmall)
+        // With a stretch row the tools take only what they need.
+        readonly property real _room: root.titleCentered ? Math.max(0, (root.width - title.width) / 2 - leftRow.width - 4 - 2 * AtlasStyle.spacingSmall) : Math.max(0, root.width - leftRow.width - 4 - (root.showTitle ? AtlasStyle.spacing : 0) - title.width - rightRow.width - 9 - 3 * AtlasStyle.spacingSmall)
+        width: root._hasStretch ? Math.min(implicitWidth, _room) : _room
         visible: actions.length > 0
         accessibleName: qsTr("Main tools")
+    }
+
+    // The stretch row: all the width the title, the tools and the groups leave.
+    RowLayout {
+        id: stretchRow
+        anchors.left: toolbar.visible ? toolbar.right : title.right
+        anchors.leftMargin: AtlasStyle.spacingSmall
+        anchors.right: rightRow.left
+        anchors.rightMargin: AtlasStyle.spacingSmall
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        // Hairline below: the row stops above it.
+        anchors.bottomMargin: 1
+        spacing: AtlasStyle.spacingSmall
+        // No free width: nothing shows, nothing overlaps.
+        visible: children.length > 0 && width >= 1
+        clip: true
     }
 
     // Where the window's top resize handle must stop so it does not cover the
