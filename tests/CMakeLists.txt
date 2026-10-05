@@ -73,3 +73,12 @@ target_include_directories(atlas-shortcuts-tests PRIVATE ${PROJECT_SOURCE_DIR}/u
 target_link_libraries(atlas-shortcuts-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
 add_test(NAME shortcuts COMMAND atlas-shortcuts-tests)
 set_tests_properties(shortcuts PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# The Atlas validators (ui/atlasvalidators.cpp, compiled into the test):
+# acceptable, intermediate and invalid input of each, hostile input included.
+add_executable(atlas-validators-tests validators/tst_validators.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlasvalidators.h ${PROJECT_SOURCE_DIR}/ui/atlasvalidators.cpp)
+target_include_directories(atlas-validators-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-validators-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+add_test(NAME validators COMMAND atlas-validators-tests)
+set_tests_properties(validators PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

@@ -81,12 +81,15 @@ qt_add_qml_module(atlasui
         AtlasAction.qml
         AtlasShortcutLabel.qml
         AtlasShortcutsDialog.qml
+        AtlasDoubleSpinBox.qml
+        AtlasShortcutField.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp
         accessibilitystate.h accessibilitystate.cpp
         appearance.h appearance.cpp
         atlasshortcuts.h atlasshortcuts.cpp
+        atlasvalidators.h atlasvalidators.cpp
         atlasapp.h atlasapp.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         translations.cpp atlasuiplugin.cpp
