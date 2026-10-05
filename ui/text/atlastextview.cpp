@@ -346,9 +346,11 @@ private:
             b = line + 1 < v->lineCount() ? v->positionOfLine(line + 1) : len;
         }
         if (b - a > MaxAccessibleText) {
-            // A line over the cap: the window is centred on the offset.
+            // A line over the cap: the window is centred on the offset, kept
+            // within the line (the line before or after may not hold it).
             const qsizetype lineEnd = b;
-            a = std::max(a, v->alignedPosition(std::max<qsizetype>(0, offset - MaxAccessibleText / 2)));
+            const qsizetype centre = std::clamp<qsizetype>(offset, a, lineEnd);
+            a = std::max(a, v->alignedPosition(std::max<qsizetype>(0, centre - MaxAccessibleText / 2)));
             b = std::max(a, v->alignedPosition(std::min(lineEnd, a + MaxAccessibleText)));
         }
         *startOffset = clampInt(a);
@@ -1760,16 +1762,28 @@ void AtlasTextView::keyPressEvent(QKeyEvent *e)
         case 8: pos = 0; break;
         case 9: pos = n; break;
         case 10: {
+            // At most WordWindow units per key press: a long run of spaces or
+            // punctuation in a huge line must not stall the GUI thread.
             qsizetype p = pos;
-            while (p > 0 && !isWordChar(unitAt(t, p - 1)))
+            const qsizetype stop = std::max<qsizetype>(0, pos - WordWindow);
+            while (p > stop && !isWordChar(unitAt(t, p - 1)))
                 --p;
+            if (p == stop && p > 0 && !isWordChar(unitAt(t, p - 1))) {
+                pos = alignedPosition(p); // never inside a surrogate pair
+                break;
+            }
             pos = p > 0 ? wordStart(p - 1) : 0;
             break;
         }
         case 11: {
             qsizetype p = pos;
-            while (p < n && !isWordChar(unitAt(t, p)))
+            const qsizetype stop = std::min(n, pos + WordWindow);
+            while (p < stop && !isWordChar(unitAt(t, p)))
                 ++p;
+            if (p == stop && p < n && !isWordChar(unitAt(t, p))) {
+                pos = alignedPosition(p);
+                break;
+            }
             pos = p < n ? wordEnd(p) : n;
             break;
         }
