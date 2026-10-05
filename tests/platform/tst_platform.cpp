@@ -1125,8 +1125,58 @@ private Q_SLOTS:
         creates += m_portal->creates;
         // The first try and five retries at most, plus a late one: not one per flap.
         QVERIFY2(creates <= 8, qPrintable(QString::number(creates)));
+        // ... but the late retry did happen.
+        QVERIFY2(creates >= 2, qPrintable(QString::number(creates)));
+        QVERIFY(session.failures() >= 5);
         m_portal->mode = FakePortal::Bind::Good;
         GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void aPortalThatAppearsLaterIsBoundAtOnce()
+    {
+        stopPortal();
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        session.setRetryBaseMs(20000); // a backoff the test could not wait for
+        GlobalShortcutSession::setShared(&session);
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_VERIFY(!a->errorString().isEmpty()); // no portal
+        QVERIFY(session.failures() > 0);
+        startPortal();
+        QTRY_VERIFY_WITH_TIMEOUT(a->available(), 3000);
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
+    void aFloodOfSettingChangesGivesFewReads()
+    {
+        stopPortal();
+        startPortal(QVariantMap{{QStringLiteral("contrast"), QVariant::fromValue<uint>(0)}});
+        PortalAppearance p(m_client);
+        QTRY_VERIFY(m_portal->readAlls >= 1);
+        m_portal->readAlls = 0;
+        uint contrast = 0;
+        uint motion = 0;
+        QColor accent;
+        for (int i = 0; i < 50; ++i) {
+            switch (i % 3) {
+            case 0:
+                contrast = i % 2;
+                m_portal->settingChanged(QStringLiteral("contrast"), QVariant::fromValue<uint>(contrast));
+                break;
+            case 1:
+                motion = (i + 1) % 2;
+                m_portal->settingChanged(QStringLiteral("reduced-motion"), QVariant::fromValue<uint>(motion));
+                break;
+            default:
+                accent = i % 2 ? QColor(Qt::red) : QColor(Qt::blue);
+                m_portal->settingChanged(QStringLiteral("accent-color"), i % 2 ? colorStruct(1, 0, 0) : colorStruct(0, 0, 1));
+            }
+            QTest::qWait(20);
+        }
+        QTest::qWait(500);
+        QVERIFY2(m_portal->readAlls <= 2, qPrintable(QString::number(m_portal->readAlls)));
+        QCOMPARE(p.highContrast(), contrast == 1);
+        QCOMPARE(p.reducedMotion(), motion == 1);
+        QCOMPARE(p.accentColor(), accent);
     }
 
     void aRunQueuedBeforeQuitDoesNothing()

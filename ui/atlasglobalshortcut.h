@@ -161,6 +161,9 @@ private:
     QTimer m_retry;
     // When the last failure happened, for the flapping-portal rule.
     QElapsedTimer m_lastFailure;
+    // A failure of the current streak reached a portal (not just "no portal").
+    bool m_portalFailure = false;
+    bool m_noPortal = false; // the error being handled is "no portal owner"
     int m_failures = 0;
     int m_retryBaseMs = 2000;
     int m_stableMs = 60000;

@@ -80,15 +80,19 @@ fi
 # private directory (removed with $tmp by the trap above).
 busconf=$tmp/bus.conf
 case $tmp in
-*[\<\>\&\"]*)
+*[\<\>\&\"\,\;\%]*)
     echo "run-variant: unsafe characters in $tmp" >&2
     exit 1
     ;;
 esac
 template=$(<"$here/../private-bus.conf")
+[[ $template == *@LISTEN@* ]] || {
+    echo "run-variant: private-bus.conf has no @LISTEN@ line" >&2
+    exit 1
+}
 # printf, so nothing in $tmp is read as a replacement pattern.
 printf '%s\n' "${template%%@LISTEN@*}unix:dir=$tmp${template#*@LISTEN@}" >"$busconf"
-grep -q 'unix:dir=' "$busconf" || {
+grep -q '<listen>unix:dir=' "$busconf" || {
     echo "run-variant: the test bus config has no listen address" >&2
     exit 1
 }

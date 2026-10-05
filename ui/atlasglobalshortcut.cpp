@@ -222,7 +222,10 @@ GlobalShortcutSession::GlobalShortcutSession(const QDBusConnection &bus, const Q
     m_timeout.setSingleShot(true);
     connect(&m_timeout, &QTimer::timeout, this, [this] { fail(tr("The desktop did not answer the shortcut request in time.")); });
     m_stable.setSingleShot(true);
-    connect(&m_stable, &QTimer::timeout, this, [this] { m_failures = 0; });
+    connect(&m_stable, &QTimer::timeout, this, [this] {
+        m_failures = 0;
+        m_portalFailure = false;
+    });
     m_retry.setSingleShot(true);
     connect(&m_retry, &QTimer::timeout, this, [this] { schedule(); });
     if (QCoreApplication::instance()) {
@@ -242,14 +245,25 @@ GlobalShortcutSession::GlobalShortcutSession(const QDBusConnection &bus, const Q
                 finishRequest();
             }
             m_retry.stop(); // a retry now could start the portal by activation
+            // A peer that completes a session and drops its name again and again
+            // is capped like any other failure.
+            if (!m_session.isEmpty() && m_stable.isActive()) {
+                m_lastFailure.start();
+                m_portalFailure = true;
+            }
             dropSession(false); // the session went with the portal: nothing to close
             failAll(tr("The desktop portal stopped."));
         }
-        if (!newOwner.isEmpty() && !m_items.isEmpty()) {
+        if (!newOwner.isEmpty() && !m_items.isEmpty() && !m_shutdown) {
             // A retry still waiting would fire in the middle of the new bind.
             m_retry.stop();
             if (!m_lastFailure.isValid() || m_lastFailure.hasExpired(m_stableMs)) {
                 m_failures = 0; // a portal that is back after a quiet time: a fresh start
+                m_portalFailure = false;
+                schedule();
+            } else if (!m_portalFailure) {
+                // Every failure so far was "no portal": nothing was ever refused,
+                // so there is nothing to back off from.
                 schedule();
             } else if (m_failures >= 5) {
                 // Out of retries, but the portal is back: one more try, late, and
@@ -485,6 +499,7 @@ void GlobalShortcutSession::send(Kind kind, const QString &method, const QList<Q
             QString why;
             switch (error.type()) {
             case QDBusError::ServiceUnknown:
+                m_noPortal = true;
                 why = tr("Global shortcuts are not available: the desktop portal is not running.");
                 break;
             case QDBusError::UnknownMethod:
@@ -553,6 +568,8 @@ void GlobalShortcutSession::failAll(const QString &why)
 void GlobalShortcutSession::fail(const QString &why)
 {
     const Kind was = m_kind;
+    const bool noPortal = m_noPortal;
+    m_noPortal = false;
     finishRequest();
     // A CreateSession that gave up may still be made by the portal, late.
     if (was == Kind::CreateSession && !m_sessionToken.isEmpty()) {
@@ -562,6 +579,9 @@ void GlobalShortcutSession::fail(const QString &why)
     dropSession(true);
     m_dirty = false;
     failAll(why);
+    if (!noPortal) {
+        m_portalFailure = true;
+    }
     m_lastFailure.start();
     scheduleRetry();
 }
@@ -719,6 +739,7 @@ void GlobalShortcutSession::onSessionClosed(const QDBusMessage &message)
         schedule();
     } else {
         m_lastFailure.start();
+        m_portalFailure = true;
         scheduleRetry();
     }
 }

@@ -36,6 +36,9 @@ PortalAppearance::PortalAppearance(const QDBusConnection &bus, const QString &se
     , m_bus(bus)
     , m_service(service.isEmpty() ? QString::fromLatin1(kService) : service)
 {
+    m_reread.setSingleShot(true);
+    m_reread.setInterval(100);
+    connect(&m_reread, &QTimer::timeout, this, [this] { readAll(); });
     if (!m_bus.isConnected()) {
         return;
     }
@@ -170,16 +173,7 @@ void PortalAppearance::onSettingChanged(const QDBusMessage &message)
     ++m_generation; // a ReadAll still on its way is older than this change
     // ... and has the other two keys; the one new read, however many changes
     // come in a row, brings them all.
-    if (!m_rereadQueued) {
-        m_rereadQueued = true;
-        QMetaObject::invokeMethod(
-            this,
-            [this] {
-                m_rereadQueued = false;
-                readAll();
-            },
-            Qt::QueuedConnection);
-    }
+    m_reread.start(); // restarted by each change: a flood gives one read, after it
     Values v{m_highContrast, m_reducedMotion, m_accent};
     apply(args.at(1).toString(), args.at(2).value<QDBusVariant>().variant(), v);
     commit(v);

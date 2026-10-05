@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <QTimer>
 
 class QDBusServiceWatcher;
 
@@ -49,7 +50,7 @@ private:
     QString m_service;
     QDBusServiceWatcher *m_watcher = nullptr;
     qulonglong m_generation = 0;
-    bool m_rereadQueued = false;
+    QTimer m_reread; // debounce: one read after a run of changes
     bool m_highContrast = false;
     bool m_reducedMotion = false;
     QColor m_accent;
