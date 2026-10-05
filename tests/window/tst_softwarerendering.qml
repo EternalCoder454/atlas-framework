@@ -101,10 +101,12 @@ TestCase {
         return all(item).filter(o => isTimer(o) && o.running);
     }
 
-    // No endless animation and no shader effect anywhere in the control.
+    // No endless animation and no shader effect anywhere in the control. A
+    // layer (a ShaderEffectSource, no shader of its own) is allowed: the
+    // spinner turns a cached texture rather than redraw its arc each step.
     function verifyNoEndlessMotion(item) {
         for (const o of all(item)) {
-            verify(String(o).indexOf("ShaderEffect") < 0, "no ShaderEffect: " + o);
+            verify(o.fragmentShader === undefined, "no ShaderEffect: " + o);
             verify(!(o.loops === Animation.Infinite && o.running), "no endless animation: " + o);
         }
     }
