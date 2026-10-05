@@ -730,9 +730,10 @@ Item {
             verify(!tf.hasError, "nothing shows before the user has typed");
             tf.forceActiveFocus();
             // Not "x": the fixup makes a bare host https://x, which is valid.
-            for (const k of "http:")
+            // Not "http:" either: only https is allowed, so the colon is refused.
+            for (const k of "https:")
                 keyClick(k);
-            compare(tf.text, "http:");
+            compare(tf.text, "https:");
             keyClick(Qt.Key_Return);
             tryVerify(() => tf.hasError, 2000, "invalidText shows for an invalid path");
         }

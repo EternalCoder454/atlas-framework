@@ -132,7 +132,9 @@ T.AbstractButton {
         font.pointSize: 12
     }
     Timer {
-        interval: 0
+        // Not 0: a repeating Timer of 0 ms never fires (it runs on the
+        // animation clock), and the scan would never get past the start.
+        interval: 16
         repeat: true
         running: internals.scanning && popup.visible
         onTriggered: internals.scanSome()
