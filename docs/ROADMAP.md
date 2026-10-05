@@ -233,6 +233,9 @@ at or below 162.
   (Monitor)
 - [x] ConfirmDialog: `destructive` drew the accept button violet since the
   1.4.0 restyle; it uses the Destructive look again (fixed on main, 7dc2806).
+- [x] TabBar: with more tabs than fit, the strip kept its content width, ran
+  past the bar (hiding "+") and never scrolled; a tab made current after it
+  was added stayed out of view. (Notepad; since 1.3.0)
 
 ### A1: new API the apps asked for (sketch in docs/api-1.5.0.md first)
 
