@@ -307,8 +307,8 @@ at or below 162.
 ### B2: study findings (F and R), whole framework
 
 Studies 1-3 (fields and buttons; lists and data; dialogs, popups and the
-window) read every file at 413cfb2. Studies 4-6 (C++ services, crates, tools
-and CI) are running. Items marked "verify" come from reading only: reproduce
+window) read every file at 413cfb2; studies 5 (crates) and 6 (tools, CI,
+packaging, template) at 930c8ae. Study 4 (C++ services) is running. Items marked "verify" come from reading only: reproduce
 first. Fix in batches by file; every fix gets a test that fails before it.
 
 #### Fields and buttons
@@ -405,7 +405,88 @@ first. Fix in batches by file; every fix gets a test that fails before it.
   bar in RTL; AtlasPortal stale notification ids after a server restart;
   AtlasWindowChrome reads kwinrc on the GUI thread.
 
+#### Crates (study 5)
+
+crash.rs has uncommitted work from another session: its items wait until
+that lands, then go in one batch.
+
+- [ ] crash.rs: the 5-an-hour limit is per process and `pending/` has no cap
+  (a restart loop queues 5 per launch); dedupe by crash key, an on-disk hour
+  counter, cap about 50 files.
+- [ ] crash.rs: no length cap on `message` (a 50 MB panic payload allocates
+  about 1 GB in the hook); `github_issue_url` never shortens `head` past 7 KB.
+- [ ] crash.rs: `journalctl` and `rpm -qf` (waits on the rpmdb lock during an
+  update, up to 500 times) have no timeout; document that `collect_*` block.
+- [ ] crash.rs: reports and markers are written in place (no temp, fsync,
+  rename): a crash leaves a truncated report that stays invisible, or an empty
+  coredump marker that skips every crash since. Quarantine unparsable files.
+- [ ] crash.rs Low: `--noproxy "*"`; two senders of one report file two
+  issues; `ram_total_kb * 1024` overflow; the "prunes the sent history"
+  comment; the C++ `alarm(10)` turns a hung save into SIGALRM (no core).
+- [ ] flatpak: one failing installation (an unmounted extra one) fails all of
+  `list_updates`; failed remote refreshes are dropped without a log line.
+- [ ] flatpak: no Cancellable or deadline on any libflatpak call; a stalled
+  remote blocks the worker for good (add `*_with` variants).
+- [ ] flatpak: `fetch_remote_size_sync` runs even with `refresh=false`
+  (network, serial, errors become size 0), contrary to updates.md (verify).
+- [ ] atlas_app_init isn't idempotent: a second call installs the message
+  handler as its own previous one, and the first qDebug recurses to a stack
+  overflow. showUiError's loop never ends if the window never shows.
+- [ ] settings.rs and events.rs: `flock` waits forever while holding the
+  process-wide WRITERS mutex (a stopped holder or a hung NFS home freezes every
+  `Settings::set`); use a deadline.
+- [ ] Low: events `event`/`version` unbounded, `eprintln!` instead of `log`;
+  history `append_if_new` without a lock; unbounded `read_to_string` (a FIFO
+  blocks, non-UTF-8 makes a key unwritable); temp files never swept; polkit
+  interactive check without a cancellation id or timeout; bootc required
+  `image` fields and `utc_second` digits; notify's shipped-file Popup
+  fallback isn't read (and is blocking I/O in an async fn).
+
+#### Tools, CI, packaging and the template (study 6)
+
+- [ ] High: check-api.sh fails every commit that changes `api/` while the
+  version is still 1.4.0: raise the in-tree version to 1.5.0 with the first
+  API commit (CMake, Cargo, Cargo.lock, spec).
+- [ ] apidump records no base type: changing a root from T.AbstractButton to
+  Item removes `clicked`, `text` and more, and the check still passes.
+- [ ] No RPM build in CI or release.yml, so `%check` and the file lists only
+  run by hand; translations would break the RPM build (no LinguistTools
+  BuildRequires, `.qm` files owned by no `%files`).
+- [ ] On a tag push the semver baseline and check-api's "since the last tag"
+  diff are the commit itself (vacuous); release.yml accepts the tag run alone.
+- [ ] dev-check: no `--init`/`--name` (Ctrl-C may leave ninja and ctest
+  running), two runs in one checkout share a build dir, a mistyped demo name
+  may test nothing.
+- [ ] perf/measure.sh: measures an already installed qmldir instead of the
+  build; a missing budget file or key passes; unreadable schedstat gives 0 %
+  CPU; the CI perf job measures a dev-paths build.
+- [ ] lint-app.sh false passes: a trailing comment on an import, the
+  `QtQuick.Controls.Basic`/Material/... imports, `build*` pruning, zero QML
+  files exits 0, no error-path test.
+- [ ] Low: CI swallows lint exit 2 and never lints the gallery or template,
+  no qmllint warning gate; cache keys end in the sha (churn, evictions), one
+  buildx scope for three jobs, push plus pull_request runs; no
+  `cargo --locked` or Cargo.lock version check; build-rpm.sh tars the working
+  tree (untracked files, dirty tree) and exits 0 with no RPM; release.yml's
+  rc tags and tag ordering; perf/README's 5 s and 0.5 figures; dev-check
+  hides details (lint file:line, visual-out path), treats a relative build
+  dir as a volume, runs no crates; open-update-pr.sh misses a failed
+  ls-tree; app-checks.yml can't fetch a short sha.
+- [ ] Template (every new app copies it): README says pin to a commit, the
+  Cargo.toml a tag; MainPage's timer runs while hidden; a worker panic leaves
+  `busy` stuck; the notifyrc icon doesn't exist; main.cpp redeclares
+  `atlas_app_run` instead of including atlas/app.h; no CI workflow; StackView
+  with no Esc or reduced motion (AtlasNavigationStack exists).
+
 ### S-phase notes (from the studies; handled in the S pass)
+
+- crash.rs: a coredump's `app_name` is the full exe path, not redacted
+  (`/mnt/clients/acme/...` reaches the public issue); scrub gaps
+  (`--password x`, single name parts, a deny-list of private prefixes, Event
+  scrubbed for hosts only); markers not reset when reporting is turned on by
+  hand; `discard()` deletes any `Report.path`.
+- Unpinned `fedora:44` base image; no dependabot for the pinned action SHAs;
+  app-checks.yml tracks main by default.
 
 - AtlasPortal: reject userinfo (`https://good@evil`); file type sniffing and
   canonicalFilePath on the GUI thread; notification markup is the caller's
