@@ -219,9 +219,14 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    // The module's own classes. The qmltypes also describes the Qt base classes
+    // an Atlas type derives from (QAbstractItemModel...): those are Qt's API.
+    static const QRegularExpression qtClass(QStringLiteral("^Q[A-Z]"));
     QSet<QString> atlasClasses;
     for (const QmlTypesComponent &c : components) {
-        atlasClasses.insert(c.name);
+        if (!qtClass.match(c.name).hasMatch()) {
+            atlasClasses.insert(c.name);
+        }
     }
     // The type names to dump: QML-defined from the qmldir, C++ from the exports.
     QSet<QString> typeNames(qmlTypeNames.begin(), qmlTypeNames.end());
