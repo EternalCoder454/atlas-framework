@@ -687,8 +687,11 @@ that lands, then go in one batch.
 
 ### Release
 
-- [ ] `APP_UPDATE_TOKEN` is not set in the "release" environment, so the
-  v1.4.0 Release run opened no app PRs. The user adds the secret.
+- [x] `APP_UPDATE_TOKEN` is set in the "release" environment (2026-10-05),
+  which has a required reviewer (EternalCoder454) and a v*-tags-only
+  deployment rule; the "release tags" ruleset guards refs/tags/v*. The
+  update PRs wait for that approval. v1.4.0 and v1.5.0 ran before it and
+  opened no app PRs. `tools/apps.txt` lists all eleven apps.
 
 ### Follow-ups from the 1.4.0 gates
 
