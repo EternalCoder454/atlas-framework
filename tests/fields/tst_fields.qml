@@ -167,4 +167,60 @@ Item {
             compare(f.hex, "#803daee9");
         }
     }
+
+    property int bound: 50
+    Component {
+        id: spin
+        AtlasSpinBox {
+            from: 0
+            to: 100
+            value: root.bound
+            editable: true
+        }
+    }
+    Component {
+        id: dspin
+        AtlasDoubleSpinBox {
+            from: 0
+            to: 5000
+            value: 1234.5
+            decimals: 2
+            editable: true
+        }
+    }
+
+    TestCase {
+        name: "SpinBoxes"
+        when: windowShown
+
+        function test_page_keys_keep_the_binding() {
+            const s = createTemporaryObject(spin, root);
+            verify(s);
+            s.forceActiveFocus();
+            keyClick(Qt.Key_PageUp);
+            compare(s.value, 60);
+            keyClick(Qt.Key_PageDown);
+            keyClick(Qt.Key_PageDown);
+            compare(s.value, 40);
+            // The binding survived: the app's property still drives the value.
+            root.bound = 7;
+            compare(s.value, 7);
+            // The ends hold, also with wrap.
+            s.wrap = true;
+            keyClick(Qt.Key_PageDown);
+            compare(s.value, 0);
+            root.bound = 95;
+            keyClick(Qt.Key_PageUp);
+            compare(s.value, 100);
+        }
+
+        function test_double_text_and_bad_input() {
+            const d = createTemporaryObject(dspin, root);
+            verify(d);
+            compare(d.textFromValue(1234.5, d.locale).indexOf(d.locale.groupSeparator), -1, "no group separator in the text");
+            // Text that is not a number gives the old value back.
+            compare(d.valueFromText("abc", d.locale), d.value);
+            compare(d.valueFromText("", d.locale), d.value);
+        }
+    }
 }

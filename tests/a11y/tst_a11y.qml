@@ -24,20 +24,12 @@ Rectangle {
             "AtlasCodeView": "copy button overlays the code",
             // The demo lays three zones out in two columns, top to bottom.
             "AtlasDropZone": "demo is in two columns",
-            // Tab visits the empty-state list (lower in the demo) before the
-            // results list above it: reported, not yet changed.
-            "AtlasSearchResults": "empty list is first in the focus chain",
-            // Qt's SpinBox hands focus from the control to its text field, so
-            // Tab makes two stops and Shift+Tab skips the first.
-            "AtlasSpinBox": "control and text field are two stops",
-            "AtlasDoubleSpinBox": "control and text field are two stops",
-            // A dialog focuses its first field and its header buttons (Back,
-            // close) come after the body and footer in the focus chain.
-            "AtlasDialog": "dialog focus chain: body, footer, then header",
-            // Not yet understood: the eye button and the field swap places in
-            // the ring. Reported to the lead.
-            "AtlasPasswordField": "field and Show password button order to check",
-            "SectionRow": "contains an AtlasSpinBox (control and text field)"
+            // The popup puts its children in the order body, header, footer
+            // and Tab follows that order, so Back and Close come after the
+            // fields. QML cannot reorder an item's children (there is no
+            // stackBefore; re-parenting the body would break the popup's own
+            // layout), so the order is left as Qt makes it.
+            "AtlasDialog": "Qt's popup chain is body, header, footer"
         })
 
     // Demos the Tab walk cannot run on at all.
@@ -96,9 +88,10 @@ Rectangle {
             const rows = [];
             for (const b of boxes) {
                 const row = rows.length > 0 ? rows[rows.length - 1] : null;
-                // The same row when the centres are within half a row (the
-                // shorter item's height) of the row's first item.
-                if (row && Math.abs(b.y - row[0].y) < Math.min(b.h, row[0].h) / 2)
+                // The same row when the centres are within half a row
+                // (the taller one's height: a field with an error line under it
+                // has its centre lower than the eye button inside it).
+                if (row && Math.abs(b.y - row[0].y) < Math.max(b.h, row[0].h) / 2)
                     row.push(b);
                 else
                     rows.push([b]);
