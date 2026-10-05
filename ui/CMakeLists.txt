@@ -128,6 +128,7 @@ qt_add_qml_module(atlasui
         AtlasBadge.qml
     SOURCES
         livechart.h livechart.cpp
+        text/atlastextview.h text/atlastextview.cpp
         atlassparkline.h atlassparkline.cpp
         repaintarea.h repaintarea.cpp
         accessibilitystate.h accessibilitystate.cpp

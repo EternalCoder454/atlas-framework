@@ -749,6 +749,68 @@ AtlasTextField.property showCounter: bool
 AtlasTextField.property suffix: QString
 AtlasTextField.property validateOn: QString
 AtlasTextField.type
+AtlasTextView.base QQuickItem
+AtlasTextView.enum LineEnding: CR = 2
+AtlasTextView.enum LineEnding: CRLF = 1
+AtlasTextView.enum LineEnding: LF = 0
+AtlasTextView.enum LineEnding: Mixed = 3
+AtlasTextView.method appendBytes(QByteArray utf8): void
+AtlasTextView.method appendText(QString text): void
+AtlasTextView.method beginLoad(): void
+AtlasTextView.method clearDecorations(QString layer): void
+AtlasTextView.method columnOf(qlonglong position): qsizetype
+AtlasTextView.method copy(): void
+AtlasTextView.method endLoad(): void
+AtlasTextView.method ensureVisible(qlonglong position): void
+AtlasTextView.method lineOf(qlonglong position): qsizetype
+AtlasTextView.method lineY(qlonglong line): double
+AtlasTextView.method markSaved(qulonglong revision): void
+AtlasTextView.method positionAt(QPointF itemPoint): qsizetype
+AtlasTextView.method positionOfLine(qlonglong line): qsizetype
+AtlasTextView.method rectangleAt(qlonglong position): QRectF
+AtlasTextView.method select(qlonglong start, qlonglong end): void
+AtlasTextView.method selectAll(): void
+AtlasTextView.method setDecorationPairs(QString layer, QVariantList pairs, int style): void
+AtlasTextView.method textInRange(qlonglong start, qlonglong end): QString
+AtlasTextView.property canRedo: bool [readonly]
+AtlasTextView.property canUndo: bool [readonly]
+AtlasTextView.property contentHeight: double [readonly]
+AtlasTextView.property contentWidth: double [readonly]
+AtlasTextView.property contentX: double
+AtlasTextView.property contentY: double
+AtlasTextView.property cursorPosition: qlonglong
+AtlasTextView.property firstVisibleLine: qlonglong [readonly]
+AtlasTextView.property follow: bool
+AtlasTextView.property font: QFont
+AtlasTextView.property hadInvalidText: bool [readonly]
+AtlasTextView.property highlightCurrentLine: bool
+AtlasTextView.property highlightLimit: qlonglong
+AtlasTextView.property lastVisibleLine: qlonglong [readonly]
+AtlasTextView.property length: qlonglong [readonly]
+AtlasTextView.property lineCount: qlonglong [readonly]
+AtlasTextView.property lineEnding: AtlasTextView::LineEnding [readonly]
+AtlasTextView.property lineNumberColor: QColor
+AtlasTextView.property loadFailed: bool [readonly]
+AtlasTextView.property loadProgress: double [readonly]
+AtlasTextView.property loading: bool [readonly]
+AtlasTextView.property maximumLines: qlonglong
+AtlasTextView.property modified: bool [readonly]
+AtlasTextView.property readOnly: bool
+AtlasTextView.property selectedText: QString [readonly]
+AtlasTextView.property selectionColor: QColor
+AtlasTextView.property selectionEnd: qlonglong [readonly]
+AtlasTextView.property selectionStart: qlonglong [readonly]
+AtlasTextView.property showLineNumbers: bool
+AtlasTextView.property syntax: QString
+AtlasTextView.property syntaxTheme: QString
+AtlasTextView.property tabWidth: int
+AtlasTextView.property text: QString
+AtlasTextView.property textColor: QColor
+AtlasTextView.property undoLimit: int
+AtlasTextView.property wrap: bool
+AtlasTextView.signal contentsChange(qlonglong position, qlonglong removed, qlonglong added)
+AtlasTextView.signal loaded()
+AtlasTextView.type
 AtlasTimePicker.base QQuickControl
 AtlasTimePicker.property day: int
 AtlasTimePicker.property hours: int
