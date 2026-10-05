@@ -89,7 +89,10 @@ Item {
         fillMode: Image.PreserveAspectCrop
         // Decoded at the drawn size, not the file's.
         sourceSize: Qt.size(Math.ceil(root.size * 2), Math.ceil(root.size * 2))
-        layer.enabled: visible && !AtlasStyle.softwareRendering
+        // The software backend cannot draw the MultiEffect (the picture would
+        // not show at all); llvmpipe can, so this asks the backend, not
+        // AtlasStyle.softwareRendering.
+        layer.enabled: visible && image.GraphicsInfo.api !== GraphicsInfo.Software
         layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: mask
