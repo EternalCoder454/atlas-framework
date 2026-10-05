@@ -115,7 +115,12 @@ if [ "$TRANSLATIONS" = 1 ]; then
     cmake --build /b/build --target atlas-ui_update_translations | { grep -E "Found|Updating" || true; }
 fi
 step build
-cmake --build /b/build | tail -n 1
+cmake --build /b/build >/b/build.log 2>&1 || {
+    # The failing commands and their first errors, not only the last line.
+    grep -A14 "^FAILED" /b/build.log || tail -n 40 /b/build.log
+    exit 1
+}
+tail -n 1 /b/build.log
 step qmllint
 cmake --build /b/build --target all_qmllint >/b/qmllint.log 2>&1 || { tail -n 40 /b/qmllint.log; exit 1; }
 echo "ok ($(grep -c "^Warning" /b/qmllint.log || true) warnings, /b/qmllint.log)"
