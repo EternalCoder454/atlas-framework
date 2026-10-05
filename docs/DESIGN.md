@@ -143,6 +143,9 @@ control takes `iconName`.
 | `AtlasComboBox` | Rounded drop-down on a pill, the choices in a ContextMenu-style card; `placeholderText` (since 1.3.0); `filterable` adds a filter field to the list (since 1.4.0) |
 | `AtlasCheckBox`, `AtlasRadioButton` | Check box (can be `tristate`) and radio button; radios with one parent are a group, arrows move the choice (since 1.3.0) |
 | `AtlasSlider`, `AtlasSpinBox` | Accent pill slider (Page, Home, End keys); number field with minus and plus, `prefix` and `suffix` (since 1.3.0); narrower by default and `showButtons: false` for a plain number field (since 1.4.0) |
+| `AtlasCalendar` | Month grid (`selectedDate`, `minimumDate`, `maximumDate`, `month`, `year`, `locale`, `today`; `activated(date)`, `showDate()`); locale week start and names, arrows, Home/End, PageUp/PageDown, disabled out-of-range days. An invalid `Date` means no date (since 1.4.0) |
+| `AtlasDatePicker` | Pill like `AtlasComboBox` that opens an `AtlasCalendar`: `selectedDate`, `minimumDate`, `maximumDate`, `format`, `placeholderText`, `clearable`, `edited()` (since 1.4.0) |
+| `AtlasTimePicker` | Hours and minutes fields (`hours` 0-23, `minutes`, `minuteStep`), AM/PM button in 12 h (`use24Hour` from the locale), optional day drop-down (`showDay`, `day`); `edited()` (since 1.4.0) |
 | `AtlasToolTip` | Hint on a raised card; bind `shown` to hover for the delay (since 1.3.0) |
 | `AtlasSpinner`, `AtlasPlaceholder` | Busy arc; skeleton lines while content loads. Both still when hidden or `animated: false` (since 1.3.0) |
 | `AtlasEmptyState` | What an empty list shows: symbol, title, text, an optional action (since 1.3.0) |

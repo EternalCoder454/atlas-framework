@@ -61,10 +61,31 @@ AtlasButton.property prominent: bool
 AtlasButton.property symbol: int
 AtlasButton.property textTint: QColor [readonly]
 AtlasButton.type
+AtlasCalendar.method showDate(QDateTime d): QVariant
+AtlasCalendar.property maximumDate: QDateTime
+AtlasCalendar.property minimumDate: QDateTime
+AtlasCalendar.property month: int
+AtlasCalendar.property selectedDate: QDateTime
+AtlasCalendar.property today: QDateTime
+AtlasCalendar.property year: int
+AtlasCalendar.signal activated(QDateTime date)
+AtlasCalendar.type
 AtlasCheckBox.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
+AtlasDatePicker.method close(): QVariant
+AtlasDatePicker.method open(): QVariant
+AtlasDatePicker.property clearable: bool
+AtlasDatePicker.property format: QVariant
+AtlasDatePicker.property maximumDate: QDateTime
+AtlasDatePicker.property minimumDate: QDateTime
+AtlasDatePicker.property opened: bool [readonly]
+AtlasDatePicker.property placeholderText: QString
+AtlasDatePicker.property selectedDate: QDateTime
+AtlasDatePicker.property today: QDateTime
+AtlasDatePicker.signal edited()
+AtlasDatePicker.type
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
 AtlasEmptyState.property symbol: int
@@ -199,6 +220,14 @@ AtlasTextField.property showCounter: bool
 AtlasTextField.property suffix: QString
 AtlasTextField.property validateOn: QString
 AtlasTextField.type
+AtlasTimePicker.property day: int
+AtlasTimePicker.property hours: int
+AtlasTimePicker.property minuteStep: int
+AtlasTimePicker.property minutes: int
+AtlasTimePicker.property showDay: bool
+AtlasTimePicker.property use24Hour: bool
+AtlasTimePicker.signal edited()
+AtlasTimePicker.type
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
 AtlasWindow.method sidebarColor(QColor base): QColor
