@@ -78,4 +78,4 @@ Callouts use GitHub alerts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`. Pages link 
    - Members starting with `_` are private and never documented.
 4. Optional sections such as `## Keyboard`, `## Accessibility` and `## Notes`, when there's something an app author must know.
 
-Every public member in `api/atlas-ui.api` belongs on its type's page. When the API changes, change the page in the same commit.
+Every public member in `api/atlas-ui.api` belongs on its type's page (`tools/docs.py check` fails on a missing type or member; an inherited member may be left to the base type's page if the page links to it). These pages are the single source for the API: change the page in the same commit as the API, and link to it from DESIGN.md, READMEs and comments instead of describing types there.
