@@ -47,7 +47,7 @@ Item {
         },
         {
             title: qsTr("Windows and dialogs"),
-            types: ["AtlasWindow", "AtlasWindowButtons", "AtlasHeaderBar", "AtlasPage", "AtlasAboutPage", "AtlasDialog", "ConfirmDialog", "AtlasPopover", "AtlasOnboarding", "AtlasShortcutsDialog", "StatusBar"]
+            types: ["AtlasWindow", "AtlasWindowButtons", "AtlasHeaderBar", "AtlasPage", "AtlasAboutPage", "AtlasDialog", "AtlasPreferencesDialog", "AtlasPreferencesPage", "ConfirmDialog", "AtlasPopover", "AtlasOnboarding", "AtlasShortcutsDialog", "StatusBar"]
         },
         {
             title: qsTr("Feedback and status"),
@@ -63,7 +63,7 @@ Item {
         },
         {
             title: qsTr("Style and services"),
-            types: ["AtlasStyle", "AtlasFormat", "AtlasAction", "AtlasActionCollection", "AtlasValidators", "Section", "SectionRow", "Symbol", "AtlasFocusRing"]
+            types: ["AtlasStyle", "AtlasFormat", "AtlasAction", "AtlasActionCollection", "AtlasValidators", "Section", "SectionRow", "AtlasForm", "AtlasFormEntry", "Symbol", "AtlasFocusRing"]
         }
     ]
 

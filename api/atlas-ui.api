@@ -370,6 +370,29 @@ AtlasFontPicker.base QQuickAbstractButton
 AtlasFontPicker.property fixedOnly: bool
 AtlasFontPicker.signal edited()
 AtlasFontPicker.type
+AtlasForm.base QQuickColumnLayout
+AtlasForm.method validate(): QVariant
+AtlasForm.property entries: QVariant [readonly]
+AtlasForm.property settings: AtlasSettings*
+AtlasForm.property valid: bool [readonly]
+AtlasForm.signal accepted()
+AtlasForm.type
+AtlasFormEntry.base QQuickFocusScope
+AtlasFormEntry.property atlasRow: bool [readonly]
+AtlasFormEntry.property content: QQmlListProperty<QObject> [readonly]
+AtlasFormEntry.property errorText: QString
+AtlasFormEntry.property help: QString
+AtlasFormEntry.property invalidText: QString
+AtlasFormEntry.property isFirst: bool [readonly]
+AtlasFormEntry.property label: QString
+AtlasFormEntry.property required: bool
+AtlasFormEntry.property requiredText: QString
+AtlasFormEntry.property settingKey: QString
+AtlasFormEntry.property settingProperty: QString
+AtlasFormEntry.property shownError: QString [readonly]
+AtlasFormEntry.property stacked: bool
+AtlasFormEntry.property valid: bool [readonly]
+AtlasFormEntry.type
 AtlasFormat.base QObject
 AtlasFormat.method bytes(double n): QString
 AtlasFormat.method bytes(double n, int precision): QString
@@ -576,6 +599,17 @@ AtlasPortal.method openUrl(QUrl url): bool
 AtlasPortal.property extraSchemes: QStringList
 AtlasPortal.signal actionInvoked(QString notificationId, QString actionId)
 AtlasPortal.type
+AtlasPreferencesDialog.base QPlatformDialogHelper
+AtlasPreferencesDialog.property currentIndex: int
+AtlasPreferencesDialog.property pages: QQmlListProperty<AtlasPreferencesPage_QMLTYPE> [readonly]
+AtlasPreferencesDialog.property searchable: bool
+AtlasPreferencesDialog.property settings: AtlasSettings*
+AtlasPreferencesDialog.property stateKey: QString
+AtlasPreferencesDialog.type
+AtlasPreferencesPage.base QQuickColumnLayout
+AtlasPreferencesPage.property symbol: int
+AtlasPreferencesPage.property title: QString
+AtlasPreferencesPage.type
 AtlasProgressBar.base QQuickItem
 AtlasProgressBar.property animated: bool
 AtlasProgressBar.property indeterminate: bool

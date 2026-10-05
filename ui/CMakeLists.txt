@@ -122,6 +122,10 @@ qt_add_qml_module(atlasui
         AtlasPopover.qml
         AtlasScrollBar.qml
         AtlasDialog.qml
+        AtlasForm.qml
+        AtlasFormEntry.qml
+        AtlasPreferencesPage.qml
+        AtlasPreferencesDialog.qml
         AtlasCard.qml
         AtlasExpandableSection.qml
         AtlasTreeView.qml
