@@ -3,3 +3,9 @@ atlasos-installer
 atlasos-monitor
 atlasos-notepad
 atlasos-notes
+atlasos-settings
+atlasos-wizard
+atlasos-store
+atlasos-explorer
+atlasos-archive
+atlasos-launcher
