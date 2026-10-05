@@ -8,6 +8,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasListView, a ListView in the Atlas look with single or multiple
+  selection, a default row (symbol, text, subtitle), type-ahead, a placeholder,
+  `contextMenuRequested` and drag or Alt+arrow reordering (`moveRequested`).
 - Atlas.Ui: AtlasUrlValidator, AtlasEmailValidator, AtlasPathValidator and
   AtlasNumberValidator, validators for an AtlasTextField; AtlasDoubleSpinBox
   (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,

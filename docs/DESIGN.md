@@ -172,6 +172,7 @@ control takes `iconName`.
 | `AtlasFocusRing` | The keyboard focus outline every control uses; put it in a custom control's background (since 1.3.0) |
 | `AtlasBreadcrumb` | Path bar; the middle folds into a "…" menu (since 1.3.0) |
 | `AtlasIconGrid` | Grid of icons over names that only makes the cells on screen; `activated`, `contextMenuRequested` (since 1.3.0) |
+| `AtlasListView` | A `ListView` in the Atlas look with selection (`selectionMode`, `selectedIndexes`, `select()`, `clearSelection()`, `isSelected()`), a default row from `textRole`/`subtitleRole`/`symbolRole`, type-ahead, `placeholderText`; `activated`, `contextMenuRequested(index, pos)`, and with `reorderable` a drag grip and Alt+Up/Down raising `moveRequested(from, to)` (since 1.4.0) |
 | `AtlasAppCard`, `AtlasInstallButton`, `AtlasScreenshotCarousel` | A store's app card; install pill with progress inside and cancel (`installState`); screenshots one at a time, loading only neighbours (since 1.3.0) |
 | `AtlasSearchResults` | A launcher's results with sections and shortcut hints; the search field keeps focus and passes keys with `handleKey(event)` (since 1.3.0) |
 | `Symbol`, `Symbols` | A Material Symbol, and the singleton of every symbol's value; `Symbols.available(style)` (since 1.3.0) |

@@ -200,6 +200,24 @@ AtlasLabel.enum TextStyle: Mono = 4
 AtlasLabel.enum TextStyle: Title = 1
 AtlasLabel.property textStyle: int
 AtlasLabel.type
+AtlasListView.enum SelectionMode: MultiSelection = 2
+AtlasListView.enum SelectionMode: NoSelection = 0
+AtlasListView.enum SelectionMode: SingleSelection = 1
+AtlasListView.method clearSelection(): QVariant
+AtlasListView.method isSelected(int index): bool
+AtlasListView.method select(int index): QVariant
+AtlasListView.property placeholderSymbol: int
+AtlasListView.property placeholderText: QString
+AtlasListView.property reorderable: bool
+AtlasListView.property selectedIndexes: QList<int> [readonly]
+AtlasListView.property selectionMode: int
+AtlasListView.property subtitleRole: QString
+AtlasListView.property symbolRole: QString
+AtlasListView.property textRole: QString
+AtlasListView.signal activated(int index)
+AtlasListView.signal contextMenuRequested(int index, QPointF pos)
+AtlasListView.signal moveRequested(int from, int to)
+AtlasListView.type
 AtlasNavigationStack.method pop(): QVariant
 AtlasNavigationStack.method popToRoot(): QVariant
 AtlasNavigationStack.method push(QVariant page, QVariant properties): QVariant

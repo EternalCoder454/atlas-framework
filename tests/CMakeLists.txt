@@ -74,6 +74,20 @@ set_tests_properties(fields PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-fields-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/fields-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
+# Behaviour of AtlasListView (tests/lists): selection, keyboard, signals,
+# type-ahead.
+add_executable(atlas-lists-tests lists/main.cpp)
+target_compile_definitions(atlas-lists-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/lists")
+target_link_libraries(atlas-lists-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-lists-tests atlasui)
+add_test(NAME lists
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(lists PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-lists-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/lists-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
 # The translation test: a throwaway atlas-ui_de.qm (tests/i18n) in a directory
 # of its own, found through ATLAS_UI_TRANSLATIONS_DIR (development builds only).
 find_package(Qt6 6.11 QUIET COMPONENTS LinguistTools)
