@@ -566,10 +566,10 @@ T.Control {
 
                     Item {
                         id: stage
-                        width: Math.max(flick.width, zoom.actual ? img.implicitWidth : 0)
-                        height: Math.max(flick.height, zoom.actual ? img.implicitHeight : 0)
+                        width: Math.max(flick.width, zoom.actual ? zoomImg.implicitWidth : 0)
+                        height: Math.max(flick.height, zoom.actual ? zoomImg.implicitHeight : 0)
                         Image {
-                            id: img
+                            id: zoomImg
                             objectName: "viewerImage"
                             anchors.centerIn: parent
                             width: zoom.actual ? implicitWidth : Math.max(0, flick.width - AtlasStyle.spacingXXLarge * 2)
@@ -589,15 +589,15 @@ T.Control {
                 Column {
                     anchors.centerIn: parent
                     spacing: AtlasStyle.spacingSmall
-                    visible: img.status !== Image.Ready
+                    visible: zoomImg.status !== Image.Ready
                     Symbol {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        icon: img.status === Image.Error || zoom.source === "" ? Symbols.BrokenImage : Symbols.Image
+                        icon: zoomImg.status === Image.Error || zoom.source === "" ? Symbols.BrokenImage : Symbols.Image
                         size: Kirigami.Units.iconSizes.large
                         color: AtlasStyle.textDisabled
                     }
                     Text {
-                        visible: img.status === Image.Error || zoom.source === ""
+                        visible: zoomImg.status === Image.Error || zoom.source === ""
                         text: qsTr("Screenshot unavailable")
                         font.family: AtlasStyle.fontFamily
                         font.pointSize: AtlasStyle.fontSizeCaption
@@ -611,12 +611,12 @@ T.Control {
                 // toggles between fit and 1:1.
                 TapHandler {
                     onTapped: (point, button) => {
-                        const p = img.mapFromItem(zoom, point.position);
-                        const pw = img.paintedWidth;
-                        const ph = img.paintedHeight;
-                        const inside = img.status === Image.Ready
-                            && p.x >= (img.width - pw) / 2 && p.x <= (img.width + pw) / 2
-                            && p.y >= (img.height - ph) / 2 && p.y <= (img.height + ph) / 2;
+                        const p = zoomImg.mapFromItem(zoom, point.position);
+                        const pw = zoomImg.paintedWidth;
+                        const ph = zoomImg.paintedHeight;
+                        const inside = zoomImg.status === Image.Ready
+                            && p.x >= (zoomImg.width - pw) / 2 && p.x <= (zoomImg.width + pw) / 2
+                            && p.y >= (zoomImg.height - ph) / 2 && p.y <= (zoomImg.height + ph) / 2;
                         if (!inside) {
                             viewer.close();
                         } else if (tapCount === 2) {
