@@ -425,6 +425,15 @@ Item {
             verify(!live.enabled);
             act.checked = true;
             verify(live.checked);
+            // Choosing a checkable row toggles the item itself (as the menu
+            // does), which must not leave it out of step with the Action.
+            live.checked = false;
+            live.triggered();
+            verify(live.checked, "back in step with the Action");
+            act.checked = false;
+            verify(!live.checked);
+            act.checked = true;
+            verify(live.checked);
             const copy = file.items[1].subMenu.items[0];
             compare(copy.text, "Plain");
             let got = null;
