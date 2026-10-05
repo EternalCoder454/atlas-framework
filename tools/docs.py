@@ -549,7 +549,7 @@ def check():
     for page in every:
         check_links(page, prose[page.path], by_path, images, errors)
     if API:
-        check_api_coverage(libraries, errors)
+        check_api_coverage(libraries, prose, errors)
     return overview, libraries, errors
 
 
@@ -590,46 +590,80 @@ def read_api(errors):
 
 
 NAME_SPAN = re.compile(r"(?:\w+\.)*(\w+)")
+ROOT_OBJECT = re.compile(r"^([A-Z]\w*(?:\.\w+)*)\s*\{")
 
 
-def documented_names(page):
-    """Names a page puts in backticks: `name`, `name(` or `Type.name`, outside
-    code fences. A signal's `onName` handler counts for the signal."""
+def documented_names(paragraphs):
+    """Names a page documents: backticked `name`, `name(...)` or `Type.name`
+    in the first cell of a table row, in a heading, or at the start of a list
+    item, outside code. A signal's `onName` handler counts for the signal."""
     names = set()
-    fenced = False
-    for _, text in page.body:
-        if FENCE.match(text):
-            fenced = not fenced
-            continue
-        if fenced:
-            continue
-        for span in CODE_SPAN.finditer(text):
-            if span.group(1) is None:
+    for _, text in paragraphs:
+        for line in text.split("\n"):
+            line = line.strip()
+            if line.startswith("|"):
+                where = line[1:].split("|")[0] if line.count("|") > 1 else ""
+            elif HEADING.match(line):
+                where = line
+            elif re.match(r"[-*+] `", line):
+                where = line[2:].split(":")[0].split(" — ")[0]
+            else:
                 continue
-            m = NAME_SPAN.match(span.group(2).strip())
-            if m:
-                name = m.group(1)
-                names.add(name)
-                if name.startswith("on") and len(name) > 2 and name[2].isupper():
-                    names.add(name[2].lower() + name[3:])
+            for span in CODE_SPAN.finditer(where):
+                if span.group(1) is None:
+                    continue
+                m = NAME_SPAN.match(span.group(2).strip())
+                if m:
+                    name = m.group(1)
+                    names.add(name)
+                    if name.startswith("on") and len(name) > 2 and name[2].isupper():
+                        names.add(name[2].lower() + name[3:])
     return names
 
 
-def check_api_coverage(libraries, errors):
-    """Every API type has a page and every public member is on it, or on the
-    page of a type it links to that has the member (an inherited one)."""
+def qml_base(type_name, known):
+    """The type a ui/<Type>.qml file's root object is, when the API file lists
+    it (a QtQuick or Kirigami base is not listed and gives None)."""
+    path = os.path.join(os.path.dirname(os.path.dirname(API)), "ui", type_name + ".qml")
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                m = ROOT_OBJECT.match(line)
+                if m:
+                    return m.group(1) if m.group(1) in known and m.group(1) != type_name else None
+    except (OSError, UnicodeDecodeError):
+        pass
+    return None
+
+
+def check_api_coverage(libraries, prose, errors):
+    """Every API type has a page and every public member is on it. A member
+    the type inherits (its ui/<Type>.qml root object is another API type) may
+    be on that base type's page instead, when this page links the base page."""
     lib = next((l for l in libraries if l.name == API_LIBRARY), None)
     if lib is None:
         errors.append(f"{API_LIBRARY}: no such library, but the API file lists types")
         return
     api = read_api(errors)
     pages = {os.path.basename(p.path)[:-3]: p for p in lib.pages}
+    base = {t: qml_base(t, api) for t in api}
     cache = {}
 
-    def names(page):
+    def names(type_name):
+        page = pages.get(page_slug(type_name))
+        if page is None:
+            return set()
         if page.path not in cache:
-            cache[page.path] = documented_names(page)
+            cache[page.path] = documented_names(prose.get(page.path, []))
         return cache[page.path]
+
+    def ancestors(type_name):
+        seen = []
+        t = base.get(type_name)
+        while t and t not in seen and t != type_name:
+            seen.append(t)
+            t = base.get(t)
+        return seen
 
     for type_name in sorted(api):
         slug = page_slug(type_name)
@@ -638,17 +672,18 @@ def check_api_coverage(libraries, errors):
             errors.append(f"{API_LIBRARY}/{slug}.md: no page for {type_name} (api/{os.path.basename(API)})")
             continue
         linked = set()
-        for _, text in page.body:
+        for _, text in prose.get(page.path, []):
             for m in LINK.finditer(without_code(text)):
                 target = m.group(3).split("#")[0]
-                if target.endswith(".md") and "/" not in target and target[:-3] in pages:
-                    linked.add(target[:-3])
-        bases = [t for t in api if page_slug(t) in linked and t != type_name]
-        mine = names(page)
+                if target.endswith(".md"):
+                    linked.add(os.path.basename(target)[:-3])
+        mine = names(type_name)
+        chain = ancestors(type_name)
+        links_base = bool(chain) and page_slug(chain[0]) in linked
         for member in sorted(api[type_name]):
             if member in mine:
                 continue
-            if any(member in api[t] and member in names(pages[page_slug(t)]) for t in bases):
+            if links_base and any(member in api[t] and member in names(t) for t in chain):
                 continue
             errors.append(f"{page.rel}: `{member}` of {type_name} is not documented (add it, or link the base type's page that has it)")
 

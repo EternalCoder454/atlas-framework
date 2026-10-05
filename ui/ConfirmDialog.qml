@@ -37,7 +37,7 @@ QQC2.Popup {
     property string alternativeText
     // "accept" (default), "reject" or "alternative".
     property string defaultButton: "accept"
-    // The accept button in the error colour (for deleting, resetting).
+    // The accept button in AtlasButton's Destructive look (for deleting, resetting).
     property bool destructive: false
     default property alias body: bodyColumn.data
 
