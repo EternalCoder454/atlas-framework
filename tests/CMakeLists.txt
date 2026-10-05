@@ -8,6 +8,8 @@
 #   ATLAS_UPDATE_GOLDENS=1 ctest ...   rewrites the goldens
 #   i18n               a throwaway German catalogue: Atlas.Ui's qsTr() strings
 #                      come back translated (tests/i18n)
+#   state-<n>          every demo against the state contract of docs/DESIGN.md
+#                      (disabled, keyboard focus), in 4 shards (tests/state)
 #   a11y               every demo's item tree: what Tab reaches needs an
 #                      Accessible.role and name (tests/a11y)
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
@@ -42,6 +44,22 @@ add_test(NAME a11y
 set_tests_properties(a11y PROPERTIES
     TIMEOUT 300
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-a11y-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/a11y-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
+# The state-contract test: disabled controls take no focus and look different,
+# a control Tab reaches shows keyboard focus. Four shards run in parallel.
+add_executable(atlas-state-tests state/main.cpp demolist.h)
+target_compile_definitions(atlas-state-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/state")
+target_link_libraries(atlas-state-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-state-tests atlasui)
+foreach(shard RANGE 0 3)
+    add_test(NAME state-${shard}
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+    set_tests_properties(state-${shard} PROPERTIES
+        TIMEOUT 300
+        ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-state-tests>;ATLAS_STATE_SHARD=${shard}/4;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/state-out-${shard};QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+endforeach()
 
 # The translation test: a throwaway atlas-ui_de.qm (tests/i18n) in a directory
 # of its own, found through ATLAS_UI_TRANSLATIONS_DIR (development builds only).

@@ -24,6 +24,15 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   view, `filterText` and a placeholder, `contextMenuRequested`, drop targets and
   Tab landing on the selected entry; AtlasWindow `widthClass` and
   `sidebarCollapsed`.
+- Atlas.Ui: SectionRow slots `leading` (items before the title, replacing the
+  icon), `content` (replaces the title and subtitle, e.g. a slider) and
+  `busy` (a spinner at the trailing edge, no activation while it shows;
+  `animated` turns the spinner off for screenshots). A control in `trailing`
+  keeps its own focus: the row's ring and Enter/Space no longer follow it.
+  AtlasPage: `headerTrailing` (items at the end of the title row) and a
+  writable `maxContentWidth`. docs/DESIGN.md "States" says what every control
+  does disabled, read only, in error, busy, hovered, pressed and focused, and
+  `tests/state` checks the disabled and focus rules on every demo.
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points

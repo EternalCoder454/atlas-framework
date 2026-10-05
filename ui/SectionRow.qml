@@ -7,6 +7,17 @@ import org.kde.kirigami as Kirigami
 // extra items, a checkmark, a switch or a chevron on the right. A clickable row
 // takes keyboard focus (Tab), shows a focus ring and activates with Enter or
 // Space. A `radio` row also moves selection with Up and Down.
+//
+// Slots (since 1.4.0), all lists of items:
+//   leading   items before the title (an avatar, a check box); they replace
+//             the icon when set
+//   content   replaces the title and subtitle column (a slider that spans the
+//             row); give its items Layout.fillWidth
+//   trailing  the default property: items at the trailing end (a button, a
+//             combo box, a spin box). They keep their own focus and Tab order
+//             after the row's, and a key they don't use doesn't activate the row.
+// `busy` shows a spinner at the trailing edge in place of the value and the
+// chevron; the row stays enabled but doesn't activate while it is busy.
 FocusScope {
     id: root
 
@@ -23,12 +34,23 @@ FocusScope {
     property bool showSwitch: false
     property bool switchChecked: false
     property bool clickable: chevron
+    property bool busy: false
+    // Turn the busy spinner; off for a fixed arc, e.g. in screenshots.
+    property bool animated: true
+    property alias leading: leadingRow.data
+    property alias content: contentRow.data
     default property alias trailing: trailingRow.data
 
     signal clicked
     signal switchToggled(bool checked)
 
     readonly property bool atlasRow: true
+    // The row itself has keyboard focus, not an item inside it (activeFocus is
+    // also true while a trailing control has it).
+    readonly property bool ownFocus: Window.window !== null && Window.window.activeFocusItem === root
+    readonly property bool canActivate: clickable && !busy
+    readonly property bool hasLeading: leadingRow.children.length > 0
+    readonly property bool hasContent: contentRow.children.length > 0
     readonly property bool mirrored: LayoutMirroring.enabled
     // The first visible row in a Section draws no separator above itself.
     readonly property bool isFirst: {
@@ -42,21 +64,25 @@ FocusScope {
     }
 
     Layout.fillWidth: true
-    implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 2.5), content.implicitHeight + Kirigami.Units.largeSpacing * 1.6)
+    implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 2.5), rowLayout.implicitHeight + Kirigami.Units.largeSpacing * 1.6)
     activeFocusOnTab: root.clickable
-    opacity: !root.clickable && root.chevron ? 0.5 : 1
+    opacity: !root.enabled || (!root.clickable && root.chevron) ? 0.5 : 1
 
     // A switch row is exposed through its switch only, so the name is not read twice.
     Accessible.ignored: root.showSwitch
     Accessible.role: root.radio ? Accessible.RadioButton : (root.clickable ? Accessible.Button : Accessible.ListItem)
     Accessible.name: root.title
-    Accessible.description: root.subtitle.length > 0 && root.value.length > 0 ? root.subtitle + ", " + root.value : root.subtitle + root.value
+    Accessible.description: {
+        const d = root.subtitle.length > 0 && root.value.length > 0 ? root.subtitle + ", " + root.value : root.subtitle + root.value;
+        //: Spoken by a screen reader for a row that is working on something
+        return root.busy ? (d.length > 0 ? d + ", " : "") + qsTr("Busy") : d;
+    }
     Accessible.checkable: root.radio
     Accessible.checked: root.radio && root.checkmark
     Accessible.focusable: root.clickable
-    Accessible.onPressAction: if (root.clickable) root.clicked()
+    Accessible.onPressAction: if (root.canActivate) root.clicked()
     // Qt lists Toggle first for a checkable row; assistive tools use it to pick a radio.
-    Accessible.onToggleAction: if (root.clickable && root.radio) root.clicked()
+    Accessible.onToggleAction: if (root.canActivate && root.radio) root.clicked()
 
     Keys.onPressed: event => {
         root.byMouse = false;
@@ -79,7 +105,12 @@ FocusScope {
     }
 
     function activate(event) {
-        if (root.clickable && !event.isAutoRepeat) {
+        // A key a trailing control left alone is not for the row.
+        if (!root.ownFocus) {
+            event.accepted = false;
+            return;
+        }
+        if (root.canActivate && !event.isAutoRepeat) {
             root.clicked();
         }
         event.accepted = root.clickable;
@@ -104,7 +135,7 @@ FocusScope {
     }
 
     function step(forward, event) {
-        if (!root.radio) {
+        if (!root.radio || !root.ownFocus || root.busy) {
             event.accepted = false;
             return;
         }
@@ -122,7 +153,7 @@ FocusScope {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: Kirigami.Units.largeSpacing + (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + Kirigami.Units.largeSpacing : 0)
+        anchors.leftMargin: Kirigami.Units.largeSpacing + (root.hasLeading ? leadingRow.width + Kirigami.Units.largeSpacing : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + Kirigami.Units.largeSpacing : 0))
         height: 1
         color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
     }
@@ -132,7 +163,7 @@ FocusScope {
         anchors.margins: 3
         radius: 7
         color: Qt.alpha(Kirigami.Theme.textColor, tap.pressed ? 0.1 : 0.05)
-        opacity: root.clickable && hover.hovered ? 1 : 0
+        opacity: root.canActivate && hover.hovered ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
                 duration: Kirigami.Units.shortDuration
@@ -146,17 +177,17 @@ FocusScope {
         color: "transparent"
         border.width: 2
         border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
-        visible: root.activeFocus && root.clickable && !root.byMouse
+        visible: root.ownFocus && root.clickable && !root.byMouse
     }
 
     HoverHandler {
         id: hover
-        enabled: root.clickable
+        enabled: root.canActivate
         cursorShape: Qt.PointingHandCursor
     }
     TapHandler {
         id: tap
-        enabled: root.clickable
+        enabled: root.canActivate
         onTapped: {
             root.byMouse = true;
             root.forceActiveFocus();
@@ -165,7 +196,7 @@ FocusScope {
     }
 
     RowLayout {
-        id: content
+        id: rowLayout
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
@@ -173,14 +204,27 @@ FocusScope {
         anchors.rightMargin: Kirigami.Units.largeSpacing
         spacing: Kirigami.Units.largeSpacing
 
+        Row {
+            id: leadingRow
+            visible: root.hasLeading
+            spacing: Kirigami.Units.smallSpacing
+            Layout.alignment: Qt.AlignVCenter
+        }
         Kirigami.Icon {
-            visible: root.iconName.length > 0
+            visible: root.iconName.length > 0 && !root.hasLeading
             source: root.iconName
             fallback: "applications-other"
             Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
             Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
         }
+        RowLayout {
+            id: contentRow
+            visible: root.hasContent
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+        }
         ColumnLayout {
+            visible: !root.hasContent
             Layout.fillWidth: true
             Layout.minimumWidth: Kirigami.Units.gridUnit * 6
             spacing: 0
@@ -203,7 +247,7 @@ FocusScope {
             }
         }
         QQC2.Label {
-            visible: root.value.length > 0
+            visible: root.value.length > 0 && !root.busy
             text: root.value
             opacity: 0.65
             horizontalAlignment: Text.AlignRight
@@ -215,6 +259,14 @@ FocusScope {
         Row {
             id: trailingRow
             spacing: Kirigami.Units.smallSpacing
+            Layout.alignment: Qt.AlignVCenter
+        }
+        AtlasSpinner {
+            visible: root.busy
+            running: root.busy
+            animated: root.animated
+            implicitWidth: Kirigami.Units.iconSizes.smallMedium
+            Accessible.ignored: true
         }
         Kirigami.Icon {
             visible: root.checkmark
@@ -237,7 +289,7 @@ FocusScope {
             }
         }
         Kirigami.Icon {
-            visible: root.chevron
+            visible: root.chevron && !root.busy
             source: root.mirrored ? "arrow-left" : "arrow-right"
             isMask: true
             color: Kirigami.Theme.textColor

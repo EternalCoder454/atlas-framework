@@ -209,6 +209,40 @@ To update the fonts, download them from fonts.google.com and run
 `ui/symbols/generate.py`, which rewrites `symbolnames.h` and
 `symboltable.inc`.
 
+### States
+
+Every control behaves the same way in each state. `tests/state` walks every
+gallery demo and checks the three rules that can be measured (marked *test*);
+a control that cannot follow one is listed in that test's allow-list with the
+reason.
+
+- **Disabled (`enabled: false`).** Dimmed (opacity or the disabled colours),
+  takes no focus (Tab skips it), no hover or press reaction, no cursor change,
+  and `Accessible` reports it as disabled. A disabled parent disables its
+  children. *test*: with the demo's root disabled Tab reaches nothing in it,
+  and its picture differs from the enabled one.
+- **Read only (`readOnly`, text fields and the like).** The value is shown
+  normally (not dimmed), cannot be edited, and the control keeps focus and
+  selection and copy.
+- **Error.** The error colour (`AtlasStyle.error`) on the border or text and
+  a message beside the field. The message is announced (`Accessible.description`
+  or an alert), not only coloured.
+- **Busy.** A spinner (`AtlasSpinner`) replaces the value or chevron; the
+  control stays enabled but does not act again until the work ends (no double
+  activation), and `Accessible.description` says it is busy.
+- **Hover.** A light tint of the text colour, only for a control that acts,
+  never for a disabled or busy one. The pointer shows a hand on a clickable
+  row or button.
+- **Pressed.** A stronger tint than hover, gone on release or when the pointer
+  leaves.
+- **Focus.** `AtlasFocusRing` (or the control's own ring) shows only for
+  keyboard focus, never after a click. *test*: every item Tab reaches looks
+  different with and without keyboard focus.
+
+A control that holds other controls (a `SectionRow` with `trailing` items)
+shows its own ring only while it has focus itself, not while an item inside it
+does, and does not take the keys its inner controls leave unused.
+
 ## The Rust crates
 
 One Cargo workspace, four crates, so a small app pays only for what it uses:
