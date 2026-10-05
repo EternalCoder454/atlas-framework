@@ -66,6 +66,16 @@ AtlasAutocompleteField.property text: QString
 AtlasAutocompleteField.property textRole: QString
 AtlasAutocompleteField.signal accepted(QString text)
 AtlasAutocompleteField.type
+AtlasAvatar.property name: QString
+AtlasAvatar.property size: double
+AtlasAvatar.property source: QUrl
+AtlasAvatar.property symbol: int
+AtlasAvatar.type
+AtlasBadge.property dot: bool
+AtlasBadge.property symbol: int
+AtlasBadge.property text: QString
+AtlasBadge.property type: QString
+AtlasBadge.type
 AtlasBreadcrumb.property count: int [readonly]
 AtlasBreadcrumb.property segments: QVariant
 AtlasBreadcrumb.signal activated(int index)
@@ -116,6 +126,10 @@ AtlasDatePicker.property selectedDate: QDateTime
 AtlasDatePicker.property today: QDateTime
 AtlasDatePicker.signal edited()
 AtlasDatePicker.type
+AtlasDetailGrid.property columns: int
+AtlasDetailGrid.property columnsBreakpoint: double
+AtlasDetailGrid.property model: QVariant
+AtlasDetailGrid.type
 AtlasDoubleSpinBox.property prefix: QString
 AtlasDoubleSpinBox.property showButtons: bool
 AtlasDoubleSpinBox.property suffix: QString
@@ -253,6 +267,12 @@ AtlasProgressBar.property text: QString
 AtlasProgressBar.property value: double
 AtlasProgressBar.type
 AtlasRadioButton.type
+AtlasRating.property count: int
+AtlasRating.property readOnly: bool
+AtlasRating.property starSize: double
+AtlasRating.property value: double
+AtlasRating.signal edited()
+AtlasRating.type
 AtlasScreenshotCarousel.property allowRemote: bool
 AtlasScreenshotCarousel.property count: int [readonly]
 AtlasScreenshotCarousel.property currentIndex: int
@@ -317,6 +337,22 @@ AtlasSidebar.signal contextMenuRequested(QQuickItem* item, QPointF pos)
 AtlasSidebar.signal dropped(QQuickItem* item, QVariant drop)
 AtlasSidebar.type
 AtlasSlider.type
+AtlasSparkline.property color: QColor
+AtlasSparkline.property fill: bool
+AtlasSparkline.property lineWidth: double
+AtlasSparkline.property maximum: double
+AtlasSparkline.property minimum: double
+AtlasSparkline.property minimumRange: double
+AtlasSparkline.property values: QList<double>
+AtlasSparkline.type
+AtlasSparklineItem.property color: QColor
+AtlasSparklineItem.property fill: bool
+AtlasSparklineItem.property lineWidth: double
+AtlasSparklineItem.property maximum: double
+AtlasSparklineItem.property minimum: double
+AtlasSparklineItem.property minimumRange: double
+AtlasSparklineItem.property values: QList<double>
+AtlasSparklineItem.type
 AtlasSpinBox.property prefix: QString
 AtlasSpinBox.property showButtons: bool
 AtlasSpinBox.property suffix: QString
@@ -337,6 +373,15 @@ AtlasSplitView.method restoreSizes(QString sizes): bool
 AtlasSplitView.method saveSizes(): QString
 AtlasSplitView.property stateKey: QString
 AtlasSplitView.type
+AtlasStat.property invertTrend: bool
+AtlasStat.property label: QString
+AtlasStat.property sparkline: QList<double>
+AtlasStat.property symbol: int
+AtlasStat.property trend: double
+AtlasStat.property trendText: QString
+AtlasStat.property unit: QString
+AtlasStat.property value: QString
+AtlasStat.type
 AtlasStyle.enum Density: Compact = 1
 AtlasStyle.enum Density: Normal = 0
 AtlasStyle.property accent: QColor [readonly]

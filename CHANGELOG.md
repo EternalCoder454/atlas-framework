@@ -24,6 +24,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   view, `filterText` and a placeholder, `contextMenuRequested`, drop targets and
   Tab landing on the selected entry; AtlasWindow `widthClass` and
   `sidebarCollapsed`.
+- Atlas.Ui: AtlasStat (a figure with unit, trend and sparkline), AtlasDetailGrid
+  (label/value pairs with copy buttons), AtlasSparkline (a C++ axis-less line
+  chart), AtlasAvatar (image or initials), AtlasRating (zero to five stars,
+  halves, optionally editable) and AtlasBadge (a pill or dot with a tint).
 - Atlas.Ui: SectionRow slots `leading` (items before the title, replacing the
   icon), `content` (replaces the title and subtitle, e.g. a slider) and
   `busy` (a spinner at the trailing edge, no activation while it shows;
