@@ -30,6 +30,9 @@ T.Control {
     property var segments: []
     readonly property int count: control.segments ? control.segments.length : 0
 
+    // See docs/reference/atlas-ui/atlas-breadcrumb.md.
+    property string hiddenText: qsTr("Hidden folders")
+
     signal activated(int index)
 
     QtObject {
@@ -112,7 +115,7 @@ T.Control {
         // Tell screen readers which segment the keyboard moved to.
         function announceFocused() {
             const at = priv.focused;
-            const title = at === -1 ? qsTr("Hidden folders") : (control.segments[at]?.title ?? "");
+            const title = at === -1 ? control.hiddenText : (control.segments[at]?.title ?? "");
             if (title.length > 0) {
                 Accessible.announce(title);
             }
@@ -287,7 +290,7 @@ T.Control {
                                 Accessible.role: Accessible.Button
                                 Accessible.focused: control.visualFocus && priv.focused === -1
                                 //: Spoken name of the "…" button of a path bar, which opens the folders that do not fit
-                                Accessible.name: qsTr("Hidden folders")
+                                Accessible.name: control.hiddenText
                                 onClicked: {
                                     priv.current = -1;
                                     priv.press(-1);
@@ -329,6 +332,7 @@ T.Control {
 
     ContextMenu {
         id: moreMenu
+        title: control.hiddenText
         Instantiator {
             model: Math.max(0, priv.firstTail - 1)
             delegate: ContextMenuItem {

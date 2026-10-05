@@ -18,5 +18,16 @@ Item {
     AtlasAboutPage {
         anchors.fill: parent
         description: "A demonstration application."
+        showSystemRows: false
+        links: [
+            {
+                title: "Homepage",
+                url: "https://example.org/"
+            },
+            {
+                title: "Write to us",
+                url: "mailto:hello@example.org"
+            }
+        ]
     }
 }
