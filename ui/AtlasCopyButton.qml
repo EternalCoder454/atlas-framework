@@ -21,7 +21,8 @@ ToolbarButton {
     symbol: control._done ? Symbols.Check : Symbols.ContentCopy
     // `text` is what is copied, so the button names itself.
     Accessible.name: qsTr("Copy")
-    Accessible.description: ""
+    // Said after a copy, until the check mark goes.
+    Accessible.description: control._done ? qsTr("Copied") : ""
     //: Tooltip of the copy button, once the text is on the clipboard
     QQC2.ToolTip.text: control._done ? qsTr("Copied") : qsTr("Copy")
     QQC2.ToolTip.visible: control.hovered || control._done
@@ -30,6 +31,7 @@ ToolbarButton {
         AtlasClipboard.setText(control.text);
         control._done = true;
         reset.restart();
+        Accessible.announce(qsTr("Copied"));
         control.copied();
     }
 

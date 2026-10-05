@@ -42,6 +42,8 @@ T.Control {
     property real _hover: 0
     readonly property real _shown: _hover > 0 && _editable ? _hover : _rounded
     readonly property bool _editable: !readOnly && enabled
+    // The count with the locale's digits and separators.
+    readonly property string _countText: Qt.locale().toString(count, "f", 0)
     readonly property string _valueText: Qt.locale().toString(_rounded, "f", _rounded % 1 === 0 ? 0 : 1)
 
     function _set(v) {
@@ -62,7 +64,7 @@ T.Control {
 
     Accessible.role: readOnly ? Accessible.StaticText : Accessible.Slider
     Accessible.name: readOnly ? qsTr("%1 out of 5").arg(_valueText) : qsTr("Rating")
-    Accessible.description: readOnly ? (count > 0 ? qsTr("%n rating(s)", "", count) : "") : qsTr("%1 out of 5").arg(_valueText)
+    Accessible.description: readOnly ? (count > 0 ? qsTr("%n rating(s)", "", count).replace(String(count), _countText) : "") : qsTr("%1 out of 5").arg(_valueText)
     Accessible.focusable: !readOnly
     Accessible.onIncreaseAction: control._set(control._rounded + 1)
     Accessible.onDecreaseAction: control._set(control._rounded - 1)
@@ -166,7 +168,7 @@ T.Control {
         QQC2.Label {
             id: countLabel
             visible: control.count > 0
-            text: "(" + control.count + ")"
+            text: "(" + control._countText + ")"
             font.pointSize: AtlasStyle.fontSizeCaption
             color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
             textFormat: Text.PlainText

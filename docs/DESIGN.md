@@ -190,7 +190,7 @@ control takes `iconName`.
 | `AtlasFocusRing` | The keyboard focus outline every control uses; put it in a custom control's background (since 1.3.0) |
 | `AtlasBreadcrumb` | Path bar; the middle folds into a "…" menu (since 1.3.0) |
 | `AtlasIconGrid` | Grid of icons over names that only makes the cells on screen; `activated`, `contextMenuRequested` (since 1.3.0) |
-| `AtlasListView` | A `ListView` in the Atlas look with selection (`selectionMode`, `selectedIndexes`, `select()`, `clearSelection()`, `isSelected()`), a default row from `textRole`/`subtitleRole`/`symbolRole`, type-ahead, `placeholderText`; `activated`, `contextMenuRequested(index, pos)`, and with `reorderable` a drag grip and Alt+Up/Down raising `moveRequested(from, to)` (since 1.4.0) |
+| `AtlasListView` | A `ListView` in the Atlas look with selection (`selectionMode` Single=0, Multi=1, No=2 as in DataTable and AtlasTreeView, `selectedIndexes`/`selectedRows`, `select()`, `selectRows()`, `selectAll()`, `clearSelection()`, `isSelected()`; the selection follows a model's inserts and removes and clears on a new or reset model), a default row from `textRole`/`subtitleRole`/`symbolRole`, type-ahead, `placeholderText`; `activated`, `contextMenuRequested(index, pos)`, and with `reorderable` a drag grip and Alt+Up/Down raising `moveRequested(from, to)` (since 1.4.0) |
 | `AtlasAppCard`, `AtlasInstallButton`, `AtlasScreenshotCarousel` | A store's app card; install pill with progress inside and cancel (`installState`); screenshots one at a time, loading only neighbours (since 1.3.0) |
 | `AtlasSearchResults` | A launcher's results with sections and shortcut hints; the search field keeps focus and passes keys with `handleKey(event)` (since 1.3.0) |
 | `Symbol`, `Symbols` | A Material Symbol, and the singleton of every symbol's value; `Symbols.available(style)` (since 1.3.0) |
@@ -198,7 +198,7 @@ control takes `iconName`.
 | `AccessibilityState` | Singleton: whether a screen reader is active |
 | `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `repo`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`; `uiVersion`, the version of Atlas.Ui itself (since 1.3.0). Set by atlas-framework-ui's startup |
 | `AtlasAboutPage` | The About page: icon, name, version, `description`, the version and OS rows, `license`, source and issue links; extra content goes below; a "Copy system info" button and `systemInfo()` for bug reports (since 1.4.0) |
-| `AtlasTreeView` | A tree on Qt Quick's TreeView in the Atlas list look (`model` any QAbstractItemModel, `textRole`, `symbolRole`, `iconRole`, `selectionMode` Single or Multi, `currentIndex`, `selectionModel`, `expandAll()`, `activated(index)`, `contextMenuRequested(index, pos)`); arrows, Home/End, type-ahead, Menu key; mirrored in RTL (since 1.4.0) |
+| `AtlasTreeView` | A tree on Qt Quick's TreeView in the Atlas list look (`model` any QAbstractItemModel, `textRole`, `symbolRole`, `iconRole`, `selectionMode` Single, Multi or No (same values as the other lists), `currentIndex`, `selectionModel`, `expandAll()`, `selectAll()`, `clearSelection()`, `activated(index)`, `contextMenuRequested(index, pos)`); arrows, Home/End, type-ahead, Menu key; mirrored in RTL (since 1.4.0) |
 | `AtlasTreeModel` | A read-only tree model built from nested JS objects (`items: [{ text, symbol, icon, children }]`) for `AtlasTreeView`; QML can't build a tree model itself (since 1.4.0) |
 
 Each file's header comment says how to use it; its example becomes the

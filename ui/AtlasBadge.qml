@@ -13,8 +13,9 @@ import org.kde.kirigami as Kirigami
 //   AtlasBadge { text: "3"; type: "error" }
 //   AtlasBadge { type: "success" }          // a dot
 //
-// Not interactive: no Tab stop. A screen reader gets the text (a dot gets the
-// name of its type).
+// Not interactive: no Tab stop. A screen reader gets the text; a dot or a
+// symbol with no text gets the name of its type ("Warning"), or
+// `accessibleName` when the app sets it ("Update available").
 Rectangle {
     id: root
 
@@ -24,6 +25,8 @@ Rectangle {
     // A Material Symbol (Symbols.<Name>); 0 for none.
     property int symbol: 0
     property bool dot: text.length === 0 && symbol === 0
+    // What a screen reader says; the text, or the type's name when there is none.
+    property string accessibleName: text.length > 0 ? text : _typeName
 
     readonly property color _tint: {
         switch (type) {
@@ -65,7 +68,7 @@ Rectangle {
     opacity: enabled ? 1 : 0.6
 
     Accessible.role: Accessible.StaticText
-    Accessible.name: dot ? _typeName : text
+    Accessible.name: root.accessibleName
 
     RowLayout {
         id: content

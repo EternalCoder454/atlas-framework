@@ -27,15 +27,18 @@ import org.kde.kirigami as Kirigami
 // when mirrored); Return activates; Space selects (toggles, in multi
 // selection); Menu or Shift+F10 asks for the context menu; letters jump to
 // the next row whose text starts with what was typed in the last 500 ms. In
-// multi selection Shift+Up/Down extend the selection and Ctrl+Up/Down move
-// without selecting. Clicks: Ctrl toggles and Shift extends (multi),
+// multi selection Shift+Up/Down extend the selection, Ctrl+A selects all and
+// Ctrl+Up/Down move without selecting; with NoSelection only the current row
+// moves. Collapsing a row that hides the current one moves current to the
+// collapsed row. Clicks: Ctrl toggles and Shift extends (multi),
 // double-click activates, right-click asks for the context menu.
 T.Control {
     id: control
 
     enum SelectionMode {
         SingleSelection,
-        MultiSelection
+        MultiSelection,
+        NoSelection
     }
 
     property var model
@@ -61,7 +64,7 @@ T.Control {
     function collapse(index) {
         const r = view.rowAtIndex(index);
         if (r >= 0)
-            view.collapse(r);
+            priv.collapseRow(r);
     }
     function isExpanded(index) {
         const r = view.rowAtIndex(index);
@@ -72,6 +75,16 @@ T.Control {
     }
     function collapseAll() {
         view.collapseRecursively();
+        priv.fixCurrent();
+    }
+    // Selects every row that is shown (MultiSelection only).
+    function selectAll() {
+        if (priv.multi && view.rows > 0)
+            priv.selectRange(0, view.rows - 1);
+    }
+    function clearSelection() {
+        selection.clearSelection();
+        priv.anchorRow = -1;
     }
 
     focusPolicy: Qt.StrongFocus
@@ -87,14 +100,30 @@ T.Control {
             selection.setCurrentIndex(view.index(0, 0), ItemSelectionModel.Current);
     }
 
+    onSelectionModeChanged: {
+        if (selectionMode === AtlasTreeView.NoSelection)
+            clearSelection();
+    }
+    onModelChanged: priv.anchorRow = -1
+
     ItemSelectionModel {
         id: selection
         model: control.model ?? null
     }
 
+    // A reset (AtlasTreeModel.items set again) drops the rows the anchor meant.
+    Connections {
+        target: control.model ?? null
+        ignoreUnknownSignals: true
+        function onModelReset() {
+            priv.anchorRow = -1;
+        }
+    }
+
     QtObject {
         id: priv
         readonly property bool multi: control.selectionMode === AtlasTreeView.MultiSelection
+        readonly property bool selectable: control.selectionMode !== AtlasTreeView.NoSelection
         readonly property var app: Qt.application
         property int anchorRow: -1
         property string typed
@@ -123,11 +152,48 @@ T.Control {
             }
             return String(m.data(idx, role) ?? "");
         }
-        // Selects rows a..b (inclusive, in view order) and nothing else.
+        // Selects rows a..b (inclusive, in view order) and nothing else, in
+        // one call: one QItemSelection when the model can build it.
         function selectRange(a, b) {
+            const lo = Math.max(0, Math.min(a, b));
+            const hi = Math.min(view.rows - 1, Math.max(a, b));
+            const m = control.model;
+            if (m && typeof m.selectionOf === "function") {
+                const list = [];
+                for (let r = lo; r <= hi; ++r)
+                    list.push(view.index(r, 0));
+                selection.select(m.selectionOf(list), ItemSelectionModel.ClearAndSelect);
+                return;
+            }
             selection.clearSelection();
-            for (let r = Math.min(a, b); r <= Math.max(a, b); ++r)
+            for (let r = lo; r <= hi; ++r)
                 selection.select(view.index(r, 0), ItemSelectionModel.Select);
+        }
+        // After rows were hidden: if the current row is gone, move current
+        // (and, outside multi selection, the selection) to its nearest shown
+        // ancestor.
+        function fixCurrent() {
+            const m = control.model;
+            let i = selection.currentIndex;
+            if (!m || !i.valid || view.rowAtIndex(i) >= 0)
+                return;
+            while (i.valid && view.rowAtIndex(i) < 0)
+                i = m.parent(i);
+            if (!i.valid)
+                return;
+            const flag = priv.selectable && !priv.multi ? ItemSelectionModel.ClearAndSelect : ItemSelectionModel.Current;
+            selection.setCurrentIndex(i, flag);
+            anchorRow = view.rowAtIndex(i);
+        }
+        function collapseRow(row) {
+            view.collapse(row);
+            fixCurrent();
+        }
+        function toggleRow(row) {
+            if (view.isExpanded(row))
+                collapseRow(row);
+            else
+                view.expand(row);
         }
         // Moves the current row to `row`. extend: Shift (range from the
         // anchor); keep: Ctrl (move only, leave the selection).
@@ -136,7 +202,7 @@ T.Control {
                 return;
             row = Math.max(0, Math.min(view.rows - 1, row));
             const idx = view.index(row, 0);
-            if (priv.multi && keep) {
+            if (!priv.selectable || (priv.multi && keep)) {
                 selection.setCurrentIndex(idx, ItemSelectionModel.Current);
             } else if (priv.multi && extend) {
                 if (anchorRow < 0)
@@ -153,7 +219,8 @@ T.Control {
             const idx = view.index(row, 0);
             anchorRow = row;
             selection.setCurrentIndex(idx, ItemSelectionModel.Current);
-            selection.select(idx, ItemSelectionModel.Toggle);
+            if (priv.selectable)
+                selection.select(idx, ItemSelectionModel.Toggle);
         }
         function menuFor(row, pos) {
             control.contextMenuRequested(view.index(row, 0), pos);
@@ -223,7 +290,7 @@ T.Control {
                             priv.goTo(row + 1, false, false);
                     }
                 } else if (view.isExpanded(row)) {
-                    view.collapse(row);
+                    priv.collapseRow(row);
                 } else {
                     const p = view.rowAtIndex(control.model.parent(idx));
                     if (p >= 0)
@@ -231,6 +298,17 @@ T.Control {
                 }
                 break;
             }
+        case Qt.Key_A:
+            if (ctrl && !shift && !alt) {
+                control.selectAll();
+            } else {
+                used = false;
+                if (!ctrl && !alt && event.text.length === 1) {
+                    priv.typeAhead(event.text);
+                    used = true;
+                }
+            }
+            break;
         case Qt.Key_Return:
         case Qt.Key_Enter:
             if (row >= 0)
@@ -325,7 +403,7 @@ T.Control {
             Accessible.focusable: true
             Accessible.description: row.hasChildren ? (row.expanded ? qsTr("Expanded") : qsTr("Collapsed")) : ""
             Accessible.onPressAction: control.activated(view.index(row.row, 0))
-            Accessible.onToggleAction: view.toggleExpanded(row.row)
+            Accessible.onToggleAction: priv.toggleRow(row.row)
 
             Rectangle {
                 id: pill
@@ -342,7 +420,10 @@ T.Control {
 
             Item {
                 id: chevron
-                x: pill.x + AtlasStyle.spacing + row.depth * row.indent
+                objectName: "chevron"
+                // Set by hand, so mirrored by hand: from the right edge in RTL.
+                readonly property real _offset: AtlasStyle.spacingSmall + AtlasStyle.spacing + row.depth * row.indent
+                x: control.mirrored ? row.width - _offset - width : _offset
                 anchors.verticalCenter: parent.verticalCenter
                 width: row.indent
                 height: row.indent
@@ -396,7 +477,8 @@ T.Control {
                 color: AtlasStyle.text
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
-                horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft
+                // AlignLeft is the start edge: the mirrored row flips it.
+                horizontalAlignment: Text.AlignLeft
             }
 
             HoverHandler {
@@ -415,11 +497,13 @@ T.Control {
                         return;
                     }
                     if (row.hasChildren && chevron.contains(chevron.mapFromItem(row, point.position))) {
-                        view.toggleExpanded(row.row);
+                        priv.toggleRow(row.row);
                         return;
                     }
                     if (priv.multi && (mods & Qt.ControlModifier))
                         priv.toggle(row.row);
+                    else if (!priv.selectable)
+                        priv.goTo(row.row, false, false);
                     else
                         priv.goTo(row.row, (mods & Qt.ShiftModifier) !== 0, false);
                 }

@@ -66,11 +66,13 @@ AtlasAutocompleteField.property text: QString
 AtlasAutocompleteField.property textRole: QString
 AtlasAutocompleteField.signal accepted(QString text)
 AtlasAutocompleteField.type
+AtlasAvatar.property accessibleName: QString
 AtlasAvatar.property name: QString
 AtlasAvatar.property size: double
 AtlasAvatar.property source: QUrl
 AtlasAvatar.property symbol: int
 AtlasAvatar.type
+AtlasBadge.property accessibleName: QString
 AtlasBadge.property dot: bool
 AtlasBadge.property symbol: int
 AtlasBadge.property text: QString
@@ -283,16 +285,19 @@ AtlasLabel.enum TextStyle: Mono = 4
 AtlasLabel.enum TextStyle: Title = 1
 AtlasLabel.property textStyle: int
 AtlasLabel.type
-AtlasListView.enum SelectionMode: MultiSelection = 2
-AtlasListView.enum SelectionMode: NoSelection = 0
-AtlasListView.enum SelectionMode: SingleSelection = 1
+AtlasListView.enum SelectionMode: MultiSelection = 1
+AtlasListView.enum SelectionMode: NoSelection = 2
+AtlasListView.enum SelectionMode: SingleSelection = 0
 AtlasListView.method clearSelection(): QVariant
 AtlasListView.method isSelected(int index): bool
 AtlasListView.method select(int index): QVariant
+AtlasListView.method selectAll(): QVariant
+AtlasListView.method selectRows(QList<int> rows): QVariant
 AtlasListView.property placeholderSymbol: int
 AtlasListView.property placeholderText: QString
 AtlasListView.property reorderable: bool
 AtlasListView.property selectedIndexes: QList<int> [readonly]
+AtlasListView.property selectedRows: QList<int> [readonly]
 AtlasListView.property selectionMode: int
 AtlasListView.property subtitleRole: QString
 AtlasListView.property symbolRole: QString
@@ -558,15 +563,19 @@ AtlasToolbar.property overflowCount: int [readonly]
 AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
 AtlasToolbar.property visibleCount: int [readonly]
 AtlasToolbar.type
+AtlasTreeModel.method selectionOf(QVariantList indexes): QItemSelection
 AtlasTreeModel.property items: QVariantList
 AtlasTreeModel.type
 AtlasTreeView.enum SelectionMode: MultiSelection = 1
+AtlasTreeView.enum SelectionMode: NoSelection = 2
 AtlasTreeView.enum SelectionMode: SingleSelection = 0
+AtlasTreeView.method clearSelection(): QVariant
 AtlasTreeView.method collapse(QVariant index): QVariant
 AtlasTreeView.method collapseAll(): QVariant
 AtlasTreeView.method expand(QVariant index): QVariant
 AtlasTreeView.method expandAll(): QVariant
 AtlasTreeView.method isExpanded(QVariant index): QVariant
+AtlasTreeView.method selectAll(): QVariant
 AtlasTreeView.property count: int [readonly]
 AtlasTreeView.property currentIndex: QVariant [readonly]
 AtlasTreeView.property iconRole: QString

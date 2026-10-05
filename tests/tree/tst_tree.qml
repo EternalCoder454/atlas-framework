@@ -122,5 +122,105 @@ Item {
             verify(view.selectionModel.isSelected(tree.index(1, 0)));
             verify(!view.selectionModel.isSelected(tree.index(0, 0)));
         }
+
+        function test_enum_values() {
+            compare(AtlasTreeView.SingleSelection, 0);
+            compare(AtlasTreeView.MultiSelection, 1);
+            compare(AtlasTreeView.NoSelection, 2);
+        }
+
+        function test_no_selection() {
+            view.selectionMode = AtlasTreeView.NoSelection;
+            keyClick(Qt.Key_Down);
+            compare(name(), "Beta");
+            keyClick(Qt.Key_Space);
+            keyClick(Qt.Key_Down);
+            compare(name(), "Gamma");
+            verify(!view.selectionModel.hasSelection);
+            view.selectAll();
+            verify(!view.selectionModel.hasSelection);
+        }
+
+        function test_select_all_and_clear() {
+            view.selectionMode = AtlasTreeView.MultiSelection;
+            view.selectAll();
+            compare(view.selectionModel.selectedIndexes.length, 3);
+            view.clearSelection();
+            verify(!view.selectionModel.hasSelection);
+            keyClick(Qt.Key_A, Qt.ControlModifier);
+            compare(view.selectionModel.selectedIndexes.length, 3);
+            view.clearSelection();
+            // In single mode selectAll does nothing.
+            view.selectionMode = AtlasTreeView.SingleSelection;
+            view.selectAll();
+            verify(!view.selectionModel.hasSelection);
+        }
+
+        function test_range_across_levels_in_one_selection() {
+            view.selectionMode = AtlasTreeView.MultiSelection;
+            view.expandAll();
+            tryCompare(view, "count", 7);
+            keyClick(Qt.Key_End);
+            keyClick(Qt.Key_Home, Qt.ShiftModifier);
+            compare(view.selectionModel.selectedIndexes.length, 7);
+            keyClick(Qt.Key_Down, Qt.ControlModifier);
+        }
+
+        function test_collapse_moves_hidden_current_to_ancestor() {
+            view.expandAll();
+            tryCompare(view, "count", 7);
+            keyClick(Qt.Key_Down); // Apple
+            keyClick(Qt.Key_Down); // Avocado
+            keyClick(Qt.Key_Down); // Hass
+            compare(name(), "Hass");
+            view.collapse(tree.index(0, 0));
+            tryCompare(view, "count", 4);
+            compare(name(), "Alpha");
+            verify(view.selectionModel.isSelected(tree.index(0, 0)));
+            // collapseAll from a nested row.
+            view.expandAll();
+            tryCompare(view, "count", 7);
+            keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Down);
+            view.collapseAll();
+            tryCompare(view, "count", 3);
+            compare(name(), "Alpha");
+        }
+
+        function test_anchor_resets_on_items_change() {
+            view.selectionMode = AtlasTreeView.MultiSelection;
+            keyClick(Qt.Key_End);
+            keyClick(Qt.Key_Up, Qt.ShiftModifier);
+            tree.items = [{ text: "One" }, { text: "Two" }, { text: "Three" }];
+            wait(50);
+            view.forceActiveFocus();
+            keyClick(Qt.Key_Home);
+            keyClick(Qt.Key_Down, Qt.ShiftModifier);
+            compare(view.selectionModel.selectedIndexes.length, 2);
+            tree.items = [{ text: "Alpha", children: [{ text: "Apple" }, { text: "Avocado", children: [{ text: "Hass" }] }] }, { text: "Beta" }, { text: "Gamma", children: [{ text: "Grape" }] }];
+        }
+
+        function test_rtl_chevron_on_the_right() {
+            const rtl = createTemporaryObject(viewC, stage, { "LayoutMirroring.enabled": true });
+            verify(rtl);
+            waitForRendering(rtl);
+            rtl.forceActiveFocus();
+            rtl.expandAll();
+            tryCompare(rtl, "count", 7);
+            const table = rtl.contentItem;
+            const top = table.itemAtCell(Qt.point(0, 0));
+            const child = table.itemAtCell(Qt.point(0, 1));
+            verify(top && child);
+            const c0 = findChild(top, "chevron");
+            const c1 = findChild(child, "chevron");
+            verify(c0 && c1);
+            // On the right of the row, and the child indented further left.
+            verify(c0.x + c0.width > top.width / 2);
+            verify(c1.x + c1.width < c0.x + c0.width);
+            // The LTR view has them on the left, the child further right.
+            const ltr = view.contentItem.itemAtCell(Qt.point(0, 0));
+            verify(findChild(ltr, "chevron").x < ltr.width / 2);
+        }
     }
 }

@@ -104,3 +104,32 @@ QHash<int, QByteArray> AtlasTreeModel::roleNames() const
 {
     return {{Qt::DisplayRole, "display"}, {SymbolRole, "symbol"}, {IconRole, "icon"}};
 }
+
+// Indexes that aren't this model's are skipped. Neighbours in the same parent
+// join into one range, so a run of siblings costs one range.
+QItemSelection AtlasTreeModel::selectionOf(const QVariantList &indexes) const
+{
+    QItemSelection selection;
+    QModelIndex runStart;
+    QModelIndex runEnd;
+    const auto flush = [&] {
+        if (runStart.isValid()) {
+            selection.append(QItemSelectionRange(runStart, runEnd));
+        }
+        runStart = runEnd = QModelIndex();
+    };
+    for (const QVariant &v : indexes) {
+        const QModelIndex idx = v.value<QModelIndex>();
+        if (!idx.isValid() || idx.model() != this) {
+            continue;
+        }
+        if (runStart.isValid() && idx.parent() == runEnd.parent() && idx.row() == runEnd.row() + 1) {
+            runEnd = idx;
+            continue;
+        }
+        flush();
+        runStart = runEnd = idx;
+    }
+    flush();
+    return selection;
+}

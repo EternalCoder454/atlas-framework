@@ -14,6 +14,9 @@ import org.kde.kirigami as Kirigami
 //       showCopy: true
 //   }
 //   AtlasCodeView { text: log; lineNumbers: true; maximumHeight: 240 }
+//
+// Screen readers get the text field, named "Code"; set Accessible.name on
+// the view to say what the code is ("Install command").
 Item {
     id: control
 
@@ -57,6 +60,10 @@ Item {
     implicitWidth: Kirigami.Units.gridUnit * 30
     implicitHeight: Math.min(control.maximumHeight, content.height + control._pad * 2)
     opacity: control.enabled ? 1 : 0.5
+
+    // The name is the view's to set; the text field below forwards it.
+    Accessible.ignored: true
+    Accessible.name: qsTr("Code")
 
     Rectangle {
         id: frame
@@ -115,7 +122,7 @@ Item {
                 selectedTextColor: Kirigami.Theme.highlightedTextColor
 
                 Accessible.role: Accessible.EditableText
-                Accessible.name: qsTr("Code")
+                Accessible.name: control.Accessible.name
                 Accessible.readOnly: true
 
                 onActiveFocusChanged: {

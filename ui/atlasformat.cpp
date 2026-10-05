@@ -12,8 +12,9 @@ namespace {
 
 // QLocale::formattedDataSize takes a qint64: larger sizes are written in EiB.
 constexpr double kMaxInt64Size = 9.0e18;
-// Durations beyond this many seconds are clamped (about 285 billion years).
-constexpr double kMaxSeconds = 9.0e18;
+// Durations beyond a billion days (about 2.7 million years) are clamped to it,
+// so the day count fits the int a plural form takes and is never misspelled.
+constexpr double kMaxSeconds = 86400.0 * 1.0e9;
 constexpr int kMaxPrecision = 10;
 
 QString tr(const char *source, const char *comment = nullptr)
@@ -23,7 +24,9 @@ QString tr(const char *source, const char *comment = nullptr)
 
 // A plural: the catalogue's forms of `one` for n, or, when nothing is
 // translated (the source language), English: `one` for 1, `many` otherwise.
-// lupdate sees `one` only, so `many` is a source-language fallback.
+// lupdate sees `one` only, so `many` is a source-language fallback. Callers
+// keep n at or below a billion (duration() clamps its input), so the number
+// shown is always the real one.
 QString plural(const char *one, qint64 n, const char *many)
 {
     const int count = int(qMin<qint64>(n, 1000000000));
@@ -72,7 +75,8 @@ QString sized(double n, int precision, const QLocale &l)
     precision = qBound(0, precision, kMaxPrecision);
     const double a = std::abs(n);
     const QString sign = n < 0 ? l.negativeSign() : QString();
-    if (a < 1024.0) {
+    // 1023.5 and up rounds to 1024 B: that is 1.0 KiB, taken below.
+    if (std::round(a) < 1024.0) {
         // "0 B": QLocale would say "0 bytes".
         const double whole = std::round(a);
         return (whole > 0 ? sign : QString()) + tr("%1 B").arg(l.toString(whole, 'f', 0));
@@ -80,7 +84,7 @@ QString sized(double n, int precision, const QLocale &l)
     if (a >= kMaxInt64Size) {
         return sign + l.toString(a / double(Q_INT64_C(1) << 60), 'f', precision) + QLatin1String(" EiB");
     }
-    return sign + l.formattedDataSize(qint64(a), precision, QLocale::DataSizeIecFormat);
+    return sign + l.formattedDataSize(a < 1024.0 ? 1024 : qint64(a), precision, QLocale::DataSizeIecFormat);
 }
 
 QString twoDigits(qint64 v)
@@ -134,8 +138,10 @@ QString AtlasFormat::number(double n, int precision, const QString &locale) cons
     precision = shortest ? 6 : qMin(precision, kMaxPrecision);
     QString text = l.toString(roundsToZero(n, precision), 'f', precision);
     if (shortest && text.contains(l.decimalPoint())) {
-        while (text.endsWith(QLatin1Char('0'))) {
-            text.chop(1);
+        // The locale's own zero: Arabic-Indic digits are not '0'.
+        const QString zero = l.zeroDigit();
+        while (!zero.isEmpty() && text.endsWith(zero)) {
+            text.chop(zero.size());
         }
         if (text.endsWith(l.decimalPoint())) {
             text.chop(l.decimalPoint().size());

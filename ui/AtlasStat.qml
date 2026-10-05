@@ -20,7 +20,8 @@ import org.kde.kirigami as Kirigami
 //       sparkline: net.history
 //   }
 //
-// A screen reader gets one text, "label: value unit". Figures have equal
+// A screen reader gets one text, "label: value unit", and the trend as its
+// description ("Up +4.2%"). Figures have equal
 // widths, so a changing value does not jiggle.
 ColumnLayout {
     id: root
@@ -47,7 +48,8 @@ ColumnLayout {
 
     Accessible.role: Accessible.StaticText
     Accessible.name: [label, [value, unit].filter(s => s.length > 0).join(" ")].filter(s => s.length > 0).join(": ")
-    Accessible.description: [trendText].filter(s => s.length > 0).join()
+    // The trend with its direction: "Up +4.2%", "Down -1%".
+    Accessible.description: [_hasTrend ? (trend > 0 ? qsTr("Up") : qsTr("Down")) : "", trendText].filter(s => s.length > 0).join(" ")
 
     RowLayout {
         spacing: AtlasStyle.spacingSmall
