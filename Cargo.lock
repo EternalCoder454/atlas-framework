@@ -50,6 +50,7 @@ dependencies = [
  "log",
  "serde",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
