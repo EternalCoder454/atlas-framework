@@ -35,6 +35,21 @@ T.AbstractButton {
 
     signal edited
 
+    // A user edit is held by a Binding for one turn, so an app binding on
+    // `color` is kept (see docs/reference/atlascolorfield.md).
+    property color _edit: "transparent"
+    property bool _editing: false
+    readonly property Binding _hold: Binding {
+        target: control
+        property: "color"
+        value: control._edit
+        when: control._editing
+        restoreMode: Binding.RestoreBinding
+    }
+    function _release(): void {
+        control._editing = false;
+    }
+
     readonly property string hex: internals.toHex(control.color)
     // What the field shows: the hex, or rgba(r, g, b, a) when not opaque.
     readonly property string _label: internals.toLabel(control.color)
@@ -97,8 +112,10 @@ T.AbstractButton {
             if (control.hex === toHex(c) && control.color.a === c.a) {
                 return;
             }
-            control.color = c;
+            control._edit = c;
+            control._editing = true;
             control.edited();
+            Qt.callLater(control._release);
         }
         // The palette, led by the current colour when it is none of them.
         readonly property var swatches: {

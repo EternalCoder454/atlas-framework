@@ -31,6 +31,31 @@ T.AbstractButton {
 
     signal edited
 
+    // A user edit is held by a Binding for one turn, so an app binding on
+    // `font.family` or `font.pointSize` is kept (see docs/reference/atlasfontpicker.md).
+    property string _editFamily
+    property real _editSize: 0
+    property bool _editingFamily: false
+    property bool _editingSize: false
+    readonly property Binding _holdFamily: Binding {
+        target: control
+        property: "font.family"
+        value: control._editFamily
+        when: control._editingFamily
+        restoreMode: Binding.RestoreBinding
+    }
+    readonly property Binding _holdSize: Binding {
+        target: control
+        property: "font.pointSize"
+        value: control._editSize
+        when: control._editingSize
+        restoreMode: Binding.RestoreBinding
+    }
+    function _release(): void {
+        control._editingFamily = false;
+        control._editingSize = false;
+    }
+
     // The field never draws the picker's own font at the picked size: it uses
     // the application font for everything but the family name.
     readonly property font _nameFont: Qt.font({
@@ -77,8 +102,10 @@ T.AbstractButton {
             if (index < 0 || index >= shown.length) {
                 return;
             }
-            control.font.family = shown[index];
+            control._editFamily = shown[index];
+            control._editingFamily = true;
             control.edited();
+            Qt.callLater(control._release);
         }
     }
 
@@ -302,8 +329,10 @@ T.AbstractButton {
                     value: Math.round(control.font.pointSize)
                     Accessible.name: qsTr("Size")
                     onValueModified: {
-                        control.font.pointSize = value;
+                        control._editSize = value;
+                        control._editingSize = true;
                         control.edited();
+                        Qt.callLater(control._release);
                     }
                 }
             }

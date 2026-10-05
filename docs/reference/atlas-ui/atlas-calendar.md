@@ -43,6 +43,9 @@ A move stops at the bounds.
 | `today` | `date` | the current day | The day that is ringed. Set it only to make a picture or test repeatable. |
 | `year` | `int` | the selected date's year, else today's | The year of the month shown. |
 
+> [!NOTE]
+> A user's edit does not end a binding on `selectedDate`, `month` or `year` (a day, the month buttons, PageUp and PageDown, the arrow keys). If `onActivated` stores the day, the binding follows the model; if the app ignores it, the property returns to the model's one turn of the event loop later. `showDate()` and a new `selectedDate` turn the month the same way. A handler or `onXChanged` that reads it sees the new value at once. A literal value or no binding keeps the user's edit.
+
 ## Signals
 
 | Name | Description |

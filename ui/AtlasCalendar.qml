@@ -34,13 +34,49 @@ T.Control {
     property date minimumDate
     property date maximumDate
     // The month shown (0 is January) and its year: the selected date's, else today's.
-    property int month: _isValid(selectedDate) ? selectedDate.getMonth() : today.getMonth()
-    property int year: _isValid(selectedDate) ? selectedDate.getFullYear() : today.getFullYear()
+    property int month: _viewMonth
+    property int year: _viewYear
     // The day that is ringed.
     property date today: new Date()
 
     // A day was chosen by click, Return or Space; `selectedDate` is set too.
     signal activated(date date)
+
+    // The month the control turns to by itself: the selected date's, else
+    // today's. `month` and `year` follow these unless the app binds them.
+    // A user edit (a day, a month button, the cursor) is held by Bindings for
+    // one turn, so an app binding on `selectedDate`, `month` or `year` is kept
+    // (see docs/reference/atlascalendar.md).
+    property int _viewMonth: today.getMonth()
+    property int _viewYear: today.getFullYear()
+    property date _editDate
+    property bool _editingDate: false
+    property bool _editingView: false
+    readonly property Binding _holdDate: Binding {
+        target: control
+        property: "selectedDate"
+        value: control._editDate
+        when: control._editingDate
+        restoreMode: Binding.RestoreBinding
+    }
+    readonly property Binding _holdMonth: Binding {
+        target: control
+        property: "month"
+        value: control._viewMonth
+        when: control._editingView
+        restoreMode: Binding.RestoreBinding
+    }
+    readonly property Binding _holdYear: Binding {
+        target: control
+        property: "year"
+        value: control._viewYear
+        when: control._editingView
+        restoreMode: Binding.RestoreBinding
+    }
+    function _release(): void {
+        control._editingDate = false;
+        control._editingView = false;
+    }
 
     // A copy of `d` at noon of its local day, in any year (JavaScript's Date
     // constructor maps years 0..99 to the 1900s).
@@ -63,9 +99,21 @@ T.Control {
     // Turns to the month of `d` (nothing for an invalid date).
     function showDate(d: date): void {
         if (_isValid(d)) {
-            month = d.getMonth();
-            year = d.getFullYear();
+            _userShow(d);
         }
+    }
+    // The control's own turn to the month of `d`, with no write to `month` or `year`.
+    function _viewDate(d: date): void {
+        if (_isValid(d)) {
+            _viewMonth = d.getMonth();
+            _viewYear = d.getFullYear();
+        }
+    }
+    // The user's turn to the month of `d`: held for a turn.
+    function _userShow(d: date): void {
+        _editingView = true;
+        _viewDate(d);
+        Qt.callLater(_release);
     }
     function _firstDay(): int {
         // Qt.Monday is 1 and Qt.Sunday 7; JavaScript's getDay() has Sunday 0.
@@ -86,16 +134,18 @@ T.Control {
     }
     function _moveCursor(d: date): void {
         internals.cursor = _clampToRange(d);
-        showDate(internals.cursor);
+        _userShow(internals.cursor);
     }
     function _activate(d: date): void {
         if (!_inRange(d)) {
             return;
         }
-        selectedDate = d;
-        showDate(d);
+        _editDate = d;
+        _editingDate = true;
+        _userShow(d);
         internals.cursor = d;
         activated(d);
+        Qt.callLater(_release);
     }
 
     onSelectedDateChanged: showDate(selectedDate)
@@ -126,10 +176,10 @@ T.Control {
             if (n < 0 && !canGoBack || n > 0 && !canGoForward) {
                 return;
             }
-            control.showDate(target);
+            control._userShow(target);
             if (hasCursor) {
                 internals.cursor = control._clampToRange(control._makeDate(target.getFullYear(), target.getMonth(), Math.min(wanted, last)));
-                control.showDate(internals.cursor);
+                control._userShow(internals.cursor);
             }
         }
     }

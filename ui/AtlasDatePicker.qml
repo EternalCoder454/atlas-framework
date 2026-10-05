@@ -50,10 +50,30 @@ T.Control {
     readonly property bool _hasDate: _valid(selectedDate)
     readonly property string _text: _hasDate ? (typeof format === "string" ? locale.toString(selectedDate, format) : selectedDate.toLocaleDateString(locale, format)) : ""
 
+    // A user edit is held by a Binding for one turn, so an app binding on
+    // `selectedDate` is kept (see docs/reference/atlasdatepicker.md).
+    property date _edit
+    property bool _editing: false
+    readonly property Binding _hold: Binding {
+        target: control
+        property: "selectedDate"
+        value: control._edit
+        when: control._editing
+        restoreMode: Binding.RestoreBinding
+    }
+    function _release(): void {
+        control._editing = false;
+    }
+    function _userSet(d: date): void {
+        _edit = d;
+        _editing = true;
+        edited();
+        Qt.callLater(_release);
+    }
+
     function _clear(): void {
         if (clearable && _hasDate) {
-            selectedDate = new Date(NaN);
-            edited();
+            _userSet(new Date(NaN));
         }
     }
 
@@ -202,8 +222,7 @@ T.Control {
             locale: control.locale
             today: control.today
             onActivated: date => {
-                control.selectedDate = date;
-                control.edited();
+                control._userSet(date);
                 control.close();
             }
         }

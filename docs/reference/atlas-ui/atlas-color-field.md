@@ -34,6 +34,9 @@ Name it with `Accessible.name` (what the colour is for). The default name is "Co
 | `showAlpha` | `bool` | `false` | Accept and show an alpha channel. |
 | `showMore` | `bool` | `true` | Shows the "More..." button that opens the system colour dialog. |
 
+> [!NOTE]
+> A colour the user picks or types does not end a binding on `color`. If `onEdited` stores it, the binding follows the model; if the app ignores it, `color` returns to the model's one turn of the event loop later. A handler or `onXChanged` that reads it sees the new value at once. A literal value or no binding keeps the user's edit.
+
 ## Signals
 
 | Name | Description |
