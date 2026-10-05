@@ -724,23 +724,22 @@ bool AtlasSettings::flush()
 
 // The debounce timer fired: never wait for the lock on the GUI thread. When
 // another process holds it, the changes stay pending and this runs again
-// after a growing delay; past about 10 s it warns once and stops (the next
-// change or flush() tries again).
+// after a growing delay, up to once a second; past about 10 s it warns
+// once and goes on trying each second until the write succeeds.
 void AtlasSettings::timedWrite()
 {
     if (writePending(0) || !m_lockBusy) {
         m_retryMs = 0;
         m_retryWaitedMs = 0;
+        m_lockWarned = false;
         return;
     }
-    if (m_retryWaitedMs >= kRetryTotalMs) {
-        qWarning("AtlasSettings: %s: another program has held the settings lock for %d seconds; %lld change(s) wait and are written when it lets go, at the next change, or on exit", qPrintable(path()), kRetryTotalMs / 1000, qint64(m_pending.size()));
-        m_retryMs = 0;
-        m_retryWaitedMs = 0;
-        return;
+    if (m_retryWaitedMs >= kRetryTotalMs && !m_lockWarned) {
+        m_lockWarned = true;
+        qWarning("AtlasSettings: %s: another program has held the settings lock for %d seconds; %lld change(s) wait and are written when it lets go", qPrintable(path()), kRetryTotalMs / 1000, qint64(m_pending.size()));
     }
     m_retryMs = m_retryMs ? qMin(m_retryMs * 2, kRetryMaxMs) : kRetryFirstMs;
-    m_retryWaitedMs += m_retryMs;
+    m_retryWaitedMs = qMin(m_retryWaitedMs + m_retryMs, kRetryTotalMs);
     m_writeTimer.start(m_retryMs);
 }
 

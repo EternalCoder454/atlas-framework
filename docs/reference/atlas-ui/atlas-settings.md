@@ -66,7 +66,7 @@ A window saves its own size with `AtlasWindow.stateKey`; see [AtlasWindow](atlas
 ## How it reads and writes
 
 - `setValue` and `remove` are batched (a short timer, `flush()`, or the end of the program) and written atomically: a temp file is renamed over the file.
-- Writes take the same `flock` on `.<name>.lock` beside the file that the Rust crate takes, so a Rust writer and this one never lose each other's change. `flush()` waits at most 1 second for it and returns `false` if another program still holds it. The timed write never waits: while another program holds the lock the changes stay pending and are retried after 50 ms, doubling up to 1 second, for about 10 seconds; then one warning is logged and the changes wait for the next change or `flush()`.
+- Writes take the same `flock` on `.<name>.lock` beside the file that the Rust crate takes, so a Rust writer and this one never lose each other's change. `flush()` waits at most 1 second for it and returns `false` if another program still holds it. The timed write never waits: while another program holds the lock the changes stay pending and are retried after 50 ms, doubling up to 1 second, and then each second until the write succeeds; after about 10 seconds one warning is logged. A failed `flush()` starts the retries too. Changing `group` or `fileName`, and quitting, write what is pending with `flush()`, so they can wait up to 1 second for the lock.
 - Keys the user or an admin marked immutable (`[$i]`) are refused.
 - A key marked `[$e]` (variable expansion) is dropped with a warning, so it reads as not set; `$VARIABLE` expansion is not done.
 - A file that is not a regular file, or is over 4 MB, is not read (you get defaults) and not written.

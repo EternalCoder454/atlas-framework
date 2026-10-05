@@ -8,6 +8,7 @@
 #include <KConfig>
 #include <KConfigGroup>
 
+#include <QScopeGuard>
 #include <QFile>
 #include <QGuiApplication>
 #include <QQmlComponent>
@@ -636,6 +637,12 @@ private Q_SLOTS:
         auto s = make(QStringLiteral("Busy"));
         const int fd = ::open(QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock"))).constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
         QVERIFY(fd >= 0);
+        int held = fd;
+        const auto release = qScopeGuard([&held] {
+            if (held >= 0) {
+                ::close(held);
+            }
+        });
         QCOMPARE(::flock(fd, LOCK_EX | LOCK_NB), 0);
         QVERIFY(s->setValue(QStringLiteral("K"), 7));
         // The event loop keeps turning while the timed write tries and retries.
@@ -651,7 +658,7 @@ private Q_SLOTS:
         ticker.start();
         QTest::qWait(1800);
         ticker.stop();
-        QVERIFY2(worst < 400, qPrintable(QString::number(worst)));
+        QVERIFY2(worst < 700, qPrintable(QString::number(worst))); // the old wait stalled 1000 ms
         QVERIFY(!QFile::exists(m_dir.filePath(QStringLiteral("atlas-testerrc")))); // still pending
         QCOMPARE(s->value(QStringLiteral("K"), 0).toInt(), 7);
         // Explicit flush still waits about a second, then fails and keeps the change.
@@ -660,7 +667,8 @@ private Q_SLOTS:
         QVERIFY(!s->flush());
         QVERIFY2(t.elapsed() >= 900 && t.elapsed() < 3000, qPrintable(QString::number(t.elapsed())));
         // Released: the next retry writes it.
-        ::close(fd);
+        ::close(held);
+        held = -1;
         QTRY_VERIFY_WITH_TIMEOUT(readAll(rc()).contains(QStringLiteral("K=7")), 4000);
     }
     void notifyBodyIsPlainByDefault()

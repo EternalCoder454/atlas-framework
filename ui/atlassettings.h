@@ -137,6 +137,7 @@ private:
     // Timed-write backoff while another process holds the lock.
     int m_retryMs = 0, m_retryWaitedMs = 0;
     bool m_lockBusy = false;
+    bool m_lockWarned = false; // the 10 s warning was logged this time
     QFileSystemWatcher m_watcher;
     QMetaObject::Connection m_quitConnection;
 };
