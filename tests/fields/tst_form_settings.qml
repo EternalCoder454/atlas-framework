@@ -40,10 +40,14 @@ TestCase {
     property var made: []
 
     function cleanup() {
-        for (const f of tc.made) {
-            f.destroy();
-        }
+        // A test may have destroyed its form already.
+        const list = tc.made;
         tc.made = [];
+        for (const f of list) {
+            if (f) {
+                f.destroy();
+            }
+        }
     }
 
     // A form with one keyed entry round `controlSrc`, using store `st`.
@@ -215,6 +219,7 @@ TestCase {
         const f = makeForm("Item { property int level: 3 }", st, "settingProperty: \"level\"");
         const c = f.entry._control;
         tryCompare(c, "level", 5);
+        tryVerify(() => !f.entry._applying);
         c.level = 7;
         compare(st.value("K", 0), 7);
     }
@@ -259,10 +264,10 @@ TestCase {
         wait(30);
         c.forceActiveFocus();
         keyClick("a");
-        keyClick("Backspace");
+        keyClick(Qt.Key_Backspace);
         compare(c.text, "");
         wait(30);
-        compare(st.contains("K") ? st.value("K", "x") : "", "", "empty is not written as a value that fails the rule");
+        compare(st.value("K", ""), "a", "empty fails the rule: the last valid value stays");
     }
 
     function test_a_password_that_is_shown_is_still_never_saved() {
@@ -295,6 +300,7 @@ TestCase {
 
     function test_a_retry_ends_cleanly_when_the_form_is_destroyed() {
         const f = makeForm("AtlasSwitch { }", null);
+        tc.made = tc.made.filter(m => m !== f);
         f.destroy();
         wait(100);
         verify(true);
@@ -304,11 +310,19 @@ TestCase {
         const st = newStore();
         const f = makeForm("AtlasTextArea { }", st);
         wait(30);
+        // Only the user's edits save (a TextArea has textEdited since Qt
+        // 6.9), so the last character of each value is typed.
+        const c = f.entry._control;
+        c.forceActiveFocus();
         ignoreWarning(/over 64 KiB/);
-        f.entry._control.text = "x".repeat(70000);
+        c.text = "x".repeat(70000);
+        c.cursorPosition = c.length;
+        keyClick("x");
         wait(30);
         verify(!st.contains("K"));
-        f.entry._control.text = "short";
+        c.text = "shor";
+        c.cursorPosition = c.length;
+        keyClick("t");
         compare(st.value("K", ""), "short");
     }
 

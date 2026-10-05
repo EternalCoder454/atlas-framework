@@ -29,7 +29,11 @@ Rectangle {
             // fields. QML cannot reorder an item's children (there is no
             // stackBefore; re-parenting the body would break the popup's own
             // layout), so the order is left as Qt makes it.
-            "AtlasDialog": "Qt's popup chain is body, header, footer"
+            "AtlasDialog": "Qt's popup chain is body, header, footer",
+            // An AtlasDialog (as above) with the page sidebar as a column:
+            // Tab goes down the sidebar, then the search field and the page,
+            // while rows across both columns would mix them.
+            "AtlasPreferencesDialog": "dialog with a sidebar column"
         })
 
     // Demos the Tab walk cannot run on at all.

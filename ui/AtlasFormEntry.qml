@@ -69,8 +69,12 @@ FocusScope {
     // Latched: a field that has been a password never saves, even when a
     // "show" toggle turns the text to Normal.
     property bool _wasSecret: false
-    on_SecretChanged: if (entry._secret) {
-        entry._wasSecret = true;
+    function _checkSecret(): bool {
+        entry._secret = entry._isSecret(entry._control);
+        if (entry._secret) {
+            entry._wasSecret = true;
+        }
+        return entry._secret || entry._wasSecret;
     }
     onVisibleChanged: entry._noteVisible()
     function _noteVisible(): void {
@@ -98,7 +102,9 @@ FocusScope {
         }
     }
     // A password, or anything that holds one: never loaded, never saved.
-    readonly property bool _secret: entry._isSecret(entry._control)
+    // Checked by _checkSecret() rather than bound: walking the control can
+    // create its deferred parts, which would re-trigger a binding.
+    property bool _secret: false
     property var _warned: ({})
     property var _links: []
     property bool _a11yTaken: false
@@ -199,9 +205,7 @@ FocusScope {
         if (entry._form) {
             entry._form._register(entry);
         }
-        if (entry._secret) {
-            entry._wasSecret = true;
-        }
+        entry._checkSecret();
         entry._noteVisible();
         entry._attach();
         entry._ready = true;
@@ -393,6 +397,7 @@ FocusScope {
         if (!c) {
             return;
         }
+        entry._checkSecret();
         entry._syncA11y();
         const p = entry._prop;
         if (c["echoMode"] !== undefined && c["accepted"] !== undefined) {
@@ -554,7 +559,7 @@ FocusScope {
             entry._warnOnce("this is not a valid settings key");
             return;
         }
-        if (entry._secret || entry._wasSecret) {
+        if (entry._checkSecret()) {
             entry._warnOnce("a password is not a setting, so it is neither loaded nor saved");
             return;
         }
@@ -600,9 +605,17 @@ FocusScope {
         if (entry._applying || entry._guard || !entry._keyed || !entry._validKey(entry.settingKey)) {
             return;
         }
+        if (entry._checkSecret()) {
+            // Made a password after loading: say so once, as _load() does.
+            entry._warnOnce("a password is not a setting, so it is neither loaded nor saved");
+            return;
+        }
         const s = entry._store;
-        const c = entry._control;
-        if (!s || !c || entry._unacceptable || entry._missing) {
+        const c = entry._untyped(entry._control);
+        // Read now, not through the bindings: a text field's edit signal
+        // comes before its acceptableInput is updated.
+        const empty = entry._emptyOf(c);
+        if (!s || !c || (!empty && c["acceptableInput"] === false) || (entry.required && empty)) {
             // A value the entry calls invalid is not saved.
             return;
         }

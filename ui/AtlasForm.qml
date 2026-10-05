@@ -30,7 +30,7 @@ ColumnLayout {
     property AtlasSettings settings: null
     // True when every entry that is enabled has no error of any kind.
     readonly property bool valid: form._entries.every(e => e.valid)
-    // The entries inside, in the order they were created.
+    // The entries inside, in reading order (their order in the item tree).
     readonly property var entries: form._entries
 
     // Return was pressed in a single-line field while the form is valid.
@@ -69,8 +69,34 @@ ColumnLayout {
     // Called by an entry when it is created and when it is destroyed.
     function _register(entry: var): void {
         if (form._entries.indexOf(entry) < 0) {
-            form._entries = form._entries.concat([entry]);
+            // Entries complete in no fixed order, so sort by place in the tree.
+            form._entries = form._entries.concat([entry]).sort((a, b) => form._compare(form._path(a), form._path(b)));
         }
+    }
+    // The child index at each level from the form down to `item`.
+    function _path(item: var): var {
+        const path = [];
+        for (let i = item; i && i !== form; i = i.parent) {
+            const kids = i.parent ? i.parent.children : [];
+            let at = -1;
+            for (let k = 0; k < kids.length; ++k) {
+                if (kids[k] === i) {
+                    at = k;
+                    break;
+                }
+            }
+            path.unshift(at);
+        }
+        return path;
+    }
+    function _compare(a: var, b: var): int {
+        const n = Math.min(a.length, b.length);
+        for (let k = 0; k < n; ++k) {
+            if (a[k] !== b[k]) {
+                return a[k] - b[k];
+            }
+        }
+        return a.length - b.length;
     }
     function _unregister(entry: var): void {
         form._entries = form._entries.filter(e => e !== entry);

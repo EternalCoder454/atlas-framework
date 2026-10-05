@@ -237,8 +237,11 @@ TestCase {
         s.text = "port";
         tryVerify(() => d._results.length === 1);
         const spy = createTemporaryObject(spyComp, tc, {target: d.portEntry});
-        const row = find(d.contentItem, i => i.atlasRow === true && i.title === "Proxy port");
-        verify(row);
+        // The search hit, not the hidden page's own row of that name. It is
+        // found as soon as it is visible, a polish before it has a size: a
+        // click then lands beside it (width 0), so wait for the layout.
+        let row = null;
+        tryVerify(() => (row = find(d.contentItem, i => i.atlasRow === true && i.title === "Proxy port" && i.visible && i.chevron === true && i.width > 0)) !== null);
         mouseClick(row);
         tryCompare(d, "currentIndex", 1);
         compare(s.text, "", "the search is cleared");
