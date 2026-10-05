@@ -33,6 +33,7 @@ Item {
             AtlasAvatar { }
             AtlasAvatar { size: 32; name: "Tim Berners-Lee" }
             AtlasAvatar { size: 64; name: "Ken Thompson" }
+            AtlasAvatar { size: 48; name: "With Picture"; source: Qt.resolvedUrl("images/shot-green.png") }
             // An image that does not load falls back to the initials.
             AtlasAvatar { size: 48; name: "Missing Picture"; source: "file:///nonexistent/atlas-avatar.png" }
         }

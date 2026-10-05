@@ -14,7 +14,7 @@ import org.kde.kirigami as Kirigami
 //
 // The colours are a fixed set that white text reads on (WCAG AA). The picture
 // is cropped to a circle with a mask, which needs a GPU backend; on Qt
-// Quick's software backend it stays square. The accessible name is
+// Quick's software backend (which draws no mask at all) it is shown square. The accessible name is
 // `accessibleName`: `name`, or "Profile picture" when there is none.
 Item {
     id: root
@@ -89,7 +89,7 @@ Item {
         fillMode: Image.PreserveAspectCrop
         // Decoded at the drawn size, not the file's.
         sourceSize: Qt.size(Math.ceil(root.size * 2), Math.ceil(root.size * 2))
-        layer.enabled: visible
+        layer.enabled: visible && !AtlasStyle.softwareRendering
         layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: mask
