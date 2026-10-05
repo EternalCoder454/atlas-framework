@@ -55,7 +55,7 @@ Item {
         },
         {
             title: qsTr("Data display"),
-            types: ["LiveChart", "MiniBars", "AtlasSparkline", "AtlasStat", "AtlasDetailGrid", "AtlasAppCard", "AtlasCard", "AtlasScreenshotCarousel", "AtlasAvatar"]
+            types: ["LiveChart", "MiniBars", "AtlasSparkline", "AtlasStat", "AtlasDetailGrid", "AtlasAppCard", "AtlasShelf", "AtlasCard", "AtlasScreenshotCarousel", "AtlasAvatar"]
         },
         {
             title: qsTr("Text"),

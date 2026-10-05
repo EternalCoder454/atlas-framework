@@ -133,6 +133,7 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasSearchResults](atlas-search-results.md): A launcher's results list with sections and shortcut hints.
 - [AtlasAppCard](atlas-app-card.md): A store card for one app.
 - [AtlasScreenshotCarousel](atlas-screenshot-carousel.md): Screenshots shown one at a time.
+- [AtlasShelf](atlas-shelf.md): A titled horizontal row of cards with scroll buttons.
 
 ### Navigation
 

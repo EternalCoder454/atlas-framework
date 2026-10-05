@@ -12,6 +12,9 @@ import org.kde.kirigami as Kirigami
 //   "installed"   Open, in the soft style (nothing left to install)
 //   "update"      Update, in the accent colour
 //   "error"       Retry, in the negative colour
+//   "remove"      Remove, in the negative colour (a destructive look)
+//   "removing"    as "installing", for an uninstall; a press asks to cancel
+//   "queued"      Queued, waiting for its turn; a press asks to cancel
 //
 //   AtlasInstallButton {
 //       installState: app.state   // "install", "installing", ...
@@ -21,12 +24,13 @@ import org.kde.kirigami as Kirigami
 //   }
 //
 // `clicked` fires for every press, as for any button; while installing a
-// press also emits `cancelRequested`. `installedText` and the other labels
+// press in "installing", "removing" or "queued" also emits `cancelRequested`.
+// `installedText` and the other labels
 // can be replaced for an app that says "Launch" rather than "Open".
 T.AbstractButton {
     id: control
 
-    // One of the five names above; any other value is drawn as "install".
+    // One of the eight names above; any other value is drawn as "install".
     // (Item's own `state` stays free for an app's States.)
     property string installState: "install"
 
@@ -39,6 +43,10 @@ T.AbstractButton {
     property string updateText: qsTr("Update")
     //: Button that tries a failed install again (a verb)
     property string errorText: qsTr("Retry")
+    //: Button that uninstalls an app (a verb)
+    property string removeText: qsTr("Remove")
+    //: Button label of an app waiting in the queue for its turn to install
+    property string queuedText: qsTr("Queued")
 
     // False holds the progress shimmer still (a screenshot).
     property bool animated: true
@@ -48,17 +56,30 @@ T.AbstractButton {
     QtObject {
         id: priv
         readonly property bool installing: control.installState === "installing"
-        readonly property bool indeterminate: priv.installing && control.progress < 0
+        readonly property bool removing: control.installState === "removing"
+        readonly property bool queued: control.installState === "queued"
+        // The states that show a progress bar, and the ones a press cancels.
+        readonly property bool working: priv.installing || priv.removing
+        readonly property bool cancellable: priv.working || priv.queued
+        readonly property bool indeterminate: priv.working && control.progress < 0
         readonly property real fraction: Math.max(0, Math.min(1, control.progress))
         // "install", "update" and any unknown or empty value are filled with the accent.
-        readonly property bool filled: control.installState !== "installing" && control.installState !== "installed" && control.installState !== "error"
-        readonly property bool failed: control.installState === "error"
+        readonly property bool filled: !priv.working && !priv.queued && control.installState !== "installed" && control.installState !== "error" && control.installState !== "remove"
+        // The negative colour: a failed install and the destructive Remove.
+        readonly property bool failed: control.installState === "error" || control.installState === "remove"
         readonly property color tint: priv.failed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
         readonly property string label: {
             switch (control.installState) {
             case "installing":
                 //: Install button label while installing: a plain notice when the progress is unknown, else the percentage (%1 is a number)
                 return priv.indeterminate ? qsTr("Installing…") : qsTr("%1%").arg(Math.round(priv.fraction * 100));
+            case "removing":
+                //: Install button label while removing: a plain notice when the progress is unknown, else the percentage (%1 is a number)
+                return priv.indeterminate ? qsTr("Removing…") : qsTr("%1%").arg(Math.round(priv.fraction * 100));
+            case "queued":
+                return control.queuedText;
+            case "remove":
+                return control.removeText;
             case "installed":
                 return control.installedText;
             case "update":
@@ -80,12 +101,12 @@ T.AbstractButton {
     scale: control.down && control.enabled ? 0.97 : 1
 
     Accessible.role: Accessible.Button
-    Accessible.name: priv.installing ? qsTr("Installing") : priv.label
-    Accessible.description: priv.installing ? (priv.indeterminate ? qsTr("Press to cancel") : qsTr("%1%, press to cancel").arg(Math.round(priv.fraction * 100))) : ""
+    Accessible.name: priv.installing ? qsTr("Installing") : priv.removing ? qsTr("Removing") : priv.label
+    Accessible.description: priv.working ? (priv.indeterminate ? qsTr("Press to cancel") : qsTr("%1%, press to cancel").arg(Math.round(priv.fraction * 100))) : priv.queued ? qsTr("Press to cancel") : ""
     Accessible.onPressAction: control.clicked()
 
     onClicked: {
-        if (priv.installing) {
+        if (priv.cancellable) {
             control.cancelRequested();
         }
     }
@@ -174,7 +195,7 @@ T.AbstractButton {
             // under reduced motion).
             Rectangle {
                 id: track
-                visible: priv.installing
+                visible: priv.working
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom

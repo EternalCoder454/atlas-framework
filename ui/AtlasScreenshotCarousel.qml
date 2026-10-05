@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Controls as QQC2
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
@@ -28,6 +29,14 @@ import org.kde.kirigami as Kirigami
 // (no token in its query). A file: source should come from the app's own
 // download or cache, not straight from metadata.
 //
+// `expandable: true` lets a click, or Enter, open a full-window viewer that
+// belongs to the carousel. It shows the same sources under the same rules
+// (local only, `allowRemote`), zoomed to fit; a double click toggles 1:1. The
+// arrow keys move between images, Esc or a click outside the image closes it,
+// and focus returns to the carousel. `expanded` tells whether it is open and
+// can be set to open or close it. The open animation is off under reduced
+// motion.
+//
 // With no sources it shows a short "No screenshots" message instead.
 T.Control {
     id: control
@@ -37,6 +46,13 @@ T.Control {
     property int currentIndex: 0
     // Lets https: sources load; see above. http: is refused either way.
     property bool allowRemote: false
+    // A click or Enter opens the full-window viewer.
+    property bool expandable: false
+    // Whether the viewer is open. Only an expandable carousel with images opens.
+    property bool expanded: false
+
+    // The viewer was opened, showing the image at `index`.
+    signal opened(int index)
     // How many sources are shown: at most 50, and none for something that is
     // not a list.
     readonly property int count: {
@@ -105,7 +121,29 @@ T.Control {
         }
     }
 
-    onCountChanged: currentIndex = Math.max(0, Math.min(count - 1, currentIndex))
+    onCountChanged: {
+        currentIndex = Math.max(0, Math.min(count - 1, currentIndex));
+        if (count === 0) {
+            expanded = false;
+        }
+    }
+    onExpandableChanged: {
+        if (!expandable) {
+            expanded = false;
+        }
+    }
+    onExpandedChanged: {
+        if (expanded) {
+            if (!expandable || count === 0) {
+                expanded = false;
+                return;
+            }
+            viewer.open();
+            opened(currentIndex);
+        } else {
+            viewer.close();
+        }
+    }
 
     implicitWidth: Kirigami.Units.gridUnit * 30
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 30 * 9 / 16) + dots.height
@@ -114,6 +152,11 @@ T.Control {
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Screenshots")
     //: Spoken position in the screenshot gallery: %1 is the current image, %2 how many there are
+    Accessible.onPressAction: {
+        if (control.expandable) {
+            control.expanded = true;
+        }
+    }
     Accessible.description: control.count > 0 ? qsTr("Image %1 of %2").arg(control.currentIndex + 1).arg(control.count) : qsTr("No screenshots")
 
     Keys.onPressed: event => {
@@ -122,6 +165,13 @@ T.Control {
         }
         const dir = control.mirrored ? -1 : 1;
         switch (event.key) {
+        case Qt.Key_Return:
+        case Qt.Key_Enter:
+            if (!control.expandable || event.isAutoRepeat) {
+                return;
+            }
+            control.expanded = true;
+            break;
         case Qt.Key_Left:
             priv.step(-dir);
             break;
@@ -181,6 +231,20 @@ T.Control {
                 anchors.margins: 1
                 clip: true
                 visible: control.count > 0
+
+                // A click opens the viewer; the buttons over the picture sit
+                // above this item and keep their own clicks.
+                TapHandler {
+                    enabled: control.expandable
+                    onTapped: {
+                        control.forceActiveFocus(Qt.MouseFocusReason);
+                        control.expanded = true;
+                    }
+                }
+                HoverHandler {
+                    enabled: control.expandable
+                    cursorShape: Qt.PointingHandCursor
+                }
 
                 Repeater {
                     model: control.count
@@ -350,6 +414,211 @@ T.Control {
                 font.pointSize: AtlasStyle.fontSizeCaption
                 color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
+            }
+        }
+
+        // The full-window viewer. It reads the carousel's sources and
+        // currentIndex, so what it may load is what the carousel may load.
+        QQC2.Popup {
+            id: viewer
+            parent: QQC2.Overlay.overlay ?? control.Window.contentItem
+            x: 0
+            y: 0
+            width: parent ? parent.width : 0
+            height: parent ? parent.height : 0
+            padding: 0
+            modal: true
+            focus: true
+            closePolicy: QQC2.Popup.CloseOnEscape
+            onClosed: {
+                control.expanded = false;
+                control.forceActiveFocus(Qt.OtherFocusReason);
+            }
+            onAboutToShow: zoom.actual = false
+
+            enter: Transition {
+                NumberAnimation {
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: AtlasStyle.duration
+                }
+            }
+            exit: Transition {
+                NumberAnimation {
+                    property: "opacity"
+                    from: 1
+                    to: 0
+                    duration: AtlasStyle.durationShort
+                }
+            }
+
+            // Dims the window; it follows the window colour, not a token.
+            background: Rectangle {
+                color: Qt.alpha(Kirigami.Theme.backgroundColor, AtlasStyle.highContrast ? 1 : 0.94)
+            }
+
+            component ViewerButton: T.AbstractButton {
+                id: vb
+                property int symbolIcon
+                hoverEnabled: true
+                focusPolicy: Qt.NoFocus
+                width: Math.round(Kirigami.Units.gridUnit * 2.2)
+                height: width
+                Accessible.role: Accessible.Button
+                background: Rectangle {
+                    radius: AtlasStyle.radiusPill
+                    color: vb.down ? AtlasStyle.pressed : vb.hovered ? AtlasStyle.hover : AtlasStyle.control
+                    border.width: 1
+                    border.color: AtlasStyle.controlBorder
+                }
+                contentItem: Item {
+                    Symbol {
+                        anchors.centerIn: parent
+                        icon: vb.symbolIcon
+                        size: Kirigami.Units.iconSizes.smallMedium
+                    }
+                }
+            }
+
+            contentItem: FocusScope {
+                id: zoom
+                // False: the picture is zoomed to fit; true: shown 1:1.
+                property bool actual: false
+                readonly property int shown: control.currentIndex
+                readonly property string source: viewer.visible ? priv.vetted(control.sources[zoom.shown] ?? "") : ""
+                focus: true
+                Accessible.role: Accessible.Pane
+                Accessible.name: qsTr("Screenshot viewer")
+                //: Spoken position in the screenshot viewer: %1 is the current image, %2 how many there are ("2 of 5")
+                Accessible.description: qsTr("%1 of %2").arg(zoom.shown + 1).arg(control.count)
+                onShownChanged: zoom.actual = false
+
+                Keys.onPressed: event => {
+                    const dir = control.mirrored ? -1 : 1;
+                    switch (event.key) {
+                    case Qt.Key_Left:
+                        priv.step(-dir);
+                        break;
+                    case Qt.Key_Right:
+                        priv.step(dir);
+                        break;
+                    case Qt.Key_Home:
+                        control.currentIndex = 0;
+                        break;
+                    case Qt.Key_End:
+                        control.currentIndex = control.count - 1;
+                        break;
+                    default:
+                        return;
+                    }
+                    event.accepted = true;
+                }
+
+                Flickable {
+                    id: flick
+                    anchors.fill: parent
+                    contentWidth: stage.width
+                    contentHeight: stage.height
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    interactive: zoom.actual
+
+                    Item {
+                        id: stage
+                        width: Math.max(flick.width, zoom.actual ? img.implicitWidth : 0)
+                        height: Math.max(flick.height, zoom.actual ? img.implicitHeight : 0)
+                        Image {
+                            id: img
+                            anchors.centerIn: parent
+                            width: zoom.actual ? implicitWidth : flick.width - AtlasStyle.spacingXXLarge * 2
+                            height: zoom.actual ? implicitHeight : flick.height - AtlasStyle.spacingXXLarge * 2
+                            source: zoom.source
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectFit
+                            // A bound on what a hostile picture can cost.
+                            sourceSize: Qt.size(8192, 8192)
+                            Accessible.role: Accessible.Graphic
+                            //: Name of one screenshot: %1 is its number, %2 how many there are
+                            Accessible.name: qsTr("Screenshot %1 of %2").arg(zoom.shown + 1).arg(control.count)
+                        }
+                    }
+                }
+
+                Column {
+                    anchors.centerIn: parent
+                    spacing: AtlasStyle.spacingSmall
+                    visible: img.status !== Image.Ready
+                    Symbol {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        icon: img.status === Image.Error || zoom.source === "" ? Symbols.BrokenImage : Symbols.Image
+                        size: Kirigami.Units.iconSizes.large
+                        color: AtlasStyle.textDisabled
+                    }
+                    Text {
+                        visible: img.status === Image.Error || zoom.source === ""
+                        text: qsTr("Screenshot unavailable")
+                        font.family: AtlasStyle.fontFamily
+                        font.pointSize: AtlasStyle.fontSizeCaption
+                        color: AtlasStyle.textMuted
+                        textFormat: Text.PlainText
+                        Accessible.ignored: true
+                    }
+                }
+
+                // A click outside the picture closes; a double click on it
+                // toggles between fit and 1:1.
+                TapHandler {
+                    onTapped: (point, button) => {
+                        const p = img.mapFromItem(zoom, point.position);
+                        const pw = img.paintedWidth;
+                        const ph = img.paintedHeight;
+                        const inside = img.status === Image.Ready
+                            && p.x >= (img.width - pw) / 2 && p.x <= (img.width + pw) / 2
+                            && p.y >= (img.height - ph) / 2 && p.y <= (img.height + ph) / 2;
+                        if (!inside) {
+                            viewer.close();
+                        } else if (tapCount === 2) {
+                            zoom.actual = !zoom.actual;
+                        }
+                    }
+                }
+
+                ViewerButton {
+                    id: closeButton
+                    y: AtlasStyle.spacingLarge
+                    x: control.mirrored ? AtlasStyle.spacingLarge : zoom.width - width - AtlasStyle.spacingLarge
+                    symbolIcon: Symbols.Close
+                    Accessible.name: qsTr("Close")
+                    onClicked: viewer.close()
+                }
+                Repeater {
+                    model: [-1, 1]
+                    delegate: ViewerButton {
+                        id: vnav
+                        required property int modelData
+                        readonly property int target: control.currentIndex + vnav.modelData
+                        readonly property bool leftSide: (vnav.modelData < 0) !== control.mirrored
+                        visible: control.count > 1 && vnav.target >= 0 && vnav.target < control.count
+                        x: leftSide ? AtlasStyle.spacingLarge : zoom.width - width - AtlasStyle.spacingLarge
+                        y: Math.round((zoom.height - height) / 2)
+                        symbolIcon: vnav.leftSide ? Symbols.ChevronLeft : Symbols.ChevronRight
+                        Accessible.name: vnav.modelData < 0 ? qsTr("Previous screenshot") : qsTr("Next screenshot")
+                        onClicked: priv.step(vnav.modelData)
+                    }
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.margins: AtlasStyle.spacingLarge
+                    visible: control.count > 1
+                    text: qsTr("%1 / %2").arg(zoom.shown + 1).arg(control.count)
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeCaption
+                    color: AtlasStyle.textMuted
+                    textFormat: Text.PlainText
+                    Accessible.ignored: true
+                }
             }
         }
     }

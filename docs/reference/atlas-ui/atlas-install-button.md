@@ -29,7 +29,9 @@ AtlasInstallButton {
 | `installState` | `string` | `"install"` | What the button offers: see the table below. Any other value is drawn as `"install"`. Item's own `state` stays free for an app's states. |
 | `installText` | `string` | `"Install"` | The label in the `"install"` state. Translated. |
 | `installedText` | `string` | `"Open"` | The label in the `"installed"` state. Replace it for an app that says "Launch". Translated. |
-| `progress` | `real` | `-1` | 0 to 1 while installing. A negative value means no figure is known: the button shows "Installing…" and a bar that slides to and fro. |
+| `progress` | `real` | `-1` | 0 to 1 while installing or removing. A negative value means no figure is known: the button shows "Installing…" and a bar that slides to and fro. |
+| `queuedText` | `string` | `"Queued"` | The label in the `"queued"` state (since 1.5.0). Translated. |
+| `removeText` | `string` | `"Remove"` | The label in the `"remove"` state (since 1.5.0). Translated. |
 | `updateText` | `string` | `"Update"` | The label in the `"update"` state. Translated. |
 
 `installState` is one of:
@@ -41,13 +43,37 @@ AtlasInstallButton {
 | `"installed"` | Open, in the soft style | `clicked` |
 | `"update"` | Update, in the accent colour | `clicked` |
 | `"error"` | Retry, in the negative colour | `clicked` |
+| `"remove"` | Remove, in the negative colour: a destructive look (since 1.5.0) | `clicked` |
+| `"removing"` | As `"installing"`, for an uninstall: the fill and a percentage, or "Removing…" when `progress` is negative (since 1.5.0) | `clicked`, then `cancelRequested` |
+| `"queued"` | Queued, waiting for its turn (since 1.5.0) | `clicked`, then `cancelRequested` |
+
+## Open and Remove side by side
+
+An installed app offers Open and Remove together: an AtlasInstallButton in `"installed"` and a second one in `"remove"`, whose negative colour is the destructive look. It is two buttons, not a split button. (A [TextButton](text-button.md) has no destructive colour, so it is not used for Remove.)
+
+```qml
+RowLayout {
+    AtlasInstallButton {
+        installState: "installed"
+        onClicked: app.open()
+    }
+    AtlasInstallButton {
+        installState: app.removing ? "removing" : "remove"
+        progress: app.removeProgress
+        onClicked: if (!app.removing) confirmRemove.open()
+        onCancelRequested: app.cancelRemove()
+    }
+}
+```
+
+Ask for confirmation before removing. Use `"queued"` for an app that waits for another job.
 
 ## Signals
 
 | Name | Description |
 |---|---|
-| `cancelRequested()` | The button was pressed while `installState` is `"installing"`. `clicked` fires for every press as for any button. |
+| `cancelRequested()` | The button was pressed while `installState` is `"installing"`, `"removing"` or `"queued"`. `clicked` fires for every press as for any button. |
 
 ## Accessibility
 
-While installing, the accessible name is "Installing" and its description gives the percentage and says that a press cancels. Enter and Return press the button.
+While installing or removing, the accessible name is "Installing" or "Removing" and its description gives the percentage and says that a press cancels. A queued button reads its label and says that a press cancels. Enter and Return press the button.

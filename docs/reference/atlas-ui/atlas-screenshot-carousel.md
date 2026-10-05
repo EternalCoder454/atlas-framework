@@ -26,11 +26,36 @@ AtlasScreenshotCarousel {
 | `allowRemote` | `bool` | `false` | Lets `https:` sources load, for a trusted source. `http:` is refused either way. |
 | `count` | `int` (read-only) | — | How many sources are shown: at most 50, and none for something that is not a list. |
 | `currentIndex` | `int` | `0` | The screenshot shown. Kept within `count`. |
+| `expandable` | `bool` | `false` | A click, or Enter, opens the full-window viewer (since 1.5.0). |
+| `expanded` | `bool` | `false` | Whether the viewer is open. Set it to open or close the viewer; it stays `false` when the carousel is not `expandable` or has no images. Since 1.5.0. |
 | `sources` | `var` | `[]` | A list of image urls (strings or `url` values). |
+
+## Signals
+
+| Name | Description |
+|---|---|
+| `opened(int index)` | The viewer opened on the image at `index` (since 1.5.0). `expandedChanged` fires when it opens and closes. |
+
+## The viewer
+
+With `expandable: true`, a click on the picture or Enter opens a viewer that fills the window. It belongs to the carousel (there is no separate type) and shows the same `sources` under the same rules: local files only, and `https:` only with `allowRemote`.
+
+- Images are zoomed to fit. A double click toggles 1:1; at 1:1 a large image scrolls.
+- Left and Right (mirrored in a right-to-left layout), Home and End move between images; so do the buttons at the sides.
+- Esc, the close button, or a click outside the image closes it, and focus goes back to the carousel.
+- A screen reader hears the image's position, "2 of 5". Under reduced motion the viewer opens without its fade, and in high contrast the dimming is solid.
+
+```qml
+AtlasScreenshotCarousel {
+    expandable: true
+    sources: [Qt.resolvedUrl("shots/a.png"), Qt.resolvedUrl("shots/b.png")]
+    onOpened: index => stats.viewed(index)
+}
+```
 
 ## Keyboard
 
-The arrow keys go to the previous and next screenshot; Home and End go to the first and last.
+The arrow keys go to the previous and next screenshot; Home and End go to the first and last. With `expandable`, Enter opens the viewer.
 
 ## Where pictures may come from
 

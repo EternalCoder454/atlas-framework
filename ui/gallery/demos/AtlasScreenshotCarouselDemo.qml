@@ -31,6 +31,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             focus: true
+            expandable: true
             sources: [Qt.resolvedUrl("images/shot-blue.png"), Qt.resolvedUrl("images/shot-green.png"), Qt.resolvedUrl("images/shot-orange.png")]
         }
     }

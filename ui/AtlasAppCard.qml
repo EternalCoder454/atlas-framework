@@ -22,6 +22,10 @@ import org.kde.kirigami as Kirigami
 //       onCancelRequested: cancel()
 //   }
 //
+// `verified: true` puts a "Verified" badge after the name. `compact: true`
+// lays the card out as one list row (icon, name, summary, size, action) for
+// an Installed or Updates list.
+//
 // Another action goes in `actionComponent`, a Component the card sizes and centres
 // at its end: `actionComponent: Component { TextButton { text: qsTr("Manage") } }`.
 T.AbstractButton {
@@ -38,6 +42,10 @@ T.AbstractButton {
     // Forwarded to the default action; see AtlasInstallButton.
     property string installState: "install"
     property real progress: -1
+    // Adds a "Verified" badge after the name.
+    property bool verified: false
+    // A one-row layout for lists: icon, name, summary, size, action.
+    property bool compact: false
     // Replaces the AtlasInstallButton. Leave it alone to keep the default.
     property Component actionComponent: defaultAction
 
@@ -51,7 +59,7 @@ T.AbstractButton {
             //: Spoken label of a card detail: %1 is the app name, %2 the detail text
             Accessible.name: qsTr("%1: %2").arg(control.name).arg(text)
             onClicked: {
-                if (installState !== "installing") {
+                if (installState !== "installing" && installState !== "removing" && installState !== "queued") {
                     control.actionClicked();
                 }
             }
@@ -76,7 +84,7 @@ T.AbstractButton {
             return Qt.font(o);
         }
         readonly property bool hasIcon: control.icon.name.length > 0 || control.icon.source.toString().length > 0
-        readonly property real iconSide: Math.round(Kirigami.Units.gridUnit * 3.4)
+        readonly property real iconSide: Math.round(Kirigami.Units.gridUnit * (control.compact ? 2.2 : 3.4))
         // What a screen reader says: the rating in words, not as a bare number.
         readonly property string spokenMeta: {
             const parts = [];
@@ -103,13 +111,13 @@ T.AbstractButton {
 
     implicitWidth: Kirigami.Units.gridUnit * 24
     implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
-    padding: AtlasStyle.spacingLarge
+    padding: control.compact ? AtlasStyle.spacing : AtlasStyle.spacingLarge
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
 
     Accessible.role: Accessible.Button
     Accessible.name: control.name
-    Accessible.description: [control.summary, priv.spokenMeta].filter(s => s.length > 0).join(", ")
+    Accessible.description: [control.verified ? qsTr("Verified") : "", control.summary, priv.spokenMeta].filter(s => s.length > 0).join(", ")
 
     Keys.onReturnPressed: event => {
         // A custom action inside the card that has the focus keeps its own Return.
@@ -183,13 +191,28 @@ T.AbstractButton {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             spacing: Math.round(AtlasStyle.spacingSmall / 2)
-            Text {
+            RowLayout {
                 Layout.fillWidth: true
-                text: control.name
-                font: priv.strong
-                color: Kirigami.Theme.textColor
-                textFormat: Text.PlainText
-                elide: Text.ElideRight
+                spacing: AtlasStyle.spacingSmall
+                Text {
+                    Layout.fillWidth: true
+                    text: control.name
+                    font: priv.strong
+                    color: Kirigami.Theme.textColor
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                }
+                Loader {
+                    active: control.verified
+                    visible: active
+                    Layout.alignment: Qt.AlignVCenter
+                    sourceComponent: AtlasBadge {
+                        type: "accent"
+                        symbol: Symbols.Verified
+                        accessibleName: qsTr("Verified")
+                        Accessible.ignored: true // the card's description says it
+                    }
+                }
             }
             Text {
                 Layout.fillWidth: true
@@ -200,11 +223,11 @@ T.AbstractButton {
                 color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
-                maximumLineCount: 2
+                maximumLineCount: control.compact ? 1 : 2
                 elide: Text.ElideRight
             }
             RowLayout {
-                visible: priv.meta.length > 0
+                visible: !control.compact && priv.meta.length > 0
                 spacing: AtlasStyle.spacingSmall
                 Loader {
                     active: control.rating > 0
@@ -224,6 +247,17 @@ T.AbstractButton {
                     textFormat: Text.PlainText
                 }
             }
+        }
+
+        // Compact rows show the size in a column of its own before the action.
+        Text {
+            visible: control.compact && control.sizeText.length > 0
+            Layout.alignment: Qt.AlignVCenter
+            text: control.sizeText
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeCaption
+            color: AtlasStyle.textMuted
+            textFormat: Text.PlainText
         }
 
         Loader {

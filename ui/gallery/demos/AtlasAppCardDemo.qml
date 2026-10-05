@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import Atlas.Ui
 
-// AtlasAppCard: not yet installed, installing, installed, a custom action, a
+// AtlasAppCard (verified and compact too): not yet installed, installing, installed, a custom action, a
 // long name and a symbol instead of an icon. Not part of any build target.
 Rectangle {
     id: root
@@ -12,7 +12,7 @@ Rectangle {
     property bool animate: true
 
     implicitWidth: Kirigami.Units.gridUnit * 30
-    implicitHeight: Kirigami.Units.gridUnit * 30
+    implicitHeight: Kirigami.Units.gridUnit * 42
     color: Kirigami.Theme.backgroundColor
 
     ColumnLayout {
@@ -64,6 +64,34 @@ Rectangle {
                     text: "Manage"
                 }
             }
+        }
+        AtlasAppCard {
+            Layout.fillWidth: true
+            name: "Atlas Terminal"
+            summary: "Verified by AtlasOS"
+            symbol: Symbols.Terminal
+            sizeText: "6 MB"
+            verified: true
+        }
+        AtlasAppCard {
+            Layout.fillWidth: true
+            compact: true
+            verified: true
+            name: "Atlas Notepad"
+            summary: "Fast, plain text editing"
+            icon.name: "accessories-text-editor"
+            sizeText: "12 MB"
+            installState: "update"
+        }
+        AtlasAppCard {
+            Layout.fillWidth: true
+            compact: true
+            name: "A compact row with a really long name that cannot possibly fit"
+            summary: "A long summary that has to be cut to one line"
+            symbol: Symbols.Monitor
+            sizeText: "1.2 GB"
+            installState: "removing"
+            progress: 0.4
         }
         Item {
             Layout.fillHeight: true
