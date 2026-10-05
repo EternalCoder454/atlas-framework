@@ -8,6 +8,11 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasPopover (a card with an arrow that opens next to a control),
+  AtlasScrollBar (thin, widens on hover, fades when idle), AtlasDialog (the
+  general dialog: title row with Back and Close, scrolling body, footer
+  buttons), AtlasCard (a padded, optionally clickable surface) and
+  AtlasExpandableSection (a header that folds its content, animated).
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
