@@ -157,7 +157,8 @@ T.TextField {
         font: control.font
         color: control.placeholderTextColor
         elide: Text.ElideRight
-        horizontalAlignment: control.rtl ? Text.AlignRight : Text.AlignLeft
+        // No alignment set: like the typed text it follows its own script
+        // (Arabic right, Latin left). A set one is flipped by the mirroring.
         textFormat: Text.PlainText
         renderType: control.renderType
         Accessible.ignored: true

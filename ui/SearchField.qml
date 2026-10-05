@@ -92,6 +92,7 @@ T.TextField {
         color: control.placeholderTextColor
         verticalAlignment: control.verticalAlignment
         elide: Text.ElideRight
+        textFormat: Text.PlainText
         renderType: control.renderType
         Accessible.ignored: true
     }
