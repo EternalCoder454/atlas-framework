@@ -5,7 +5,7 @@ rules) from depending on someone remembering them. CI runs all of them.
 
 | Tool | What it does |
 |---|---|
-| `dev-check.sh [Type...]` | From the host: the whole local check in the dev container (build, qmllint, tests in parallel, API, gallery lint) in about 25 s; type names limit the visual and a11y tests to those demos; `--translations` rewrites the catalogue first. |
+| `dev-check.sh [Type...]` | From the host: the whole local check in the dev container (build, qmllint, tests in parallel, API, gallery lint) in about 25 s; type names limit the visual and a11y tests to those demos; `--translations` rewrites the catalogue first. It needs an absolute `ATLAS_DEV_BUILD_DIR`, holds a lock on the build directory, and does not run the Rust crates. |
 | `check-api.sh [build]` | Dumps the API of the built Atlas.Ui (`apidump`) and compares it with `api/`. A removed or changed line fails with `BREAKING: removed or renamed`; an added line fails with `API grew: run tools/update-api.sh and raise the minor version`. Also fails when `api/` changed since the last `v*` tag and `Version:` in `packaging/atlas-framework.spec` is not greater than that tag (skipped, with a notice, while there is no tag). |
 | `update-api.sh [build]` | Rewrites `api/atlas-ui.api` and `api/symbols.txt`. Commit them with the change. |
 | `check-app-names.sh <app-dir>...` | Fails when an app has a `.qml` file named like an Atlas.Ui type (`import Atlas.Ui` would hide it). |
@@ -31,9 +31,12 @@ on: [push, pull_request]
 jobs:
   atlas:
     uses: EternalCoder454/atlas-framework/.github/workflows/app-checks.yml@main
-    # with: { framework-ref: main }   # a tag or commit pins the rules the app is checked against
+    # with: { framework-ref: main }   # a tag or a full 40-character commit sha pins the rules
 ```
 
 The workflow checks out the app and the framework's tools, then runs
-`lint-app.sh` and `check-app-names.sh` on the app. Run them by hand with
-`tools/lint-app.sh path/to/app`.
+`lint-app.sh` and `check-app-names.sh` on the app. `framework-ref` is a
+branch, a tag or a full 40-character sha: the workflow fetches that exact ref,
+and GitHub does not serve a short sha. Run them by hand with
+`tools/lint-app.sh path/to/app` (`--allow-empty` for an app with no QML; an
+empty directory otherwise fails).

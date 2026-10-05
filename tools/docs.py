@@ -575,6 +575,10 @@ def read_api(errors):
         if m:
             types.setdefault(m.group(1), set())
             continue
+        m = re.fullmatch(r"(\w+)\.base \w+", line)
+        if m:  # the first non-Atlas base class: a contract line, not a member
+            types.setdefault(m.group(1), set())
+            continue
         m = re.match(r"(\w+)\.(property|signal|method) (\w+)", line)
         if m:
             name = m.group(3)

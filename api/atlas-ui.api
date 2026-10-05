@@ -1,5 +1,7 @@
+AccessibilityState.base QObject
 AccessibilityState.property active: bool [readonly]
 AccessibilityState.type
+Appearance.base QObject
 Appearance.enum ColorScheme: DarkScheme = 2
 Appearance.enum ColorScheme: LightScheme = 1
 Appearance.enum ColorScheme: UnknownScheme = 0
@@ -17,6 +19,7 @@ Appearance.property reducedMotion: bool [readonly]
 Appearance.property textScale: double [readonly]
 Appearance.property transparency: bool
 Appearance.type
+AtlasAboutPage.base QQuickItem
 AtlasAboutPage.method ensureVisible(QVariant item): QVariant
 AtlasAboutPage.method systemInfo(): QString
 AtlasAboutPage.property content: QQmlListProperty<QObject> [readonly]
@@ -27,10 +30,12 @@ AtlasAboutPage.property license: QString
 AtlasAboutPage.property maxContentWidth: double
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
+AtlasAction.base QQuickAction
 AtlasAction.property section: QString
 AtlasAction.property symbol: int
 AtlasAction.property toolTip: QString
 AtlasAction.type
+AtlasApp.base QObject
 AtlasApp.property id: QString [readonly]
 AtlasApp.property issuesUrl: QString [readonly]
 AtlasApp.property name: QString [readonly]
@@ -45,6 +50,7 @@ AtlasApp.property sourceUrl: QString [readonly]
 AtlasApp.property uiVersion: QString [readonly]
 AtlasApp.property version: QString [readonly]
 AtlasApp.type
+AtlasAppCard.base QQuickAbstractButton
 AtlasAppCard.property actionComponent: QQmlComponent*
 AtlasAppCard.property defaultAction: QQmlComponent* [readonly]
 AtlasAppCard.property installState: QString
@@ -57,10 +63,12 @@ AtlasAppCard.property symbol: int
 AtlasAppCard.signal actionClicked()
 AtlasAppCard.signal cancelRequested()
 AtlasAppCard.type
+AtlasAppMenu.base QQuickItem
 AtlasAppMenu.method open(): QVariant
 AtlasAppMenu.property accessibleName: QString
 AtlasAppMenu.property menus: QVariant
 AtlasAppMenu.type
+AtlasAutocompleteField.base QQuickFocusScope
 AtlasAutocompleteField.property clearable: bool
 AtlasAutocompleteField.property errorText: QString
 AtlasAutocompleteField.property filter: QString
@@ -73,22 +81,26 @@ AtlasAutocompleteField.property text: QString
 AtlasAutocompleteField.property textRole: QString
 AtlasAutocompleteField.signal accepted(QString text)
 AtlasAutocompleteField.type
+AtlasAvatar.base QQuickItem
 AtlasAvatar.property accessibleName: QString
 AtlasAvatar.property name: QString
 AtlasAvatar.property size: double
 AtlasAvatar.property source: QUrl
 AtlasAvatar.property symbol: int
 AtlasAvatar.type
+AtlasBadge.base QQuickRectangle
 AtlasBadge.property accessibleName: QString
 AtlasBadge.property dot: bool
 AtlasBadge.property symbol: int
 AtlasBadge.property text: QString
 AtlasBadge.property type: QString
 AtlasBadge.type
+AtlasBreadcrumb.base QQuickControl
 AtlasBreadcrumb.property count: int [readonly]
 AtlasBreadcrumb.property segments: QVariant
 AtlasBreadcrumb.signal activated(int index)
 AtlasBreadcrumb.type
+AtlasButton.base QQuickAbstractButton
 AtlasButton.enum Variant: Default = 0
 AtlasButton.enum Variant: Destructive = 2
 AtlasButton.enum Variant: Ghost = 3
@@ -100,6 +112,7 @@ AtlasButton.property symbol: int
 AtlasButton.property textTint: QColor [readonly]
 AtlasButton.property variant: int
 AtlasButton.type
+AtlasCalendar.base QQuickControl
 AtlasCalendar.method showDate(QDateTime d): QVariant
 AtlasCalendar.property maximumDate: QDateTime
 AtlasCalendar.property minimumDate: QDateTime
@@ -109,6 +122,7 @@ AtlasCalendar.property today: QDateTime
 AtlasCalendar.property year: int
 AtlasCalendar.signal activated(QDateTime date)
 AtlasCalendar.type
+AtlasCard.base QQuickControl
 AtlasCard.property clickable: bool
 AtlasCard.property content: QQmlListProperty<QObject> [readonly]
 AtlasCard.property footer: QQmlListProperty<QObject> [readonly]
@@ -117,17 +131,21 @@ AtlasCard.property subtitle: QString
 AtlasCard.property title: QString
 AtlasCard.signal clicked()
 AtlasCard.type
+AtlasCheckBox.base QQuickCheckBox
 AtlasCheckBox.type
+AtlasChip.base QQuickAbstractButton
 AtlasChip.property closable: bool
 AtlasChip.property showsCheck: bool [readonly]
 AtlasChip.property symbol: int
 AtlasChip.property tint: QColor [readonly]
 AtlasChip.signal closeRequested()
 AtlasChip.type
+AtlasChipGroup.base QQuickItem
 AtlasChipGroup.property content: QQmlListProperty<QObject> [readonly]
 AtlasChipGroup.property exclusive: bool
 AtlasChipGroup.property spacing: double
 AtlasChipGroup.type
+AtlasClipboard.base QObject
 AtlasClipboard.method setImage(QVariant image): bool
 AtlasClipboard.method setRichText(QString html, QString plainFallback): void
 AtlasClipboard.method setText(QString text): void
@@ -135,6 +153,7 @@ AtlasClipboard.method text(): QString
 AtlasClipboard.property hasImage: bool [readonly]
 AtlasClipboard.property hasText: bool [readonly]
 AtlasClipboard.type
+AtlasCodeView.base QQuickItem
 AtlasCodeView.property framed: bool
 AtlasCodeView.property lineNumbers: bool
 AtlasCodeView.property maximumHeight: double
@@ -142,27 +161,32 @@ AtlasCodeView.property showCopy: bool
 AtlasCodeView.property text: QString
 AtlasCodeView.property wrap: bool
 AtlasCodeView.type
+AtlasColorField.base QQuickAbstractButton
 AtlasColorField.property color: QColor
 AtlasColorField.property hex: QString [readonly]
 AtlasColorField.property showAlpha: bool
 AtlasColorField.property showMore: bool
 AtlasColorField.signal edited()
 AtlasColorField.type
+AtlasComboBox.base QQuickComboBox
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
+AtlasCommandPalette.base QQuickPopup
 AtlasCommandPalette.property actions: QQmlListProperty<QObject> [readonly]
 AtlasCommandPalette.property placeholderText: QString
 AtlasCommandPalette.property query: QString
 AtlasCommandPalette.property recentCount: int
 AtlasCommandPalette.signal triggered(QObject* action)
 AtlasCommandPalette.type
+AtlasCopyButton.base QQuickAbstractButton
 AtlasCopyButton.property focusable: bool
 AtlasCopyButton.property iconRotation: double
 AtlasCopyButton.property shortcutText: QString
 AtlasCopyButton.property symbol: int
 AtlasCopyButton.signal copied()
 AtlasCopyButton.type
+AtlasDatePicker.base QQuickControl
 AtlasDatePicker.method close(): QVariant
 AtlasDatePicker.method open(): QVariant
 AtlasDatePicker.property clearable: bool
@@ -175,10 +199,12 @@ AtlasDatePicker.property selectedDate: QDateTime
 AtlasDatePicker.property today: QDateTime
 AtlasDatePicker.signal edited()
 AtlasDatePicker.type
+AtlasDetailGrid.base QQuickItem
 AtlasDetailGrid.property columns: int
 AtlasDetailGrid.property columnsBreakpoint: double
 AtlasDetailGrid.property model: QVariant
 AtlasDetailGrid.type
+AtlasDialog.base QPlatformDialogHelper
 AtlasDialog.property content: QQmlListProperty<QObject> [readonly]
 AtlasDialog.property footerContent: QQmlListProperty<QObject> [readonly]
 AtlasDialog.property headerTrailing: QQmlListProperty<QObject> [readonly]
@@ -187,10 +213,12 @@ AtlasDialog.property showBack: bool
 AtlasDialog.property showClose: bool
 AtlasDialog.signal backRequested()
 AtlasDialog.type
+AtlasDoubleSpinBox.base QQuickDoubleSpinBox
 AtlasDoubleSpinBox.property prefix: QString
 AtlasDoubleSpinBox.property showButtons: bool
 AtlasDoubleSpinBox.property suffix: QString
 AtlasDoubleSpinBox.type
+AtlasDropZone.base QQuickItem
 AtlasDropZone.property acceptedKeys: QStringList
 AtlasDropZone.property allowRemote: bool
 AtlasDropZone.property browseText: QString
@@ -203,11 +231,14 @@ AtlasDropZone.property text: QString
 AtlasDropZone.signal browseRequested()
 AtlasDropZone.signal dropped(QList<QUrl> urls)
 AtlasDropZone.type
+AtlasEdgeGlow.base QQuickItem
 AtlasEdgeGlow.property active: bool
 AtlasEdgeGlow.property animated: bool
 AtlasEdgeGlow.property reach: double
 AtlasEdgeGlow.type
+AtlasEmailValidator.base QValidator
 AtlasEmailValidator.type
+AtlasEmptyState.base QQuickItem
 AtlasEmptyState.property actionSymbol: int
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
@@ -216,6 +247,7 @@ AtlasEmptyState.property text: QString
 AtlasEmptyState.property title: QString
 AtlasEmptyState.signal triggered()
 AtlasEmptyState.type
+AtlasExpandableSection.base QQuickColumnLayout
 AtlasExpandableSection.property content: QQmlListProperty<QObject> [readonly]
 AtlasExpandableSection.property expanded: bool
 AtlasExpandableSection.property subtitle: QString
@@ -223,6 +255,7 @@ AtlasExpandableSection.property symbol: int
 AtlasExpandableSection.property title: QString
 AtlasExpandableSection.signal toggled(bool expanded)
 AtlasExpandableSection.type
+AtlasFileField.base QQuickItem
 AtlasFileField.property editable: bool
 AtlasFileField.property nameFilters: QStringList
 AtlasFileField.property path: QString
@@ -232,6 +265,7 @@ AtlasFileField.property title: QString
 AtlasFileField.property url: QUrl [readonly]
 AtlasFileField.signal edited()
 AtlasFileField.type
+AtlasFloatingToolbar.base QQuickItem
 AtlasFloatingToolbar.property accessibleName: QString
 AtlasFloatingToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
 AtlasFloatingToolbar.property content: QQmlListProperty<QObject> [readonly]
@@ -240,12 +274,15 @@ AtlasFloatingToolbar.property margin: double
 AtlasFloatingToolbar.property shown: bool
 AtlasFloatingToolbar.property toolbar: AtlasToolbar_QMLTYPE* [readonly]
 AtlasFloatingToolbar.type
+AtlasFlowLayout.base QQuickItem
 AtlasFlowLayout.property rowSpacing: double
 AtlasFlowLayout.property spacing: double
 AtlasFlowLayout.type
+AtlasFocusRing.base QQuickRectangle
 AtlasFocusRing.property gap: double
 AtlasFocusRing.property shown: bool
 AtlasFocusRing.type
+AtlasFolderField.base QQuickItem
 AtlasFolderField.property editable: bool
 AtlasFolderField.property path: QString
 AtlasFolderField.property placeholderText: QString
@@ -253,9 +290,11 @@ AtlasFolderField.property title: QString
 AtlasFolderField.property url: QUrl [readonly]
 AtlasFolderField.signal edited()
 AtlasFolderField.type
+AtlasFontPicker.base QQuickAbstractButton
 AtlasFontPicker.property fixedOnly: bool
 AtlasFontPicker.signal edited()
 AtlasFontPicker.type
+AtlasFormat.base QObject
 AtlasFormat.method bytes(double n): QString
 AtlasFormat.method bytes(double n, int precision): QString
 AtlasFormat.method bytes(double n, int precision, QString locale): QString
@@ -276,6 +315,7 @@ AtlasFormat.method percent(double fraction): QString
 AtlasFormat.method percent(double fraction, int precision): QString
 AtlasFormat.method percent(double fraction, int precision, QString locale): QString
 AtlasFormat.type
+AtlasHeaderBar.base QQuickItem
 AtlasHeaderBar.method openWindowMenu(): QVariant
 AtlasHeaderBar.property actions: QQmlListProperty<QQuickAction> [readonly]
 AtlasHeaderBar.property active: bool
@@ -287,6 +327,7 @@ AtlasHeaderBar.property titleCentered: bool [readonly]
 AtlasHeaderBar.property trailing: QQmlListProperty<QObject> [readonly]
 AtlasHeaderBar.property windowButtons: bool
 AtlasHeaderBar.type
+AtlasIconGrid.base QQuickControl
 AtlasIconGrid.property count: int [readonly]
 AtlasIconGrid.property currentIndex: int
 AtlasIconGrid.property iconRole: QString
@@ -298,6 +339,7 @@ AtlasIconGrid.property textRole: QString
 AtlasIconGrid.signal activated(int index)
 AtlasIconGrid.signal contextMenuRequested(int index, double x, double y)
 AtlasIconGrid.type
+AtlasInstallButton.base QQuickAbstractButton
 AtlasInstallButton.property animated: bool
 AtlasInstallButton.property errorText: QString
 AtlasInstallButton.property installState: QString
@@ -307,6 +349,7 @@ AtlasInstallButton.property progress: double
 AtlasInstallButton.property updateText: QString
 AtlasInstallButton.signal cancelRequested()
 AtlasInstallButton.type
+AtlasLabel.base QQuickLabel
 AtlasLabel.enum TextStyle: Body = 0
 AtlasLabel.enum TextStyle: Caption = 3
 AtlasLabel.enum TextStyle: Code = 6
@@ -316,6 +359,7 @@ AtlasLabel.enum TextStyle: Title = 1
 AtlasLabel.enum TextStyle: WindowTitle = 5
 AtlasLabel.property textStyle: int
 AtlasLabel.type
+AtlasListView.base QQuickListView
 AtlasListView.enum SelectionMode: MultiSelection = 1
 AtlasListView.enum SelectionMode: NoSelection = 2
 AtlasListView.enum SelectionMode: SingleSelection = 0
@@ -337,6 +381,7 @@ AtlasListView.signal activated(int index)
 AtlasListView.signal contextMenuRequested(int index, QPointF pos)
 AtlasListView.signal moveRequested(int from, int to)
 AtlasListView.type
+AtlasNavigationStack.base QQuickItem
 AtlasNavigationStack.method pop(): QVariant
 AtlasNavigationStack.method popToRoot(): QVariant
 AtlasNavigationStack.method push(QVariant page, QVariant properties): QVariant
@@ -347,11 +392,13 @@ AtlasNavigationStack.property initialItem: QVariant
 AtlasNavigationStack.property showHeader: bool
 AtlasNavigationStack.signal wentBack()
 AtlasNavigationStack.type
+AtlasNumberValidator.base QValidator
 AtlasNumberValidator.property bottom: double
 AtlasNumberValidator.property decimals: int
 AtlasNumberValidator.property locale: QString
 AtlasNumberValidator.property top: double
 AtlasNumberValidator.type
+AtlasOnboarding.base QQuickItem
 AtlasOnboarding.method back(): QVariant
 AtlasOnboarding.method next(): QVariant
 AtlasOnboarding.method skip(): QVariant
@@ -363,12 +410,14 @@ AtlasOnboarding.property showSteps: bool
 AtlasOnboarding.signal finished()
 AtlasOnboarding.signal skipped(int index)
 AtlasOnboarding.type
+AtlasPage.base QQuickItem
 AtlasPage.method ensureVisible(QVariant item): QVariant
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
 AtlasPage.property maxContentWidth: double
 AtlasPage.property title: QString
 AtlasPage.type
+AtlasPasswordField.base QQuickTextField
 AtlasPasswordField.method hide(): QVariant
 AtlasPasswordField.method reveal(): QVariant
 AtlasPasswordField.property errorText: QString
@@ -376,19 +425,23 @@ AtlasPasswordField.property hasError: bool [readonly]
 AtlasPasswordField.property revealed: bool [readonly]
 AtlasPasswordField.property rtl: bool [readonly]
 AtlasPasswordField.type
+AtlasPathValidator.base QValidator
 AtlasPathValidator.property absolute: bool
 AtlasPathValidator.property directory: bool
 AtlasPathValidator.property mustExist: bool
 AtlasPathValidator.type
+AtlasPlaceholder.base QQuickItem
 AtlasPlaceholder.property animated: bool
 AtlasPlaceholder.property lineHeight: double
 AtlasPlaceholder.property lines: int
 AtlasPlaceholder.type
+AtlasPopover.base QQuickPopup
 AtlasPopover.property above: bool [readonly]
 AtlasPopover.property content: QQmlListProperty<QObject> [readonly]
 AtlasPopover.property showArrow: bool
 AtlasPopover.property target: QQuickItem*
 AtlasPopover.type
+AtlasPortal.base QObject
 AtlasPortal.method escape(QString text): QString
 AtlasPortal.method notify(QString title, QString body): QString
 AtlasPortal.method notify(QString title, QString body, QVariantList actions): QString
@@ -397,25 +450,31 @@ AtlasPortal.method openUrl(QUrl url): bool
 AtlasPortal.property extraSchemes: QStringList
 AtlasPortal.signal actionInvoked(QString notificationId, QString actionId)
 AtlasPortal.type
+AtlasProgressBar.base QQuickItem
 AtlasProgressBar.property animated: bool
 AtlasProgressBar.property indeterminate: bool
 AtlasProgressBar.property status: QString
 AtlasProgressBar.property text: QString
 AtlasProgressBar.property value: double
 AtlasProgressBar.type
+AtlasRadioButton.base QQuickRadioButton
 AtlasRadioButton.type
+AtlasRating.base QQuickControl
 AtlasRating.property count: int
 AtlasRating.property readOnly: bool
 AtlasRating.property starSize: double
 AtlasRating.property value: double
 AtlasRating.signal edited()
 AtlasRating.type
+AtlasScreenshotCarousel.base QQuickControl
 AtlasScreenshotCarousel.property allowRemote: bool
 AtlasScreenshotCarousel.property count: int [readonly]
 AtlasScreenshotCarousel.property currentIndex: int
 AtlasScreenshotCarousel.property sources: QVariant
 AtlasScreenshotCarousel.type
+AtlasScrollBar.base QQuickScrollBar
 AtlasScrollBar.type
+AtlasSearchResults.base QQuickControl
 AtlasSearchResults.method activateCurrent(): QVariant
 AtlasSearchResults.method handleKey(QVariant event): QVariant
 AtlasSearchResults.method moveCurrent(QVariant delta): QVariant
@@ -431,11 +490,13 @@ AtlasSearchResults.property symbolRole: QString
 AtlasSearchResults.property textRole: QString
 AtlasSearchResults.signal activated(int index)
 AtlasSearchResults.type
+AtlasSegmentedControl.base QQuickControl
 AtlasSegmentedControl.property count: int [readonly]
 AtlasSegmentedControl.property currentIndex: int
 AtlasSegmentedControl.property model: QVariant
 AtlasSegmentedControl.signal activated(int index)
 AtlasSegmentedControl.type
+AtlasSettings.base QObject
 AtlasSettings.method contains(QString key): bool
 AtlasSettings.method flush(): bool
 AtlasSettings.method remove(QString key): bool
@@ -446,6 +507,7 @@ AtlasSettings.property fileName: QString
 AtlasSettings.property group: QString
 AtlasSettings.signal changed(QString key)
 AtlasSettings.type
+AtlasShortcutField.base QQuickControl
 AtlasShortcutField.method startRecording(): QVariant
 AtlasShortcutField.property conflictText: QString [readonly]
 AtlasShortcutField.property ignoreAction: QObject*
@@ -454,8 +516,10 @@ AtlasShortcutField.property recording: bool [readonly]
 AtlasShortcutField.property sequence: QString
 AtlasShortcutField.signal edited()
 AtlasShortcutField.type
+AtlasShortcutLabel.base QQuickItem
 AtlasShortcutLabel.property sequence: QVariant
 AtlasShortcutLabel.type
+AtlasShortcuts.base QObject
 AtlasShortcuts.method add(QObject* action): void
 AtlasShortcuts.method keys(QVariant sequence): QVariantList
 AtlasShortcuts.method plainText(QString text): QString
@@ -465,8 +529,10 @@ AtlasShortcuts.method remove(QObject* action): void
 AtlasShortcuts.property actions: QList<QObject*> [readonly]
 AtlasShortcuts.property conflicts: QVariantList [readonly]
 AtlasShortcuts.type
+AtlasShortcutsDialog.base QQuickPopup
 AtlasShortcutsDialog.property title: QString
 AtlasShortcutsDialog.type
+AtlasSidebar.base QQuickFocusScope
 AtlasSidebar.property baseColor: QColor
 AtlasSidebar.property compact: bool
 AtlasSidebar.property content: QQmlListProperty<QObject> [readonly]
@@ -484,7 +550,9 @@ AtlasSidebar.property win: QVariant [readonly]
 AtlasSidebar.signal contextMenuRequested(QQuickItem* item, QPointF pos)
 AtlasSidebar.signal dropped(QQuickItem* item, QVariant drop)
 AtlasSidebar.type
+AtlasSlider.base QQuickSlider
 AtlasSlider.type
+AtlasSparkline.base QQuickPaintedItem
 AtlasSparkline.property color: QColor
 AtlasSparkline.property fill: bool
 AtlasSparkline.property lineWidth: double
@@ -493,6 +561,7 @@ AtlasSparkline.property minimum: double
 AtlasSparkline.property minimumRange: double
 AtlasSparkline.property values: QList<double>
 AtlasSparkline.type
+AtlasSparklineItem.base QQuickPaintedItem
 AtlasSparklineItem.property color: QColor
 AtlasSparklineItem.property fill: bool
 AtlasSparklineItem.property lineWidth: double
@@ -501,13 +570,16 @@ AtlasSparklineItem.property minimum: double
 AtlasSparklineItem.property minimumRange: double
 AtlasSparklineItem.property values: QList<double>
 AtlasSparklineItem.type
+AtlasSpinBox.base QQuickSpinBox
 AtlasSpinBox.property prefix: QString
 AtlasSpinBox.property showButtons: bool
 AtlasSpinBox.property suffix: QString
 AtlasSpinBox.type
+AtlasSpinner.base QQuickBusyIndicator
 AtlasSpinner.property animated: bool
 AtlasSpinner.property color: QColor
 AtlasSpinner.type
+AtlasSplitButton.base QQuickItem
 AtlasSplitButton.method openMenu(): QVariant
 AtlasSplitButton.property action: QQuickAction*
 AtlasSplitButton.property items: QQmlListProperty<QObject> [readonly]
@@ -518,13 +590,16 @@ AtlasSplitButton.property symbol: int
 AtlasSplitButton.property text: QString
 AtlasSplitButton.signal clicked()
 AtlasSplitButton.type
+AtlasSplitView.base QQuickSplitView
 AtlasSplitView.method restoreSizes(QString sizes): bool
 AtlasSplitView.method saveSizes(): QString
 AtlasSplitView.property stateKey: QString
 AtlasSplitView.type
+AtlasSpringAnimation.base QQuickSpringAnimation
 AtlasSpringAnimation.property expressive: bool
 AtlasSpringAnimation.property fine: bool
 AtlasSpringAnimation.type
+AtlasStat.base QQuickColumnLayout
 AtlasStat.property invertTrend: bool
 AtlasStat.property label: QString
 AtlasStat.property sparkline: QList<double>
@@ -534,6 +609,7 @@ AtlasStat.property trendText: QString
 AtlasStat.property unit: QString
 AtlasStat.property value: QString
 AtlasStat.type
+AtlasStyle.base QObject
 AtlasStyle.enum Density: Compact = 1
 AtlasStyle.enum Density: Normal = 0
 AtlasStyle.property accent: QColor [readonly]
@@ -593,8 +669,11 @@ AtlasStyle.property textMuted: QColor [readonly]
 AtlasStyle.property textScale: double [readonly]
 AtlasStyle.property warning: QColor [readonly]
 AtlasStyle.type
+AtlasSwitch.base QQuickSwitch
 AtlasSwitch.type
+AtlasTextArea.base QQuickTextArea
 AtlasTextArea.type
+AtlasTextField.base QQuickTextField
 AtlasTextField.property clearable: bool
 AtlasTextField.property errorText: QString
 AtlasTextField.property hasError: bool [readonly]
@@ -605,6 +684,7 @@ AtlasTextField.property showCounter: bool
 AtlasTextField.property suffix: QString
 AtlasTextField.property validateOn: QString
 AtlasTextField.type
+AtlasTimePicker.base QQuickControl
 AtlasTimePicker.property day: int
 AtlasTimePicker.property hours: int
 AtlasTimePicker.property minuteStep: int
@@ -613,8 +693,10 @@ AtlasTimePicker.property showDay: bool
 AtlasTimePicker.property use24Hour: bool
 AtlasTimePicker.signal edited()
 AtlasTimePicker.type
+AtlasToolTip.base QQuickToolTip
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
+AtlasToolbar.base QQuickItem
 AtlasToolbar.property accessibleName: QString
 AtlasToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
 AtlasToolbar.property flat: bool
@@ -625,6 +707,7 @@ AtlasToolbar.property overflowCount: int [readonly]
 AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
 AtlasToolbar.property visibleCount: int [readonly]
 AtlasToolbar.type
+AtlasTransparencySwitch.base QQuickFocusScope
 AtlasTransparencySwitch.method activate(QVariant event): QVariant
 AtlasTransparencySwitch.method ensureVisible(): QVariant
 AtlasTransparencySwitch.method step(QVariant forward, QVariant event): QVariant
@@ -653,8 +736,10 @@ AtlasTransparencySwitch.property value: QString
 AtlasTransparencySwitch.signal clicked()
 AtlasTransparencySwitch.signal switchToggled(bool checked)
 AtlasTransparencySwitch.type
+AtlasTreeModel.base QAbstractItemModel
 AtlasTreeModel.property items: QVariantList
 AtlasTreeModel.type
+AtlasTreeView.base QQuickControl
 AtlasTreeView.enum SelectionMode: MultiSelection = 1
 AtlasTreeView.enum SelectionMode: NoSelection = 2
 AtlasTreeView.enum SelectionMode: SingleSelection = 0
@@ -676,14 +761,17 @@ AtlasTreeView.property textRole: QString
 AtlasTreeView.signal activated(QVariant index)
 AtlasTreeView.signal contextMenuRequested(QVariant index, QPointF pos)
 AtlasTreeView.type
+AtlasUrlValidator.base QValidator
 AtlasUrlValidator.property schemes: QStringList
 AtlasUrlValidator.type
+AtlasViewSwitcher.base QQuickControl
 AtlasViewSwitcher.property count: int [readonly]
 AtlasViewSwitcher.property currentIndex: int
 AtlasViewSwitcher.property model: QVariant
 AtlasViewSwitcher.property narrow: bool
 AtlasViewSwitcher.signal activated(int index)
 AtlasViewSwitcher.type
+AtlasWindow.base QQuickApplicationWindow
 AtlasWindow.enum WidthClass: Compact = 0
 AtlasWindow.enum WidthClass: Medium = 1
 AtlasWindow.enum WidthClass: Wide = 2
@@ -698,14 +786,17 @@ AtlasWindow.property sidebarFactor: double
 AtlasWindow.property stateKey: QString
 AtlasWindow.property widthClass: int [readonly]
 AtlasWindow.type
+AtlasWindowButtons.base QQuickRow
 AtlasWindowButtons.property active: bool
 AtlasWindowButtons.property buttons: QVariant
 AtlasWindowButtons.property maximized: bool [readonly]
 AtlasWindowButtons.type
+AtlasWindowChrome.base QObject
 AtlasWindowChrome.property buttonsOnLeft: QStringList [readonly]
 AtlasWindowChrome.property buttonsOnRight: QStringList [readonly]
 AtlasWindowChrome.property globalMenu: bool [readonly]
 AtlasWindowChrome.type
+ConfirmDialog.base QQuickPopup
 ConfirmDialog.property acceptText: QString
 ConfirmDialog.property alternativeText: QString
 ConfirmDialog.property body: QQmlListProperty<QObject> [readonly]
@@ -720,7 +811,9 @@ ConfirmDialog.property title: QString
 ConfirmDialog.signal accepted()
 ConfirmDialog.signal alternative()
 ConfirmDialog.type
+ContextMenu.base QQuickMenu
 ContextMenu.type
+ContextMenuItem.base QQuickMenuItem
 ContextMenuItem.property destructive: bool
 ContextMenuItem.property radio: bool
 ContextMenuItem.property shortcutText: QString
@@ -728,7 +821,9 @@ ContextMenuItem.property showsCheck: bool [readonly]
 ContextMenuItem.property symbol: int
 ContextMenuItem.property tint: QColor [readonly]
 ContextMenuItem.type
+ContextMenuSeparator.base QQuickMenuSeparator
 ContextMenuSeparator.type
+DataTable.base QQuickFocusScope
 DataTable.enum SelectionMode: MultiSelection = 1
 DataTable.enum SelectionMode: NoSelection = 2
 DataTable.enum SelectionMode: SingleSelection = 0
@@ -770,6 +865,7 @@ DataTable.signal headerMenuRequested(double x, double y)
 DataTable.signal rowContextMenuRequested(int row, QPointF pos)
 DataTable.signal toggleRequested(int row)
 DataTable.type
+FindBar.base QQuickItem
 FindBar.method close(): QVariant
 FindBar.method open(QVariant withReplace): QVariant
 FindBar.property countText: QString [readonly]
@@ -791,6 +887,7 @@ FindBar.signal findPrevious()
 FindBar.signal replaceAll()
 FindBar.signal replaceOne()
 FindBar.type
+InfoBanner.base QQuickItem
 InfoBanner.property actions: QQmlListProperty<QObject> [readonly]
 InfoBanner.property closable: bool
 InfoBanner.property closeName: QString
@@ -801,6 +898,7 @@ InfoBanner.property tint: QColor [readonly]
 InfoBanner.property type: QString
 InfoBanner.signal closed()
 InfoBanner.type
+LiveChart.base QQuickPaintedItem
 LiveChart.property captions: bool
 LiveChart.property color2: QColor
 LiveChart.property color: QColor
@@ -816,6 +914,7 @@ LiveChart.property valueText: QString
 LiveChart.property values2: QList<double>
 LiveChart.property values: QList<double>
 LiveChart.type
+LiveChartItem.base QQuickPaintedItem
 LiveChartItem.property captions: bool
 LiveChartItem.property color2: QColor
 LiveChartItem.property color: QColor
@@ -831,6 +930,7 @@ LiveChartItem.property valueText: QString
 LiveChartItem.property values2: QList<double>
 LiveChartItem.property values: QList<double>
 LiveChartItem.type
+MenuButton.base QQuickAbstractButton
 MenuButton.enum Variant: Default = 0
 MenuButton.enum Variant: Destructive = 2
 MenuButton.enum Variant: Ghost = 3
@@ -843,6 +943,7 @@ MenuButton.property symbol: int
 MenuButton.property textTint: QColor [readonly]
 MenuButton.property variant: int
 MenuButton.type
+MiniBars.base QQuickFlow
 MiniBars.property barHeight: double
 MiniBars.property barWidth: double
 MiniBars.property color: QColor
@@ -852,6 +953,7 @@ MiniBars.property numbered: bool
 MiniBars.property textOf: QVariant
 MiniBars.property values: QList<double>
 MiniBars.type
+NotesText.base QQuickText
 NotesText.property accent: QColor [readonly]
 NotesText.property body: QString [readonly]
 NotesText.property css: QString [readonly]
@@ -860,6 +962,7 @@ NotesText.property html: QString
 NotesText.property plain: QString
 NotesText.signal linkClicked(QString link)
 NotesText.type
+PrimaryButton.base QQuickAbstractButton
 PrimaryButton.enum Variant: Default = 0
 PrimaryButton.enum Variant: Destructive = 2
 PrimaryButton.enum Variant: Ghost = 3
@@ -871,12 +974,15 @@ PrimaryButton.property symbol: int
 PrimaryButton.property textTint: QColor [readonly]
 PrimaryButton.property variant: int
 PrimaryButton.type
+RepaintArea.base QQuickItem
 RepaintArea.property content: QVariantList
 RepaintArea.type
+SearchField.base QQuickTextField
 SearchField.property delay: int
 SearchField.property query: QString
 SearchField.property rtl: bool [readonly]
 SearchField.type
+SecondaryButton.base QQuickAbstractButton
 SecondaryButton.enum Variant: Default = 0
 SecondaryButton.enum Variant: Destructive = 2
 SecondaryButton.enum Variant: Ghost = 3
@@ -888,6 +994,7 @@ SecondaryButton.property symbol: int
 SecondaryButton.property textTint: QColor [readonly]
 SecondaryButton.property variant: int
 SecondaryButton.type
+Section.base QQuickColumnLayout
 Section.property content: QQmlListProperty<QObject> [readonly]
 Section.property foldable: bool
 Section.property folded: bool
@@ -895,6 +1002,7 @@ Section.property footer: QString
 Section.property title: QString
 Section.signal foldRequested(bool fold)
 Section.type
+SectionRow.base QQuickFocusScope
 SectionRow.method activate(QVariant event): QVariant
 SectionRow.method ensureVisible(): QVariant
 SectionRow.method step(QVariant forward, QVariant event): QVariant
@@ -923,6 +1031,7 @@ SectionRow.property value: QString
 SectionRow.signal clicked()
 SectionRow.signal switchToggled(bool checked)
 SectionRow.type
+SidebarGroup.base QQuickColumnLayout
 SidebarGroup.property compact: bool
 SidebarGroup.property expanded: bool
 SidebarGroup.property holdsSelection: bool [readonly]
@@ -934,6 +1043,7 @@ SidebarGroup.property value: QString
 SidebarGroup.signal activated()
 SidebarGroup.signal toggled()
 SidebarGroup.type
+SidebarItem.base QQuickAbstractButton
 SidebarItem.property badge: QString
 SidebarItem.property badgeText: QString
 SidebarItem.property compact: bool
@@ -946,16 +1056,19 @@ SidebarItem.property symbol: int
 SidebarItem.property tintIcon: bool
 SidebarItem.property value: QString
 SidebarItem.type
+StatusBar.base QQuickItem
 StatusBar.method refresh(): QVariant
 StatusBar.property content: QQmlListProperty<QObject> [readonly]
 StatusBar.property density: int
 StatusBar.type
+StatusBarItem.base QQuickAbstractButton
 StatusBarItem.property clickable: bool
 StatusBarItem.property leadingSeparator: bool
 StatusBarItem.property menu: QObject*
 StatusBarItem.property symbol: int
 StatusBarItem.property toolTip: QString
 StatusBarItem.type
+StatusHero.base QQuickColumnLayout
 StatusHero.property actions: QQmlListProperty<QObject> [readonly]
 StatusHero.property badgeUnits: double
 StatusHero.property barText: QString
@@ -973,11 +1086,13 @@ StatusHero.property subtitle: QString
 StatusHero.property tint: QColor
 StatusHero.property wideWidth: double [readonly]
 StatusHero.type
+StepItem.base QQuickAbstractButton
 StepItem.property clickable: bool
 StepItem.property current: bool
 StepItem.property done: bool
 StepItem.property number: int
 StepItem.type
+Symbol.base QQuickItem
 Symbol.enum Style: Outlined = 0
 Symbol.enum Style: Rounded = 1
 Symbol.enum Style: Sharp = 2
@@ -992,6 +1107,7 @@ Symbol.property size: double
 Symbol.property style: int
 Symbol.property weight: int
 Symbol.type
+Symbols.base QObject
 Symbols.method available(int style): bool
 Symbols.method codepoint(QString name): int
 Symbols.method family(int style): QString
@@ -999,6 +1115,7 @@ Symbols.method key(int codepoint): QString
 Symbols.method name(int codepoint): QString
 Symbols.method names(): QStringList
 Symbols.type
+TabBar.base QQuickItem
 TabBar.method ensureCurrentVisible(): QVariant
 TabBar.property currentIndex: int
 TabBar.property density: int
@@ -1011,7 +1128,9 @@ TabBar.signal contextMenuRequested(int index, QPointF position)
 TabBar.signal moved(int from, int to)
 TabBar.signal newRequested()
 TabBar.type
+TextButton.base QQuickAbstractButton
 TextButton.type
+Toast.base QQuickItem
 Toast.method hide(): QVariant
 Toast.method show(QVariant message): QVariant
 Toast.method showAction(QVariant message, QVariant actionText): QVariant
@@ -1020,11 +1139,13 @@ Toast.property interval: int
 Toast.property text: QString
 Toast.signal actionTriggered()
 Toast.type
+ToolbarButton.base QQuickAbstractButton
 ToolbarButton.property focusable: bool
 ToolbarButton.property iconRotation: double
 ToolbarButton.property shortcutText: QString
 ToolbarButton.property symbol: int
 ToolbarButton.type
+UsageBar.base QQuickColumnLayout
 UsageBar.method colorAt(QVariant i): QVariant
 UsageBar.property barHeight: double
 UsageBar.property colors: QList<QColor>

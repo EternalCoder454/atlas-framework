@@ -29,6 +29,8 @@ BuildRequires:  cmake(Qt6Quick)
 BuildRequires:  cmake(Qt6QuickControls2)
 BuildRequires:  cmake(Qt6Widgets)
 BuildRequires:  cmake(Qt6QmlTools)
+# lrelease for the translations; without it the build silently ships none.
+BuildRequires:  cmake(Qt6LinguistTools)
 BuildRequires:  qt6-qtbase-devel
 BuildRequires:  cmake(KF6WindowSystem)
 BuildRequires:  cmake(KF6Config)
@@ -112,6 +114,9 @@ weight, and copy the QML for one.
 %install
 %cmake_install
 install -Dpm0644 packaging/atlas-framework.conf %{buildroot}%{_sysconfdir}/dnf/protected.d/atlas-framework.conf
+# The translations' directory is owned by atlas-ui even while no language has
+# been translated yet (then nothing is installed into it).
+install -dm0755 %{buildroot}%{_datadir}/atlas-ui/translations
 # Where every Atlas app's crash reports go (atlas-framework-system's crash).
 install -Dpm0644 crates/atlas-framework-system/data/atlas/crash-reporting.toml %{buildroot}%{_datadir}/atlas/crash-reporting.toml
 
@@ -130,10 +135,21 @@ for s in "%{_builddir}" %{?_atlas_build_cache:"%{_atlas_build_cache}"} ATLAS_UI_
     fi
 done
 
+# Every language catalogue (atlas-ui_<locale>.ts) must have shipped as a .qm:
+# a missing LinguistTools would otherwise build without translations, quietly.
+shopt -s nullglob
+ts=(ui/translations/atlas-ui_*.ts)
+qm=(%{buildroot}%{_datadir}/atlas-ui/translations/atlas-ui_*.qm)
+if [ "${#ts[@]}" -gt 0 ] && [ "${#qm[@]}" -lt "${#ts[@]}" ]; then
+    echo "${#ts[@]} translation(s) in ui/translations but ${#qm[@]} .qm file(s) installed" >&2
+    exit 1
+fi
+
 %files -n atlas-ui
 %license LICENSE
 %dir %{_libdir}/qt6/qml/Atlas
 %{_libdir}/qt6/qml/Atlas/Ui/
+%{_datadir}/atlas-ui/
 %dir %{_datadir}/atlas
 %{_datadir}/atlas/crash-reporting.toml
 %config(noreplace) %{_sysconfdir}/dnf/protected.d/atlas-framework.conf

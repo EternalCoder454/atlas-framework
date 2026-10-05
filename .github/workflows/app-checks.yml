@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       framework-ref:
-        description: Branch, tag or commit of atlas-framework whose tools to use
+        description: Branch, tag or full 40-character commit sha of atlas-framework whose tools to use (a short sha cannot be fetched)
         type: string
         default: main
 

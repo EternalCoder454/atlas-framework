@@ -53,7 +53,7 @@ for app in "$@"; do
             echo "  is replaced by the framework's. Rename the app's file (the Installer's SearchField became ListSearchField)."
             status=1
         fi
-    done < <(find "$app/" \( -type d \( -name '.git' -o -name 'build*' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
+    done < <(find "$app/" \( -type d \( -name '.git' -o -name 'build' -o -name 'build-*' -o -name '_build' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
     [ "$count" -eq 0 ] && echo "check-app-names: no QML files in ${app//[[:cntrl:]]/?}"
 done
 if [ "$status" -eq 0 ]; then

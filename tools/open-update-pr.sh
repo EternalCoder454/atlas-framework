@@ -61,18 +61,28 @@ move_pins() {
     ' -- "$@"
 }
 
-# Paths of regular-file blobs (mode 100644) named $1 in tree-ish $2 of the
-# repository in the current directory, one per line. Symlinks (120000) and
-# anything under one are not blobs of this kind, so they never appear.
+# Lists tree-ish $1 of the repository in the current directory into $2. A
+# failure (a bad ref, a damaged repository) stops the script here: inside
+# blobs_named's process substitution it would read as "no manifests".
+list_tree() {
+    if ! git ls-tree -r -z "$1" >"$2"; then
+        echo "::error::git ls-tree failed for $1; not going on with an empty file list" >&2
+        exit 1
+    fi
+}
+
+# Paths of regular-file blobs (mode 100644) named $1 in the listing in file
+# $2 (from list_tree), one per line. Symlinks (120000) and anything under one
+# are not blobs of this kind, so they never appear.
 blobs_named() {
     local entry meta path
-    git ls-tree -r -z "$2" | while IFS= read -r -d '' entry; do
+    while IFS= read -r -d '' entry; do
         meta=${entry%%$'\t'*}
         path=${entry#*$'\t'}
         [ "${meta%% *}" = 100644 ] || continue
         [[ $path == *[[:cntrl:]]* ]] && continue
         case $path in "$1" | */"$1") printf '%s\n' "$path" ;; esac
-    done
+    done <"$2"
 }
 
 if [ "$mode" = lock ]; then
@@ -84,6 +94,7 @@ if [ "$mode" = lock ]; then
     git clone --quiet --depth 1 "$url" "$work/app"
     cd "$work/app"
     base=$(git rev-parse HEAD)
+    list_tree HEAD "$work/tree"
     manifests=()
     while IFS= read -r m; do
         if [ "$(stat -c %s "./$m")" -gt "$max_manifest" ]; then
@@ -91,8 +102,8 @@ if [ "$mode" = lock ]; then
             continue
         fi
         manifests+=("$m")
-    done < <(blobs_named Cargo.toml HEAD)
-    mapfile -t locks < <(blobs_named Cargo.lock HEAD)
+    done < <(blobs_named Cargo.toml "$work/tree")
+    mapfile -t locks < <(blobs_named Cargo.lock "$work/tree")
     rm -rf "$dir"
     mkdir -p "$dir/files"
     printf '%s\n' "$base" >"$dir/base"
@@ -181,6 +192,7 @@ cd "$tmp/repo"
 git fetch --quiet --depth 1 "$url" "$base"
 export GIT_INDEX_FILE=$tmp/index
 git read-tree "$base"
+list_tree "$base" "$tmp/tree"
 changed=0
 
 # Cargo.toml: rewritten here from the blobs.
@@ -208,7 +220,7 @@ while IFS= read -r m; do
         git update-index --cacheinfo "100644,$(git hash-object -w "$tmp/manifest"),$m"
         changed=1
     fi
-done < <(blobs_named Cargo.toml "$base")
+done < <(blobs_named Cargo.toml "$tmp/tree")
 
 # Whether the lock file $1 is written exactly as cargo writes one: the
 # header, `version = N`, then [[package]] tables of name, version, source,
@@ -248,7 +260,7 @@ crates_io="registry+https://github.com/rust-lang/crates.io-index"
 # looks like one, and only changes a framework update can make (see the top).
 # Anything else means the lock job went wrong (or was made to): nothing is
 # pushed.
-mapfile -t base_locks < <(blobs_named Cargo.lock "$base")
+mapfile -t base_locks < <(blobs_named Cargo.lock "$tmp/tree")
 refused=0
 others=()
 while IFS= read -r lock; do

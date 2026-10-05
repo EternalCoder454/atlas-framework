@@ -6,6 +6,8 @@
 #                                       configured with -DATLAS_UI_TESTS=ON
 #
 # - a line gone or changed:  "BREAKING: removed or renamed: ..."  (fails)
+# - a `Type.base Class` line gone or changed (the first class outside Atlas.Ui
+#   the type derives from): "BREAKING: base type changed or removed" (fails)
 # - a line added:            "API grew: run tools/update-api.sh and raise the
 #                             minor version"                        (fails)
 # - api/ changed since the last v* tag while `Version:` in
@@ -33,7 +35,11 @@ for name in atlas-ui.api symbols.txt; do
     LC_ALL=C sort -u "$root/api/$name" >"$tmp/old"
     LC_ALL=C sort -u "$tmp/$name" >"$tmp/new"
     while IFS= read -r line; do
-        echo "BREAKING: removed or renamed: $line   (api/$name)"
+        if [[ $line == *.base\ * ]]; then
+            echo "BREAKING: base type changed or removed: $line   (api/$name)"
+        else
+            echo "BREAKING: removed or renamed: $line   (api/$name)"
+        fi
         status=1
     done < <(LC_ALL=C comm -23 "$tmp/old" "$tmp/new")
     while IFS= read -r line; do
@@ -46,7 +52,18 @@ done
 # "No names found" means no release yet; any other git error (not a
 # repository, "dubious ownership" as root in a container) fails, so the rule
 # is never skipped by accident.
-if ! tag=$(git -C "$root" describe --tags --match 'v*' --abbrev=0 2>"$tmp/git-err"); then
+# On a tag push HEAD itself carries the newest v* tag, and comparing with it
+# would compare the commit with itself: skip every tag that points at HEAD.
+exclude=()
+if ! at_head=$(git -C "$root" tag --points-at HEAD --list 'v*' 2>"$tmp/git-err"); then
+    echo "check-api: git could not read the tags:" >&2
+    cat "$tmp/git-err" >&2
+    exit 2
+fi
+while IFS= read -r t; do
+    [ -n "$t" ] && exclude+=(--exclude "$t")
+done <<<"$at_head"
+if ! tag=$(git -C "$root" describe --tags --match 'v*' "${exclude[@]}" --abbrev=0 2>"$tmp/git-err"); then
     if ! grep -q 'No names found\|cannot describe anything\|No tags can describe' "$tmp/git-err"; then
         echo "check-api: git could not read the tags:" >&2
         cat "$tmp/git-err" >&2

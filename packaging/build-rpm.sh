@@ -17,7 +17,7 @@ main() {
     spec=$here/atlas-framework.spec
     version=$(awk '/^Version:/ {print $2; exit}' "$spec")
 
-    dnf -y install rpm-build dnf5-plugins tar gzip >&2
+    dnf -y install rpm-build dnf5-plugins tar gzip git >&2
     dnf -y builddep "$spec" >&2
 
     cache=${ATLAS_BUILD_CACHE:-}
@@ -49,17 +49,35 @@ $toolchain"
     fi
     trap 'rm -rf "$top"' EXIT
     mkdir -p "$top"/{SOURCES,BUILD,RPMS,SRPMS,SPECS}
-    tar -C "$src" \
-        --exclude=./.git --exclude=./out --exclude=./build --exclude=./target \
-        --exclude=./template/target --exclude=./template/build \
-        --transform "s,^\./,atlas-framework-$version/," \
-        -czf "$top/SOURCES/atlas-framework-$version.tar.gz" .
+    # Only what git tracks: no untracked files, no build output. A dirty
+    # tree would package changes that are in no commit.
+    # (The source tree is a bind mount owned by another user: git objects it.)
+    git() { command git -c safe.directory="$src" "$@"; }
+    if ! dirty=$(git -C "$src" status --porcelain --untracked-files=no); then
+        echo "build-rpm: cannot read the git state of $src" >&2
+        exit 1
+    fi
+    if [ -n "$dirty" ] && [ "${ATLAS_ALLOW_DIRTY:-}" != 1 ]; then
+        echo "build-rpm: the working tree has uncommitted changes (the package is built from HEAD, without them):" >&2
+        echo "$dirty" >&2
+        echo "build-rpm: commit them, or set ATLAS_ALLOW_DIRTY=1 to package HEAD anyway" >&2
+        exit 1
+    fi
+    git -C "$src" archive --format=tar.gz --prefix="atlas-framework-$version/" HEAD \
+        -o "$top/SOURCES/atlas-framework-$version.tar.gz"
 
     rpmbuild -bb "${rpmopts[@]}" --define "_topdir $top" "$spec"
 
     mkdir -p "$out"
-    find "$top/RPMS" -name '*.rpm' ! -name '*.src.rpm' ! -name '*debuginfo*' ! -name '*debugsource*' \
-        -exec cp -v {} "$out"/ \;
+    found=0
+    while IFS= read -r -d '' rpm; do
+        cp -v "$rpm" "$out"/
+        found=$((found + 1))
+    done < <(find "$top/RPMS" -name '*.rpm' ! -name '*.src.rpm' ! -name '*debuginfo*' ! -name '*debugsource*' -print0)
+    if [ "$found" -eq 0 ]; then
+        echo "build-rpm: rpmbuild produced no RPM" >&2
+        exit 1
+    fi
 }
 
 main "$@"

@@ -14,3 +14,47 @@ if [ "$got" != "$want" ] || ! grep -q "^lint-app: 0 error(s), $n warning(s)\$" <
     exit 1
 fi
 echo "lint rules ok ($n findings)"
+
+# Error paths and false-pass cases, on throwaway apps.
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+lint="$here/../../tools/lint-app.sh"
+fail() { echo "lint rules: $1" >&2; exit 1; }
+expect() { # expect <exit code> <description> <args...>
+    local want=$1 what=$2
+    shift 2
+    "$lint" "$@" >"$tmp/out" 2>&1
+    local rc=$?
+    [ "$rc" -eq "$want" ] || { cat "$tmp/out" >&2; fail "$what: exit $rc, wanted $want"; }
+}
+expect 2 "missing directory" "$tmp/nope"
+expect 2 "no arguments"
+mkdir "$tmp/empty"
+expect 1 "no QML files" "$tmp/empty"
+expect 0 "no QML files with --allow-empty" --allow-empty "$tmp/empty"
+mkdir "$tmp/pruned" "$tmp/pruned/build" "$tmp/pruned/buildings"
+printf 'import QtQuick.Controls\nButton {}\n' >"$tmp/pruned/build/A.qml"
+expect 1 "only a build dir holds QML" "$tmp/pruned"
+printf 'import QtQuick.Controls\nButton {}\n' >"$tmp/pruned/buildings/A.qml"
+expect 1 "build* other than build, build-*, _build is linted" "$tmp/pruned"
+grep -q ': error: default Button' "$tmp/out" || fail "buildings/ was pruned"
+n=0
+while IFS= read -r import; do
+    n=$((n + 1))
+    mkdir "$tmp/c$n"
+    printf '%s\nItem {\n    Button {}\n}\n' "$import" >"$tmp/c$n/A.qml"
+    expect 1 "false pass: $import" "$tmp/c$n"
+done <<'IMPORTS'
+import QtQuick.Controls // the default controls
+import QtQuick.Controls.Basic
+import QtQuick.Controls.Material 2.15
+import QtQuick.Controls.Universal
+import QtQuick.Controls.Fusion
+IMPORTS
+mkdir "$tmp/alias"
+printf 'import QtQuick.Controls as Q // note\nItem {\n    Q.Button {}\n}\n' >"$tmp/alias/A.qml"
+expect 1 "alias followed by a comment" "$tmp/alias"
+mkdir "$tmp/impl"
+printf 'import QtQuick.Controls.impl\nItem {\n    Button {}\n}\n' >"$tmp/impl/A.qml"
+expect 0 "QtQuick.Controls.impl exports no Button" "$tmp/impl"
+echo "lint error paths ok"
