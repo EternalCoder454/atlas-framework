@@ -157,6 +157,11 @@ done
 %changelog
 * Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.4.0-1
 - Atlas.Ui: AtlasPasswordField, a password field with a show/hide eye
+- Atlas.Ui: the Atlas look (violet accent, pink focus ring, IBM Plex Sans and
+  JetBrains Mono, small rounding, tonal neutrals, blur with solid fallback)
+- Atlas.Ui: springs, sliding selection, window-edge glow, reduced motion
+- Atlas.Ui: new controls from docs/ROADMAP.md (tables, lists, settings, code
+  view, command palette, onboarding and more); see CHANGELOG.md
 
 * Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.3.0-1
 - Atlas.Ui: form controls (AtlasTextField, AtlasTextArea, AtlasComboBox,
