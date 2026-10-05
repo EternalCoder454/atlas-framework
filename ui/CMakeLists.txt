@@ -1,4 +1,4 @@
-# Atlas.Ui: the shared look of Atlas apps (pill buttons, grouped sections,
+# Atlas.Ui: the shared look of Atlas apps (buttons, grouped sections,
 # status hero, sidebar items, setup steps, live charts, usage and progress
 # bars, tables, search, menus, document tabs, find and status bars, banners,
 # toasts, toolbar buttons, and Material Symbols icons: see Symbol.qml and

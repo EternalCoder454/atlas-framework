@@ -1,6 +1,6 @@
 import QtQuick
 
-// Filled accent pill with white text.
+// Filled accent button with white text.
 AtlasButton {
     prominent: true
 }

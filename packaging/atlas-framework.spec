@@ -56,7 +56,7 @@ Requires:       ibm-plex-sans-fonts
 Requires:       jetbrains-mono-fonts
 
 %description -n atlas-ui
-Atlas.Ui gives Atlas apps their shared look: pill buttons, grouped sections,
+Atlas.Ui gives Atlas apps their shared look: buttons, grouped sections,
 the status hero, sidebar items, setup steps, live charts, usage and progress
 bars, tables, search, menus, Material Symbols icons, and the window that
 follows the shared transparency switch. Apps `import Atlas.Ui`. Also protects

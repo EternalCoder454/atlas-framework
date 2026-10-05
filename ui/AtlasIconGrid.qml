@@ -4,7 +4,7 @@ import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
 // A grid of files or apps: an icon over a name, the current one in a rounded
-// pill. It scrolls on its own and makes cells only for what is on screen, so
+// selection (6 px corners). It scrolls on its own and makes cells only for what is on screen, so
 // a folder of ten thousand files costs what a screenful does.
 //
 //   AtlasIconGrid {

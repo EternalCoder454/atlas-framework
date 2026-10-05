@@ -43,7 +43,7 @@ Item {
         menu.popup(arrowPart, arrowPart.width - menu.implicitWidth, arrowPart.height + 4);
     }
 
-    // One half: a pill whose inner end is squared off to meet the other half.
+    // One half: a small rounded rectangle (radiusSmall) whose inner end is squared off to meet the other half.
     component Part: T.AbstractButton {
         id: part
         required property bool leading

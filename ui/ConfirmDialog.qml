@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 
-// Modal dialog in the Atlas look: rounded card, pill buttons.
+// Modal dialog in the Atlas look: rounded card, AtlasButtons.
 //
 // Two buttons by default (`rejectText`, `acceptText`); a non-empty
 // `alternativeText` ("Don't Save") adds a third at the leading edge, which
