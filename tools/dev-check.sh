@@ -95,9 +95,11 @@ if [ -f "$root/.git" ]; then
     common=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)
     gitmount=(-v "$common:$common:ro")
 fi
-# The source is read-only unless the translations are being rewritten.
+# The source is read-only unless the translations or the goldens are being
+# rewritten.
 mode=ro
 [ "$translations" = 1 ] && mode=rw
+[ -n "${ATLAS_UPDATE_GOLDENS:-}" ] && mode=rw
 # --init reaps ninja and ctest children and forwards Ctrl-C; --name makes a
 # stray container easy to find (podman ps --filter name=atlas-dev-check).
 rc=0

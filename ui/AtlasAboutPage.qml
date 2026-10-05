@@ -95,6 +95,8 @@ AtlasPage {
         Kirigami.Icon {
             Layout.alignment: Qt.AlignHCenter
             source: AtlasApp.id
+            // No hole where an icon that isn't installed would be.
+            visible: valid
             Accessible.ignored: true
             Layout.preferredWidth: Math.round(Kirigami.Units.gridUnit * 5)
             Layout.preferredHeight: Layout.preferredWidth

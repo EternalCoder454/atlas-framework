@@ -86,6 +86,8 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Added: `AtlasSidebar.footer` (entries pinned under the scrolling list, such
   as Settings and About) and `footerSeparator`; `SidebarGroup.symbol`,
   `badge` and `badgeText`.
+- Fix: `AtlasAboutPage` leaves no empty space above the app's name when the
+  app's icon isn't installed.
 - Added: `AtlasPage.subtitle` (muted lines under the title, read as the
   page's description), `busy` and `busyText` (a spinner row under the title,
   announced once the text settles); `AtlasAboutPage` has them too.
@@ -136,6 +138,8 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Tools: `dev-check.sh` takes `ATLAS_DEV_JOBS` (fewer build and test jobs,
   for several checkouts at once) and passes `ATLAS_UPDATE_GOLDENS` through;
   an update run rewrites only the goldens that fail, not every picture.
+- Tools: `ATLAS_UPDATE_GOLDENS=1 tools/dev-check.sh` can write the goldens
+  (it mounted the source read-only).
 - Packaging: `build-rpm.sh` packages the committed tree only (git archive of
   HEAD) and refuses a dirty one; the spec builds and ships the translations.
 - Template: drill-down pages use `AtlasNavigationStack`; `main.cpp`
