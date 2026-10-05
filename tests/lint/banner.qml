@@ -32,7 +32,7 @@ Item {
         color: Qt.alpha(Kirigami.Theme.negativeTextColor, 0.1)
     }
     Rectangle {
-        color: "red"
+        color: "red" // atlas-lint: allow-raw
         QQC2.Label { text: "plain" }
     }
     OldThing { } // WANT

@@ -29,8 +29,15 @@
 #             another list).
 #             AtlasPortal.notify(...) with `markup: true` whose body is not a
 #             literal and does not go through AtlasPortal.escape().
+#             Raw values where Atlas.Ui has a token: a colour string ("#rgb",
+#             "#rrggbb", "#aarrggbb", a named colour such as "red" in a
+#             `...color:` binding) or Qt.rgba/hsla/hsva with literal numbers
+#             (AtlasStyle.<colour>); a literal `duration:` in an animation
+#             (AtlasStyle.duration, durationShort, durationLong); a literal
+#             `radius:` other than 0 (AtlasStyle.radiusSmall, radius,
+#             radiusLarge, radiusPill). Warnings never change the exit code.
 # A finding is silenced by `// atlas-lint: allow <reason>` on its line or the
-# line before.
+# line before; `// atlas-lint: allow-raw` does the same for the raw-value rules.
 set -uo pipefail
 
 allow_empty=0
@@ -88,7 +95,105 @@ function uses(s, a, name,   re) {
     re = "(^|[^A-Za-z0-9_.])" (a == "" ? "" : a "\\.") name "[ \t]*\\{"
     return match(s, re) > 0
 }
+# The open items after the text str, given the stack st before it (item type
+# names joined by "|"; "-" for a block that is not an item, such as a JS body).
+# Strings and comments are skipped. Used to tell what a `duration:` belongs to.
+function scanStack(st, str,   i, n, c, q, pre, t) {
+    n = length(str)
+    for (i = 1; i <= n; i++) {
+        c = substr(str, i, 1)
+        if (c == "\"" || c == "'") {
+            q = c
+            for (i++; i <= n; i++) {
+                c = substr(str, i, 1)
+                if (c == "\\") i++
+                else if (c == q) break
+            }
+        } else if (c == "/" && substr(str, i + 1, 1) == "/") {
+            break
+        } else if (c == "{") {
+            pre = substr(str, 1, i - 1)
+            t = "-"
+            if (match(pre, /[A-Za-z_][A-Za-z0-9_.]*[ \t]+on[ \t]+[A-Za-z_][A-Za-z0-9_.]*[ \t]*$/)) {
+                t = substr(pre, RSTART, RLENGTH); sub(/[ \t].*$/, "", t)
+            } else if (match(pre, /[A-Za-z_][A-Za-z0-9_.]*[ \t]*$/)) {
+                t = substr(pre, RSTART, RLENGTH); sub(/[ \t]+$/, "", t)
+            }
+            sub(/^.*\./, "", t)
+            st = st "|" t
+        } else if (c == "}") {
+            sub(/\|[^|]*$/, "", st)
+        }
+    }
+    return st
+}
+function topOf(st) { return match(st, /[^|]*$/) ? substr(st, RSTART) : "" }
+# Raw colours, animation durations and corner radii that have a token in AtlasStyle.
+function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
+    if (incomment[n] || index(lines[n], "atlas-lint: allow-raw") > 0) return
+    c = s
+    sub(/[ \t]\/\/.*$/, "", c)
+    # Colour strings: "#rgb", "#argb", "#rrggbb", "#aarrggbb". Not in text (qsTr, text:).
+    if (c !~ /qsTr[ \t]*\(/ && c !~ /(^|[^A-Za-z0-9_.])(text|title|placeholderText|toolTip|description|subtitle)[ \t]*:/) {
+        rest = c
+        while (match(rest, /"#[0-9A-Fa-f]+"/)) {
+            w = RLENGTH - 3
+            tok = substr(rest, RSTART, RLENGTH)
+            rest = substr(rest, RSTART + RLENGTH)
+            if (w == 3 || w == 4 || w == 6 || w == 8)
+                report(n, "warning", "raw colour " tok, ": use an AtlasStyle colour (AtlasStyle.accent, text, textMuted, surface, error, success, warning...); `// atlas-lint: allow-raw` if it must stay")
+        }
+    }
+    # Named colours in a colour binding.
+    if (c ~ /(^|[^A-Za-z0-9_])[A-Za-z]*[cC]olor[ \t]*:/) {
+        rest = c
+        sub(/^.*[cC]olor[ \t]*:/, "", rest)
+        while (match(rest, /"[A-Za-z]+"/)) {
+            w = tolower(substr(rest, RSTART + 1, RLENGTH - 2))
+            rest = substr(rest, RSTART + RLENGTH)
+            if (!(w in NAMED)) continue
+            hint = "an AtlasStyle colour (AtlasStyle.text, textMuted, surface, accent...)"
+            if (w == "red") hint = "AtlasStyle.error"
+            else if (w == "green") hint = "AtlasStyle.success"
+            else if (w == "orange" || w == "yellow") hint = "AtlasStyle.warning"
+            report(n, "warning", "raw colour \"" w "\"", ": use " hint "; `// atlas-lint: allow-raw` if it must stay")
+        }
+    }
+    # Qt.rgba, Qt.hsla, Qt.hsva with nothing but numbers.
+    rest = c
+    while (match(rest, /Qt\.(rgba|hsla|hsva)[ \t]*\([ \t0-9.,+-]*\)/)) {
+        tok = substr(rest, RSTART, RLENGTH)
+        rest = substr(rest, RSTART + RLENGTH)
+        sub(/[ \t]*\(.*$/, "", tok)
+        report(n, "warning", tok " with literal numbers", ": use an AtlasStyle colour, or Qt.alpha(AtlasStyle.<colour>, <alpha>) for a tint; `// atlas-lint: allow-raw` if it must stay")
+    }
+    # Literal durations of animations: the item the line is in must be one.
+    off = 0; rest = c
+    while (match(rest, /(^|[^A-Za-z0-9_.])duration[ \t]*:[ \t]*[0-9]+[ \t]*(;|\}|$)/)) {
+        pre = substr(c, 1, off + RSTART - 1)
+        tok = substr(rest, RSTART, RLENGTH)
+        off += RSTART + RLENGTH - 1
+        rest = substr(rest, RSTART + RLENGTH)
+        v = tok; sub(/^[^0-9]*duration[ \t]*:[ \t]*/, "", v); sub(/[^0-9].*$/, "", v)
+        if (v + 0 == 0) continue
+        st = scanStack(ctx[n], pre)
+        if (topOf(st) !~ /(Animation|Animator)$/) continue
+        hint = (v + 0 <= 100) ? "durationShort (100 ms)" : ((v + 0 <= 150) ? "duration (150 ms)" : "durationLong (250 ms)")
+        report(n, "warning", "literal animation duration " v, ": use AtlasStyle." hint " (it is 0 when the user turned motion off); `// atlas-lint: allow-raw` if it must stay")
+    }
+    # Literal radii other than 0.
+    if (match(c, /(^|[^A-Za-z0-9_.])radius[ \t]*:[ \t]*[0-9.]+[ \t]*(;|\}|$)/)) {
+        tok = substr(c, RSTART, RLENGTH)
+        v = tok; sub(/^[^r]*radius[ \t]*:[ \t]*/, "", v); sub(/[^0-9.].*$/, "", v)
+        if (v + 0 != 0) {
+            hint = (v + 0 >= 100) ? "radiusPill" : ((v + 0 <= 4) ? "radiusSmall (4)" : ((v + 0 <= 6) ? "radius (6)" : "radiusLarge (8)"))
+            report(n, "warning", "literal radius " v, ": use AtlasStyle." hint "; `// atlas-lint: allow-raw` if it must stay")
+        }
+    }
+}
 BEGIN {
+    split("red green blue white black gray grey yellow orange purple pink cyan magenta brown lime navy teal maroon olive silver aqua fuchsia gold crimson coral salmon tomato violet indigo khaki orchid plum tan beige ivory lavender turquoise darkgray darkgrey lightgray lightgrey darkred darkgreen darkblue lightblue lightgreen skyblue steelblue royalblue slategray", NC, " ")
+    for (i in NC) NAMED[NC[i]] = 1
     # From the environment, not -v: awk would read backslashes in them as escapes.
     SCAN_LINES = 200
     file = ENVIRON["LINT_FILE"]
@@ -110,6 +215,20 @@ BEGIN {
 }
 { lines[NR] = $0 }
 END {
+    # Per line: is it inside a block comment, and which items are open at its start.
+    blk = 0; ctxst = ""
+    for (nr = 1; nr <= NR; nr++) {
+        ctx[nr] = ctxst
+        s = lines[nr]
+        if (blk) {
+            incomment[nr] = 1
+            if (index(s, "*/") > 0) blk = 0
+        } else {
+            if (s ~ /^[ \t]*\/\*/) incomment[nr] = 1
+            if (match(s, /\/\*/) && index(substr(s, RSTART), "*/") == 0 && s !~ /"[^"]*\/\*/) blk = 1
+            ctxst = scanStack(ctxst, s)
+        }
+    }
     for (nr = 1; nr <= NR; nr++) {
         s = lines[nr]
         # A trailing comment must not hide an `as` alias.
@@ -135,6 +254,7 @@ END {
             continue
         }
         if (s ~ /^[ \t]*\/\//) continue
+        rawChecks(nr, s)
         for (i in E) {
             name = E[i]
             hit = 0

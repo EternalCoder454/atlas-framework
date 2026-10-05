@@ -70,3 +70,54 @@ names="$here/../../tools/check-app-names.sh"
 [ $? -eq 1 ] || fail "check-app-names: no QML files must exit 1"
 "$names" --allow-empty "$tmp/empty" >/dev/null 2>&1 || fail "check-app-names --allow-empty"
 echo "lint error paths ok"
+
+# Raw colours, literal durations and radii (token-only lint): `// WANT` lines get
+# one warning each, the rest none, and warnings never change the exit code.
+mkdir "$tmp/raw"
+cat >"$tmp/raw/Raw.qml" <<'QML'
+import QtQuick
+Rectangle {
+    color: "#fff" // WANT
+    border.color: "#e5487a" // WANT
+    color: "#80e5487a" // WANT
+    color: ok ? "red" : "transparent" // WANT
+    color: Qt.rgba(1, 0, 0, 0.5) // WANT
+    color: Qt.hsla(0.5, 1, 0.5, 1) // WANT
+    radius: 6 // WANT
+    Behavior on x { NumberAnimation { duration: 200 } } // WANT
+    NumberAnimation on y {
+        duration: 90 // WANT
+    }
+    ColorAnimation { duration: 150; to: "transparent" } // WANT
+    color: "#abc" // atlas-lint: allow-raw
+    radius: 8 // atlas-lint: allow-raw
+    Behavior on y { NumberAnimation { duration: 99 } } // atlas-lint: allow-raw
+    color: AtlasStyle.surface
+    color: Qt.rgba(c.r, c.g, c.b, 0.5)
+    color: Qt.alpha(AtlasStyle.text, 0.5)
+    radius: 0
+    radius: height / 2
+    radius: AtlasStyle.radius
+    text: "#123"
+    title: qsTr("Issue #1234")
+    Timer { interval: 200; }
+    Toast { duration: 4000 }
+    NumberAnimation { duration: AtlasStyle.duration }
+    NumberAnimation { duration: 0 }
+    // color: "#fff"
+    /* color: "#fff" */
+}
+QML
+out=$("$lint" "$tmp/raw")
+rc=$?
+want=$(grep -n '// WANT$' "$tmp/raw/Raw.qml" | cut -d: -f1)
+got=$(sed -nE 's|^.*/Raw\.qml:([0-9]+): warning: .*$|\1|p' <<<"$out")
+n=$(wc -l <<<"$want")
+if [ "$got" != "$want" ] || [ "$rc" -ne 0 ] || ! grep -q "^lint-app: 0 error(s), $n warning(s)\$" <<<"$out"; then
+    printf -- '--- wanted lines\n%s\n--- got (exit %s)\n%s\n' "$want" "$rc" "$out" >&2
+    fail "raw-value rules: unexpected findings"
+fi
+grep -q 'AtlasStyle.error' <<<"$out" || fail "a raw red names no token"
+grep -q 'AtlasStyle.durationShort' <<<"$out" || fail "a 90 ms duration names no token"
+grep -q 'AtlasStyle.radius (6)' <<<"$out" || fail "a radius of 6 names no token"
+echo "lint raw-value rules ok ($n findings)"
