@@ -20,6 +20,17 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Fix: a compact `SidebarItem`'s tooltip includes `badgeText`.
 - Fix: in right-to-left a `SidebarItem` without a value keeps its label next
   to its icon instead of at the far edge.
+- Fix: `AtlasDialog` with nothing focusable in the body no longer gives the
+  first focus to a footer button (Cancel): it stays on the dialog, so Return
+  right after opening presses nothing. (The header was already excluded.)
+- Fix: `ToolbarButton`'s tooltip hides while the button is pressed and after
+  it was clicked (a menu or popup it opened is not covered by the tooltip), and
+  returns once the pointer has left and come back.
+- Fix: `TabBar` with more tabs than fit: the strip now shrinks to the bar and
+  scrolls, so the "+" button stays in view, and a tab made current after it
+  was added scrolls into view. Before, the strip kept its full width, ran past
+  the bar's edge and never scrolled (since 1.3.0). The wheel also respects the
+  strip's start once tabs of different widths came and went.
 
 ## 1.4.0
 

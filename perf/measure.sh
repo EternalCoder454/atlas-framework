@@ -111,15 +111,18 @@ if [ ! -f "$qml_dir/Atlas/Ui/qmldir" ]; then
     cmake --install "$build" --prefix /usr >/dev/null
 fi
 
-# The template, in Release, with its own target directory.
-export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$work/target}
-cmake -S "$root/template" -B "$work/template" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
-cmake --build "$work/template" >"$work/build.log" 2>&1 || {
+# The template, in Release, with its own target directory. CI keeps the
+# build tree between runs (ATLAS_PERF_TEMPLATE_BUILD) so it only rebuilds what
+# changed; by default it is temporary.
+tbuild=${ATLAS_PERF_TEMPLATE_BUILD:-$work/template}
+export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$tbuild/target}
+cmake -S "$root/template" -B "$tbuild" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
+cmake --build "$tbuild" >"$work/build.log" 2>&1 || {
     tail -n 40 "$work/build.log" >&2
     echo "measure: the template did not build" >&2
     exit 1
 }
-bin=$work/template/atlas-app-template
+bin=$tbuild/atlas-app-template
 [ -x "$bin" ] || {
     echo "measure: $bin was not built" >&2
     exit 1

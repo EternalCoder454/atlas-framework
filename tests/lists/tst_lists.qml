@@ -411,4 +411,58 @@ Item {
             compare(col.x, sb.padding);
         }
     }
+
+    Component {
+        id: tabBarComp
+        TabBar {
+            width: 300
+            model: ListModel {
+                ListElement { title: "One"; modified: false; toolTip: "" }
+                ListElement { title: "Two"; modified: false; toolTip: "" }
+            }
+            currentIndex: 0
+        }
+    }
+
+    TestCase {
+        name: "TabBar"
+        when: windowShown
+
+        function listOf(bar) {
+            for (let i = 0; i < bar.children.length; ++i) {
+                const c = bar.children[i];
+                if (c instanceof ListView) {
+                    return c;
+                }
+                for (let j = 0; j < c.children.length; ++j) {
+                    if (c.children[j] instanceof ListView) {
+                        return c.children[j];
+                    }
+                }
+            }
+            return null;
+        }
+
+        // An app adds tabs (the count changes) and makes the last one current
+        // a moment later: it must scroll into view although the count's own
+        // scroll has already run.
+        function test_new_current_tab_scrolls_into_view() {
+            const bar = createTemporaryObject(tabBarComp, root);
+            verify(bar);
+            const list = listOf(bar);
+            verify(list, "TabBar's ListView");
+            for (let i = 0; i < 8; ++i) {
+                bar.model.append({ title: "Untitled " + (i + 1), modified: false, toolTip: "" });
+            }
+            tryVerify(() => list.contentWidth > list.width, 2000, "the tabs overflow and the strip shrinks to the bar");
+            verify(list.x + list.width <= bar.width, "the strip ends inside the bar");
+            // The count's own scroll has run; the index arrives afterwards.
+            wait(50);
+            bar.currentIndex = bar.model.count - 1;
+            tryVerify(() => {
+                const item = list.itemAtIndex(bar.currentIndex);
+                return item !== null && item.x + item.width <= list.contentX + list.width + 0.5 && item.x >= list.contentX - 0.5;
+            }, 2000, "the current tab is inside the visible part of the strip");
+        }
+    }
 }

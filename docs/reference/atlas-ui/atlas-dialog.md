@@ -5,7 +5,7 @@ section: Menus, dialogs and popups
 since: "1.4.0"
 ---
 
-AtlasDialog has a title row, a scrolling body and a row of buttons. For a yes or no question use `ConfirmDialog`. The window behind is dimmed, Escape closes the dialog, and the focus starts on the first thing in the body that can take it. A body taller than the window scrolls instead of outgrowing it, and the dialog is never wider than the window.
+AtlasDialog has a title row, a scrolling body and a row of buttons. For a yes or no question use `ConfirmDialog`. The window behind is dimmed, Escape closes the dialog, and the focus starts on the first thing in the body that can take it; when the body has nothing focusable it stays on the dialog itself, never on a header or footer button, so pressing Return right after opening does not close it. A body taller than the window scrolls instead of outgrowing it, and the dialog is never wider than the window.
 
 The header has an optional Back button at the leading edge (`showBack`, then `backRequested()`; the dialog does not close itself), the `title`, `headerTrailing` items, and a Close button at the trailing edge (`showClose`, on by default; it rejects the dialog). `footerContent` holds the buttons, right-aligned, in KDE order: the main action last.
 

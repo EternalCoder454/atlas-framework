@@ -2,3 +2,7 @@
 /out/
 /target/
 /.claude/
+# CI caches (.github/workflows/ci.yml)
+/.ccache/
+/.cargo-registry/
+/.perf-template/

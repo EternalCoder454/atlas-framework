@@ -165,10 +165,55 @@ AtlasCaption, AtlasBusyRow, AtlasNumberField, AtlasUrlField, AtlasBigStat.
 ## 1.5.0
 
 Started 2026-10-05. There is no 1.4.1: bug fixes and new API both land here.
-The work runs as for 1.4.0 (above): bug batches first, since they change no
-API, while the new API is sketched in `docs/api-1.5.0.md` and reviewed once.
-Every new member gets its line on its docs/reference page in the same commit
-(`tools/docs.py check` fails otherwise). Versions are bumped at release.
+1.5.0 is a robustness release and runs the full F.S.R.P plan, phase by phase:
+a phase starts only when the one before has no open problems, every finding is
+fixed (not only Critical and High), and the same check runs again on the fixes
+until it comes back clean. Every new member gets its line on its
+docs/reference page in the same commit (`tools/docs.py check` fails
+otherwise). Versions are bumped at release.
+
+### Plan: what done means
+
+**Study (before the F phase closes).** One read-only review per area of the
+whole framework, not just the diff, for wrong behaviour, unhandled states and
+fragile code: (1) fields and inputs, (2) lists, tables, trees and their
+models, (3) dialogs, popups, navigation, window and chrome, (4) the C++
+singletons and services (Appearance, settings, shortcuts, clipboard,
+validators, formatting), (5) the Rust crates, (6) tools, CI and packaging.
+Findings become units below (B1 onwards); the security and performance ones
+wait for their phase.
+
+**F, Functional.** Every B and A item below done and shown working: a test
+for each fix that failed before it, a demo and goldens (looked at) for each
+new member or visible change, the `api/` line and the reference page. Every
+state handled: empty, loading, error, huge (10k rows, 200 sidebar entries,
+very long text), first run, RTL, text at 200 %, compact, high contrast,
+reduced motion. `tools/dev-check.sh` clean, the gallery walked headless with
+no warnings, and the apps CI job building Updater, Installer, Monitor and
+Notepad against it.
+
+**S, Secure.** One security review over everything that takes outside input:
+files and drops (AtlasDropZone, file and folder fields, path and URL
+validators), clipboard, settings files and `atlasrc`, D-Bus (global menu,
+window chrome, notifications), the crates' polkit, Flatpak and crash-report
+paths, the packaging and the CI workflows (tokens, `pull_request_target`,
+pinned actions). Done when every item in "S gate" below is fixed or closed
+with a reason, and the review of the fixes comes back clean.
+
+**R, Reliable.** One reliability review over the whole module: every error
+shown in plain words, no warnings or TypeErrors in normal use (a test fails
+on any QML warning during the visual and state runs), no leaked connections,
+timers or popups when items are created and destroyed many times, settings
+written atomically and surviving a crash or a full disk, D-Bus and file calls
+that can't hang the GUI thread (AtlasPathValidator, settings lock), and
+everything working after a restart and with an older `atlasrc`.
+
+**P, Performant.** Measured with `perf/measure.sh` against `perf/budget.json`
+(startup 190 ms, RSS 129.2 MB, PSS 114.8 MB, idle CPU 1 %): no figure worse
+than 1.4.0. Plus: `libatlasui.so` smaller (28 MB in Release; try hidden
+visibility), list and table scrolling at 10k rows without dropped frames,
+the new floating toolbar and popover idle at zero CPU, and qmllint warnings
+at or below 162.
 
 ### B0: bugs the apps hit on 1.4.0
 
@@ -181,13 +226,16 @@ Every new member gets its line on its docs/reference page in the same commit
   about 14 px of a 64 px sidebar; it is the stock bar, not AtlasScrollBar. A
   focused entry's ring may be clipped next to it. (Monitor)
 - [x] SidebarItem: the compact tooltip leaves out `badgeText`. (Monitor)
-- [ ] AtlasDialog: with nothing focusable in the body, `onOpened` focus wraps
-  to the header's Back or Close, so Return right after opening closes the
-  dialog. Focus only an item inside the body, else the dialog. (Monitor)
-- [ ] ToolbarButton: its tooltip stays up while the menu it opened is open.
+- [x] AtlasDialog focus on open: reported by Monitor, then withdrawn (1.4.0
+  already kept the focus out of the header). Tightened anyway: a footer button
+  no longer counts as the body either, and tests cover a labels-only body.
+- [x] ToolbarButton: its tooltip stays up while the menu it opened is open.
   (Monitor)
 - [x] ConfirmDialog: `destructive` drew the accept button violet since the
   1.4.0 restyle; it uses the Destructive look again (fixed on main, 7dc2806).
+- [x] TabBar: with more tabs than fit, the strip kept its content width, ran
+  past the bar (hiding "+") and never scrolled; a tab made current after it
+  was added stayed out of view. (Notepad; since 1.3.0)
 
 ### A1: new API the apps asked for (sketch in docs/api-1.5.0.md first)
 
@@ -212,6 +260,165 @@ Every new member gets its line on its docs/reference page in the same commit
   nested submenus, model-driven entries (Open Recent bound to a list, with a
   lead item), shortcuts shown in the global-menu export, and tall groups that
   don't hit the ContextMenu height cap. (Notepad)
+
+- AtlasFormat.bytes: an SI (decimal) option, "1.2 GB". (Updater)
+- AtlasFormat.date: a long "date at time" style ("Thursday, 1 January 2099
+  at 03:00") and a sentence-start relative form ("Today at 9:41"). (Updater)
+- AtlasTimePicker: an arrow step separate from the allowed values (typed 07
+  is snapped to 05 today, without a word), and a minimum time. (Updater)
+- ConfirmDialog: `width`/`maximumWidth` instead of the fixed 25 grid units.
+  (Updater)
+- AtlasCopyButton: a text mode ("Copy Details", then "Copied"). (Updater)
+- AtlasSidebar footer: also asked for by Updater (Settings, Crash Reports,
+  About).
+- AtlasWindow: tunable `widthClass` thresholds (Updater folds at 38 units).
+- InfoBanner: `shown` stays bound; the close button sets an internal
+  `dismissed` flag that a new `text` resets. (Updater)
+- AtlasAboutPage: hide the OS and Qt rows, override the links, a footer.
+  (Updater)
+- AtlasDetailGrid: a title and a footer, so it can replace a Section of
+  label/value rows. (Updater)
+- A page-level busy row (spinner and label); SectionRow `busy` covers rows
+  only. (Updater)
+- SidebarGroup: `symbol` and `badge` like SidebarItem. (study 3)
+- AtlasBreadcrumb: the "Hidden folders" text as a property. (study 3)
+
+### B1: bugs other apps reported
+
+- [ ] AtlasCodeView: the horizontal scroll bar covers the last line, and as
+  the content "fits" there is no vertical scroll to reach it (also at the end
+  of a scroll capped by maximumHeight); it uses QQC2.ScrollBar, not
+  AtlasScrollBar. Also an inset option to line up with SectionRow text.
+  (Updater)
+- [ ] DESIGN.md calls AtlasButton TextButton's base with `variant`; TextButton
+  is a T.AbstractButton without it (setting it fails to load). Fix the docs,
+  or give TextButton `variant` (Ghost link buttons). (Updater)
+- [ ] AtlasSettings: FileLock can msleep the GUI thread up to 1 s per flush
+  while another process holds the lock, and AtlasWindow.stateKey flushes on
+  resize. (Updater)
+
+### B2: study findings (F and R), whole framework
+
+Studies 1-3 (fields and buttons; lists and data; dialogs, popups and the
+window) read every file at 413cfb2. Studies 4-6 (C++ services, crates, tools
+and CI) are running. Items marked "verify" come from reading only: reproduce
+first. Fix in batches by file; every fix gets a test that fails before it.
+
+#### Fields and buttons
+
+- [ ] High: AtlasColorField:194-200, AtlasFontPicker:189, AtlasDatePicker:183
+  call `Item.contains(item)` (it takes a point): a TypeError on close, and the
+  focus doesn't return to the field.
+- [ ] Return/Enter call `clicked()` not `click()` in AtlasButton, TextButton,
+  AtlasChip and AtlasInstallButton: an `action` isn't triggered and a
+  checkable button doesn't toggle.
+- [ ] AtlasSplitButton: no Return/Enter on its parts, though the header says
+  so (verify).
+- [ ] Internal assignments break app bindings after the first edit: AtlasRating,
+  AtlasSegmentedControl, AtlasCalendar, AtlasComboBox (filterable),
+  AtlasColorField, AtlasDatePicker, AtlasFontPicker, AtlasFileField,
+  AtlasFolderField; also FindBar's three toggles, AtlasSidebar's filter
+  (`visible`), InfoBanner (B1 above). One rule for all.
+- [ ] AtlasChipGroup: the roving Tab stop isn't moved when its chip is hidden
+  or disabled, so the group can't be reached.
+- [ ] AtlasAutocompleteField: the clear button leaves the popup open with
+  stale suggestions; `mark()` offsets after toLowerCase; rowsMoved; forceAll
+  stays on.
+- [ ] AtlasInstallButton: NaN progress shows "NaN%".
+- [ ] AtlasDropZone: a Browse click may emit `browseRequested` twice (verify);
+  glob `?`/`*` don't match a newline.
+- [ ] AtlasComboBox: filtering hides delegates instead of filtering the model
+  (10k rows are all built); null entries or a missing textRole throw.
+- [ ] AtlasSpinBox has no validator; SearchField's `query` lags on Return and
+  its clear button works on a read-only field; AtlasShortcutField can't record
+  Ctrl+Delete, Shift+Delete, Ctrl+Escape; AtlasSegmentedControl with a
+  ListModel or number, and a click doesn't focus it; AtlasFontPicker reads the
+  families once and shows "-1 pt" for pixel fonts; AtlasUrlValidator refuses
+  "example.com" silently; AtlasColorField alpha 0.999 and duplicate swatches;
+  AtlasChip and AtlasButton have no elide or maximum width; menus of
+  AtlasSplitButton and MenuButton don't flip in RTL; AtlasSwitch's indicator in
+  a wide RTL switch; AtlasRating's count text replace; AtlasFileField's
+  folder symbol, silent dialog failure, no validator hook. (Low)
+
+#### Lists, tables and data
+
+- [ ] StatusHero: the ring keeps the busy spinner's angle when progress
+  starts, so the arc starts at a random angle.
+- [ ] AtlasTreeView: `anchorRow` is a row number, so expanding a row moves
+  the Shift-click anchor to another item.
+- [ ] DataTable: sorting, column resize and the columns menu are mouse-only.
+- [ ] DataTable: Down on an empty multi-select table selects row 0 for later.
+- [ ] DataTable: a shorter `columns` array throws in header, cell and menu
+  bindings before the Repeater shrinks.
+- [ ] AtlasFlowLayout: a child with only an explicit `width` gets width 0;
+  `_busy` without try/finally stops all later layouts after one throw.
+- [ ] AtlasTreeView and AtlasIconGrid: no focus ring after a mouse click then
+  arrow keys (AtlasListView's `_mouseFocus` fix).
+- [ ] Low: AtlasSearchResults swallows Enter with no results; AtlasProgressBar
+  NaN and >1, and its indeterminate slide in RTL; UsageBar NaN parts;
+  AtlasScreenshotCarousel `currentIndex` out of range; AtlasAppCard rating not
+  localised or clamped; AtlasCard press action when not clickable;
+  AtlasListView selection on a mode change, `_hover`/`_dragFrom` on a model
+  reset, hover after scrolling (also AtlasTreeView); a `symbol` role holding a
+  name gives NaN (four views); AtlasIconGrid's Menu-key popup in RTL;
+  DataTable's Delete accepted with no handler; AtlasStat and LiveChart labels
+  don't elide; AtlasDetailGrid values not reachable by keyboard and copy
+  replaces the selection; Symbol throws for a codepoint out of range;
+  `Symbols::codepoint` warns on every call; AtlasTreeModel drops bad entries
+  without a word; LiveChart NaN setters repaint; a lone sparkline sample is
+  twice the line width; AtlasTreeView's column width on resize (verify).
+
+#### Dialogs, popups, menus and the window
+
+- [ ] ContextMenuItem shows "&Save" for an action's mnemonic text (also its
+  accessible name).
+- [ ] AtlasNavigationStack: the RTL Back arrow flips around the stack's
+  middle, not the button's (verify).
+- [ ] AtlasBreadcrumb: `Accessible.announce` on a QtObject (verify); the
+  chevron and "…" use absolute x in RTL (verify).
+- [ ] ContextMenu's width doesn't follow its items' widths, so long labels
+  elide (verify).
+- [ ] AtlasPopover isn't re-placed on a window resize or a target move, and
+  opens at 0,0 with no target.
+- [ ] AtlasDialog's body doesn't scroll to the focused field.
+- [ ] FindBar: Enter in the replace field with no matches.
+- [ ] Low: high contrast leaves selection, hover and pressed faint;
+  StatusBarItem not keyboard reachable; SectionRow's press action when
+  disabled; AtlasEdgeGlow's gradient in RTL (verify); AtlasShortcutsDialog's
+  section "constructor"; AtlasToolTip with empty text, and no flip below;
+  AtlasAppMenu's native items (shortcut, icon, checked binding) and teardown;
+  AtlasToolbar's text-only actions; AtlasWindowButtons draws an unknown name
+  as Maximize; AtlasWindow overrides app `flags`; AtlasHeaderBar's fixed 32 px
+  at 200 % text and Maximize on a fixed-size window; AtlasAboutPage's links
+  section with only `issuesUrl`; Section's Return auto-repeat; stock
+  QQC2.ToolTip in ToolbarButton, StatusBarItem, TabBar, InfoBanner and stock
+  ScrollBar in ConfirmDialog, AtlasShortcutsDialog; InfoBanner reads
+  `icon.name` of a non-Action; ConfirmDialog's accessible text; negative
+  dialog width in a tiny window; Toast `show(undefined)`; AtlasPage's scroll
+  bar in RTL; AtlasPortal stale notification ids after a server restart;
+  AtlasWindowChrome reads kwinrc on the GUI thread.
+
+### S-phase notes (from the studies; handled in the S pass)
+
+- AtlasPortal: reject userinfo (`https://good@evil`); file type sniffing and
+  canonicalFilePath on the GUI thread; notification markup is the caller's
+  duty (document). AtlasAboutPage uses Qt.openUrlExternally, not AtlasPortal.
+- NotesText: RichText loads `<img>` itself, remote URLs included; strip it.
+- AtlasAvatar: any URL, no timeout or size cap (copy the carousel's
+  `vetted()`).
+- AtlasCopyButton: no sensitive hint or auto-clear; AtlasPathValidator's "~".
+
+### P-phase notes (from the studies; measured in the P pass)
+
+- AtlasTreeView `selectRange` on a non-AtlasTreeModel: one select per row,
+  quadratic on 10k rows. AtlasCodeView's line numbers on a 100k-line log.
+- AtlasComboBox filtering (above); AtlasListView and AtlasTreeView type-ahead
+  scans; DataTable's RepaintArea content on GPU backends; Symbol's
+  `variableAxes` per row and `Symbols::names()`.
+- AtlasEdgeGlow repaints every frame while active (160 Hz); AtlasStyle's
+  hidden probe Window at startup; AtlasSidebar `entries()` per drag move;
+  AtlasToolbar fit O(n²); AtlasInstallButton's hidden shimmer; AtlasChipGroup
+  and AtlasFontPicker per-instance work.
 
 ### Release
 

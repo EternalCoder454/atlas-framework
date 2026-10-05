@@ -48,8 +48,14 @@ Item {
     Accessible.role: Accessible.PageTabList
     Accessible.name: qsTr("Tabs")
 
+    // A new tab's index usually arrives after the count changed, and the list
+    // no longer follows its current item (the highlight slides on its own).
+    onCurrentIndexChanged: Qt.callLater(control.ensureCurrentVisible)
+
     function ensureCurrentVisible() {
         if (control.currentIndex >= 0 && control.currentIndex < list.count) {
+            // Lay out the new tabs first, or the list scrolls by estimated widths.
+            list.forceLayout();
             list.positionViewAtIndex(control.currentIndex, ListView.Contain);
         }
     }
@@ -74,11 +80,18 @@ Item {
             property int dropAt: -1
 
             Layout.fillHeight: true
+            // Hugs its tabs while they fit and shrinks to the bar (then
+            // scrolls) when they don't, so the New Tab button stays in view.
+            Layout.fillWidth: true
             Layout.minimumWidth: 0
             Layout.preferredWidth: contentWidth
+            Layout.maximumWidth: contentWidth
             orientation: ListView.Horizontal
             spacing: AtlasStyle.spacingXSmall
             clip: true
+            // Every tab is built, so the strip scrolls by real widths, not
+            // estimates that are corrected (and clamp contentX) later.
+            cacheBuffer: 100000
             // Dragging belongs to reordering; the wheel scrolls.
             interactive: false
             boundsBehavior: Flickable.StopAtBounds
@@ -157,14 +170,22 @@ Item {
                 }
             }
             onCountChanged: Qt.callLater(control.ensureCurrentVisible)
+            // The current tab's title turns medium weight, so it grows a
+            // little after it was scrolled to.
+            Connections {
+                target: list.currentItem
+                function onWidthChanged() { Qt.callLater(control.ensureCurrentVisible); }
+            }
             onWidthChanged: Qt.callLater(control.ensureCurrentVisible)
 
             WheelHandler {
                 acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                 onWheel: event => {
                     const d = event.angleDelta.x !== 0 ? event.angleDelta.x : event.angleDelta.y;
-                    const max = Math.max(0, list.contentWidth - list.width);
-                    list.contentX = Math.max(0, Math.min(max, list.contentX - d * (list.mirrored ? -1 : 1)));
+                    // The content starts at originX, not 0, once tabs of
+                    // different widths came and went.
+                    const max = list.originX + Math.max(0, list.contentWidth - list.width);
+                    list.contentX = Math.max(list.originX, Math.min(max, list.contentX - d * (list.mirrored ? -1 : 1)));
                 }
             }
 
