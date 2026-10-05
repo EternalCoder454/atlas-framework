@@ -180,6 +180,7 @@ Item {
             w.width = 20;
             w.height = 20;
             tryCompare(w, "width", 20);
+            tryCompare(w, "height", 20);
             compare(resizeAt(w, 2, 18), [Qt.BottomEdge | Qt.LeftEdge]);
             compare(resizeAt(w, 18, 18), [Qt.BottomEdge | Qt.RightEdge]);
             compare(resizeAt(w, 18, 12), [Qt.BottomEdge | Qt.RightEdge]);
