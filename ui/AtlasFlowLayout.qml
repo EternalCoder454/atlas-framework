@@ -1,4 +1,6 @@
 import QtQuick
+// child.Layout reads the attached Layout only where its type is imported.
+import QtQuick.Layouts
 
 // Lays its children out left to right and wraps them onto new rows, like
 // Flow, but it honours the Layout attached properties (QtQuick.Layouts) that
@@ -58,32 +60,57 @@ Item {
         return typeof item.itemAt === "function" && item.delegate !== undefined && item.model !== undefined;
     }
     function _schedule() {
-        if (!_pending) {
-            _pending = true;
+        if (!root._pending) {
+            root._pending = true;
             Qt.callLater(() => root._relayout());
+        }
+    }
+    // A child's signals that change the layout, and its Layout.* ones: the
+    // attached object is made here, which Layout does for any item laid out by it.
+    function _wire(child, on) {
+        // A child already destroyed has no signals left to disconnect.
+        if (!child || !child.visibleChanged) {
+            return;
+        }
+        const signals = [child.implicitWidthChanged, child.implicitHeightChanged, child.visibleChanged];
+        const attached = child.Layout;
+        if (attached) {
+            for (const name of ["fillWidthChanged", "preferredWidthChanged", "minimumWidthChanged", "maximumWidthChanged"]) {
+                if (attached[name]) {
+                    signals.push(attached[name]);
+                }
+            }
+        }
+        for (const s of signals) {
+            if (on) {
+                s.connect(root._schedule);
+            } else {
+                s.disconnect(root._schedule);
+            }
         }
     }
     function _watch() {
         const now = new Set();
         for (const child of root.children) {
             now.add(child);
-            if (!_watched.has(child)) {
-                child.implicitWidthChanged.connect(_schedule);
-                child.implicitHeightChanged.connect(_schedule);
-                child.visibleChanged.connect(_schedule);
-                // A child's Layout.* values: the attached object is made here,
-                // which Layout does for any item laid out by it.
-                const attached = child.Layout;
-                if (attached) {
-                    for (const name of ["fillWidthChanged", "preferredWidthChanged", "minimumWidthChanged", "maximumWidthChanged"]) {
-                        if (attached[name]) {
-                            attached[name].connect(_schedule);
-                        }
-                    }
-                }
+            if (!root._watched.has(child)) {
+                root._wire(child, true);
             }
         }
-        _watched = now;
+        // A child moved elsewhere no longer relays out this layout, nor calls
+        // it after it is gone.
+        for (const old of root._watched) {
+            if (!now.has(old)) {
+                root._wire(old, false);
+            }
+        }
+        root._watched = now;
+    }
+    Component.onDestruction: {
+        for (const child of root._watched) {
+            root._wire(child, false);
+        }
+        root._watched = new Set();
     }
 
     function _relayout() {

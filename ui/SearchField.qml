@@ -74,7 +74,7 @@ T.TextField {
     Text {
         x: control.leftPadding
         anchors.verticalCenter: parent.verticalCenter
-        width: control.availableWidth
+        width: Math.max(0, control.width - control.leftPadding - control.rightPadding)
         visible: control.length === 0 && control.preeditText.length === 0
         text: control.placeholderText
         font: control.font

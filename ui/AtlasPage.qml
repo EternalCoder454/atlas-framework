@@ -79,6 +79,7 @@ Item {
 
         // A slim overlay scrollbar instead of the classic one with arrows.
         QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+            id: vbar
             parent: scroll
             x: scroll.width - width
             height: scroll.height
@@ -88,8 +89,8 @@ Item {
             contentItem: Rectangle {
                 implicitWidth: 6
                 radius: width / 2
-                color: Qt.alpha(Kirigami.Theme.textColor, parent.pressed ? 0.45 : parent.hovered ? 0.35 : 0.22)
-                opacity: parent.active ? 1 : 0
+                color: Qt.alpha(Kirigami.Theme.textColor, vbar.pressed ? 0.45 : vbar.hovered ? 0.35 : 0.22)
+                opacity: vbar.active ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation {
                         duration: AtlasStyle.duration

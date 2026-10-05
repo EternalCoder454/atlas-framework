@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
@@ -471,8 +472,8 @@ QQC2.SplitView {
         readonly property bool _active: QQC2.SplitHandle.hovered || QQC2.SplitHandle.pressed
 
         // The line is 1 px; the rest is the grab area.
-        implicitWidth: _vertical ? control.width : 7
-        implicitHeight: _vertical ? 7 : control.height
+        implicitWidth: handle._vertical ? control.width : 7
+        implicitHeight: handle._vertical ? 7 : control.height
 
         Accessible.role: Accessible.Separator
         Accessible.name: qsTr("Pane divider")

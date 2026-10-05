@@ -122,9 +122,15 @@ FocusScope {
         event.accepted = root.clickable;
     }
 
+    // The value as `var`: lint cannot know which Flickable-like or row type a
+    // duck-typed lookup meets, and the checks below are at run time.
+    function _untyped(o: var): var {
+        return o;
+    }
+
     // Scroll the page so a row reached with Tab is on screen.
     function ensureVisible() {
-        var f = root.parent;
+        var f = root._untyped(root.parent);
         while (f && !(f.contentY !== undefined && f.contentHeight !== undefined && f.flickableDirection !== undefined)) {
             f = f.parent;
         }
@@ -145,7 +151,7 @@ FocusScope {
             event.accepted = false;
             return;
         }
-        var n = root.nextItemInFocusChain(forward);
+        var n = root._untyped(root.nextItemInFocusChain(forward));
         if (n && n.radio === true) {
             n.forceActiveFocus();
             n.clicked();

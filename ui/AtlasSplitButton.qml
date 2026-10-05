@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
@@ -47,7 +48,8 @@ Item {
     component Part: T.AbstractButton {
         id: part
         required property bool leading
-        readonly property AtlasSplitButton owner: control
+        // Passed in: an inline component does not see the ids of the file around it.
+        required property AtlasSplitButton owner
         // True on the half at the left edge (mirrored layouts swap).
         readonly property bool atLeft: leading !== owner.mirrored
 
@@ -114,6 +116,7 @@ Item {
 
         Part {
             id: mainPart
+            owner: control
             leading: true
             height: parent.height
             enabled: control.enabled && (!control.action || control.action.enabled)
@@ -166,6 +169,7 @@ Item {
         }
         Part {
             id: arrowPart
+            owner: control
             leading: false
             height: parent.height
             enabled: control.enabled

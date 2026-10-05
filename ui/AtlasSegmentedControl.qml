@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Templates as T
@@ -159,10 +160,10 @@ T.Control {
             delegate: Item {
                 id: seg
                 required property int index
-                readonly property bool selected: seg.index === ctl.currentIndex
-                readonly property string label: ctl._text(seg.index)
+                readonly property bool selected: seg.index === seg.ctl.currentIndex
+                readonly property string label: seg.ctl._text(seg.index)
                 readonly property AtlasSegmentedControl ctl: control
-                readonly property color tint: !ctl.enabled ? AtlasStyle.textDisabled : selected ? AtlasStyle.accentText : Kirigami.Theme.textColor
+                readonly property color tint: !seg.ctl.enabled ? AtlasStyle.textDisabled : selected ? AtlasStyle.accentText : Kirigami.Theme.textColor
                 readonly property real _room: Math.max(0, seg.width - AtlasStyle.spacingLarge * 2 - (symbolSlot.visible ? symbolSlot.width + inner.spacing : 0))
 
                 Layout.fillWidth: true
@@ -172,16 +173,16 @@ T.Control {
                 implicitHeight: inner.implicitHeight
 
                 Accessible.role: Accessible.PageTab
-                Accessible.name: ctl._toolTip(seg.index)
+                Accessible.name: seg.ctl._toolTip(seg.index)
                 Accessible.selectable: true
                 Accessible.selected: seg.selected
-                Accessible.onPressAction: ctl._choose(seg.index)
+                Accessible.onPressAction: seg.ctl._choose(seg.index)
 
                 // Hover shape: slightly less round than the selected one.
                 Rectangle {
                     anchors.fill: parent
                     radius: AtlasStyle.radiusSmall
-                    color: !seg.selected && ctl.enabled && hover.hovered ? AtlasStyle.hover : "transparent"
+                    color: !seg.selected && seg.ctl.enabled && hover.hovered ? AtlasStyle.hover : "transparent"
                     Behavior on color {
                         ColorAnimation {
                             duration: AtlasStyle.durationShort
@@ -200,7 +201,7 @@ T.Control {
                     spacing: AtlasStyle.spacingSmall
                     Loader {
                         id: symbolSlot
-                        active: ctl._symbol(seg.index) !== 0
+                        active: seg.ctl._symbol(seg.index) !== 0
                         visible: active
                         anchors.verticalCenter: parent.verticalCenter
                         sourceComponent: Symbol {
@@ -228,12 +229,12 @@ T.Control {
                     enabled: seg.ctl.enabled
                 }
                 TapHandler {
-                    enabled: ctl.enabled
-                    onTapped: ctl._choose(seg.index)
+                    enabled: seg.ctl.enabled
+                    onTapped: seg.ctl._choose(seg.index)
                 }
                 AtlasToolTip {
-                    text: ctl._toolTip(seg.index)
-                    shown: text.length > 0 && (hover.hovered || (ctl.visualFocus && seg.selected))
+                    text: seg.ctl._toolTip(seg.index)
+                    shown: text.length > 0 && (hover.hovered || (seg.ctl.visualFocus && seg.selected))
                 }
             }
         }

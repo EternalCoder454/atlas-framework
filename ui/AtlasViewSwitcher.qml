@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
@@ -69,13 +70,13 @@ T.Control {
         width: Math.max(0, _baseW + _slideW)
         height: _baseH
         Behavior on _slideX {
-            enabled: _springing && !AtlasStyle.reducedMotion
+            enabled: tint._springing && !AtlasStyle.reducedMotion
             AtlasSpringAnimation {
                 expressive: true
             }
         }
         Behavior on _slideW {
-            enabled: _springing && !AtlasStyle.reducedMotion
+            enabled: tint._springing && !AtlasStyle.reducedMotion
             AtlasSpringAnimation {
                 expressive: true
             }
@@ -108,12 +109,14 @@ T.Control {
                 _slideW = 0;
             }
         }
+        // The Behaviors and Connections are objects of their own: tint's
+        // members are reached through its id.
         Connections {
-            target: _item
-            function onXChanged() { _sync(); }
-            function onYChanged() { _sync(); }
-            function onWidthChanged() { _sync(); }
-            function onHeightChanged() { _sync(); }
+            target: tint._item
+            function onXChanged() { tint._sync(); }
+            function onYChanged() { tint._sync(); }
+            function onWidthChanged() { tint._sync(); }
+            function onHeightChanged() { tint._sync(); }
         }
     }
 
