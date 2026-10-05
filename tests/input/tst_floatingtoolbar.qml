@@ -7,6 +7,8 @@ Item {
     id: root
     width: 600
     height: 400
+    property int appEscapes: 0
+    Keys.onEscapePressed: appEscapes++
 
     AtlasAction { id: a1; text: "One"; symbol: Symbols.Add }
     AtlasAction { id: a2; text: "Two"; symbol: Symbols.Add }
@@ -149,6 +151,23 @@ Item {
             tryVerify(() => first.activeFocus);
             keyClick(Qt.Key_Escape);
             tryVerify(() => elsewhere.activeFocus);
+        }
+
+        function test_escape_reaches_the_app_when_there_is_nowhere_to_go() {
+            const b = createTemporaryObject(barComp, root, {
+                focusable: true
+            });
+            const first = find(b, a1);
+            first.forceActiveFocus(Qt.TabFocusReason);
+            tryVerify(() => first.activeFocus);
+            let escaped = 0;
+            b.escaped.connect(() => ++escaped);
+            // No last item and no returnFocus: Escape goes on up to the app.
+            b._last = null;
+            root.appEscapes = 0;
+            keyClick(Qt.Key_Escape);
+            compare(escaped, 1);
+            compare(root.appEscapes, 1);
         }
     }
 }

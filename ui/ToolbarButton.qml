@@ -77,7 +77,7 @@ T.AbstractButton {
     readonly property string _tipName: control.toolTipText.length > 0 ? control.toolTipText.replace(/&(.)/g, "$1") : control._spokenName
     readonly property color _iconColor: !control.enabled ? AtlasStyle.textDisabled : control.checked ? AtlasStyle.accent : Kirigami.Theme.textColor
 
-    implicitWidth: control.round ? control.height : Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
+    implicitWidth: control.round ? implicitHeight : Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
     implicitHeight: AtlasStyle.controlHeight
     padding: AtlasStyle.spacingSmall + 1
     display: T.AbstractButton.IconOnly
@@ -110,7 +110,14 @@ T.AbstractButton {
         onPressed: {
             control._used = true;
             control._pressedAt = Date.now();
+            // A press that found the menu or popover open: the click closes it.
+            control._wasOpen = control._opened;
+            // The area takes the press, so the focus is taken here.
+            if (control.focusable && control.focusOnClick && control.enabled) {
+                control.forceActiveFocus(Qt.MouseFocusReason);
+            }
         }
+        onCanceled: control._wasOpen = false
         onClicked: control._open()
     }
     Binding {
@@ -196,8 +203,16 @@ T.AbstractButton {
         const right = w - (sx + control.width) >= sx;
         m.popup(control, right ? control.width + gap : -m.implicitWidth - gap, 0);
     }
+    // The menu or popover was open when the press began.
+    property bool _wasOpen: false
     function _open(): void {
         const o = control._opener;
+        if (o && (control._wasOpen || control._opened)) {
+            // Opening again would only reopen what this click closes.
+            control._wasOpen = false;
+            o.close();
+            return;
+        }
         if (!o || control._pressedAt - control._closedAt < 150 && control._closedAt > 0 && control._pressedAt >= control._closedAt) {
             return;
         }

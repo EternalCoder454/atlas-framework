@@ -157,7 +157,7 @@ Item {
             bar.width = 400;
             bar.width = 70;
             verify(withMenu.menu !== null);
-            compare(withMenu.menu.title, "Sub");
+            compare(withMenu.menu.title, "");
         }
 
         function test_overflow_popover_opens_from_more() {
@@ -192,6 +192,91 @@ Item {
             verify(bar._menuOpen);
             withMenu.menu.close();
             tryVerify(() => !bar._menuOpen);
+        }
+
+        function test_open_count_never_goes_negative_and_counts_a_late_delegate() {
+            const bar = createTemporaryObject(barComp, root, {
+                actions: [a1, withMenu],
+                width: 300
+            });
+            const b = shown(bar)[1];
+            mouseClick(b);
+            tryVerify(() => withMenu.menu.visible);
+            compare(bar._openCount, 1);
+            // The action is swapped while its popup is open, then the strip is rebuilt.
+            bar.actions = [a1, a2];
+            withMenu.menu.close();
+            tryVerify(() => !withMenu.menu.visible);
+            compare(bar._openCount, 0);
+            bar.actions = [a1, withMenu];
+            bar.actions = [a1, a2];
+            verify(bar._openCount >= 0);
+            compare(bar._openCount, 0);
+            verify(!bar._menuOpen);
+        }
+
+        function test_menu_goes_back_to_a_button_and_opens_there() {
+            const bar = createTemporaryObject(barComp, root, {
+                actions: [a1, a2, withMenu],
+                width: 70
+            });
+            verify(bar.overflowCount >= 1);
+            bar.moreMenu.popup(bar, 0, 30);
+            tryVerify(() => bar.moreMenu.visible);
+            // Grow while the overflow menu is open: it closes first.
+            bar.width = 400;
+            tryVerify(() => !bar.moreMenu.visible);
+            tryCompare(bar, "overflowCount", 0);
+            const b = shown(bar).filter(x => x.action === withMenu)[0];
+            verify(b);
+            mouseClick(b);
+            tryVerify(() => withMenu.menu.visible);
+            withMenu.menu.close();
+            tryVerify(() => !withMenu.menu.visible);
+        }
+
+        function test_overflow_rows_follow_the_action() {
+            const act = Qt.createQmlObject('import Atlas.Ui; AtlasAction { text: "First" }', root);
+            const bar = createTemporaryObject(barComp, root, {
+                actions: [a1, a2, act, withMenu],
+                width: 70
+            });
+            bar.moreMenu.popup(bar, 0, 30);
+            tryVerify(() => bar.moreMenu.visible);
+            const find = t => {
+                for (let i = 0; i < bar.moreMenu.count; ++i) {
+                    const it = bar.moreMenu.itemAt(i);
+                    if (it && it.text === t) return it;
+                }
+                return null;
+            };
+            verify(find("First"));
+            act.text = "Renamed";
+            tryVerify(() => find("Renamed"));
+            act.enabled = false;
+            verify(!find("Renamed").enabled);
+            bar.moreMenu.close();
+        }
+
+        function test_wheel_resets_on_direction_change_and_pause() {
+            const bar = createTemporaryObject(barComp, root, {
+                actions: [a1, a2, a3, a4, a5, a6],
+                overflow: AtlasToolbar.Scroll,
+                width: 100
+            });
+            verify(bar._scrolling);
+            // 60 down then 60 up must not add to a step.
+            bar._wheel = 60;
+            bar._wheelAt = Date.now();
+            bar._wheelBy(-60);
+            compare(bar._wheel, -60);
+            bar._wheel = 100;
+            bar._wheelAt = Date.now() - 1000;
+            bar._wheelBy(60);
+            compare(bar._wheel, 60);
+            // The same direction within a gesture adds up.
+            bar._wheelBy(30);
+            compare(bar._wheel, 90);
         }
     }
 }

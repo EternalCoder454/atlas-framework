@@ -127,5 +127,39 @@ Item {
             compare(withPopover.count, 0);
             withPopover.popover.close();
         }
+
+        function test_round_implicit_width_follows_implicit_height() {
+            const b = createTemporaryObject(buttonComp, root, {
+                round: true
+            });
+            compare(b.implicitWidth, b.implicitHeight);
+        }
+
+        function test_click_while_the_menu_is_open_closes_it_and_it_stays_closed() {
+            const b = createTemporaryObject(buttonComp, root, {
+                action: withMenu
+            });
+            mouseClick(b);
+            tryVerify(() => withMenu.menu.visible);
+            mouseClick(b);
+            tryVerify(() => !withMenu.menu.visible);
+            wait(300);
+            verify(!withMenu.menu.visible);
+            verify(!b._opened);
+        }
+
+        function test_click_focuses_an_opener() {
+            const b = createTemporaryObject(buttonComp, root, {
+                action: withMenu,
+                focusable: true,
+                focusOnClick: true
+            });
+            verify(!b.activeFocus);
+            mouseClick(b);
+            tryVerify(() => withMenu.menu.visible);
+            verify(b._hadFocus);
+            withMenu.menu.close();
+            tryVerify(() => b.activeFocus);
+        }
     }
 }

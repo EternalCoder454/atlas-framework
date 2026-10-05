@@ -13,7 +13,7 @@ AtlasFloatingToolbar is a rounded surface with a soft shadow. It is an [AtlasToo
 
 With `autoDim` the capsule is `dimOpacity` until the pointer is within `nearDistance` of its rectangle, even outside it. It is at full strength while a button has the focus, while any menu or popover opened from its buttons is open (see [AtlasAction](atlas-action.md) `menu` and `popover`), while `keepActive` is true (for an app popover the toolbar cannot see), and while a press is down. It is always at full strength under high contrast and with `autoDim` off. The change fades with `AtlasStyle.duration`, which is instant under reduced motion. The pointer is read with one `HoverHandler` on the parent and no timer, so nothing runs while it is still; a hidden capsule tracks nothing.
 
-With `focusable`, Tab enters the strip and moves through the buttons. Escape on a button emits `escaped()` and moves the focus to `returnFocus`; with none, to the item that had the focus before Tab came in, if it is still there. With `focusOnClick: false` a click on a button never takes the focus from the editor.
+With `focusable`, Tab enters the strip and moves through the buttons. Escape on a button emits `escaped()` and moves the focus to `returnFocus`; with none, to the item that had the focus before Tab came in, if it is still there. With `focusOnClick: false` a click on a button never takes the focus from the editor. `escaped()` is always emitted. Escape is taken only when the focus moved to a target; with none, it goes on to the app, so Escape still closes the app's dialog or overlay.
 
 The room an editor keeps free at the capsule's edge is not a property: read `width + margin * 2`.
 

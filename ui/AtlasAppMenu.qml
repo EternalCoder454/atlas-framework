@@ -69,6 +69,7 @@ Item {
     // ---- Shared by the button's menus and the native export -------------
 
     property bool _warned: false
+    property bool _warnedShape: false
     function _isAction(e): bool {
         return e !== null && e !== undefined && typeof e.trigger === "function";
     }
@@ -86,35 +87,45 @@ Item {
     }
     // The rows of a model, read once: a throwaway Instantiator gives modelData
     // for any kind of model (a list of strings, a ListModel, a C++ model).
+    function _plain(md): var {
+        // What the model hands out is live or dies with the reader: keep a plain copy.
+        if (md !== null && typeof md === "object" && !Array.isArray(md)) {
+            const copy = {};
+            for (const k in md) {
+                copy[k] = md[k];
+            }
+            return copy;
+        }
+        return md;
+    }
     function _rowsOf(model): var {
         const rows = [];
         if (model === null || model === undefined) {
             return rows;
         }
-        // A ListModel gives plain objects with every role.
+        // A ListModel gives objects with every role.
         if (typeof model.get === "function" && typeof model.count === "number") {
             for (let i = 0; i < model.count; ++i) {
-                rows.push(model.get(i));
+                rows.push(_plain(model.get(i)));
             }
             return rows;
         }
         const reader = readerComponent.createObject(null, {
             model: model
         });
-        for (let i = 0; i < reader.count; ++i) {
-            const md = reader.objectAt(i).modelData;
-            // What the model hands out dies with the reader: keep a plain copy.
-            if (md !== null && typeof md === "object" && !Array.isArray(md)) {
-                const copy = {};
-                for (const k in md) {
-                    copy[k] = md[k];
-                }
-                rows.push(copy);
-            } else {
-                rows.push(md);
-            }
+        if (!reader) {
+            return rows;
         }
-        reader.destroy();
+        try {
+            // A model that is not iterable has no rows.
+            const n = typeof reader.count === "number" ? reader.count : 0;
+            for (let i = 0; i < n; ++i) {
+                const d = reader.objectAt(i);
+                rows.push(d ? _plain(d.modelData) : undefined);
+            }
+        } finally {
+            reader.destroy();
+        }
         return rows;
     }
     function _rowText(md, textRole): string {
@@ -149,17 +160,22 @@ Item {
                 kit.add(menu, kit.action(e, undefined));
             } else if (_isAction(e.action)) {
                 kit.add(menu, kit.action(e.action, _shortcutOf(e)));
-            } else if (e.model !== undefined || e.lead !== undefined || e.trail !== undefined) {
+            } else if (typeof e === "object" && ("model" in e || "lead" in e || "trail" in e)) {
                 if (depth + 1 > root._maxDepth) {
                     _tooDeep();
                     continue;
                 }
                 const sub = kit.sub(String(e.title ?? ""));
-                const rows = _fillModel(kit, sub, e, depth + 1);
-                kit.addSub(menu, sub, rows > 0 || _anyEnabled(e.lead) || _anyEnabled(e.trail));
-                if (kit.watch) {
-                    kit.watch(sub, e, depth + 1);
+                const rec = kit.begin ? kit.begin(sub, e, depth + 1) : null;
+                let rows = 0;
+                try {
+                    rows = _fillModel(kit, sub, e, depth + 1);
+                } finally {
+                    if (kit.end) {
+                        kit.end(rec);
+                    }
                 }
+                kit.addSub(menu, sub, rows > 0 || _anyEnabled(e.lead) || _anyEnabled(e.trail));
             } else if (e.actions !== undefined) {
                 if (depth + 1 > root._maxDepth) {
                     _tooDeep();
@@ -168,6 +184,9 @@ Item {
                 const sub = kit.sub(String(e.title ?? ""));
                 _fill(kit, sub, e.actions, depth + 1);
                 kit.addSub(menu, sub, true);
+            } else if (!_warnedShape) {
+                _warnedShape = true;
+                console.warn("AtlasAppMenu: an entry that is not an action, null, {action}, {title, actions} or {title, model} is ignored");
             }
         }
     }
@@ -329,6 +348,7 @@ Item {
     }
     function _rebuildButton(): void {
         _warned = false;
+        _warnedShape = false;
         _clearMenu(popup);
         if (!_showButton) {
             return;
@@ -349,6 +369,29 @@ Item {
 
     // ---- The native export, only when the desktop has a global menu -------
 
+    // Run through Qt.callLater, so several changes make one rebuild; the bar
+    // may be gone by then.
+    function _rebuildNative(): void {
+        const bar = root._nativeBar;
+        if (bar) {
+            bar.rebuild();
+        }
+    }
+    // A model changed: its rows are read again once the changes have stopped.
+    function _scheduleNative(): void {
+        modelTimer.restart();
+    }
+    Timer {
+        id: modelTimer
+        interval: 50
+        onTriggered: {
+            const bar = root._nativeBar;
+            if (bar) {
+                bar.refreshModels();
+            }
+        }
+    }
+
     Loader {
         id: nativeLoader
         active: root._native && root.menus.length > 0
@@ -356,8 +399,11 @@ Item {
             id: menuBar
             window: root.Window.window
             property var _objs: []
-            // The model-driven submenus, whose rows are read again when a group shows.
+            // The model-driven submenus, whose rows are read again when a group
+            // shows or their model changes. Each record owns what its last fill
+            // made (`objs`), the records inside it (`kids`) and its signal links.
             property var _watched: []
+            property var _curRec: null
 
             Component {
                 id: nItem
@@ -402,8 +448,51 @@ Item {
                 Platform.Menu {}
             }
             function _track(o) {
-                _objs.push(o);
+                if (menuBar._curRec) {
+                    menuBar._curRec.objs.push(o);
+                } else {
+                    _objs.push(o);
+                }
                 return o;
+            }
+            function _kill(o): void {
+                // clear() may have deleted it already.
+                try {
+                    if (o) {
+                        o.destroy();
+                    }
+                } catch (e) {
+                    // gone
+                }
+            }
+            function _unwatch(rec): void {
+                for (const c of rec.conns) {
+                    try {
+                        c.model[c.sig].disconnect(root._scheduleNative);
+                    } catch (e) {
+                        // gone
+                    }
+                }
+                rec.conns = [];
+                for (const k of rec.kids) {
+                    _unwatch(k);
+                }
+                rec.kids = [];
+            }
+            function _watchModel(rec): void {
+                const m = rec.e.model;
+                if (m === null || m === undefined || typeof m !== "object") {
+                    return;
+                }
+                for (const sig of ["modelReset", "rowsInserted", "rowsRemoved", "dataChanged", "layoutChanged", "countChanged"]) {
+                    if (m[sig] && typeof m[sig].connect === "function") {
+                        m[sig].connect(root._scheduleNative);
+                        rec.conns.push({
+                            model: m,
+                            sig: sig
+                        });
+                    }
+                }
             }
             readonly property var _kit: ({
                     sep: () => menuBar._track(nSep.createObject(menuBar)),
@@ -431,34 +520,64 @@ Item {
                         sub.enabled = enabled;
                         m.addMenu(sub);
                     },
-                    watch: (sub, e, depth) => menuBar._watched.push({
+                    // A model-driven submenu starts a record that owns what its
+                    // rows make; end() puts the outer record back.
+                    begin: (sub, e, depth) => {
+                        const rec = {
                             sub: sub,
                             e: e,
-                            depth: depth
-                        })
+                            depth: depth,
+                            objs: [],
+                            kids: [],
+                            conns: [],
+                            prev: menuBar._curRec
+                        };
+                        (rec.prev ? rec.prev.kids : menuBar._watched).push(rec);
+                        menuBar._curRec = rec;
+                        return rec;
+                    },
+                    end: rec => {
+                        menuBar._curRec = rec.prev;
+                        menuBar._watchModel(rec);
+                    }
                 })
-            // A model's rows as they are now, when a group is about to show.
+            // A model's rows as they are now. Walks a copy of the list: filling
+            // a record adds records inside it, which this pass must not visit.
             function refreshModels(): void {
                 _objs = _objs.filter(o => o);
-                for (const w of _watched) {
+                for (const w of _watched.slice()) {
+                    const prev = menuBar._curRec;
+                    // What the last fill made, and the records inside it, go first.
+                    _unwatch(w);
+                    for (const o of w.objs) {
+                        _kill(o);
+                    }
+                    w.objs = [];
                     // clear() takes the old rows out and deletes them.
                     w.sub.clear();
-                    const rows = root._fillModel(_kit, w.sub, w.e, w.depth);
+                    menuBar._curRec = w;
+                    let rows = 0;
+                    try {
+                        rows = root._fillModel(_kit, w.sub, w.e, w.depth);
+                    } finally {
+                        menuBar._curRec = prev;
+                    }
                     w.sub.enabled = rows > 0 || root._anyEnabled(w.e.lead) || root._anyEnabled(w.e.trail);
+                    _watchModel(w);
                 }
             }
             // The groups: rebuilt when the list changes, and a group's model
             // rows again each time it is about to show.
             function rebuild(): void {
                 root._warned = false;
+                root._warnedShape = false;
+                for (const w of _watched) {
+                    _unwatch(w);
+                }
+                menuBar._curRec = null;
                 menuBar.clear();
                 for (const o of _objs) {
-                    // clear() may have deleted it already.
-                    try {
-                        o.destroy();
-                    } catch (e) {
-                        // gone
-                    }
+                    _kill(o);
                 }
                 _objs = [];
                 _watched = [];
@@ -473,13 +592,20 @@ Item {
                 }
             }
             Component.onCompleted: menuBar.rebuild()
+            Component.onDestruction: {
+                for (const w of _watched) {
+                    _unwatch(w);
+                }
+            }
             Connections {
                 target: root
+                // Later, never inside the handler that changed them: that could
+                // be a row's onTriggered, and clear() deletes the row.
                 function onMenusChanged() {
-                    menuBar.rebuild();
+                    Qt.callLater(root._rebuildNative);
                 }
                 function onExportShortcutsChanged() {
-                    menuBar.rebuild();
+                    Qt.callLater(root._rebuildNative);
                 }
             }
         }

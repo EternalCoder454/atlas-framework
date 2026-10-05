@@ -175,10 +175,13 @@ Item {
             Keys.onEscapePressed: event => {
                 root.escaped();
                 const to = root.returnFocus ? root.returnFocus : root._last;
+                // Taken only when focus moved; otherwise Escape goes on to the app.
                 if (to && to.visible) {
                     to.forceActiveFocus(Qt.OtherFocusReason);
+                    event.accepted = true;
+                } else {
+                    event.accepted = false;
                 }
-                event.accepted = true;
             }
         }
         // A press holds full strength (a tap on a touch screen has no hover).

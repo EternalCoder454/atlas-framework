@@ -10,7 +10,7 @@ ToolbarButton is a Qt Quick Templates `AbstractButton` ([Qt documentation](https
 
 `round` draws a circle: width equals height and the corners are half of it; the hover, press and checked layers and the focus ring follow it. `tipSide` puts the tooltip beside the button (`Start` or `End`), flipping to the other side when there is no room and swapping under a right-to-left layout; it shows for hover and for keyboard focus. `toolTipText` changes only the tooltip's name part: the spoken name stays the action's or the `text`, and the shortcut still appends ("Bold (Ctrl+B)"). `focusOnClick: false` with `focusable: true` makes the button a Tab stop that a click does not focus.
 
-An action with a `menu` or a `popover` (see [AtlasAction](atlas-action.md)) makes a button that opens it instead of triggering: the click never emits the action's `triggered()`, the button is a `ButtonMenu` for screen readers and is drawn checked while the menu or popover is open. A menu opens below the button; a popover gets the button as its `target`. When a menu closes, a button that had the keyboard focus gets it back, unless the user clicked into something else.
+An action with a `menu` or a `popover` (see [AtlasAction](atlas-action.md)) makes a button that opens it instead of triggering: the click never emits the action's `triggered()`, the button is a `ButtonMenu` for screen readers and is drawn checked while the menu or popover is open. A menu opens below the button (beside it in a vertical strip); a popover gets the button as its `target`. When a menu closes, a button that had the keyboard focus gets it back, unless the user clicked into something else.
 
 ## Example
 

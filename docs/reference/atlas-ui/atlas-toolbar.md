@@ -30,7 +30,7 @@ AtlasToolbar {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `accessibleName` | `string` | `qsTr("Toolbar")` | The name of the bar for screen readers. |
-| `actions` | `list<Action>` (read-only) | `[]` | The `AtlasAction` or Qt `Action` items, in order. Each button follows its action (symbol, tooltip, shortcut, checkable, enabled), and the same action fills the overflow menu. |
+| `actions` | `list<Action>` (read-only) | `[]` | The `AtlasAction` or Qt `Action` items, in order. Each button follows its action (symbol, tooltip, shortcut, checkable, enabled), and the same action fills the overflow menu. Its overflow row follows the action's `text`, `enabled`, `symbol` and `menu` or `popover`; the app's own menu is never changed (its `title` stays). |
 | `focusOnClick` | `bool` | `true` | With `focusable`, `false` makes a click not take the focus. Passed to every button. |
 | `flat` | `bool` | `true` | True draws nothing behind the buttons; false draws a surface with rounded corners. |
 | `focusable` | `bool` | `true` | Lets Tab reach the buttons; false keeps the keyboard focus where it is. |

@@ -205,7 +205,7 @@ Item {
             compare(file.items[0].subMenu.items.length, 2);
             // A rebuild after refreshes is clean too.
             m.menus = [{ title: "Edit", actions: [openA] }];
-            compare(m._nativeBar.menus[0].title, "Edit");
+            tryVerify(() => m._nativeBar.menus[0].title === "Edit");
         }
 
         function test_action_with_a_menu_is_a_submenu() {
@@ -221,6 +221,183 @@ Item {
             compare(tools.itemAt(2).text, "Open");
             // The app's own menu is untouched.
             compare(withMenu.menu.count, 3);
+        }
+
+        function test_menus_changed_inside_a_native_row_is_safe() {
+            const m = createTemporaryObject(menuComp, root, {
+                _forceNative: true,
+                menus: [{ title: "File", actions: [{ id: "r", title: "Recent", model: files, textRole: "path" }] }]
+            });
+            m.modelActivated.connect(() => {
+                m.menus = [{ title: "Edit", actions: [openA] }];
+                m.menus = [{ title: "View", actions: [saveA] }];
+            });
+            const bar = m._nativeBar;
+            bar.menus[0].items[0].subMenu.items[0].triggered();
+            tryVerify(() => bar.menus[0].title === "View");
+            compare(bar.menus.length, 1);
+        }
+
+        function test_native_rebuilds_are_coalesced() {
+            const m = createTemporaryObject(menuComp, root, {
+                _forceNative: true,
+                menus: [{ title: "File", actions: [openA] }]
+            });
+            m.menus = [{ title: "A", actions: [openA] }];
+            m.menus = [{ title: "B", actions: [openA] }];
+            tryVerify(() => m._nativeBar.menus[0].title === "B");
+            compare(m._nativeBar.menus.length, 1);
+        }
+
+        function test_native_nested_model_refresh_has_no_stale_entries() {
+            const inner = Qt.createQmlObject('import QtQuick; ListModel { ListElement { n: "i1" } }', root);
+            const m = createTemporaryObject(menuComp, root, {
+                _forceNative: true,
+                menus: [{ title: "File", actions: [{ id: "o", title: "Outer", model: files, textRole: "path", lead: [{ id: "i", title: "Inner", model: inner, textRole: "n" }] }] }]
+            });
+            const file = m._nativeBar.menus[0];
+            for (let k = 0; k < 5; ++k) {
+                file.aboutToShow();
+            }
+            compare(m._nativeBar._watched.length, 1);
+            compare(m._nativeBar._watched[0].kids.length, 1);
+            compare(file.items[0].subMenu.items[0].subMenu.items.length, 1);
+            compare(file.items[0].subMenu.items.length, 3);
+        }
+
+        function test_native_refresh_does_not_leak_objects() {
+            const m = createTemporaryObject(menuComp, root, {
+                _forceNative: true,
+                menus: [{ title: "File", actions: [{ id: "o", title: "Outer", model: files, textRole: "path", lead: [{ title: "Lead", actions: [openA] }], trail: [{ title: "Trail", actions: [saveA] }] }] }]
+            });
+            const file = m._nativeBar.menus[0];
+            file.aboutToShow();
+            const before = m._nativeBar._watched[0].objs.length;
+            for (let k = 0; k < 20; ++k) {
+                file.aboutToShow();
+            }
+            compare(m._nativeBar._watched[0].objs.length, before);
+            compare(m._nativeBar._objs.length, m._nativeBar._objs.filter(o => o).length);
+        }
+
+        function test_model_not_loaded_yet_shows_disabled_with_empty_text() {
+            const m = createTemporaryObject(menuComp, root, {
+                menus: [{ title: "File", actions: [{ id: "r", title: "Recent", model: undefined, emptyText: "None" }] }]
+            });
+            const recent = m._menu.menuAt(0).menuAt(0);
+            verify(recent);
+            compare(recent.count, 1);
+            compare(recent.itemAt(0).text, "None");
+            verify(!recent.itemAt(0).enabled);
+        }
+
+        function test_native_rows_follow_model_changes() {
+            const m = createTemporaryObject(menuComp, root, {
+                _forceNative: true,
+                menus: [{ title: "File", actions: [{ id: "recent", title: "Recent", model: files, textRole: "path" }] }]
+            });
+            const sub = m._nativeBar.menus[0].items[0].subMenu;
+            const n = sub.items.length;
+            files.append({ path: "/a/new.txt" });
+            tryCompare(sub.items, "length", n + 1);
+            files.remove(files.count - 1);
+            tryCompare(sub.items, "length", n);
+        }
+
+        function test_native_row_data_is_a_copy() {
+            const m = createTemporaryObject(menuComp, root, {
+                _forceNative: true,
+                menus: [{ title: "File", actions: [{ id: "r", title: "Recent", model: files, textRole: "path" }] }]
+            });
+            let got = null;
+            m.modelActivated.connect((id, data) => got = data);
+            m._nativeBar.menus[0].items[0].subMenu.items[0].triggered();
+            const first = files.get(0);
+            verify(got !== first);
+            compare(got.path, "/a/one.txt");
+        }
+
+        function test_non_iterable_and_null_models_are_empty() {
+            const m = createTemporaryObject(menuComp, root, {
+                menus: [{ title: "File", actions: [
+                    { id: "a", title: "Null", model: null, emptyText: "E" },
+                    { id: "b", title: "Obj", model: { x: 1 }, emptyText: "E" }] }]
+            });
+            const file = m._menu.menuAt(0);
+            compare(file.menuAt(0).count, 1);
+            compare(file.menuAt(1).count, 1);
+        }
+
+        function test_null_and_undefined_entries_are_separators() {
+            const m = createTemporaryObject(menuComp, root, {
+                menus: [{ title: "File", actions: [openA, undefined, null, saveA] }, null, undefined]
+            });
+            compare(m._menu.count, 1);
+            compare(m._menu.menuAt(0).count, 4);
+        }
+
+        function test_unknown_entry_warns_once() {
+            ignoreWarning(/ignored/);
+            const m = createTemporaryObject(menuComp, root, {
+                menus: [{ title: "File", actions: [openA, "nonsense", 42, { foo: 1 }, saveA] }]
+            });
+            compare(m._menu.menuAt(0).count, 2);
+        }
+
+        function test_native_shortcut_with_export() {
+            const m = createTemporaryObject(menuComp, root, {
+                _forceNative: true,
+                exportShortcuts: true,
+                menus: [{ title: "File", actions: [{ action: openA, shortcut: "Ctrl+O" }] }]
+            });
+            const item = m._nativeBar.menus[0].items[0];
+            verify(String(item.shortcut).length > 0);
+            m.exportShortcuts = false;
+            tryVerify(() => !m._nativeBar.menus[0].items[0].shortcut || String(m._nativeBar.menus[0].items[0].shortcut) === "");
+        }
+
+        function test_native_going_on_and_off() {
+            const m = createTemporaryObject(menuComp, root, {
+                menus: [{ title: "File", actions: [openA] }]
+            });
+            verify(!m._nativeBar);
+            m._forceNative = true;
+            tryVerify(() => m._nativeBar);
+            m.menus = [{ title: "Edit", actions: [openA] }];
+            m._forceNative = false;
+            m._forceButton = true;
+            wait(50);
+            verify(!m._nativeBar);
+            tryCompare(m._menu, "count", 1);
+        }
+
+        function test_action_menu_containing_itself_stops_at_the_depth_cap() {
+            const loop = Qt.createQmlObject('import Atlas.Ui; AtlasAction { text: "Loop" }', root);
+            const menu = Qt.createQmlObject('import Atlas.Ui; ContextMenu {}', root);
+            menu.addAction(loop);
+            loop.menu = menu;
+            const m = createTemporaryObject(menuComp, root, {
+                menus: [{ title: "File", actions: [loop] }]
+            });
+            verify(m._menu.count === 1);
+        }
+
+        function test_menus_changed_while_the_popup_is_open_apply_at_next_open() {
+            const m = createTemporaryObject(menuComp, root, {
+                width: 40,
+                height: 30,
+                menus: [{ title: "File", actions: [openA] }]
+            });
+            m.open();
+            tryVerify(() => m._menu.visible);
+            m.menus = [{ title: "Edit", actions: [openA] }];
+            compare(m._menu.menuAt(0).title, "File");
+            m._menu.close();
+            tryVerify(() => !m._menu.visible);
+            m.open();
+            tryVerify(() => m._menu.visible);
+            compare(m._menu.menuAt(0).title, "Edit");
+            m._menu.close();
         }
     }
 }

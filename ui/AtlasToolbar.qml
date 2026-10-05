@@ -142,6 +142,25 @@ Item {
         }
     }
     property real _wheel: 0
+    property double _wheelAt: 0
+    // Adds a wheel movement: a pause, or the other direction, starts the sum
+    // again; every 120 steps one button.
+    function _wheelBy(d: real): void {
+        const now = Date.now();
+        if (now - root._wheelAt > 300 || (root._wheel !== 0 && (d > 0) !== (root._wheel > 0))) {
+            root._wheel = 0;
+        }
+        root._wheelAt = now;
+        root._wheel += d;
+        while (root._wheel >= 120) {
+            root._step(-1);
+            root._wheel -= 120;
+        }
+        while (root._wheel <= -120) {
+            root._step(1);
+            root._wheel += 120;
+        }
+    }
 
     readonly property real _alongImplicit: _pad * 2 + (_leadingLen > 0 ? _leadingLen + _gap : 0) + _lenOf(actions.length) + _gap + (_trailingLen > 0 ? _trailingLen + _gap : 0)
     implicitWidth: _vertical ? probe.implicitWidth + _pad * 2 : _alongImplicit
@@ -157,14 +176,23 @@ Item {
     property bool _rebuildPending: false
     // The first action in the menu: none in Scroll mode.
     readonly property int _menuStart: _scroll ? actions.length : _fitCount
+    // Watches the overflow actions, so a row changes kind when an action gains
+    // or loses its menu or popover.
+    property var _watchers: []
     function _rebuildMenu() {
-        // Not while the menu is open (its rows would vanish under the pointer);
-        // it is rebuilt when it closes.
+        // Not while the menu is open: its rows would vanish under the pointer,
+        // and an action that came back as a button must not have its menu in
+        // two places. Close it; it is rebuilt when it has closed.
         if (menu.visible) {
             _rebuildPending = true;
+            menu.close();
             return;
         }
         _rebuildPending = false;
+        for (const w of _watchers) {
+            w.destroy();
+        }
+        _watchers = [];
         while (menu.count > 0) {
             // A submenu is the app's own: take it out, never destroy it.
             if (menu.menuAt(0)) {
@@ -181,22 +209,26 @@ Item {
                 menu.addItem(separatorComponent.createObject(null));
             }
             const a = actions[i];
+            _watchers.push(watcherComponent.createObject(root, {
+                target: a
+            }));
             if (a.menu) {
-                if (a.menu.title.length === 0) {
-                    a.menu.title = String(a.text).replace(/&(.)/g, "$1");
-                }
                 menu.addMenu(a.menu);
                 const entry = menu.itemAt(menu.count - 1);
-                if (entry && a.symbol !== undefined) {
-                    entry.symbol = a.symbol;
+                if (entry) {
+                    // The entry follows the action; the app's menu is not touched.
+                    entry.text = Qt.binding(() => String(a.text).replace(/&(.)/g, "$1"));
+                    entry.enabled = Qt.binding(() => a.enabled);
+                    entry.symbol = Qt.binding(() => a.symbol === undefined ? 0 : a.symbol);
                 }
             } else if (a.popover) {
-                menu.addItem(popoverItemComponent.createObject(null, {
-                    text: String(a.text).replace(/&(.)/g, "$1"),
-                    symbol: a.symbol === undefined ? 0 : a.symbol,
-                    enabled: a.enabled,
-                    popover: a.popover
-                }));
+                const row = popoverItemComponent.createObject(null, {
+                    act: a
+                });
+                row.text = Qt.binding(() => String(a.text).replace(/&(.)/g, "$1"));
+                row.enabled = Qt.binding(() => a.enabled);
+                row.symbol = Qt.binding(() => a.symbol === undefined ? 0 : a.symbol);
+                menu.addItem(row);
             } else {
                 menu.addItem(itemComponent.createObject(null, {
                     action: a
@@ -229,8 +261,20 @@ Item {
         id: popoverItemComponent
         ContextMenuItem {
             id: popRow
-            property var popover
-            onTriggered: root._openPopover(popRow.popover)
+            property var act
+            onTriggered: if (popRow.act.popover) root._openPopover(popRow.act.popover)
+        }
+    }
+    Component {
+        id: watcherComponent
+        Connections {
+            ignoreUnknownSignals: true
+            function onMenuChanged() {
+                root._rebuildMenu();
+            }
+            function onPopoverChanged() {
+                root._rebuildMenu();
+            }
         }
     }
     Component {
@@ -334,8 +378,18 @@ Item {
                             focusOnClick: root.focusOnClick
                             _beside: root._vertical
                             onActiveFocusChanged: if (activeFocus) root._reveal(entry.index)
-                            on_OpenedChanged: root._openCount += _opened ? 1 : -1
-                            Component.onDestruction: if (_opened) root._openCount -= 1
+                            // Counted once per transition, so a delegate that is made
+                            // with its popup open, or whose action is swapped, stays balanced.
+                            property bool _counted: false
+                            function _sync(): void {
+                                if (button._opened !== button._counted) {
+                                    button._counted = button._opened;
+                                    root._openCount = Math.max(0, root._openCount + (button._counted ? 1 : -1));
+                                }
+                            }
+                            on_OpenedChanged: _sync()
+                            Component.onCompleted: _sync()
+                            Component.onDestruction: if (_counted) root._openCount = Math.max(0, root._openCount - 1)
                         }
                     }
                 }
@@ -345,15 +399,7 @@ Item {
             WheelHandler {
                 enabled: root._scrolling
                 onWheel: event => {
-                    root._wheel += event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
-                    while (root._wheel >= 120) {
-                        root._step(-1);
-                        root._wheel -= 120;
-                    }
-                    while (root._wheel <= -120) {
-                        root._step(1);
-                        root._wheel += 120;
-                    }
+                    root._wheelBy((event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x) * (event.inverted ? -1 : 1));
                 }
             }
         }
