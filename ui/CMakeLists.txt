@@ -24,6 +24,9 @@ qt_add_qml_module(atlasui
     CLASS_NAME AtlasUiPlugin
     QML_FILES
         AtlasWindow.qml
+        AtlasHeaderBar.qml
+        AtlasWindowButtons.qml
+        AtlasAppMenu.qml
         AtlasStyle.qml
         AtlasButton.qml
         PrimaryButton.qml
@@ -134,6 +137,7 @@ qt_add_qml_module(atlasui
         atlasclipboard.h atlasclipboard.cpp
         atlassettings.h atlassettings.cpp
         atlasportal.h atlasportal.cpp
+        atlaswindowchrome.h atlaswindowchrome.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         translations.cpp atlasuiplugin.cpp
 )

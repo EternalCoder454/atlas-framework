@@ -14,6 +14,13 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   the window's size and maximised state) and AtlasPortal (`openUrl` for http,
   https, mailto and existing file URLs only; `notify` with actions and
   `actionInvoked`). A second launch already raises the running window.
+- Atlas.Ui: the merged header. An `AtlasWindow` given an `AtlasHeaderBar` as its
+  `header` becomes frameless (opt-in; other windows are unchanged) and draws
+  its own title row: window menu, title, main tools with overflow, and
+  `AtlasWindowButtons` matching the AtlasOS KWin decoration, in KWin's button
+  layout. The header drags and maximises the window, the window resizes
+  through 6 px edge handles, and `AtlasAppMenu` exports the app's menus to the
+  global menu when there is one (`AtlasWindowChrome`), or shows a menu button.
 - Atlas.Ui: AtlasTreeView, a tree on Qt Quick's TreeView in the Atlas list
   look (single or multi selection, keyboard, type-ahead, RTL), and
   AtlasTreeModel, a tree model built from nested JS objects.
