@@ -38,7 +38,7 @@ pub fn lock_with_deadline(f: &File, wait: Duration) -> io::Result<()> {
 pub fn read_capped(path: &Path, max: u64) -> io::Result<Vec<u8>> {
     let f = OpenOptions::new()
         .read(true)
-        .custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC)
+        .custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY | libc::O_CLOEXEC)
         .open(path)?;
     if !f.metadata()?.is_file() {
         return Err(io::Error::new(

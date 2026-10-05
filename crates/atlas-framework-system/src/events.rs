@@ -129,7 +129,16 @@ pub fn append(path: &Path, event: &Event) -> io::Result<()> {
 fn truncate(path: &Path) -> io::Result<()> {
     // Only the tail is read: what is kept comes from the end, and a file
     // something else grew must not be read whole.
-    let mut f = fs::File::open(path)?;
+    let mut f = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW | libc::O_NOCTTY | libc::O_CLOEXEC)
+        .open(path)?;
+    if !f.metadata()?.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "not a regular file",
+        ));
+    }
     let start = f.metadata()?.len().saturating_sub(TAIL_BYTES);
     f.seek(SeekFrom::Start(start))?;
     let mut bytes = Vec::new();

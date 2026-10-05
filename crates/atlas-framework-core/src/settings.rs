@@ -66,7 +66,8 @@ impl Settings {
     /// would not change, and never overwrites a file it couldn't read.
     /// Fails with `InvalidInput` for a group or key that can't be written as
     /// one (control characters, brackets, `=`), and `PermissionDenied` for an
-    /// immutable one.
+    /// immutable one. `TimedOut` after 2 s without the file lock, and
+    /// `InvalidData` for a file that is not UTF-8 or over 4 MB: show the error.
     pub fn set(&self, group: &str, key: &str, value: Option<&str>) -> io::Result<()> {
         check_name(group, &['[', ']'])?;
         check_name(key, &['[', ']', '='])?;
@@ -88,7 +89,7 @@ impl Settings {
         // The file lock first, with its deadline: a stuck holder of one file
         // must not make writers of other files wait on the thread lock.
         let _file = lock(&target)?;
-        let _thread = lock_writers()?;
+        let _thread = WRITERS.lock().unwrap_or_else(|e| e.into_inner());
         sweep_temps(&target);
         // Again under the lock: another writer may have changed it.
         let (out, changed, meta) = change(&target, group, key, value)?;
@@ -107,7 +108,7 @@ fn change(
     key: &str,
     value: Option<&str>,
 ) -> io::Result<(String, bool, Option<fs::Metadata>)> {
-    let (text, meta) = match read_text(target) {
+    let (text, meta) = match read_text_strict(target) {
         Ok(t) => (t, Some(fs::metadata(target)?)),
         Err(e) if e.kind() == io::ErrorKind::NotFound => (String::new(), None),
         Err(e) => return Err(e),
@@ -202,57 +203,73 @@ fn resolve_link(path: &Path) -> io::Result<PathBuf> {
 /// sharing it need their own lock).
 static WRITERS: Mutex<()> = Mutex::new(());
 
-/// The process-wide writer lock, waited for at most [`crate::fsutil::LOCK_WAIT`]
-/// (another thread may sit in its own wait for the file lock).
-fn lock_writers() -> io::Result<std::sync::MutexGuard<'static, ()>> {
-    let end = std::time::Instant::now() + crate::fsutil::LOCK_WAIT;
-    loop {
-        match WRITERS.try_lock() {
-            Ok(g) => return Ok(g),
-            Err(std::sync::TryLockError::Poisoned(e)) => return Ok(e.into_inner()),
-            Err(std::sync::TryLockError::WouldBlock) => {
-                if std::time::Instant::now() >= end {
-                    return Err(io::Error::new(
-                        io::ErrorKind::TimedOut,
-                        "timed out waiting for another settings writer",
-                    ));
-                }
-                std::thread::sleep(std::time::Duration::from_millis(5));
-            }
-        }
-    }
-}
-
 /// The biggest settings file read (4 MB; a real one is a few KB).
 const MAX_BYTES: u64 = 4 * 1024 * 1024;
 
 /// The file's text, read without blocking on a FIFO, only if it is a regular
-/// file of at most [`MAX_BYTES`]. Bytes that are not UTF-8 become U+FFFD, so
-/// one bad byte never makes a key unwritable (the rewrite repairs that line).
+/// file of at most [`MAX_BYTES`]. Bytes that are not UTF-8 become U+FFFD (for
+/// reading only: see [`read_text_strict`]).
 fn read_text(path: &Path) -> io::Result<String> {
     let bytes = crate::fsutil::read_capped(path, MAX_BYTES)?;
     Ok(String::from_utf8(bytes)
         .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned()))
 }
 
-/// Remove `.<name>.tmp*` files a crashed writer left, older than a day.
-/// Under the lock, so no live writer's temp file is a candidate; best effort.
+/// [`read_text`], but a file that is not valid UTF-8 is an `InvalidData`
+/// error: a rewrite would replace the bad bytes of other lines (comments
+/// included) with U+FFFD, so such a file is never rewritten.
+fn read_text_strict(path: &Path) -> io::Result<String> {
+    String::from_utf8(crate::fsutil::read_capped(path, MAX_BYTES)?).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "the settings file is not valid UTF-8; not rewriting it",
+        )
+    })
+}
+
+/// Whether `file` is a temp name [`replace`] makes for `name`:
+/// `.<name>.tmp<digits>-<digits>`. Nothing else (a sibling's `.lock` file, a
+/// user's `.foo.tmp.bak`) is ever a candidate.
+fn is_temp_name(file: &str, name: &str) -> bool {
+    let Some(rest) = file
+        .strip_prefix('.')
+        .and_then(|f| f.strip_prefix(name))
+        .and_then(|f| f.strip_prefix(".tmp"))
+    else {
+        return false;
+    };
+    let digits = |t: &str| !t.is_empty() && t.bytes().all(|b| b.is_ascii_digit());
+    rest.split_once('-')
+        .is_some_and(|(a, b)| digits(a) && digits(b))
+}
+
+/// Remove temp files a crashed writer left, older than a day. Under the
+/// lock, so no live writer's temp file is a candidate; best effort, and at
+/// most once per process for each directory and name.
 fn sweep_temps(path: &Path) {
+    static DONE: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
     let (Some(dir), Some(name)) = (path.parent(), path.file_name()) else {
         return;
     };
+    {
+        let mut done = DONE.lock().unwrap_or_else(|e| e.into_inner());
+        if done.iter().any(|p| p == path) {
+            return;
+        }
+        done.push(path.to_path_buf());
+    }
     let dir = if dir.as_os_str().is_empty() {
         Path::new(".")
     } else {
         dir
     };
-    let prefix = format!(".{}.tmp", name.to_string_lossy());
+    let name = name.to_string_lossy();
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
     let day = std::time::Duration::from_secs(24 * 3600);
     for e in entries.flatten() {
-        if !e.file_name().to_string_lossy().starts_with(&prefix) {
+        if !is_temp_name(&e.file_name().to_string_lossy(), &name) {
             continue;
         }
         let old = e
@@ -745,14 +762,30 @@ mod tests {
     }
 
     #[test]
-    fn non_utf8_content_does_not_block_writes() {
+    fn non_utf8_content_reads_but_is_not_rewritten() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("atlas-xrc");
         fs::write(&path, b"[G]\nBad=\xff\xfe\nK=1\n").unwrap();
         let s = Settings::at(&path);
         assert_eq!(s.get("G", "K").as_deref(), Some("1"));
-        s.set("G", "K", Some("2")).unwrap();
-        assert_eq!(s.get("G", "K").as_deref(), Some("2"));
+        let e = s.set("G", "K", Some("2")).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::InvalidData);
+        assert_eq!(fs::read(&path).unwrap(), b"[G]\nBad=\xff\xfe\nK=1\n");
+    }
+
+    #[test]
+    fn only_replace_temp_names_are_swept() {
+        assert!(is_temp_name(".atlas-xrc.tmp12-3", "atlas-xrc"));
+        for no in [
+            ".atlas-xrc.tmp12-3.lock",
+            ".atlas-xrc.tmp.bak",
+            ".atlas-xrc.tmp12",
+            ".atlas-xrc.tmpa-1",
+            ".atlas-xrc.lock",
+            "atlas-xrc.tmp1-1",
+        ] {
+            assert!(!is_temp_name(no, "atlas-xrc"), "{no}");
+        }
     }
 
     #[test]

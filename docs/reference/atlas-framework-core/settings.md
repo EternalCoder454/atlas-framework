@@ -28,10 +28,10 @@ s.set("Restart", "ScheduledAt", None)?; // removes the key
 ## How writes behave
 
 - Each `set` reads the file, changes one key and replaces the file atomically (temp file, sync, rename, then a directory sync). Every other line is kept, and so are the file's mode and, when running as root, its owner.
-- Writers take an `flock` on `.<name>.lock` beside the file and a thread lock. Each wait is bounded: `LOCK_NB` polling for 2 seconds, then `set` fails with `ErrorKind::TimedOut` (a stopped holder or a hung network home never freezes the caller for good). The lock file stays on purpose: removing it would race the next writer. Concurrent `set` calls in Atlas code never lose a change. Another program writing the file without the lock can still race, but cannot corrupt it.
+- Writers take an `flock` on `.<name>.lock` beside the file and a thread lock. The wait for the file lock is bounded: `LOCK_NB` polling for 2 seconds, then `set` fails with `ErrorKind::TimedOut` (a stopped holder or a hung network home never freezes the caller for good). A caller must handle that error and show it, as it must any `set` error. The lock file stays on purpose: removing it would race the next writer. Concurrent `set` calls in Atlas code never lose a change. Another program writing the file without the lock can still race, but cannot corrupt it.
 - `set` writes nothing, and takes no lock, when the file would not change. This works where the app can read but not write.
-- A file that cannot be read is never overwritten. Reading is bounded: only a regular file of at most 4 MB is read (a FIFO is not opened for blocking, a larger file is an error), and bytes that are not UTF-8 read as U+FFFD, so one bad byte never makes a key unwritable (the rewrite repairs that line).
-- Under the lock, `set` removes `.<name>.tmp*` files left by a crashed writer when they are older than a day.
+- A file that cannot be read is never overwritten. Reading is bounded: only a regular file of at most 4 MB is read (a FIFO is not opened for blocking, a larger file is an error), and bytes that are not UTF-8 read as U+FFFD, but such a file is never rewritten (`set` fails with `InvalidData`), so no other line or comment is changed.
+- Under the lock, `set` removes the temp files (`.<name>.tmp<pid>-<n>`, exactly) left by a crashed writer when they are older than a day, once per process and file.
 - A symlinked file (dotfiles) keeps its link: the target is written.
 - Keys and groups that KConfig marks immutable (`[$i]`) are refused.
 - Values are escaped as KConfig does: a value stays on one line (`\n`, `\t`, `\r`, `\\`, `\xNN` for other control characters), and leading or trailing spaces are written as `\s`.
