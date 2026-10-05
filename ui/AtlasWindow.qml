@@ -285,14 +285,32 @@ QQC2.ApplicationWindow {
     readonly property bool _resizable: root.frameless && root.visibility !== Window.Maximized && root.visibility !== Window.FullScreen
     flags: (root.frameless ? Qt.Window | Qt.FramelessWindowHint : Qt.Window) | (root.kiosk ? Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint : 0)
     onKioskChanged: root._applyKiosk()
-    // Only while shown: setting `visibility` on a hidden window would show it.
+    // True once kiosk put this window in full screen: leaving kiosk then
+    // takes it out again (and nothing else's full screen).
+    property bool _kioskApplied: false
+    // One turn later: `flags` changes with `kiosk` and on Wayland can recreate
+    // the window, so the visibility is set after that settled, and re-checked.
     function _applyKiosk(): void {
+        Qt.callLater(root._enforceKiosk);
+    }
+    // Only while shown: setting `visibility` on a hidden window would show it.
+    function _enforceKiosk(): void {
+        if (root._gone || !root.visible) {
+            return;
+        }
         if (root.kiosk) {
-            if (root.visible) {
+            // Minimized stays minimized; anything else goes back to full screen.
+            if (root.visibility !== Window.FullScreen && root.visibility !== Window.Minimized) {
+                root._kioskApplied = true;
                 root.visibility = Window.FullScreen;
+            } else if (root.visibility === Window.FullScreen) {
+                root._kioskApplied = true;
             }
-        } else if (root.visibility === Window.FullScreen) {
-            root.visibility = Window.Windowed;
+        } else if (root._kioskApplied) {
+            root._kioskApplied = false;
+            if (root.visibility === Window.FullScreen) {
+                root.visibility = root.stateKey.length > 0 && root._state.value("Maximized", false) ? Window.Maximized : Window.Windowed;
+            }
         }
     }
     // A close request is refused in kiosk mode, Qt.quit()'s included.
@@ -392,6 +410,8 @@ QQC2.ApplicationWindow {
         Appearance.refresh();
         syncBlur();
         _firstShow();
+        // A kiosk change made while hidden counts now.
+        root._applyKiosk();
     } else {
         root._finishAllConfirms(false);
     }
@@ -463,5 +483,11 @@ QQC2.ApplicationWindow {
     }
     onWidthChanged: _saveState()
     onHeightChanged: _saveState()
-    onVisibilityChanged: _saveState()
+    onVisibilityChanged: {
+        _saveState();
+        // KWin's F11, a Restore from a menu: kiosk puts it back.
+        if (root.kiosk) {
+            root._applyKiosk();
+        }
+    }
 }

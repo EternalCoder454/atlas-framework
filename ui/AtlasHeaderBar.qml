@@ -81,6 +81,9 @@ Item {
         }
     }
     function _toggleMaximize() {
+        if (root._kiosk) {
+            return;
+        }
         if (_toggleHook) {
             _toggleHook();
             return;
@@ -188,6 +191,7 @@ Item {
             onTriggered: root._minimize()
         }
         ContextMenuItem {
+            visible: !root._kiosk
             text: root._maximized ? qsTr("Restore") : qsTr("Maximize")
             onTriggered: root._toggleMaximize()
         }

@@ -47,10 +47,10 @@ With `stepStyle: AtlasOnboarding.Dots` a centred row of dots shows above the pag
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `autoAdvance` | `bool` | `true` | `false`: Next emits `advanceRequested(index)` and the control stays; the app calls `next()` itself. Since 1.5.0. |
+| `autoAdvance` | `bool` | `true` | `false`: Next emits `advanceRequested(index)` and the control stays; the app calls `next()` itself. A second Next before the app moves on or sets `busy` (and clears it) does nothing. Since 1.5.0. |
 | `backText` | `string` | `""` | Replaces the built-in "Back". Empty keeps it. Since 1.5.0. |
 | `busy` | `bool` | `false` | Next shows a spinner, ignores clicks and keys, and has the accessible description "Busy". Back, Skip and Alt+Left do nothing while it is set. Since 1.5.0. |
-| `canGoBack` | `bool` | `true` | `false` hides Back and turns Alt+Left off. Since 1.5.0. |
+| `canGoBack` | `bool` | `true` | `false` hides Back and turns Alt+Left off. Alt+Left is KDE's standard Back, also in right-to-left layouts, so it is not mirrored; it works only in the active window, and with two onboardings in one window the shortcut is ambiguous. Since 1.5.0. |
 | `count` | `int` (read-only) | — | The number of pages. |
 | `currentIndex` | `int` | `0` | The page shown. It is kept within the pages. |
 | `finishText` | `string` | `""` | Replaces the built-in "Finish" on the last page. Empty keeps it. Since 1.5.0. |

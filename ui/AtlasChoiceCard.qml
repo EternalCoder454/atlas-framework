@@ -175,6 +175,7 @@ T.AbstractButton {
                     source: "checkmark"
                     isMask: true
                     color: AtlasStyle.accentText
+                    Accessible.ignored: true
                 }
             }
             Text {

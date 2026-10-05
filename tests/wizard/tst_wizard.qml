@@ -143,14 +143,49 @@ Item {
             compare(o.currentIndex, 1);
             verify(!button(o, "Back").enabled);
             verify(!button(o, "Skip").enabled);
-            keyClick(Qt.Key_Left, Qt.AltModifier);
-            compare(o.currentIndex, 1, "Alt+Left does nothing while busy");
             o.busy = false;
             compare(next.Accessible.description, "");
             verify(button(o, "Back").enabled);
             mouseClick(next);
             compare(spy.count, 1);
             compare(o.currentIndex, 2);
+        }
+
+        function test_alt_left_not_while_busy() {
+            const o = make();
+            o.forceActiveFocus();
+            keyClick(Qt.Key_Left, Qt.AltModifier);
+            compare(o.currentIndex, 0, "the shortcut works in this fixture");
+            o.currentIndex = 1;
+            o.busy = true;
+            keyClick(Qt.Key_Left, Qt.AltModifier);
+            compare(o.currentIndex, 1, "Alt+Left does nothing while busy");
+            o.busy = false;
+            keyClick(Qt.Key_Left, Qt.AltModifier);
+            compare(o.currentIndex, 0);
+        }
+
+        function test_second_next_waits_for_the_app() {
+            const o = make({
+                autoAdvance: false
+            });
+            const spy = createTemporaryObject(spyComp, root, {
+                target: o,
+                signalName: "advanceRequested"
+            });
+            const next = button(o, "Next");
+            mouseClick(next);
+            mouseClick(next);
+            compare(spy.count, 1, "the second press waits");
+            o.busy = true;
+            mouseClick(next);
+            compare(spy.count, 1);
+            o.busy = false;
+            mouseClick(next);
+            compare(spy.count, 2, "asks again once busy has fallen");
+            o.next();
+            mouseClick(button(o, "Finish"));
+            compare(spy.count, 3, "next() clears it");
         }
 
         function test_can_go_back() {
@@ -687,6 +722,40 @@ Item {
             w.destroy();
         }
 
+        function test_leaving_kiosk_and_showing_again() {
+            const w = shown(winComp, {
+                kiosk: true
+            });
+            tryCompare(w, "visibility", Window.FullScreen);
+            w.kiosk = false;
+            tryVerify(() => w.visibility === Window.Windowed);
+            w.kiosk = true;
+            tryCompare(w, "visibility", Window.FullScreen);
+            // Hide, leave kiosk while hidden, show: not full screen.
+            w.visible = false;
+            w.kiosk = false;
+            w.visible = true;
+            tryVerify(() => w.visible && w.visibility === Window.Windowed);
+            // The reverse: hide, enter kiosk, show: full screen.
+            w.visible = false;
+            w.kiosk = true;
+            w.visible = true;
+            tryCompare(w, "visibility", Window.FullScreen);
+            w.destroy();
+        }
+
+        function test_kiosk_goes_back_to_full_screen() {
+            const w = shown(winComp, {
+                kiosk: true
+            });
+            tryCompare(w, "visibility", Window.FullScreen);
+            w.showNormal();
+            tryCompare(w, "visibility", Window.FullScreen);
+            w.showMaximized();
+            tryCompare(w, "visibility", Window.FullScreen);
+            w.destroy();
+        }
+
         function test_hidden_kiosk_stays_hidden() {
             const w = winComp.createObject(null, {
                 kiosk: true
@@ -703,6 +772,9 @@ Item {
             w.kiosk = true;
             tryVerify(() => named("Close") === null);
             verify(named("Minimize") !== null, "the other window buttons stay");
+            verify(named("Maximize") === null, "no Maximize in a kiosk window");
+            w.kiosk = false;
+            tryVerify(() => named("Maximize") !== null);
             w.destroy();
         }
     }
