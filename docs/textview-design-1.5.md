@@ -375,3 +375,57 @@ Signals:
 Notepad's gaps are covered above: the keys through `keyPressEvent`, the chunk
 offsets and offset maps, the Spelling style, the highlighter interface,
 proportional fonts, and visible control characters.
+
+## Headers
+
+The two headers are `crates/atlas-framework-ui/include/atlas/textsnapshot.h`
+and `textview.h`, next to app.h (the package installs them under
+`/usr/include/atlas-ui/atlas/`). They are not in CMake yet. Open decisions the
+design left, for Notepad to confirm:
+
+- **Snapshot is not a QObject.** "Snapshot and save" said QObject; "The C++
+  API" said a value handle. The headers follow the second. Reference counting
+  is virtual (`ref`/`deref`), so no layout is compiled into apps.
+- **Chunks** are `AtlasTextChunk` (data, byteLength, byteOffset, utf16Offset,
+  utf16Length), reached by `chunkAt(i)` or the `visitChunks(callback)`
+  template (callback returns false to stop). Every snapshot also has
+  `utf8(start, end)`, `lineStart/lineStartByte/lineAt/lineAtByte` and
+  `chunkIndexAtByte`.
+- **Version guard:** `abiVersion()` is the first virtual; a handle built over
+  an older implementation is null, reads as empty, and never crashes.
+- **Signals** cannot be on a non-QObject interface. They stay on the item,
+  reached by `item()`, with signatures documented in textview.h (string-form
+  `connect`).
+- **Save** is `snapshot()` plus the app's writing, then `markSaved(revision)`
+  (new), so edits made during a save keep `modified` true.
+- **Highlighter** (`AtlasTextHighlighterInterface`): takes a start state and
+  the line text, appends `FormatRun`s, returns the end state; runs on a worker
+  thread; set with `setHighlighter(shared_ptr)`. Added to `textview.h` now so
+  Notepad can review it, though it ships in step 3.
+- **Added beyond the sketch:** `cursorRectangle()`, `interfaceVersion()`,
+  `item()`. Enums (`LineEnding`, `DecorationStyle`) live in `namespace
+  AtlasText` with fixed integer values.
+
+Changes after Notepad's review of the headers (all in the headers now):
+
+- `positionAt(QPointF)` and `rectangleAt(position)` map points and positions
+  in item coordinates.
+- `rehighlight(first, last)` and `rehighlight()` restyle lines without
+  replacing the highlighter. The view only stores and compares int states, so
+  an app can intern richer states as ints.
+- Undo and redo restore the caret and selection from before and after the
+  record, as QTextDocument does.
+- `contentsChange` positions are in the text after the change. Inside
+  `beginEdit()`/`endEdit()` it fires once per change, not once per group.
+- The built-in highlighter follows the Atlas.Ui light/dark palette;
+  `setSyntaxTheme(name)` overrides it, and an empty name follows the palette.
+- `replaceDecorations(layer, region, ranges, style)` replaces only the ranges
+  inside `region`. It ships in step 3; until then it does nothing.
+- `~AtlasTextViewInterface()` is protected.
+- QML `text`: `textChanged` does not build the string; the getter copies only
+  when read.
+- `lineEnding()` and `convertLineEndings()` are in the API and documented
+  (CRLF is two positions; one undo restores a conversion).
+
+Scope: Notepad's Markdown Formatted view stays on QTextDocument, because it
+needs rich layout. AtlasTextView covers plain text, code and Markdown source.

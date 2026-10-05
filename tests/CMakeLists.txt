@@ -264,6 +264,23 @@ target_link_libraries(atlas-colors-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
 add_test(NAME colors COMMAND atlas-colors-tests)
 set_tests_properties(colors PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+# The text buffer behind AtlasTextView (ui/text, the atlastext library): a fuzz
+# test of the piece tree against a QString model, loads, line endings and
+# snapshots, threads included. No display needed.
+add_executable(atlas-textbuffer-tests textbuffer/tst_textbuffer.cpp)
+target_link_libraries(atlas-textbuffer-tests PRIVATE Qt6::Test atlastext)
+add_test(NAME textbuffer COMMAND atlas-textbuffer-tests)
+set_tests_properties(textbuffer PROPERTIES TIMEOUT 600 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# AtlasTextView (ui/text/atlastextview.cpp, compiled into the test): layout of
+# the visible lines, wrap, selection and copy, the mouse, follow mode, loading,
+# the accessible. Software scene graph on the offscreen platform.
+add_executable(atlas-textview-tests textview/tst_textview.cpp
+    ${PROJECT_SOURCE_DIR}/ui/text/atlastextview.h ${PROJECT_SOURCE_DIR}/ui/text/atlastextview.cpp)
+target_link_libraries(atlas-textview-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::Gui atlastext)
+add_test(NAME textview COMMAND atlas-textview-tests)
+set_tests_properties(textview PROPERTIES TIMEOUT 300 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+
 # The clipboard singleton (ui/atlasclipboard.cpp, compiled into the test):
 # text, rich text and image round trips, and what setImage() refuses.
 add_executable(atlas-clipboard-tests clipboard/tst_clipboard.cpp
