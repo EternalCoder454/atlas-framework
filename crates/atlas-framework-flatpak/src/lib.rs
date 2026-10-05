@@ -1543,11 +1543,33 @@ mod tests {
 
     #[test]
     fn a_report_checks_what_it_can_and_stops_on_cancel() {
-        // An empty private user installation, no network: refresh is off.
+        // Empty private installations, no network: refresh is off. The
+        // system ones too (libflatpak reads these variables once per process,
+        // and no other test opens an installation), so the machine's own
+        // installations are never opened.
         let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
         let d = tempfile::tempdir().unwrap();
+        let (user, system, config) = (
+            d.path().join("user"),
+            d.path().join("system"),
+            d.path().join("config"),
+        );
+        for p in [&user, &system, &config] {
+            std::fs::create_dir_all(p).unwrap();
+        }
         // SAFETY: tests that touch the environment hold ENV.
-        unsafe { std::env::set_var("FLATPAK_USER_DIR", d.path()) };
+        unsafe {
+            std::env::set_var("FLATPAK_USER_DIR", &user);
+            std::env::set_var("FLATPAK_SYSTEM_DIR", &system);
+            std::env::set_var("FLATPAK_CONFIG_DIR", &config);
+        }
+        for i in libflatpak::functions::system_installations(None::<&Cancellable>).unwrap() {
+            let p = i.path().and_then(|f| f.path()).unwrap_or_default();
+            assert!(
+                p.starts_with(d.path()),
+                "a real installation was opened: {p:?}"
+            );
+        }
         let o = list_updates_report(&ListOptions::default());
         assert!(o.updates.is_empty());
         assert!(o.checked >= 1, "{o:?}");
@@ -1559,7 +1581,11 @@ mod tests {
         });
         assert_eq!(o.checked, 0);
         // SAFETY: as above.
-        unsafe { std::env::remove_var("FLATPAK_USER_DIR") };
+        unsafe {
+            std::env::remove_var("FLATPAK_USER_DIR");
+            std::env::remove_var("FLATPAK_SYSTEM_DIR");
+            std::env::remove_var("FLATPAK_CONFIG_DIR");
+        }
         assert!(o.errors.iter().all(|e| e.error.0 == "cancelled"));
         assert!(!o.errors.is_empty());
         assert!(o.into_result().is_err());
