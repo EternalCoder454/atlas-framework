@@ -12,7 +12,10 @@
 #
 # Writes perf/out.json (or $PERF_OUT) and exits 1 when any figure is over budget.
 # Atlas.Ui has to be installed where Qt looks (the template's CMake reads it
-# from there); as root the script installs the build into /usr when it is not.
+# from there); as root in a container the script always installs the build it
+# measures into /usr, so an older copy there is never measured by mistake.
+# Anywhere else the installed qmldir must be the build's own, or it exits 2.
+# Exit 2 also when the budget file or one of its four keys is missing.
 # Everything the app writes goes to a temporary XDG tree.
 set -euo pipefail
 
@@ -80,11 +83,21 @@ if [ "${1:-}" = "--inner" ]; then
     # field). The stat file's clock ticks are 10 ms: over 5 s that reads only
     # in 0.2 % steps, too coarse for the budget. A thread that ends in the
     # window takes its time with it, which an idle app doesn't do.
-    oncpu() { cat /proc/"$pid"/task/*/schedstat 2>/dev/null | awk '{ns += $1} END {printf "%.0f", ns}'; }
-    c0=$(oncpu)
+    # An unreadable schedstat (not enabled, no permission) or a zero total
+    # would read as 0 % CPU and pass: fail instead.
+    oncpu() {
+        local total
+        total=$(cat /proc/"$pid"/task/*/schedstat 2>/dev/null | awk '{ns += $1} END {printf "%.0f", ns}')
+        if [ -z "$total" ] || [ "$total" -le 0 ]; then
+            echo "measure: cannot read CPU time from /proc/$pid/task/*/schedstat (is it enabled?)" >&2
+            return 1
+        fi
+        printf '%s' "$total"
+    }
+    c0=$(oncpu) || exit 1
     s0=$(date +%s%N)
     sleep 10
-    c1=$(oncpu)
+    c1=$(oncpu) || exit 1
     s1=$(date +%s%N)
     cpu=$(awk -v a="$c0" -v b="$c1" -v s="$s0" -v e="$s1" 'BEGIN { printf "%.2f", (b - a) / (e - s) * 100 }')
     stop
@@ -96,19 +109,37 @@ if [ "${1:-}" = "--inner" ]; then
 fi
 
 build=${1:-$root/build}
-build=$(cd "$build" && pwd)
+build=$(cd "$build" && pwd) || {
+    echo "measure: no build directory $build" >&2
+    exit 2
+}
+# The budget first: a missing file or key must not cost a full measurement.
+if [ ! -f "$budget" ]; then
+    echo "measure: no budget at $budget" >&2
+    exit 2
+fi
+for key in startup_ms rss_kb pss_kb idle_cpu_percent; do
+    if ! jq -e --arg k "$key" '.[$k] | type == "number"' "$budget" >/dev/null 2>&1; then
+        echo "measure: $budget has no number for $key" >&2
+        exit 2
+    fi
+done
 work=$(mktemp -d "${TMPDIR:-/tmp}/atlas-perf.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 
-# Atlas.Ui where the template's CMake looks for it.
+# Atlas.Ui where the template's CMake looks for it: always the build being
+# measured, never whatever copy was installed before.
 qml_dir=$(qmake6 -query QT_INSTALL_QML)
-if [ ! -f "$qml_dir/Atlas/Ui/qmldir" ]; then
+if [ "$(id -u)" -eq 0 ] && { [ -e /run/.containerenv ] || [ -e /.dockerenv ] || [ "${ATLAS_PERF_INSTALL:-}" = 1 ]; }; then
     # Only into a container's /usr, never over a host system's.
-    if [ "$(id -u)" -ne 0 ] || { [ ! -e /run/.containerenv ] && [ ! -e /.dockerenv ] && [ "${ATLAS_PERF_INSTALL:-}" != 1 ]; }; then
-        echo "measure: Atlas.Ui is not installed in $qml_dir; run as root in the dev container (or install it yourself)" >&2
-        exit 2
-    fi
     cmake --install "$build" --prefix /usr >/dev/null
+elif [ ! -f "$qml_dir/Atlas/Ui/qmldir" ]; then
+    echo "measure: Atlas.Ui is not installed in $qml_dir; run as root in the dev container (or install it yourself)" >&2
+    exit 2
+elif ! cmp -s "$build/Atlas/Ui/qmldir" "$qml_dir/Atlas/Ui/qmldir" ||
+    ! cmp -s "$build/Atlas/Ui/libatlasui.so" "$qml_dir/Atlas/Ui/libatlasui.so"; then
+    echo "measure: the Atlas.Ui in $qml_dir is not the one built in $build; install the build, or run as root in the dev container" >&2
+    exit 2
 fi
 
 # The template, in Release, with its own target directory. CI keeps the
@@ -137,23 +168,18 @@ cat "$out"
 # Compare with the budget. Keys in PERF_WARN_ONLY (space-separated; CI passes
 # startup_ms, which a shared runner makes noisy) warn instead of failing.
 status=0
-if [ ! -f "$budget" ]; then
-    echo "measure: no budget at $budget; nothing to compare" >&2
-else
-    for key in startup_ms rss_kb pss_kb idle_cpu_percent; do
-        limit=$(jq -r --arg k "$key" '.[$k] // empty' "$budget")
-        value=$(jq -r --arg k "$key" '.[$k]' "$out")
-        [ -n "$limit" ] || continue
-        if awk -v v="$value" -v l="$limit" 'BEGIN { exit !(v > l) }'; then
-            if [[ " ${PERF_WARN_ONLY:-} " == *" $key "* ]]; then
-                echo "::warning::over budget (not failing): $key is $value, budget $limit"
-            else
-                echo "OVER BUDGET: $key is $value, budget $limit"
-                status=1
-            fi
+for key in startup_ms rss_kb pss_kb idle_cpu_percent; do
+    limit=$(jq -r --arg k "$key" '.[$k]' "$budget")
+    value=$(jq -r --arg k "$key" '.[$k]' "$out")
+    if awk -v v="$value" -v l="$limit" 'BEGIN { exit !(v > l) }'; then
+        if [[ " ${PERF_WARN_ONLY:-} " == *" $key "* ]]; then
+            echo "::warning::over budget (not failing): $key is $value, budget $limit"
         else
-            echo "ok: $key $value (budget $limit)"
+            echo "OVER BUDGET: $key is $value, budget $limit"
+            status=1
         fi
-    done
-fi
+    else
+        echo "ok: $key $value (budget $limit)"
+    fi
+done
 exit "$status"

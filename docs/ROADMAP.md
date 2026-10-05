@@ -444,26 +444,26 @@ that lands, then go in one batch.
 
 #### Tools, CI, packaging and the template (study 6)
 
-- [ ] High: check-api.sh fails every commit that changes `api/` while the
+- [x] High: check-api.sh fails every commit that changes `api/` while the
   version is still 1.4.0: raise the in-tree version to 1.5.0 with the first
   API commit (CMake, Cargo, Cargo.lock, spec).
-- [ ] apidump records no base type: changing a root from T.AbstractButton to
+- [x] apidump records no base type: changing a root from T.AbstractButton to
   Item removes `clicked`, `text` and more, and the check still passes.
 - [ ] No RPM build in CI or release.yml, so `%check` and the file lists only
   run by hand; translations would break the RPM build (no LinguistTools
   BuildRequires, `.qm` files owned by no `%files`).
-- [ ] On a tag push the semver baseline and check-api's "since the last tag"
+- [x] On a tag push the semver baseline and check-api's "since the last tag"
   diff are the commit itself (vacuous); release.yml accepts the tag run alone.
-- [ ] dev-check: no `--init`/`--name` (Ctrl-C may leave ninja and ctest
+- [x] dev-check: no `--init`/`--name` (Ctrl-C may leave ninja and ctest
   running), two runs in one checkout share a build dir, a mistyped demo name
   may test nothing.
-- [ ] perf/measure.sh: measures an already installed qmldir instead of the
+- [x] perf/measure.sh: measures an already installed qmldir instead of the
   build; a missing budget file or key passes; unreadable schedstat gives 0 %
   CPU; the CI perf job measures a dev-paths build.
-- [ ] lint-app.sh false passes: a trailing comment on an import, the
+- [x] lint-app.sh false passes: a trailing comment on an import, the
   `QtQuick.Controls.Basic`/Material/... imports, `build*` pruning, zero QML
   files exits 0, no error-path test.
-- [ ] Low: CI swallows lint exit 2 and never lints the gallery or template,
+- [x] Low: CI swallows lint exit 2 and never lints the gallery or template,
   no qmllint warning gate; cache keys end in the sha (churn, evictions), one
   buildx scope for three jobs, push plus pull_request runs; no
   `cargo --locked` or Cargo.lock version check; build-rpm.sh tars the working

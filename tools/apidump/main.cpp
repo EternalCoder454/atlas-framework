@@ -13,6 +13,8 @@
 //   Type.property name: type [readonly]
 //   Type.signal name(type name, ...)
 //   Type.method name(type name, ...): returnType
+//   Type.base ClassName                    (the first class outside Atlas.Ui that
+//                                            the type derives from)
 //   Type.enum Name: Value = number          (one line per value, so a new value
 //                                            reads as an addition, not a change)
 //
@@ -120,6 +122,13 @@ void dumpMetaObject(const QString &type, const QMetaObject *start, const QSet<QS
     for (const QMetaObject *mo = start; mo; mo = mo->superClass()) {
         const QString className = QString::fromLatin1(mo->className());
         if (!className.contains(QLatin1String("_QMLTYPE_")) && !atlasClasses.contains(className)) {
+            // The first class outside Atlas.Ui: changing it changes what the
+            // type inherits, so it is part of the contract. Qt's counters
+            // ("QQuickItem_QML_12") depend on load order: drop them.
+            static const QRegularExpression counter(QStringLiteral("_QML(?:TYPE)?_[0-9]+$"));
+            QString base = className;
+            base.remove(counter);
+            lines << QStringLiteral("%1.base %2").arg(type, base);
             break;
         }
         QSet<QByteArray> notifySignals;

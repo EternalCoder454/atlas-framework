@@ -1,10 +1,15 @@
 #!/bin/bash
 # Design rule 6 (docs/DESIGN.md): never default QQC2 or Kirigami buttons.
 #
-#   tools/lint-app.sh <app-dir>...
+#   tools/lint-app.sh [--allow-empty] <app-dir>...
 #
-# Output is file:line: error|warning: message. Exit 1 when there is an error.
-#   errors    QQC2 (QtQuick.Controls) Button, ToolButton, RoundButton,
+# Output is file:line: error|warning: message. Exit 1 when there is an error
+# or an app directory holds no QML file (a wrong path must not pass; an app
+# that really has none passes --allow-empty). Exit 2 on a usage error.
+# Directories named build, build-*, _build, target, node_modules and .git
+# are skipped.
+#   errors    QQC2 (QtQuick.Controls and its style modules, such as
+#             QtQuick.Controls.Basic or .Material) Button, ToolButton, RoundButton,
 #             DelayButton and Switch, and Kirigami.ActionToolBar. A bare
 #             `Button {` counts when the file imports QtQuick.Controls
 #             unqualified, unless the app has its own Button.qml beside it.
@@ -28,8 +33,13 @@
 # line before.
 set -uo pipefail
 
+allow_empty=0
+if [ "${1:-}" = "--allow-empty" ]; then
+    allow_empty=1
+    shift
+fi
 if [ "$#" -eq 0 ]; then
-    echo "usage: lint-app.sh <app-dir>..." >&2
+    echo "usage: lint-app.sh [--allow-empty] <app-dir>..." >&2
     exit 2
 fi
 
@@ -44,7 +54,8 @@ function report(n, level, what, why) {
 # a child item? Counts braces to find its end.
 function setsOwn(n, re,   i, l, depth) {
     depth = 0
-    for (i = n; i <= NR; i++) {
+    # Capped: braces that never balance must not make every line scan to EOF.
+    for (i = n; i <= NR && i < n + SCAN_LINES; i++) {
         l = lines[i]
         if (l ~ /^[ \t]*\/\//) continue
         sub(/[ \t]\/\/.*$/, "", l)
@@ -62,7 +73,7 @@ function setsOwn(n, re,   i, l, depth) {
 # Does the item that opens on line n contain, anywhere inside, a line matching re?
 function blockHas(n, re,   i, l, depth) {
     depth = 0
-    for (i = n; i <= NR; i++) {
+    for (i = n; i <= NR && i < n + SCAN_LINES; i++) {
         l = lines[i]
         if (l ~ /^[ \t]*\/\//) continue
         sub(/[ \t]\/\/.*$/, "", l)
@@ -79,6 +90,7 @@ function uses(s, a, name,   re) {
 }
 BEGIN {
     # From the environment, not -v: awk would read backslashes in them as escapes.
+    SCAN_LINES = 200
     file = ENVIRON["LINT_FILE"]
     n = split(ENVIRON["LINT_LOCALS"], L, "\n"); for (i = 1; i <= n; i++) isLocal[L[i]] = 1
     split("Button ToolButton RoundButton DelayButton Switch", E, " ")
@@ -100,10 +112,16 @@ BEGIN {
 END {
     for (nr = 1; nr <= NR; nr++) {
         s = lines[nr]
-        if (match(s, /^[ \t]*import[ \t]+QtQuick\.Controls/)) {
+        # A trailing comment must not hide an `as` alias.
+        if (s ~ /^[ \t]*import[ \t]/) { sub(/\/\*.*\*\//, "", s); sub(/[ \t]*\/[\/*].*$/, "", s) }
+        # QtQuick.Controls and every style module (.Basic, .Material,
+        # .Universal, .Fusion, ...) export the QQC2 Button and friends;
+        # only .impl (internal types) does not.
+        if (match(s, /^[ \t]*import[ \t]+QtQuick\.Controls([ \t.]|$)/)) {
+            if (s ~ /^[ \t]*import[ \t]+QtQuick\.Controls\.[iI]mpl([ \t]|$)/) continue
             if (match(s, /[ \t]as[ \t]+[A-Za-z_][A-Za-z0-9_]*[ \t]*$/)) {
                 a = substr(s, RSTART, RLENGTH); sub(/^[ \t]+as[ \t]+/, "", a); sub(/[ \t]+$/, "", a); qq[a] = 1
-            } else if (s !~ /\.(Basic|Material|Universal|Fusion|Imagine|FluentWinUI3|Windows|macOS|iOS|Impl)/) {
+            } else {
                 unq = 1
             }
             continue
@@ -211,8 +229,11 @@ for app in "$@"; do
             total_warnings=$((total_warnings + $(grep -c ': warning: ' <<<"$out")))
         fi
         [ "$rc" -ne 0 ] && status=1
-    done < <(find "$app/" \( -type d \( -name '.git' -o -name 'build*' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
-    [ "$count" -eq 0 ] && echo "lint-app: no QML files in ${app//[[:cntrl:]]/?}"
+    done < <(find "$app/" \( -type d \( -name '.git' -o -name 'build' -o -name 'build-*' -o -name '_build' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
+    if [ "$count" -eq 0 ]; then
+        echo "lint-app: no QML files in ${app//[[:cntrl:]]/?}"
+        [ "$allow_empty" -eq 1 ] || status=1
+    fi
 done
 echo "lint-app: $total_errors error(s), $total_warnings warning(s)"
 exit "$status"

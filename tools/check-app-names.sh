@@ -1,7 +1,11 @@
 #!/bin/bash
 # Fails when an app has a .qml file named like an Atlas.Ui type.
 #
-#   tools/check-app-names.sh <app-dir>...
+#   tools/check-app-names.sh [--allow-empty] <app-dir>...
+#
+# Exit 1 on a clash, and when an app directory holds no QML file (a wrong path
+# must not pass; --allow-empty for an app that has none). Directories named
+# build, build-*, _build, target, node_modules and .git are skipped.
 #
 # `import Atlas.Ui` wins over the QML files in an app's own directory, so an
 # Atlas.Ui type named like an app's local type replaces it in that app, which
@@ -10,8 +14,13 @@
 set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+allow_empty=0
+if [ "${1:-}" = "--allow-empty" ]; then
+    allow_empty=1
+    shift
+fi
 if [ "$#" -eq 0 ]; then
-    echo "usage: check-app-names.sh <app-dir>..." >&2
+    echo "usage: check-app-names.sh [--allow-empty] <app-dir>..." >&2
     exit 2
 fi
 
@@ -53,8 +62,11 @@ for app in "$@"; do
             echo "  is replaced by the framework's. Rename the app's file (the Installer's SearchField became ListSearchField)."
             status=1
         fi
-    done < <(find "$app/" \( -type d \( -name '.git' -o -name 'build*' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
-    [ "$count" -eq 0 ] && echo "check-app-names: no QML files in ${app//[[:cntrl:]]/?}"
+    done < <(find "$app/" \( -type d \( -name '.git' -o -name 'build' -o -name 'build-*' -o -name '_build' -o -name target -o -name node_modules \) -prune \) -o -type f -name '*.qml' -print0)
+    if [ "$count" -eq 0 ]; then
+        echo "check-app-names: no QML files in ${app//[[:cntrl:]]/?}"
+        [ "$allow_empty" -eq 1 ] || status=1
+    fi
 done
 if [ "$status" -eq 0 ]; then
     echo "check-app-names: no clashes"

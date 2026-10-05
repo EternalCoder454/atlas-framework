@@ -65,6 +65,21 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Fix (atlas-framework-ui): `atlas_app_init` may be called more than once;
   the startup error window also quits when the scene graph fails, the window
   is destroyed or after 5 minutes.
+- Tools: the API snapshot records each type's base class, and `check-api.sh`
+  treats a changed base as breaking; on a tag push it compares against the
+  previous tag, not the tag itself.
+- Tools: `dev-check.sh` holds a lock per build directory, runs under an init
+  so Ctrl-C stops ninja and ctest, refuses a demo name that matches no demo,
+  and prints lint findings as file:line.
+- Tools: `perf/measure.sh` measures the build it is given (it installed or
+  compared nothing before) and fails when the budget file or a key is
+  missing.
+- Tools: `lint-app.sh` no longer passes apps that import
+  `QtQuick.Controls.Basic` (or another style), hide imports behind comments,
+  or have no QML files (`--allow-empty` for those); `check-app-names.sh`
+  fails on an empty app.
+- Packaging: `build-rpm.sh` packages the committed tree only (git archive of
+  HEAD) and refuses a dirty one; the spec builds and ships the translations.
 
 ## 1.4.0
 

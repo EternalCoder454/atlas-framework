@@ -164,6 +164,10 @@ class ApiCoverage(DocsCase):
         self.set_api(self.API + "garbage\n")
         self.assertFlags(self.errors(), "unrecognised line")
 
+    def test_base_lines_are_not_members(self):
+        self.set_api(self.API + "AtlasButton.base QQuickItem\n")
+        self.assertClean(self.errors())
+
     def test_names_in_fences_do_not_count(self):
         self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("- `open(x)`: opens it.",
                                                     "~~~qml\n```\n- `open(x)`: no\n```\n~~~")))
