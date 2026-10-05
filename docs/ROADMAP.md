@@ -147,5 +147,17 @@ animation speed.
 - [ ] lint-app.sh: Kirigami.PlaceholderMessage, a hand-made tinted banner,
       QQC2.ToolTip, Kirigami.Heading (use AtlasLabel)
 
+### F6: the Atlas look
+
+- [ ] Violet accent (buttons, selection) and pink focus rings by default; a
+      Plasma accent colour, when chosen, wins
+- [ ] IBM Plex Sans for UI, JetBrains Mono for code (system fonts when absent)
+- [ ] Small rounding, quick and subtle motion
+- [ ] Blur on most surfaces (popups, menus, dialogs), tinted, each with a
+      solid fallback; `AtlasTransparencySwitch` for the settings page
+- [ ] Merged header: `AtlasHeaderBar` (title, tools, window buttons matched
+      to the AtlasOS KWin decoration) on an opt-in frameless `AtlasWindow`;
+      `AtlasAppMenu` exports menus to Plasma's global menu when present
+
 Dropped: AtlasCoreGrid (AtlasCard and MiniBars cover it), AtlasHeading,
 AtlasCaption, AtlasBusyRow, AtlasNumberField, AtlasUrlField, AtlasBigStat.
