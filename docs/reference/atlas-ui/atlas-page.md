@@ -26,8 +26,17 @@ AtlasPage {
 | `busyText` | `string` | `""` | The label beside the spinner, and what is announced. Since 1.5.0. |
 | `headerTrailing` | `list<QtObject>` (read-only) | — | Items at the trailing end of the title row (a button, a search field). The title elides before them. |
 | `maxContentWidth` | `real` | 38 grid units | The widest the content grows. Writable since 1.4.0. |
+| `status` | `int` (`AtlasStatus` value) | `AtlasStatus.Ready` | What the view shows in place of its rows: Loading, Empty, NoResults or Error (see [AtlasStatus](atlas-status.md)). Since 1.5.0. |
+| `statusAction` | `AtlasAction` | `null` | One button under the explanation (Retry, Clear search, ...): its text and symbol, and `trigger()` when clicked. Not shown while the action is disabled. Since 1.5.0. |
+| `statusSymbol` | `int` (a `Symbols.<Name>` value) | `0` | The symbol above the heading; `0` gives the status's own (Inbox for Empty, SearchOff for NoResults, Error for Error). Since 1.5.0. |
+| `statusText` | `string` | `""` | The explanation under the heading; plain text. Since 1.5.0. |
+| `statusTitle` | `string` | per status | The heading. Empty gives "Nothing here" (Empty), "No results" (NoResults) or "Something went wrong" (Error). Loading has none unless set. Since 1.5.0. |
 | `subtitle` | `string` | `""` | One or two muted lines under the title, plain text, wrapped and elided after three lines; hidden when empty. Read by screen readers as the page's description; the title stays the only heading. Since 1.5.0. |
 | `title` | `string` | `""` | The page's large bold title. Inside an [AtlasNavigationStack](atlas-navigation-stack.md) whose header shows, the header carries it and the page doesn't repeat it. |
+
+## Status
+
+`status` swaps the rows for one of four things; `Ready` (the default) shows them. **Loading** shows an [AtlasSpinner](atlas-spinner.md) only after 300 ms, so a fast load never flashes, and announces nothing. **Empty**, **NoResults** and **Error** show an [AtlasEmptyState](atlas-empty-state.md) with the title, text, symbol and action; **Error** is announced to screen readers once, when the status becomes Error (the heading and the text). The title, subtitle and busy row stay; the status fills the visible area under them (it never makes the page scroll) and replaces the page's content (the items declared inside it are hidden, not removed: everything in the page's content, a search field included, hides under a status; put what must stay in `headerTrailing`).
 
 ## Methods
 

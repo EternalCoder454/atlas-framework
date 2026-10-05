@@ -24,6 +24,10 @@ Rectangle {
             "AtlasCodeView": "copy button overlays the code",
             // The demo lays three zones out in two columns, top to bottom.
             "AtlasDropZone": "demo is in two columns",
+            // Two columns of views, Tab going cell by cell; each view centres
+            // its status in its own body (a table's below its header), so the
+            // buttons of one row are not level.
+            "AtlasStatus": "demo is in two columns of differently shaped views",
             // The popup puts its children in the order body, header, footer
             // and Tab follows that order, so Back and Close come after the
             // fields. QML cannot reorder an item's children (there is no

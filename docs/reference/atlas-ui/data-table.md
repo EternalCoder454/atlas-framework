@@ -54,7 +54,16 @@ DataTable {
 | `selectionMode` | `int` | `DataTable.SingleSelection` | How rows are selected (`DataTable.SelectionMode`). |
 | `sortOrder` | `int` | `Qt.DescendingOrder` | The sort direction the model should follow; a click on the sorted header flips it. |
 | `sortRole` | `string` | `""` | The model role the table is sorted by; a header click sets it. |
+| `status` | `int` (`AtlasStatus` value) | `AtlasStatus.Ready` | What the view shows in place of its rows: Loading, Empty, NoResults or Error (see [AtlasStatus](atlas-status.md)). Since 1.5.0. |
+| `statusAction` | `AtlasAction` | `null` | One button under the explanation (Retry, Clear search, ...): its text and symbol, and `trigger()` when clicked. Not shown while the action is disabled. Since 1.5.0. |
+| `statusSymbol` | `int` (a `Symbols.<Name>` value) | `0` | The symbol above the heading; `0` gives the status's own (Inbox for Empty, SearchOff for NoResults, Error for Error). Since 1.5.0. |
+| `statusText` | `string` | `""` | The explanation under the heading; plain text. Since 1.5.0. |
+| `statusTitle` | `string` | per status | The heading. Empty gives "Nothing here" (Empty), "No results" (NoResults) or "Something went wrong" (Error). Loading has none unless set. Since 1.5.0. |
 | `widths` | `var` (read-only) | — | The pixel width of each column (0 for a hidden one); the fill column takes what the others leave. |
+
+## Status
+
+`status` swaps the rows for one of four things; `Ready` (the default) shows them. **Loading** shows an [AtlasSpinner](atlas-spinner.md) only after 300 ms, so a fast load never flashes, and announces nothing. **Empty**, **NoResults** and **Error** show an [AtlasEmptyState](atlas-empty-state.md) with the title, text, symbol and action; **Error** is announced to screen readers once, when the status becomes Error (the heading and the text). The column header stays; the status fills the space under it. While a status shows, the table's keys do nothing. A Ready table with no rows still shows `placeholderText`.
 
 ## Signals
 

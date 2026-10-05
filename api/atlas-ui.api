@@ -36,6 +36,11 @@ AtlasAboutPage.property license: QString
 AtlasAboutPage.property links: QVariant
 AtlasAboutPage.property maxContentWidth: double
 AtlasAboutPage.property showSystemRows: bool
+AtlasAboutPage.property status: int
+AtlasAboutPage.property statusAction: AtlasAction_QMLTYPE*
+AtlasAboutPage.property statusSymbol: int
+AtlasAboutPage.property statusText: QString
+AtlasAboutPage.property statusTitle: QString
 AtlasAboutPage.property subtitle: QString
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
@@ -428,6 +433,11 @@ AtlasListView.property reorderable: bool
 AtlasListView.property selectedIndexes: QList<int> [readonly]
 AtlasListView.property selectedRows: QList<int> [readonly]
 AtlasListView.property selectionMode: int
+AtlasListView.property status: int
+AtlasListView.property statusAction: AtlasAction_QMLTYPE*
+AtlasListView.property statusSymbol: int
+AtlasListView.property statusText: QString
+AtlasListView.property statusTitle: QString
 AtlasListView.property subtitleRole: QString
 AtlasListView.property symbolRole: QString
 AtlasListView.property textRole: QString
@@ -471,6 +481,11 @@ AtlasPage.property busyText: QString
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
 AtlasPage.property maxContentWidth: double
+AtlasPage.property status: int
+AtlasPage.property statusAction: AtlasAction_QMLTYPE*
+AtlasPage.property statusSymbol: int
+AtlasPage.property statusText: QString
+AtlasPage.property statusTitle: QString
 AtlasPage.property subtitle: QString
 AtlasPage.property title: QString
 AtlasPage.type
@@ -659,6 +674,11 @@ AtlasSplitButton.type
 AtlasSplitView.base QQuickSplitView
 AtlasSplitView.method restoreSizes(QString sizes): bool
 AtlasSplitView.method saveSizes(): QString
+AtlasSplitView.method showPane(int i): QVariant
+AtlasSplitView.property collapseWidth: double
+AtlasSplitView.property collapsed: bool [readonly]
+AtlasSplitView.property collapsible: bool
+AtlasSplitView.property currentPane: int
 AtlasSplitView.property stateKey: QString
 AtlasSplitView.type
 AtlasSpringAnimation.base QQuickSpringAnimation
@@ -675,6 +695,13 @@ AtlasStat.property trendText: QString
 AtlasStat.property unit: QString
 AtlasStat.property value: QString
 AtlasStat.type
+AtlasStatus.base QObject
+AtlasStatus.enum Status: Empty = 2
+AtlasStatus.enum Status: Error = 4
+AtlasStatus.enum Status: Loading = 1
+AtlasStatus.enum Status: NoResults = 3
+AtlasStatus.enum Status: Ready = 0
+AtlasStatus.type
 AtlasStyle.base QObject
 AtlasStyle.enum Density: Compact = 1
 AtlasStyle.enum Density: Normal = 0
@@ -835,6 +862,11 @@ AtlasTreeView.property iconRole: QString
 AtlasTreeView.property model: QVariant
 AtlasTreeView.property selectionMode: int
 AtlasTreeView.property selectionModel: QItemSelectionModel* [readonly]
+AtlasTreeView.property status: int
+AtlasTreeView.property statusAction: AtlasAction_QMLTYPE*
+AtlasTreeView.property statusSymbol: int
+AtlasTreeView.property statusText: QString
+AtlasTreeView.property statusTitle: QString
 AtlasTreeView.property symbolRole: QString
 AtlasTreeView.property textRole: QString
 AtlasTreeView.signal activated(QVariant index)
@@ -939,6 +971,11 @@ DataTable.property selectedRows: QList<int> [readonly]
 DataTable.property selectionMode: int
 DataTable.property sortOrder: int
 DataTable.property sortRole: QString
+DataTable.property status: int
+DataTable.property statusAction: AtlasAction_QMLTYPE*
+DataTable.property statusSymbol: int
+DataTable.property statusText: QString
+DataTable.property statusTitle: QString
 DataTable.property widths: QVariant [readonly]
 DataTable.signal activated(int row)
 DataTable.signal columnResized(int column, double width)

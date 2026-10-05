@@ -38,11 +38,20 @@ Without a `delegate`, each row shows the symbol, the text and the subtitle from 
 | `selectedIndexes` | `list<int>` (read-only) | — | The selected row indexes, ascending. |
 | `selectedRows` | `list<int>` (read-only) | — | The same list as `selectedIndexes`, named as in DataTable. |
 | `selectionMode` | `int` (AtlasListView.SelectionMode) | `AtlasListView.SingleSelection` | How many rows can be selected. |
+| `status` | `int` (`AtlasStatus` value) | `AtlasStatus.Ready` | What the view shows in place of its rows: Loading, Empty, NoResults or Error (see [AtlasStatus](atlas-status.md)). Since 1.5.0. |
+| `statusAction` | `AtlasAction` | `null` | One button under the explanation (Retry, Clear search, ...): its text and symbol, and `trigger()` when clicked. Not shown while the action is disabled. Since 1.5.0. |
+| `statusSymbol` | `int` (a `Symbols.<Name>` value) | `0` | The symbol above the heading; `0` gives the status's own (Inbox for Empty, SearchOff for NoResults, Error for Error). Since 1.5.0. |
+| `statusText` | `string` | `""` | The explanation under the heading; plain text. Since 1.5.0. |
+| `statusTitle` | `string` | per status | The heading. Empty gives "Nothing here" (Empty), "No results" (NoResults) or "Something went wrong" (Error). Loading has none unless set. Since 1.5.0. |
 | `subtitleRole` | `string` | `""` | The model role for a second, smaller line. Rows are taller when it is set. |
 | `symbolRole` | `string` | `""` | The model role holding a [Symbols](symbols.md) value (`int`) for the row's leading symbol. |
 | `textRole` | `string` | `"text"` | The model role holding the row's text. |
 
 Selection works by row index. It is cleared when `model` changes, resets or moves rows, and follows the rows when a `QAbstractItemModel` or `ListModel` inserts or removes some. A JS array just drops indexes past its end.
+
+## Status
+
+`status` swaps the rows for one of four things; `Ready` (the default) shows them. **Loading** shows an [AtlasSpinner](atlas-spinner.md) only after 300 ms, so a fast load never flashes, and announces nothing. **Empty**, **NoResults** and **Error** show an [AtlasEmptyState](atlas-empty-state.md) with the title, text, symbol and action; **Error** is announced to screen readers once, when the status becomes Error (the heading and the text). The rows are hidden and the list's own `header` stays; `section` headings are not hidden, so clear the model or the section property when a status should stand alone. While a status shows, the list's keys do nothing. A Ready list with no rows still shows `placeholderText`.
 
 ## Signals
 

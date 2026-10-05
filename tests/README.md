@@ -78,6 +78,13 @@ lowers it again.
   a failure go to `build/state-out-<n>/`). The allow-list at the top of
   `tst_state.qml` names the demos where a check cannot apply, with the reason;
   a listed demo that passes fails the test until the entry is removed.
+- `status/`: `AtlasStatus` on AtlasListView, DataTable, AtlasTreeView and
+  AtlasPage (every status on every view, the 300 ms spinner delay, the kept
+  header, the action button, the Error announcement; the status view's
+  `_announceHook` stands in for `Accessible.announce`), and AtlasSplitView's
+  `collapsible` (collapse and expand at `collapseWidth`, `showPane`, Back by the
+  button, Alt+Left and the mouse Back button, `currentPane` across a resize,
+  right-to-left).
 - `chrome/`: the frameless window: AtlasHeaderBar's drag (`_moveHook`) and
   double click (`_toggleHook`), AtlasWindow's resize handles and cursors
   (`_resizeHook`), AtlasWindowChrome's KWin button parsing. Real window moves

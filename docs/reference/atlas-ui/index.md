@@ -169,6 +169,7 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasSpinner](atlas-spinner.md): A busy indicator.
 - [AtlasPlaceholder](atlas-placeholder.md): Skeleton bars shown while content loads.
 - [AtlasEmptyState](atlas-empty-state.md): What a list shows when it has nothing.
+- [AtlasStatus](atlas-status.md): Loading, Empty, NoResults and Error for lists, tables, trees and pages.
 - [AtlasBadge](atlas-badge.md): A small pill label for a status or count.
 - [AtlasAvatar](atlas-avatar.md): A round picture of a person, with initials as the fallback.
 - [AtlasStat](atlas-stat.md): A figure with a label, a unit, a trend and a sparkline.

@@ -37,8 +37,17 @@ AtlasTreeView {
 | `model` | `var` | `null` | Any `QAbstractItemModel`. |
 | `selectionMode` | `int` | `AtlasTreeView.SingleSelection` | How many rows can be selected; the values match `DataTable` and `AtlasListView`. |
 | `selectionModel` | `QItemSelectionModel*` (read-only) | — | An `ItemSelectionModel` holding the selected rows, for the app to read. |
+| `status` | `int` (`AtlasStatus` value) | `AtlasStatus.Ready` | What the view shows in place of its rows: Loading, Empty, NoResults or Error (see [AtlasStatus](atlas-status.md)). Since 1.5.0. |
+| `statusAction` | `AtlasAction` | `null` | One button under the explanation (Retry, Clear search, ...): its text and symbol, and `trigger()` when clicked. Not shown while the action is disabled. Since 1.5.0. |
+| `statusSymbol` | `int` (a `Symbols.<Name>` value) | `0` | The symbol above the heading; `0` gives the status's own (Inbox for Empty, SearchOff for NoResults, Error for Error). Since 1.5.0. |
+| `statusText` | `string` | `""` | The explanation under the heading; plain text. Since 1.5.0. |
+| `statusTitle` | `string` | per status | The heading. Empty gives "Nothing here" (Empty), "No results" (NoResults) or "Something went wrong" (Error). Loading has none unless set. Since 1.5.0. |
 | `symbolRole` | `string` | `""` | The model role that holds a [Symbols](symbols.md) value; empty means none. |
 | `textRole` | `string` | `"display"` | The model role shown as the row's text. |
+
+## Status
+
+`status` swaps the rows for one of four things; `Ready` (the default) shows them. **Loading** shows an [AtlasSpinner](atlas-spinner.md) only after 300 ms, so a fast load never flashes, and announces nothing. **Empty**, **NoResults** and **Error** show an [AtlasEmptyState](atlas-empty-state.md) with the title, text, symbol and action; **Error** is announced to screen readers once, when the status becomes Error (the heading and the text). While a status shows, the tree's keys do nothing.
 
 ## Signals
 

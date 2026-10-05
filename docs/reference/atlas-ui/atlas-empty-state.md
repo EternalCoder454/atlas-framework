@@ -4,7 +4,7 @@ summary: What a list shows when it has nothing: a large symbol, a title, an expl
 section: Feedback and status
 ---
 
-AtlasEmptyState has a large symbol, a title, a line of explanation, and an optional action button, all centred. Fill the list's area with it and show it when the list is empty. The button appears when `actionText` is set and emits `triggered()`.
+AtlasEmptyState has a large symbol, a title, a line of explanation, and an optional action button, all centred. Fill the list's area with it and show it when the list is empty. The button appears when `actionText` is set and emits `triggered()`. In an area too short for all of it, the symbol is left out first; if the rest still does not fit, it scrolls inside the area rather than drawing past its edges.
 
 ## Example
 

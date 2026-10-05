@@ -8,7 +8,9 @@ import org.kde.kirigami as Kirigami
 // a search field); the title elides before them. `maxContentWidth` (default 38
 // grid units) is the widest the content grows. Inside an AtlasNavigationStack
 // whose header shows, the header carries the title and the page doesn't
-// repeat it. See docs/reference/atlas-ui/atlas-page.md.
+// repeat it. `status` (an AtlasStatus value) shows Loading, Empty, NoResults
+// or Error in place of the content, under the title; see
+// docs/reference/atlas-ui/atlas-page.md.
 Item {
     id: root
 
@@ -17,7 +19,15 @@ Item {
     // A spinner and `busyText` above the content, under the title row.
     property bool busy: false
     property string busyText
-    default property alias content: col.data
+    // What the page shows in place of its content (an AtlasStatus value) and
+    // the content of that: the heading, the explanation, a Symbols value (0
+    // for the status's own) and one action. The title row and busy row stay.
+    property int status: AtlasStatus.Ready
+    property string statusTitle
+    property string statusText
+    property int statusSymbol: 0
+    property AtlasAction statusAction: null
+    default property alias content: body.data
     property real maxContentWidth: Kirigami.Units.gridUnit * 38
     property alias headerTrailing: headerRow.data
     // Set by AtlasNavigationStack while its header shows this page's title.
@@ -180,6 +190,30 @@ Item {
                             Accessible.ignored: true
                         }
                     }
+                }
+
+                // The page's content; hidden while a status shows. It adds no
+                // gap when empty.
+                ColumnLayout {
+                    id: body
+                    Layout.fillWidth: true
+                    spacing: col.spacing
+                    // With every item hidden it is empty: cancel the gap before it.
+                    Layout.topMargin: implicitHeight > 0 ? 0 : -col.spacing
+                    visible: root.status === AtlasStatus.Ready && children.length > 0
+                }
+
+                AtlasStatusView {
+                    id: statusView
+                    Layout.fillWidth: true
+                    // The visible area under the title row: centred where the
+                    // user looks, and it never makes the page scroll.
+                    Layout.preferredHeight: Math.max(Kirigami.Units.gridUnit * 8, scroll.height - statusView.y - Kirigami.Units.gridUnit * 3)
+                    status: root.status
+                    title: root.statusTitle
+                    text: root.statusText
+                    symbol: root.statusSymbol
+                    action: root.statusAction
                 }
             }
         }

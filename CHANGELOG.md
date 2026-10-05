@@ -23,6 +23,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   radii, naming the AtlasStyle token to use (`// atlas-lint: allow-raw` on
   the line or the one before keeps a deliberate value); `--strict` makes
   warnings fail, as CI does for the gallery and the template.
+- Fix: `AtlasEmptyState` (and every view's `AtlasStatus`) in an area too
+  short for it leaves out its symbol, then scrolls, instead of drawing past
+  the area's edges (a table's empty state covered its frame; a short page
+  showed only the top of the symbol).
 - Fix: `ConfirmDialog` with `destructive: true` draws the accept button in
   AtlasButton's Destructive look again (error text and border on a faint
   error fill); since 1.4.0 it was drawn in the accent.
