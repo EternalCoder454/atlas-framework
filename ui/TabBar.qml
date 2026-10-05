@@ -48,9 +48,19 @@ Item {
     Accessible.role: Accessible.PageTabList
     Accessible.name: qsTr("Tabs")
 
-    // A new tab's index usually arrives after the count changed, and the list
-    // no longer follows its current item (the highlight slides on its own).
-    onCurrentIndexChanged: Qt.callLater(control.ensureCurrentVisible)
+    // The strip follows the current tab (a new tab's index usually arrives
+    // after the count changed) until the wheel scrolls it; it doesn't move
+    // under a pressed or dragged tab, and catches up on release.
+    property bool _follow: true
+    onCurrentIndexChanged: {
+        control._follow = true;
+        Qt.callLater(control._followCurrent);
+    }
+    function _followCurrent() {
+        if (control._follow && !list.held && list.dragFrom < 0) {
+            control.ensureCurrentVisible();
+        }
+    }
 
     function ensureCurrentVisible() {
         if (control.currentIndex >= 0 && control.currentIndex < list.count) {
@@ -78,6 +88,8 @@ Item {
             // Where a dragged tab would land, or -1.
             property int dragFrom: -1
             property int dropAt: -1
+            // A tab is pressed: the strip doesn't scroll under the pointer.
+            property bool held: false
 
             Layout.fillHeight: true
             // Hugs its tabs while they fit and shrinks to the bar (then
@@ -169,14 +181,17 @@ Item {
                     function onHeightChanged() { _sync(); }
                 }
             }
-            onCountChanged: Qt.callLater(control.ensureCurrentVisible)
+            onCountChanged: {
+                control._follow = true;
+                Qt.callLater(control._followCurrent);
+            }
             // The current tab's title turns medium weight, so it grows a
             // little after it was scrolled to.
             Connections {
                 target: list.currentItem
-                function onWidthChanged() { Qt.callLater(control.ensureCurrentVisible); }
+                function onWidthChanged() { Qt.callLater(control._followCurrent); }
             }
-            onWidthChanged: Qt.callLater(control.ensureCurrentVisible)
+            onWidthChanged: Qt.callLater(control._followCurrent)
 
             WheelHandler {
                 acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
@@ -186,6 +201,7 @@ Item {
                     // different widths came and went.
                     const max = list.originX + Math.max(0, list.contentWidth - list.width);
                     list.contentX = Math.max(list.originX, Math.min(max, list.contentX - d * (list.mirrored ? -1 : 1)));
+                    control._follow = false;
                 }
             }
 
@@ -239,6 +255,12 @@ Item {
                     }
                 }
 
+                onPressedChanged: {
+                    list.held = tab.pressed;
+                    if (!tab.pressed) {
+                        Qt.callLater(control._followCurrent);
+                    }
+                }
                 onPressed: {
                     if (!tab.current) {
                         control.activated(tab.index);
@@ -285,6 +307,7 @@ Item {
                             if (from >= 0 && to >= 0 && from !== to) {
                                 control.moved(from, to);
                             }
+                            Qt.callLater(control._followCurrent);
                         }
                     }
                     onTranslationChanged: {
@@ -292,13 +315,24 @@ Item {
                             return;
                         }
                         tab.dragX = translation.x;
-                        const at = list.indexAt(tab.x + tab.width / 2 + translation.x, list.height / 2);
+                        // Only the tabs in view can be the target (the wheel
+                        // scrolls during a drag); past either end of the
+                        // strip, the first or last of them.
+                        const centre = Math.max(list.contentX, Math.min(list.contentX + list.width - 1, tab.x + tab.width / 2 + translation.x));
+                        const y = list.height / 2;
+                        // In the spacing between two tabs: the nearer one.
+                        let at = list.indexAt(centre, y);
+                        if (at < 0) {
+                            at = list.indexAt(centre - list.spacing, y);
+                        }
+                        if (at < 0) {
+                            at = list.indexAt(centre + list.spacing, y);
+                        }
                         if (at >= 0) {
                             list.dropAt = at;
                         } else {
-                            // Past either end: the first or last tab.
-                            const centre = tab.x + tab.width / 2 + translation.x;
-                            list.dropAt = centre < 0 ? (list.mirrored ? list.count - 1 : 0) : (list.mirrored ? 0 : list.count - 1);
+                            const start = centre < list.originX + list.contentWidth / 2;
+                            list.dropAt = start !== list.mirrored ? 0 : list.count - 1;
                         }
                     }
                 }

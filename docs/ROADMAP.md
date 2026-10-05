@@ -415,6 +415,8 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 - AtlasComboBox filtering (above); AtlasListView and AtlasTreeView type-ahead
   scans; DataTable's RepaintArea content on GPU backends; Symbol's
   `variableAxes` per row and `Symbols::names()`.
+- TabBar builds every tab (cacheBuffer) so it scrolls by real widths: measure
+  restoring 300+ tabs.
 - AtlasEdgeGlow repaints every frame while active (160 Hz); AtlasStyle's
   hidden probe Window at startup; AtlasSidebar `entries()` per drag move;
   AtlasToolbar fit O(n²); AtlasInstallButton's hidden shimmer; AtlasChipGroup

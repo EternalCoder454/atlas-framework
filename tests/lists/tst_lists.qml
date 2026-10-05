@@ -350,5 +350,57 @@ Item {
                 return item !== null && item.x + item.width <= list.contentX + list.width + 0.5 && item.x >= list.contentX - 0.5;
             }, 2000, "the current tab is inside the visible part of the strip");
         }
+
+        function overflowingBar(mirrored) {
+            const bar = createTemporaryObject(tabBarComp, root, { "LayoutMirroring.enabled": mirrored });
+            for (let i = 0; i < 8; ++i) {
+                bar.model.append({ title: "Untitled " + (i + 1), modified: false, toolTip: "" });
+            }
+            bar.currentIndex = bar.model.count - 1;
+            const list = listOf(bar);
+            tryVerify(() => list.contentWidth > list.width, 2000, "the tabs overflow");
+            wait(50);
+            return [bar, list];
+        }
+
+        // Scrolled away with the wheel, the strip stays put when the current
+        // tab grows (its "modified" dot), and follows again on a new current tab.
+        function test_wheel_scroll_is_kept_until_the_current_tab_changes() {
+            const [bar, list] = overflowingBar(false);
+            const before = list.contentX;
+            mouseWheel(list, list.width / 2, list.height / 2, 0, 120 * 20);
+            tryVerify(() => list.contentX < before - 10, 2000, "the wheel scrolls back");
+            const scrolled = list.contentX;
+            bar.model.setProperty(bar.currentIndex, "modified", true);
+            wait(100);
+            compare(list.contentX, scrolled, "a change to the current tab doesn't snap back");
+            bar.currentIndex = bar.model.count - 2;
+            tryVerify(() => {
+                const item = list.itemAtIndex(bar.currentIndex);
+                return item !== null && item.x + item.width <= list.contentX + list.width + 0.5 && item.x >= list.contentX - 0.5;
+            }, 2000, "a new current tab is followed again");
+        }
+
+        // The wheel stays inside the content, in both directions and in RTL.
+        function test_wheel_stays_in_bounds_rtl() {
+            const [bar, list] = overflowingBar(true);
+            for (const d of [120 * 30, -120 * 30, 120 * 30]) {
+                mouseWheel(list, list.width / 2, list.height / 2, 0, d);
+                wait(20);
+                verify(list.contentX >= list.originX - 0.5, "not before the start: " + list.contentX + " < " + list.originX);
+                verify(list.contentX <= list.originX + list.contentWidth - list.width + 0.5, "not past the end");
+            }
+        }
+
+        // Closing tabs until they fit gives the strip back its content width.
+        function test_strip_grows_back_when_tabs_fit() {
+            const [bar, list] = overflowingBar(false);
+            while (bar.model.count > 2) {
+                bar.model.remove(bar.model.count - 1);
+            }
+            bar.currentIndex = 1;
+            tryVerify(() => Math.abs(list.width - list.contentWidth) < 0.5, 2000, "the strip hugs its tabs again");
+            verify(list.x + list.width <= bar.width, "the strip ends inside the bar");
+        }
     }
 }

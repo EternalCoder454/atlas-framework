@@ -20,8 +20,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Fix: `TabBar` with more tabs than fit: the strip now shrinks to the bar and
   scrolls, so the "+" button stays in view, and a tab made current after it
   was added scrolls into view. Before, the strip kept its full width, ran past
-  the bar's edge and never scrolled (since 1.3.0). The wheel also respects the
-  strip's start once tabs of different widths came and went.
+  the bar's edge and never scrolled (since 1.3.0). A wheel scroll is kept
+  until the current tab changes, the strip doesn't move under a pressed or
+  dragged tab, a dragged tab drops only on tabs in view, and the wheel stops
+  at the strip's real start.
 
 ## 1.4.0
 
