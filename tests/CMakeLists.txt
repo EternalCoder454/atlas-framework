@@ -228,6 +228,14 @@ target_link_libraries(atlas-validators-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Q
 add_test(NAME validators COMMAND atlas-validators-tests)
 set_tests_properties(validators PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+# The text buffer behind AtlasTextView (ui/text, the atlastext library): a fuzz
+# test of the piece tree against a QString model, loads, line endings and
+# snapshots, threads included. No display needed.
+add_executable(atlas-textbuffer-tests textbuffer/tst_textbuffer.cpp)
+target_link_libraries(atlas-textbuffer-tests PRIVATE Qt6::Test atlastext)
+add_test(NAME textbuffer COMMAND atlas-textbuffer-tests)
+set_tests_properties(textbuffer PROPERTIES TIMEOUT 600 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 # The clipboard singleton (ui/atlasclipboard.cpp, compiled into the test):
 # text, rich text and image round trips, and what setImage() refuses.
 add_executable(atlas-clipboard-tests clipboard/tst_clipboard.cpp

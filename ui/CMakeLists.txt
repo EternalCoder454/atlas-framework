@@ -170,7 +170,18 @@ if(ATLAS_UI_DEV_BUILD)
         ATLAS_UI_TRANSLATIONS_BUILD_DIR="${CMAKE_CURRENT_BINARY_DIR}/translations")
 endif()
 # Appearance: the shared transparency switch (atlasrc) and window blur.
-target_link_libraries(atlasui PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::DBus
+# The text buffer behind AtlasTextView (ui/text): pure QtCore, so a static
+# library the plugin links and its tests link alone. Not installed.
+add_library(atlastext STATIC
+    text/texttree.h text/texttree.cpp
+    text/textbuffer.h text/textbuffer.cpp)
+set_target_properties(atlastext PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(atlastext PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/text
+    ${PROJECT_SOURCE_DIR}/crates/atlas-framework-ui/include)
+target_link_libraries(atlastext PUBLIC Qt6::Core Qt6::Gui)
+
+target_link_libraries(atlasui PRIVATE atlastext Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::DBus
     KF6::WindowSystem KF6::ConfigCore)
 
 # lupdate and lrelease come with qt6-linguist. Without them the module still
