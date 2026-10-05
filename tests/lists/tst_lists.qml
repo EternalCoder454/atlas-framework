@@ -586,6 +586,82 @@ Item {
             compare(list.dropAt, -1, "drop target cleared");
         }
 
+        // Starts a drag on tab `index` and moves it by dx; returns the tab.
+        function startDrag(list, index, dx) {
+            const t = list.itemAtIndex(index);
+            const y = t.height / 2;
+            mousePress(t, t.width / 2, y);
+            for (let i = 1; i <= 10; ++i) {
+                mouseMove(t, t.width / 2 + dx * i / 10, y);
+                wait(10);
+            }
+            return t;
+        }
+
+        // The drop target in the spacing between two tabs is the nearer one.
+        function test_drop_in_gap_picks_nearer_tab() {
+            const bar = createTemporaryObject(tabBarComp, root);
+            bar.model.append({ title: "Three", modified: false, toolTip: "" });
+            const list = listOf(bar);
+            tryVerify(() => list.itemAtIndex(2) !== null, 2000, "three tabs built");
+            verify(list.spacing >= 2, "the tabs have a gap");
+            const a = list.itemAtIndex(0);
+            const b = list.itemAtIndex(1);
+            const end = b.x + b.width;
+            list.dragFrom = 0;
+            list.dragShift = end + 0.25 - (a.x + a.width / 2);
+            list.updateDrop();
+            compare(list.dropAt, 1, "just past the second tab: the second");
+            list.dragShift = end + list.spacing - 0.25 - (a.x + a.width / 2);
+            list.updateDrop();
+            compare(list.dropAt, 2, "just before the third tab: the third");
+            list.dragFrom = -1;
+            list.dropAt = -1;
+            list.dragShift = 0;
+        }
+
+        // Scrolling the strip mid-drag moves the drop target with it.
+        function test_wheel_mid_drag_updates_drop() {
+            const [bar, list] = overflowingBar(false);
+            tryVerify(() => inView(list, bar.currentIndex), 2000, "scrolled to the end");
+            const t = startDrag(list, bar.currentIndex, -20);
+            verify(list.dragFrom >= 0, "dragging");
+            const before = list.dropAt;
+            mouseWheel(list, list.width / 2, list.height / 2, 0, 120 * 30);
+            tryVerify(() => list.dropAt !== before && list.dropAt >= 0, 2000, "the drop target follows the scroll");
+            mouseRelease(t, t.width / 2 - 20, t.height / 2);
+        }
+
+        // The dragged tab removed by the app: no drag state is left behind.
+        function test_dragged_tab_removed() {
+            const bar = createTemporaryObject(tabBarComp, root);
+            bar.model.append({ title: "Three", modified: false, toolTip: "" });
+            const list = listOf(bar);
+            tryVerify(() => list.itemAtIndex(2) !== null, 2000, "three tabs built");
+            startDrag(list, 1, 30);
+            compare(list.dragFrom, 1, "dragging the second tab");
+            bar.model.remove(1);
+            tryCompare(list, "dragFrom", -1, 2000, "drag cleared");
+            compare(list.dropAt, -1, "drop target cleared");
+            compare(list.held, 0, "hold given back");
+            mouseRelease(list, 5, list.height / 2);
+        }
+
+        // A tab removed before the dragged one: the drag follows its new index.
+        function test_earlier_tab_removed_mid_drag() {
+            const bar = createTemporaryObject(tabBarComp, root);
+            bar.model.append({ title: "Three", modified: false, toolTip: "" });
+            const list = listOf(bar);
+            tryVerify(() => list.itemAtIndex(2) !== null, 2000, "three tabs built");
+            const t = startDrag(list, 2, -30);
+            compare(list.dragFrom, 2, "dragging the third tab");
+            bar.model.remove(0);
+            tryCompare(list, "dragFrom", 1, 2000, "the drag follows the tab to index 1");
+            verify(list.dropAt >= 0 && list.dropAt < bar.model.count, "drop target in range: " + list.dropAt);
+            mouseRelease(t, t.width / 2 - 30, t.height / 2);
+            compare(list.dragFrom, -1, "drag ended");
+        }
+
         // Closing tabs until they fit gives the strip back its content width.
         function test_strip_grows_back_when_tabs_fit() {
             const [bar, list] = overflowingBar(false);

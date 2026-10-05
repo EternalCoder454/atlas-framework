@@ -186,6 +186,11 @@ Item {
                     function onHeightChanged() { tint._sync(); }
                 }
             }
+            // A new model: follow its current tab.
+            onModelChanged: {
+                control._follow = true;
+                list.lastCount = 0;
+            }
             onCountChanged: {
                 // A tab was added: follow again. A closed background tab
                 // keeps the user's wheel scroll.
@@ -303,19 +308,37 @@ Item {
                     }
                 }
 
+                // Whether this tab counts in list.held, so a release during
+                // teardown can't give the hold back twice.
+                property bool _holding: false
+                function _release() {
+                    if (tab._holding) {
+                        tab._holding = false;
+                        list.held -= 1;
+                    }
+                }
                 onPressedChanged: {
-                    list.held = Math.max(0, list.held + (tab.pressed ? 1 : -1));
-                    if (!tab.pressed) {
+                    if (tab.pressed && !tab._holding) {
+                        tab._holding = true;
+                        list.held += 1;
+                    } else if (!tab.pressed) {
+                        tab._release();
                         Qt.callLater(control._followCurrent);
                     }
                 }
-                // Removed mid-press or mid-drag (a model reset, a tab closed
-                // by the app): give back what this tab held.
-                Component.onDestruction: {
-                    if (tab.pressed) {
-                        list.held = Math.max(0, list.held - 1);
+                // Tabs removed before this one move it: the drag follows.
+                onIndexChanged: {
+                    if (dragHandler.active && tab.index >= 0) {
+                        list.dragFrom = tab.index;
+                        list.updateDrop();
                     }
-                    if (list.dragFrom === tab.index && dragHandler.active) {
+                }
+                // Removed mid-press or mid-drag (a model reset, a tab closed
+                // by the app): give back what this tab held. Only the active
+                // handler owns the drag state; the index may already be gone.
+                Component.onDestruction: {
+                    tab._release();
+                    if (dragHandler.active) {
                         list.dragFrom = -1;
                         list.dropAt = -1;
                         list.dragShift = 0;
