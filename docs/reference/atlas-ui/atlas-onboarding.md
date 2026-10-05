@@ -5,7 +5,7 @@ section: Windows and pages
 since: "1.4.0"
 ---
 
-A setup or onboarding scaffold: a column of steps on the left, one page at a time on the right, and a footer with Back, Skip and Next (Finish on the last page). The pages are the items declared inside it. The step column hides when the window is narrow, and a "Step 2 of 3" line shows above the page instead.
+A setup or onboarding scaffold: a column of steps on the left, one page at a time on the right, and a footer with Back (hidden on the first page), Skip and Next (Finish on the last page). The pages are the items declared inside it. The step column hides when the window is narrow, and a "Step 2 of 3" line shows above the page instead.
 
 A page may declare these plain properties; all are optional:
 

@@ -25,7 +25,7 @@
 // The Atlas brand (since 1.4.0), set once when Atlas.Ui loads:
 //   accentFromSystem  the user chose an accent colour in Plasma (AccentColor
 //                  in kdeglobals [General]). Then that accent is used; if not,
-//                  the Atlas violet (and pink focus ring) is, by putting it
+//                  the Atlas violet (and magenta-violet focus ring) is, by putting it
 //                  in the application palette as the highlight colour.
 //   fontFamily     "IBM Plex Sans" when installed, else the system font's
 //                  family. It is also the application font's family.

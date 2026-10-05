@@ -77,7 +77,7 @@ Selection works by row index. It is cleared when `model` changes, resets or move
 
 ## Keyboard
 
-A click selects. In `MultiSelection`, Ctrl-click toggles, Shift-click and Shift+arrows extend, Ctrl+A selects all and Space toggles. Return emits `activated`. The Menu key or Shift+F10 emits `contextMenuRequested`. Typing jumps to the next row whose text starts with what was typed (for an array, a `ListModel` or a model's `display` role; the buffer clears after 500 ms).
+A click selects. In `MultiSelection`, Ctrl-click toggles, Shift-click and Shift+arrows extend, Ctrl+A selects all and Space toggles; in single selection Space selects the current row. Return emits `activated`. The Menu key or Shift+F10 emits `contextMenuRequested`. Typing jumps to the next row whose text starts with what was typed (for an array, a `ListModel` or a model's `display` role; the buffer clears after 500 ms).
 
 > [!NOTE]
 > Name the list for screen readers with `Accessible.name`.

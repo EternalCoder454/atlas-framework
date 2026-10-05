@@ -25,7 +25,7 @@ import Atlas.Ui
 //                           violet in Light (#5B4BD6, 6:1 with white), the
 //                           brighter one in Dark (#A396F7)
 //   accentStrongText        text on `accentStrong` (4.5:1 or more)
-//   focus                   the keyboard focus ring: magenta-violet pink
+//   focus                   the keyboard focus ring: magenta-violet
 //                           (#A62A8C light, 5:1 on the window; #E28BE0 dark),
 //                           or the user's Plasma accent
 //   base                    the window background (tonal step 0)
