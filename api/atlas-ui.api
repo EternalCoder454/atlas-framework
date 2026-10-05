@@ -174,6 +174,26 @@ AtlasFolderField.type
 AtlasFontPicker.property fixedOnly: bool
 AtlasFontPicker.signal edited()
 AtlasFontPicker.type
+AtlasFormat.method bytes(double n): QString
+AtlasFormat.method bytes(double n, int precision): QString
+AtlasFormat.method bytes(double n, int precision, QString locale): QString
+AtlasFormat.method bytesPerSecond(double n): QString
+AtlasFormat.method bytesPerSecond(double n, int precision): QString
+AtlasFormat.method bytesPerSecond(double n, int precision, QString locale): QString
+AtlasFormat.method date(QDateTime d): QString
+AtlasFormat.method date(QDateTime d, QString style): QString
+AtlasFormat.method date(QDateTime d, QString style, QString locale): QString
+AtlasFormat.method date(QDateTime d, QString style, QString locale, QDateTime now): QString
+AtlasFormat.method duration(double seconds): QString
+AtlasFormat.method duration(double seconds, QString style): QString
+AtlasFormat.method duration(double seconds, QString style, QString locale): QString
+AtlasFormat.method number(double n): QString
+AtlasFormat.method number(double n, int precision): QString
+AtlasFormat.method number(double n, int precision, QString locale): QString
+AtlasFormat.method percent(double fraction): QString
+AtlasFormat.method percent(double fraction, int precision): QString
+AtlasFormat.method percent(double fraction, int precision, QString locale): QString
+AtlasFormat.type
 AtlasIconGrid.property count: int [readonly]
 AtlasIconGrid.property currentIndex: int
 AtlasIconGrid.property iconRole: QString

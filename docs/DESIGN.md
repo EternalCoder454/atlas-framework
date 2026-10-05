@@ -169,6 +169,7 @@ control takes `iconName`.
 | `AtlasSpinner`, `AtlasPlaceholder` | Busy arc; skeleton lines while content loads. Both still when hidden or `animated: false` (since 1.3.0) |
 | `AtlasEmptyState` | What an empty list shows: symbol, title, text, an optional action (since 1.3.0); `actionSymbol` puts an icon on the button (since 1.4.0) |
 | `AtlasLabel` | A Label with `textStyle`: Body, Title, Heading, Caption or Mono, sized from `AtlasStyle`; plain text (since 1.4.0) |
+| `AtlasFormat` | Singleton that formats values for the user's locale: `bytes(n, precision)` and `bytesPerSecond(n)` (IEC: "1.5 KiB"), `percent(fraction)`, `number(n, precision)`, `duration(seconds, style)` ("short", "long", "clock") and `date(d, style, locale, now)` ("short", "long", "dateTime", "time", "atTime", "relative"). Every function takes an optional `locale` name; NaN and invalid dates give "" (since 1.4.0) |
 | `AtlasFocusRing` | The keyboard focus outline every control uses; put it in a custom control's background (since 1.3.0) |
 | `AtlasBreadcrumb` | Path bar; the middle folds into a "…" menu (since 1.3.0) |
 | `AtlasIconGrid` | Grid of icons over names that only makes the cells on screen; `activated`, `contextMenuRequested` (since 1.3.0) |

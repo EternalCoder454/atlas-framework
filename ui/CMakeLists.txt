@@ -111,6 +111,7 @@ qt_add_qml_module(atlasui
         appearance.h appearance.cpp
         atlasshortcuts.h atlasshortcuts.cpp
         atlasvalidators.h atlasvalidators.cpp
+        atlasformat.h atlasformat.cpp
         atlasapp.h atlasapp.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         translations.cpp atlasuiplugin.cpp

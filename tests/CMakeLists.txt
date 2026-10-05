@@ -127,3 +127,12 @@ target_include_directories(atlas-validators-tests PRIVATE ${PROJECT_SOURCE_DIR}/
 target_link_libraries(atlas-validators-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
 add_test(NAME validators COMMAND atlas-validators-tests)
 set_tests_properties(validators PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# AtlasFormat (ui/atlasformat.cpp, compiled into the test): every function in
+# en_US and de_DE, edge cases included (tests/format).
+add_executable(atlas-format-tests format/tst_format.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlasformat.h ${PROJECT_SOURCE_DIR}/ui/atlasformat.cpp)
+target_include_directories(atlas-format-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-format-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+add_test(NAME format COMMAND atlas-format-tests)
+set_tests_properties(format PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
