@@ -305,6 +305,104 @@ AtlasTimePicker.signal edited()
 AtlasTimePicker.type
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
+AtlasTreeModel.enum CheckIndexOption: DoNotUseParent = 2
+AtlasTreeModel.enum CheckIndexOption: IndexIsValid = 1
+AtlasTreeModel.enum CheckIndexOption: NoOption = 0
+AtlasTreeModel.enum CheckIndexOption: ParentIsInvalid = 4
+AtlasTreeModel.enum LayoutChangeHint: HorizontalSortHint = 2
+AtlasTreeModel.enum LayoutChangeHint: NoLayoutChangeHint = 0
+AtlasTreeModel.enum LayoutChangeHint: VerticalSortHint = 1
+AtlasTreeModel.method canFetchMore(QModelIndex parent): bool
+AtlasTreeModel.method columnCount(): int
+AtlasTreeModel.method columnCount(QModelIndex parent): int
+AtlasTreeModel.method data(QModelIndex index): QVariant
+AtlasTreeModel.method data(QModelIndex index, int role): QVariant
+AtlasTreeModel.method fetchMore(QModelIndex parent): void
+AtlasTreeModel.method flags(QModelIndex index): Qt::ItemFlags
+AtlasTreeModel.method hasChildren(): bool
+AtlasTreeModel.method hasChildren(QModelIndex parent): bool
+AtlasTreeModel.method hasIndex(int row, int column): bool
+AtlasTreeModel.method hasIndex(int row, int column, QModelIndex parent): bool
+AtlasTreeModel.method headerData(int section, Qt::Orientation orientation): QVariant
+AtlasTreeModel.method headerData(int section, Qt::Orientation orientation, int role): QVariant
+AtlasTreeModel.method index(int row, int column): QModelIndex
+AtlasTreeModel.method index(int row, int column, QModelIndex parent): QModelIndex
+AtlasTreeModel.method insertColumn(int column): bool
+AtlasTreeModel.method insertColumn(int column, QModelIndex parent): bool
+AtlasTreeModel.method insertColumns(int column, int count): bool
+AtlasTreeModel.method insertColumns(int column, int count, QModelIndex parent): bool
+AtlasTreeModel.method insertRow(int row): bool
+AtlasTreeModel.method insertRow(int row, QModelIndex parent): bool
+AtlasTreeModel.method insertRows(int row, int count): bool
+AtlasTreeModel.method insertRows(int row, int count, QModelIndex parent): bool
+AtlasTreeModel.method match(QModelIndex start, int role, QVariant value): QModelIndexList
+AtlasTreeModel.method match(QModelIndex start, int role, QVariant value, int hits): QModelIndexList
+AtlasTreeModel.method match(QModelIndex start, int role, QVariant value, int hits, QFlags<Qt::MatchFlag> flags): QModelIndexList
+AtlasTreeModel.method moveColumn(QModelIndex sourceParent, int sourceColumn, QModelIndex destinationParent, int destinationChild): bool
+AtlasTreeModel.method moveColumns(QModelIndex sourceParent, int sourceColumn, int count, QModelIndex destinationParent, int destinationChild): bool
+AtlasTreeModel.method moveRow(QModelIndex sourceParent, int sourceRow, QModelIndex destinationParent, int destinationChild): bool
+AtlasTreeModel.method moveRows(QModelIndex sourceParent, int sourceRow, int count, QModelIndex destinationParent, int destinationChild): bool
+AtlasTreeModel.method parent(QModelIndex child): QModelIndex
+AtlasTreeModel.method removeColumn(int column): bool
+AtlasTreeModel.method removeColumn(int column, QModelIndex parent): bool
+AtlasTreeModel.method removeColumns(int column, int count): bool
+AtlasTreeModel.method removeColumns(int column, int count, QModelIndex parent): bool
+AtlasTreeModel.method removeRow(int row): bool
+AtlasTreeModel.method removeRow(int row, QModelIndex parent): bool
+AtlasTreeModel.method removeRows(int row, int count): bool
+AtlasTreeModel.method removeRows(int row, int count, QModelIndex parent): bool
+AtlasTreeModel.method revert(): void
+AtlasTreeModel.method rowCount(): int
+AtlasTreeModel.method rowCount(QModelIndex parent): int
+AtlasTreeModel.method setData(QModelIndex index, QVariant value): bool
+AtlasTreeModel.method setData(QModelIndex index, QVariant value, int role): bool
+AtlasTreeModel.method sibling(int row, int column, QModelIndex idx): QModelIndex
+AtlasTreeModel.method sort(int column): void
+AtlasTreeModel.method sort(int column, Qt::SortOrder order): void
+AtlasTreeModel.method submit(): bool
+AtlasTreeModel.property items: QVariantList
+AtlasTreeModel.signal columnsAboutToBeInserted(QModelIndex parent, int first, int last)
+AtlasTreeModel.signal columnsAboutToBeMoved(QModelIndex sourceParent, int sourceStart, int sourceEnd, QModelIndex destinationParent, int destinationColumn)
+AtlasTreeModel.signal columnsAboutToBeRemoved(QModelIndex parent, int first, int last)
+AtlasTreeModel.signal columnsInserted(QModelIndex parent, int first, int last)
+AtlasTreeModel.signal columnsMoved(QModelIndex sourceParent, int sourceStart, int sourceEnd, QModelIndex destinationParent, int destinationColumn)
+AtlasTreeModel.signal columnsRemoved(QModelIndex parent, int first, int last)
+AtlasTreeModel.signal dataChanged(QModelIndex topLeft, QModelIndex bottomRight)
+AtlasTreeModel.signal dataChanged(QModelIndex topLeft, QModelIndex bottomRight, QList<int> roles)
+AtlasTreeModel.signal headerDataChanged(Qt::Orientation orientation, int first, int last)
+AtlasTreeModel.signal layoutAboutToBeChanged()
+AtlasTreeModel.signal layoutAboutToBeChanged(QList<QPersistentModelIndex> parents)
+AtlasTreeModel.signal layoutAboutToBeChanged(QList<QPersistentModelIndex> parents, QAbstractItemModel::LayoutChangeHint hint)
+AtlasTreeModel.signal layoutChanged()
+AtlasTreeModel.signal layoutChanged(QList<QPersistentModelIndex> parents)
+AtlasTreeModel.signal layoutChanged(QList<QPersistentModelIndex> parents, QAbstractItemModel::LayoutChangeHint hint)
+AtlasTreeModel.signal modelAboutToBeReset()
+AtlasTreeModel.signal modelReset()
+AtlasTreeModel.signal rowsAboutToBeInserted(QModelIndex parent, int first, int last)
+AtlasTreeModel.signal rowsAboutToBeMoved(QModelIndex sourceParent, int sourceStart, int sourceEnd, QModelIndex destinationParent, int destinationRow)
+AtlasTreeModel.signal rowsAboutToBeRemoved(QModelIndex parent, int first, int last)
+AtlasTreeModel.signal rowsInserted(QModelIndex parent, int first, int last)
+AtlasTreeModel.signal rowsMoved(QModelIndex sourceParent, int sourceStart, int sourceEnd, QModelIndex destinationParent, int destinationRow)
+AtlasTreeModel.signal rowsRemoved(QModelIndex parent, int first, int last)
+AtlasTreeModel.type
+AtlasTreeView.enum SelectionMode: MultiSelection = 1
+AtlasTreeView.enum SelectionMode: SingleSelection = 0
+AtlasTreeView.method collapse(QVariant index): QVariant
+AtlasTreeView.method collapseAll(): QVariant
+AtlasTreeView.method expand(QVariant index): QVariant
+AtlasTreeView.method expandAll(): QVariant
+AtlasTreeView.method isExpanded(QVariant index): QVariant
+AtlasTreeView.property count: int [readonly]
+AtlasTreeView.property currentIndex: QVariant [readonly]
+AtlasTreeView.property iconRole: QString
+AtlasTreeView.property model: QVariant
+AtlasTreeView.property selectionMode: int
+AtlasTreeView.property selectionModel: QItemSelectionModel* [readonly]
+AtlasTreeView.property symbolRole: QString
+AtlasTreeView.property textRole: QString
+AtlasTreeView.signal activated(QVariant index)
+AtlasTreeView.signal contextMenuRequested(QVariant index, QPointF pos)
+AtlasTreeView.type
 AtlasUrlValidator.property schemes: QStringList
 AtlasUrlValidator.type
 AtlasWindow.enum WidthClass: Compact = 0

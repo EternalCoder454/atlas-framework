@@ -91,6 +91,7 @@ qt_add_qml_module(atlasui
         AtlasShortcutsDialog.qml
         AtlasDoubleSpinBox.qml
         AtlasShortcutField.qml
+        AtlasTreeView.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp
@@ -98,6 +99,7 @@ qt_add_qml_module(atlasui
         appearance.h appearance.cpp
         atlasshortcuts.h atlasshortcuts.cpp
         atlasvalidators.h atlasvalidators.cpp
+        atlastreemodel.h atlastreemodel.cpp
         atlasapp.h atlasapp.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         translations.cpp atlasuiplugin.cpp

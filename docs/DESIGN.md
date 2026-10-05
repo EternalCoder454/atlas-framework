@@ -167,6 +167,8 @@ control takes `iconName`.
 | `AccessibilityState` | Singleton: whether a screen reader is active |
 | `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `repo`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`; `uiVersion`, the version of Atlas.Ui itself (since 1.3.0). Set by atlas-framework-ui's startup |
 | `AtlasAboutPage` | The About page: icon, name, version, `description`, the version and OS rows, `license`, source and issue links; extra content goes below; a "Copy system info" button and `systemInfo()` for bug reports (since 1.4.0) |
+| `AtlasTreeView` | A tree on Qt Quick's TreeView in the Atlas list look (`model` any QAbstractItemModel, `textRole`, `symbolRole`, `iconRole`, `selectionMode` Single or Multi, `currentIndex`, `selectionModel`, `expandAll()`, `activated(index)`, `contextMenuRequested(index, pos)`); arrows, Home/End, type-ahead, Menu key; mirrored in RTL (since 1.4.0) |
+| `AtlasTreeModel` | A read-only tree model built from nested JS objects (`items: [{ text, symbol, icon, children }]`) for `AtlasTreeView`; QML can't build a tree model itself (since 1.4.0) |
 
 Each file's header comment says how to use it; its example becomes the
 gallery's "Copy QML" snippet.
