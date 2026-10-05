@@ -578,6 +578,15 @@ that lands, then go in one batch.
   `variableAxes` per row and `Symbols::names()`.
 - TabBar builds every tab (cacheBuffer) so it scrolls by real widths: measure
   restoring 300+ tabs.
+- Per-instance cost (docs/research-1.5.md, N = 1000): AtlasDetailGrid
+  3.3 ms and 887 KB each, SectionRow 2.5 ms and 343 KB (and superlinear:
+  0.96 ms at N = 200), SidebarItem 0.76 ms, AtlasComboBox 0.69 ms and 244 KB,
+  AtlasTextField, AtlasStat, ToolbarButton and AtlasButton 250 to 290 µs
+  (about 6x Qt's own). Halve the top five: fewer layouts and Behaviors per
+  instance, focus ring and decorations created on first focus or hover, no
+  Loader for what is always shown. Put the harness in `perf/` (a QML file
+  and a small QQmlApplicationEngine runner; the `qml` tool prints nothing in
+  the container) so the numbers can be rerun and gated.
 - AtlasEdgeGlow under software rendering costs Atlas Updater 40 to 145 %
   of a core: draw it static or at 15 to 30 fps when the renderer is
   software or llvmpipe (`GL_RENDERER`), never animate the full window.

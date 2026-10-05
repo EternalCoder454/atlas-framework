@@ -45,6 +45,36 @@ tested in the dev container on Qt 6.11.2). The gallery and the template
 import `QtQuick.Controls as QQC2`, so they are not affected, but nothing
 tells apps to.
 
+**Per-instance cost.** Creating N = 1000 of one type with
+`Component.createObject` (offscreen, in the dev container, median of 5 runs,
+spread under 5 %; Qt Quick Controls in the container's default style as the
+baseline):
+
+| Type | µs each | KB RSS each | QObjects | Against Qt's control |
+|---|---|---|---|---|
+| AtlasDetailGrid (4 rows) | 3265 | 887 | 75 | |
+| SectionRow | 2469 | 343 | 29 | (955 µs at N = 200: grows with count) |
+| SidebarItem | 764 | 195 | 16 | |
+| AtlasComboBox | 686 | 244 | 6 | 5.0x time, 2.4x memory |
+| AtlasTextField | 293 | 140 | 13 | 6.8x, 2.2x |
+| AtlasStat | 289 | 165 | 13 | |
+| ToolbarButton | 270 | 116 | 11 | 6.6x, 2.0x |
+| AtlasButton | 246 | 112 | 11 | 6.0x, 1.9x |
+| AtlasCheckBox | 132 | 74 | 6 | 1.3x, 1.3x |
+| AtlasCard | 111 | 122 | 15 | |
+| AtlasListView default row | 109 | 113 | 24 | 3.9x, 2.5x (ListView with ItemDelegate) |
+| Symbol | 92 | 33 | 2 | |
+| AtlasSwitch | 30 | 68 | 5 | 0.4x, 0.6x |
+| Rectangle and Text | 7 | 21 | 2 | the floor |
+
+An active AtlasEdgeGlow took about 12 % of a core under the offscreen
+(software) renderer at 1920x1080; inactive, nothing. The likely causes,
+from reading the files (not profiled yet): AtlasDetailGrid builds 8 cells
+of nested items in a GridLayout; SectionRow has 3 layouts and 2 Behaviors
+around its slots; AtlasComboBox's 6 objects carry many bindings,
+transitions and a Behavior; buttons and fields add a focus ring, a Loader
+and their own background to every instance.
+
 **From the apps.** Atlas Monitor measured its RSS on 1.4.0 and Atlas Updater
 measured AtlasEdgeGlow at 40 to 145 % of a core under software rendering
 (llvmpipe); both are in the P-phase notes.
