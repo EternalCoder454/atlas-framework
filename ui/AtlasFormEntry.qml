@@ -81,6 +81,15 @@ FocusScope {
             entry._selfHidden = true;
         }
     }
+    // An entry hidden while its page was not shown changes nothing visible
+    // then; the form coming into view settles it (Qt updates the children
+    // before the form's signal).
+    Connections {
+        target: entry._form ? entry._form : entry.parent
+        function onVisibleChanged() {
+            entry._noteVisible();
+        }
+    }
     onWidthChanged: {
         if (entry.width > 0 && entry.width < Kirigami.Units.gridUnit * 22) {
             entry._narrow = true;
