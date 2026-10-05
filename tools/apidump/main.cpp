@@ -86,9 +86,15 @@ QList<QmlTypesComponent> parseQmlTypes(const QString &text)
     return components;
 }
 
+// A QML-defined type's class name carries a counter ("Foo_QMLTYPE_91") that
+// depends on the order the files load in: drop it, or the snapshot changes
+// with unrelated additions.
 QString typeName(const QByteArray &name)
 {
-    return name.isEmpty() ? QStringLiteral("void") : QString::fromLatin1(name);
+    if (name.isEmpty())
+        return QStringLiteral("void");
+    static const QRegularExpression counter(QStringLiteral("_QMLTYPE_[0-9]+"));
+    return QString::fromLatin1(name).replace(counter, QStringLiteral("_QMLTYPE"));
 }
 
 QString signature(const QMetaMethod &m)
