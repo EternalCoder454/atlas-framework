@@ -153,7 +153,9 @@ constexpr qreal Pad = 4;
 // built for every query.
 constexpr qsizetype MaxAccessibleText = 1 << 20;
 // The most selectedText and copy() build (UTF-16 units).
-constexpr qsizetype MaxSelectionText = qsizetype(1) << 27;
+constexpr qsizetype MaxSelectionText = qsizetype(1) << 25;
+// How far a word search reads each way from the position.
+constexpr qsizetype WordWindow = 65536;
 
 bool isWordChar(QChar c)
 {
@@ -343,8 +345,12 @@ private:
             a = v->positionOfLine(line);
             b = line + 1 < v->lineCount() ? v->positionOfLine(line + 1) : len;
         }
-        if (b - a > MaxAccessibleText)
-            b = std::max(a, v->alignedPosition(a + MaxAccessibleText));
+        if (b - a > MaxAccessibleText) {
+            // A line over the cap: the window is centred on the offset.
+            const qsizetype lineEnd = b;
+            a = std::max(a, v->alignedPosition(std::max<qsizetype>(0, offset - MaxAccessibleText / 2)));
+            b = std::max(a, v->alignedPosition(std::min(lineEnd, a + MaxAccessibleText)));
+        }
         *startOffset = clampInt(a);
         *endOffset = clampInt(b);
         return v->boundedText(a, b, MaxAccessibleText);
@@ -1483,6 +1489,24 @@ void AtlasTextView::applyMaximumLines()
     if (!m_pinned)
         m_contentY = std::max<qreal>(0, m_contentY - qreal(droppedRows) * m_rowH);
     documentChanged(false, oldLen, oldLines, drop);
+    // Decorations and a pending anchor move with the text.
+    for (Decorations &d : m_layers) {
+        std::vector<AtlasText::Range> kept;
+        d.longest = 0;
+        for (const AtlasText::Range &r : d.ranges) {
+            if (r.end - cut <= 0)
+                continue;
+            kept.push_back({std::max<qsizetype>(0, r.start - cut), r.end - cut});
+            d.longest = std::max(d.longest, kept.back().end - kept.back().start);
+        }
+        d.ranges = std::move(kept);
+    }
+    m_layers.erase(std::remove_if(m_layers.begin(), m_layers.end(), [](const Decorations &d) { return d.ranges.empty(); }), m_layers.end());
+    if (m_anchorLine >= 0) {
+        if (m_anchorLine < drop)
+            m_anchorRows = 0;
+        m_anchorLine = std::max<qsizetype>(0, m_anchorLine - drop);
+    }
     if (QAccessible::isActive() && !head.isEmpty()) {
         QAccessibleTextRemoveEvent ev(this, 0, head);
         QAccessible::updateAccessibility(&ev);
@@ -1584,13 +1608,33 @@ void AtlasTextView::ensureVisible(qsizetype position)
     scrollTo(x, y);
 }
 
-qsizetype AtlasTextView::wordStart(qsizetype position) const
+// The text around `position` in its line, at most WordWindow units each way,
+// from `*base`. False when the memory is not there.
+bool AtlasTextView::wordWindow(qsizetype position, qsizetype *base, qsizetype *col, QString *s) const
 {
     qsizetype start, len, brk;
     lineExtent(lineColumn(position).line, &start, &len, &brk);
-    const qsizetype col = std::clamp<qsizetype>(position - start, 0, len);
-    const QString s = m_buf.tree().text(start, start + std::min<qsizetype>(len, start + len));
-    qsizetype i = col;
+    const TextTree &t = m_buf.tree();
+    const qsizetype pos = std::clamp<qsizetype>(position, start, start + len);
+    const qsizetype a = std::max(start, t.alignDown(std::max(start, pos - WordWindow)));
+    const qsizetype e = std::min(start + len, pos + WordWindow);
+    try {
+        *s = t.text(a, e >= start + len ? e : t.alignDown(e));
+    } catch (const std::bad_alloc &) {
+        qWarning("AtlasTextView: not enough memory to find the word");
+        return false;
+    }
+    *base = a;
+    *col = pos - a;
+    return true;
+}
+
+qsizetype AtlasTextView::wordStart(qsizetype position) const
+{
+    qsizetype base, i;
+    QString s;
+    if (!wordWindow(position, &base, &i, &s))
+        return position;
     if (i < s.size() && isWordChar(s[i])) {
         while (i > 0 && isWordChar(s[i - 1]))
             --i;
@@ -1599,16 +1643,15 @@ qsizetype AtlasTextView::wordStart(qsizetype position) const
         while (i > 0 && !isWordChar(s[i - 1]) && s[i - 1].isSpace() == ws)
             --i;
     }
-    return start + i;
+    return base + i;
 }
 
 qsizetype AtlasTextView::wordEnd(qsizetype position) const
 {
-    qsizetype start, len, brk;
-    lineExtent(lineColumn(position).line, &start, &len, &brk);
-    const qsizetype col = std::clamp<qsizetype>(position - start, 0, len);
-    const QString s = m_buf.tree().text(start, start + len);
-    qsizetype i = col;
+    qsizetype base, i;
+    QString s;
+    if (!wordWindow(position, &base, &i, &s))
+        return position;
     if (i < s.size() && isWordChar(s[i])) {
         while (i < s.size() && isWordChar(s[i]))
             ++i;
@@ -1617,7 +1660,7 @@ qsizetype AtlasTextView::wordEnd(qsizetype position) const
         while (i < s.size() && !isWordChar(s[i]) && s[i].isSpace() == ws)
             ++i;
     }
-    return start + i;
+    return base + i;
 }
 
 void AtlasTextView::moveVertically(int rows, bool extend)

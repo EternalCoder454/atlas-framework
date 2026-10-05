@@ -322,6 +322,7 @@ private:
     void setCursorAndAnchor(qsizetype cursor, qsizetype anchor, bool keepGoal = false);
     void moveCursor(qsizetype position, bool extend, bool keepGoal = false);
     void moveVertically(int rows, bool extend);
+    bool wordWindow(qsizetype position, qsizetype *base, qsizetype *col, QString *s) const;
     qsizetype wordStart(qsizetype position) const;
     qsizetype wordEnd(qsizetype position) const;
     void lineExtent(qsizetype line, qsizetype *start, qsizetype *len, qsizetype *breakLen) const;
