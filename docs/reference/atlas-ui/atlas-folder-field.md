@@ -35,3 +35,6 @@ AtlasFolderField {
 | Name | Description |
 |---|---|
 | `edited()` | The user typed a path or chose one. Not emitted when the app sets `path`. |
+
+> [!NOTE]
+> A user edit keeps your binding. `path: model.x` stays bound: if your handler takes the edit it follows the model, and if it ignores it the value springs back after the handler. With a plain value or no binding the edit stays. `edited()` and `on<Property>Changed` see the edit at once, as before.

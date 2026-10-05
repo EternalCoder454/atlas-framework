@@ -11,8 +11,10 @@ import org.kde.kirigami as Kirigami
 // cross dismisses it (`closeName` is its accessible name and tooltip).
 //
 // It slides open and shut with `shown` (animations off: at once). Use
-// `shown` rather than `visible`, which cannot be animated; a dismissed banner
-// sets `shown` to false itself and emits closed().
+// `shown` rather than `visible`, which cannot be animated. A dismissed banner
+// emits closed() and holds `shown` false (an app's `shown: x` binding stays
+// in place); `dismissed` is true until the app sets a new `text` or `type`,
+// or writes `shown = true`.
 Item {
     id: control
 
@@ -23,6 +25,10 @@ Item {
     property bool shown: true
     // The close button's accessible name and tooltip.
     property string closeName: qsTr("Close")
+
+    // The user closed the banner; read-only. It stays closed until a new
+    // `text` or `type`, or `shown` written true.
+    readonly property bool dismissed: priv.dismissed
 
     signal closed
 
@@ -42,6 +48,16 @@ Item {
     QtObject {
         id: priv
         property bool announcePending: false
+        property bool dismissed: false
+        // Holds `shown` false while dismissed; the app's binding comes back
+        // when the hold ends.
+        readonly property Binding hold: Binding {
+            target: control
+            property: "shown"
+            value: false
+            when: priv.dismissed
+            restoreMode: Binding.RestoreBindingOrValue
+        }
         function queueAnnounce() {
             if (priv.announcePending) {
                 return;
@@ -56,11 +72,17 @@ Item {
         }
     }
     onShownChanged: {
+        // Written true while dismissed (an app showing it again): let go.
+        if (control.shown && priv.dismissed) {
+            priv.dismissed = false;
+        }
         if (control.shown) {
             priv.queueAnnounce();
         }
     }
+    onTypeChanged: priv.dismissed = false
     onTextChanged: {
+        priv.dismissed = false;
         if (control.shown && control.visible) {
             priv.queueAnnounce();
         }
@@ -150,7 +172,7 @@ Item {
                 QQC2.ToolTip.visible: closeButton.hovered || closeButton.visualFocus
                 QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                 onClicked: {
-                    control.shown = false;
+                    priv.dismissed = true;
                     control.closed();
                 }
                 background: Rectangle {

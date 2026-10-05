@@ -60,3 +60,6 @@ Shortcut { sequence: "Ctrl+F"; onActivated: findBar.open(false) }
 ## Keyboard
 
 Enter finds the next match, Shift+Enter the previous one and Escape closes the bar. Enter in the replace field replaces.
+
+> [!NOTE]
+> A user edit of `findText`, `replaceText`, `matchCase`, `wholeWords` or `regularExpression` keeps your binding. `matchCase: model.x` stays bound: if your `onMatchCaseChanged` takes the edit it follows the model, and if it ignores it the value springs back after the handler. With a plain value or no binding the edit stays. `on<Property>Changed` fires on the edit at once, as before.

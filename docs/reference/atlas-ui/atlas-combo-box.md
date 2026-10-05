@@ -26,3 +26,6 @@ In a filterable list, typing narrows the choices (any part of the text, in any c
 |---|---|---|---|
 | `filterable` | `bool` | `false` | Opens the list with a filter field at the top. |
 | `placeholderText` | `string` | `""` | Shown while nothing is chosen (`currentIndex` is -1). |
+
+> [!NOTE]
+> A user edit keeps your binding. `currentIndex: model.x` stays bound: if your handler takes the edit it follows the model, and if it ignores it the value springs back after the handler. With a plain value or no binding the edit stays. `activated()` and `on<Property>Changed` see the edit at once, as before.
