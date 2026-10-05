@@ -87,6 +87,7 @@ AtlasApp.property version: QString [readonly]
 AtlasApp.type
 AtlasAppCard.base QQuickAbstractButton
 AtlasAppCard.property actionComponent: QQmlComponent*
+AtlasAppCard.property compact: bool
 AtlasAppCard.property defaultAction: QQmlComponent* [readonly]
 AtlasAppCard.property installState: QString
 AtlasAppCard.property name: QString
@@ -95,6 +96,7 @@ AtlasAppCard.property rating: double
 AtlasAppCard.property sizeText: QString
 AtlasAppCard.property summary: QString
 AtlasAppCard.property symbol: int
+AtlasAppCard.property verified: bool
 AtlasAppCard.signal actionClicked()
 AtlasAppCard.signal cancelRequested()
 AtlasAppCard.type
@@ -434,6 +436,8 @@ AtlasInstallButton.property installState: QString
 AtlasInstallButton.property installText: QString
 AtlasInstallButton.property installedText: QString
 AtlasInstallButton.property progress: double
+AtlasInstallButton.property queuedText: QString
+AtlasInstallButton.property removeText: QString
 AtlasInstallButton.property updateText: QString
 AtlasInstallButton.signal cancelRequested()
 AtlasInstallButton.type
@@ -592,7 +596,10 @@ AtlasScreenshotCarousel.base QQuickControl
 AtlasScreenshotCarousel.property allowRemote: bool
 AtlasScreenshotCarousel.property count: int [readonly]
 AtlasScreenshotCarousel.property currentIndex: int
+AtlasScreenshotCarousel.property expandable: bool
+AtlasScreenshotCarousel.property expanded: bool
 AtlasScreenshotCarousel.property sources: QVariant
+AtlasScreenshotCarousel.signal opened(int index)
 AtlasScreenshotCarousel.type
 AtlasScrollBar.base QQuickScrollBar
 AtlasScrollBar.type
@@ -629,6 +636,15 @@ AtlasSettings.property fileName: QString
 AtlasSettings.property group: QString
 AtlasSettings.signal changed(QString key)
 AtlasSettings.type
+AtlasShelf.base QQuickControl
+AtlasShelf.property cardWidth: double
+AtlasShelf.property count: int [readonly]
+AtlasShelf.property defaultDelegate: QQmlComponent* [readonly]
+AtlasShelf.property delegate: QQmlComponent*
+AtlasShelf.property model: QVariant
+AtlasShelf.property title: QString
+AtlasShelf.signal activated(int index)
+AtlasShelf.type
 AtlasShortcutField.base QQuickControl
 AtlasShortcutField.method startRecording(): QVariant
 AtlasShortcutField.property conflictText: QString [readonly]

@@ -25,6 +25,19 @@ AtlasAppCard {
 }
 ```
 
+`verified: true` puts a "Verified" badge after the name (since 1.5.0). `compact: true` lays the card out as one list row (icon, name, summary on one line, size, action) for an Installed or Updates list, with less padding and a smaller icon (since 1.5.0):
+
+```qml
+AtlasAppCard {
+    compact: true
+    verified: true
+    name: "Atlas Notepad"
+    summary: qsTr("Fast, plain text editing")
+    sizeText: "12 MB"
+    installState: "update"
+}
+```
+
 Another action goes in `actionComponent`, a Component the card sizes and centres at its end:
 
 ```qml
@@ -43,6 +56,7 @@ The card is a Tab stop, and so is its action. Return or Enter on the focused car
 |---|---|---|---|
 | `actionComponent` | `Component` | `defaultAction` | Replaces the AtlasInstallButton. Leave it alone to keep the default. |
 | `defaultAction` | `Component` (read-only) | an AtlasInstallButton | The default action, bound to `installState` and `progress`. |
+| `compact` | `bool` | `false` | A one-row list layout: icon, name, summary, size, action. The rating is not shown. Since 1.5.0. |
 | `installState` | `string` | `"install"` | Forwarded to the default action; see [AtlasInstallButton](atlas-install-button.md). |
 | `name` | `string` | `""` | The app's name, also its spoken name. |
 | `progress` | `real` | `-1` | Forwarded to the default action; see AtlasInstallButton. |
@@ -50,10 +64,11 @@ The card is a Tab stop, and so is its action. Return or Enter on the focused car
 | `sizeText` | `string` | `""` | The download or installed size, already formatted ("12 MB"). |
 | `summary` | `string` | `""` | A short description, up to two lines. |
 | `symbol` | `int` (a `Symbols.<Name>` value, see [Symbols](symbols.md)) | `0` | The icon for an app without `icon.name` or `icon.source`. 0 shows `Symbols.Apps`. |
+| `verified` | `bool` | `false` | Adds a badge after the name. A screen reader hears "Verified" in the card's description. Since 1.5.0. |
 
 ## Signals
 
 | Name | Description |
 |---|---|
-| `actionClicked()` | The default action was clicked (not while `installState` is `"installing"`). |
+| `actionClicked()` | The default action was clicked (not while `installState` is `"installing"`, `"removing"` or `"queued"`). |
 | `cancelRequested()` | The default action asked to cancel an install in progress. |

@@ -71,6 +71,7 @@ qt_add_qml_module(atlasui
         AtlasListView.qml
         AtlasAppCard.qml
         AtlasScreenshotCarousel.qml
+        AtlasShelf.qml
         AtlasInstallButton.qml
         AtlasSearchResults.qml
         AtlasTextField.qml

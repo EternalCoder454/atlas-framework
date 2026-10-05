@@ -12,7 +12,7 @@ Rectangle {
     property bool animate: true
 
     implicitWidth: Kirigami.Units.gridUnit * 36
-    implicitHeight: Kirigami.Units.gridUnit * 14
+    implicitHeight: Kirigami.Units.gridUnit * 20
     color: Kirigami.Theme.backgroundColor
 
     GridLayout {
@@ -45,6 +45,18 @@ Rectangle {
                 },
                 {
                     label: "error",
+                    progress: -1
+                },
+                {
+                    label: "remove",
+                    progress: -1
+                },
+                {
+                    label: "removing",
+                    progress: 0.4
+                },
+                {
+                    label: "queued",
                     progress: -1
                 }
             ]

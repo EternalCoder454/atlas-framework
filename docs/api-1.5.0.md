@@ -1101,6 +1101,45 @@ form errors, page changes in AtlasNavigationStack and the page busy row.
 - Crash reports (minidumps out of process, dedupe by signature) wait for
   the crash.rs work in progress in another session.
 
+### 41. Store controls (Item 41)
+
+Names and behaviour were agreed with the Store session. All additive.
+
+- `AtlasScreenshotCarousel.expandable: bool`, `expanded: bool`, signal
+  `opened(int index)` (`expandedChanged` comes with `expanded`). A click or
+  Enter opens a full-window viewer that belongs to the carousel (no new
+  type): same sources, same local-only rule and `allowRemote`; images
+  zoomed to fit, a double click toggles 1:1; arrows (mirrored in RTL), Home
+  and End move; Esc, the close button or a click outside the image closes it
+  and focus returns to the carousel; a screen reader hears "2 of 5"; the
+  open fade is off under reduced motion and the dimming is solid in high
+  contrast.
+- `AtlasShelf` (new): `title`, `model`, `delegate` (an AtlasAppCard by
+  default, reading `name`, `summary`, `sizeText`, `rating`, `iconName`,
+  `installState`, `progress`, `verified` from each entry), plus `cardWidth`,
+  `count`, `defaultDelegate` and signal `activated(int index)`. A
+  horizontal ListView, so cards are lazy; start and end scroll buttons that
+  hide at each end; RTL mirrors the row and the buttons; the cards are Tab
+  stops, Left, Right, Home and End move between them. No app has an
+  AtlasShelf.qml (checked under ~/Documents/Projects/AtlasOS).
+- Permission rows: no code. A SectionRow with a leading `Symbol`, a
+  `subtitle` and a trailing `AtlasBadge` of type `"warning"` or `"error"`
+  (example on the SectionRow page). The roadmap's "AtlasSymbol" is `Symbol`.
+- `AtlasInstallButton.installState` gains `"remove"` (negative colour,
+  `removeText`, default "Remove"), `"removing"` (progress, press asks to
+  cancel; "Removing…" when the progress is unknown) and `"queued"`
+  (`queuedText`, default "Queued"; press asks to cancel). `cancelRequested`
+  now also fires in `"removing"` and `"queued"`. The edits sit in the
+  state helpers and bindings, not in the progress animations (item 39
+  changes those).
+- Open plus Remove side by side is documented as two AtlasInstallButtons
+  (`"installed"` and `"remove"`). TextButton has no destructive colour and
+  gets none; a `destructive` flag on TextButton would be a separate,
+  additive change if the Store prefers it.
+- `AtlasAppCard.verified: bool` (a "Verified" badge after the name, spoken in
+  the card's description) and `compact: bool` (a one-row list layout: icon,
+  name, one-line summary, size, action; the rating is not shown).
+
 ### Not in 1.5.0: needs Qt 6.12
 
 `QAccessibilityHints.motionPreference`, QML hot reload with

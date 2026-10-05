@@ -28,6 +28,33 @@ Section {
 }
 ```
 
+## A permission row
+
+An app's permission list needs no type of its own: a row with a leading symbol, a `subtitle` and a trailing [AtlasBadge](atlas-badge.md) of type `"warning"` or `"error"` (since 1.5.0).
+
+```qml
+Section {
+    SectionRow {
+        title: qsTr("Files")
+        subtitle: qsTr("Can read and write your home folder")
+        leading: [
+            Symbol { icon: Symbols.Folder }
+        ]
+        AtlasBadge { text: qsTr("Broad access"); type: "warning" }
+    }
+    SectionRow {
+        title: qsTr("System bus")
+        subtitle: qsTr("Can talk to every system service")
+        leading: [
+            Symbol { icon: Symbols.Shield }
+        ]
+        AtlasBadge { text: qsTr("Full access"); type: "error" }
+    }
+}
+```
+
+The badge is not a Tab stop and a screen reader reads its text after the row's title and subtitle.
+
 ## Properties
 
 | Name | Type | Default | Description |

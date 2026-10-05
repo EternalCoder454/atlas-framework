@@ -94,6 +94,20 @@ add_test(NAME lists
 set_tests_properties(lists PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-lists-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/lists-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+# Store controls (tests/store): AtlasScreenshotCarousel's viewer, AtlasShelf,
+# AtlasInstallButton's remove, removing and queued states, AtlasAppCard's
+# verified and compact.
+add_executable(atlas-store-tests store/main.cpp)
+target_compile_definitions(atlas-store-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/store")
+target_link_libraries(atlas-store-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-store-tests atlasui)
+add_test(NAME store
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(store PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-store-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/store-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 # DataTable behaviour: selection, column resize and visibility, the row menu
 # (tests/tables).
 add_executable(atlas-tables-tests tables/main.cpp)
