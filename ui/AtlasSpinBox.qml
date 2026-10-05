@@ -60,11 +60,19 @@ T.SpinBox {
         if (event.key !== Qt.Key_PageUp && event.key !== Qt.Key_PageDown) {
             return;
         }
-        const target = control.value + (event.key === Qt.Key_PageUp ? 1 : -1) * 10 * control.stepSize;
-        const clamped = Math.max(Math.min(control.from, control.to), Math.min(Math.max(control.from, control.to), target));
-        if (clamped !== control.value) {
-            control.value = clamped;
-            control.valueModified();
+        // Step through increase()/decrease(), not `value = ...`: an assignment
+        // from here would replace an app's binding (`value: settings.x`).
+        // Stop at the end so a `wrap` spin box does not jump round.
+        const up = event.key === Qt.Key_PageUp;
+        for (let i = 0; i < 10; ++i) {
+            if (up ? control.value >= Math.max(control.from, control.to) : control.value <= Math.min(control.from, control.to)) {
+                break;
+            }
+            if (up) {
+                control.increase();
+            } else {
+                control.decrease();
+            }
         }
         event.accepted = true;
     }
@@ -78,8 +86,12 @@ T.SpinBox {
         if (suffix.length > 0 && t.endsWith(suffix)) {
             t = t.slice(0, t.length - suffix.length);
         }
-        const n = Number.fromLocaleString(locale, t.trim());
-        return isNaN(n) ? control.value : n;
+        try {
+            const n = Number.fromLocaleString(locale, t.trim());
+            return isNaN(n) ? control.value : n;
+        } catch (e) {
+            return control.value;
+        }
     }
 
     contentItem: TextInput {
@@ -95,6 +107,7 @@ T.SpinBox {
         inputMethodHints: control.inputMethodHints
         selectByMouse: control.editable
         clip: true
+        Component.onCompleted: activeFocusOnTab = false
         Accessible.role: Accessible.EditableText
         Accessible.name: control.Accessible.name
         Accessible.description: control.Accessible.description

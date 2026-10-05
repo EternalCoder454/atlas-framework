@@ -77,16 +77,25 @@ T.DoubleSpinBox {
         if (event.key !== Qt.Key_PageUp && event.key !== Qt.Key_PageDown) {
             return;
         }
-        const target = control.value + (event.key === Qt.Key_PageUp ? 1 : -1) * 10 * control.stepSize;
-        const clamped = Math.max(Math.min(control.from, control.to), Math.min(Math.max(control.from, control.to), target));
-        if (clamped !== control.value) {
-            control.value = clamped;
-            control.valueModified();
+        // Step through increase()/decrease(), not `value = ...`: an assignment
+        // from here would replace an app's binding (`value: settings.x`).
+        // Stop at the end so a `wrap` spin box does not jump round.
+        const up = event.key === Qt.Key_PageUp;
+        for (let i = 0; i < 10; ++i) {
+            if (up ? control.value >= Math.max(control.from, control.to) : control.value <= Math.min(control.from, control.to)) {
+                break;
+            }
+            if (up) {
+                control.increase();
+            } else {
+                control.decrease();
+            }
         }
         event.accepted = true;
     }
 
-    textFromValue: (value, _) => prefix + control.locale.toString(Number(value), 'f', control.decimals) + suffix
+    // No group separators ("1234.50"): the validator would refuse "1,234.50" while editing.
+    textFromValue: (value, _) => prefix + control.locale.toString(Number(value), 'f', control.decimals).split(control.locale.groupSeparator).join("") + suffix
     valueFromText: (text, _) => {
         let t = text;
         if (prefix.length > 0 && t.startsWith(prefix)) {
@@ -95,8 +104,12 @@ T.DoubleSpinBox {
         if (suffix.length > 0 && t.endsWith(suffix)) {
             t = t.slice(0, t.length - suffix.length);
         }
-        const n = Number.fromLocaleString(control.locale, t.trim());
-        return isNaN(n) ? control.value : n;
+        try {
+            const n = Number.fromLocaleString(control.locale, t.trim());
+            return isNaN(n) ? control.value : n;
+        } catch (e) {
+            return control.value;
+        }
     }
 
     contentItem: TextInput {
@@ -112,6 +125,7 @@ T.DoubleSpinBox {
         inputMethodHints: control.inputMethodHints
         selectByMouse: control.editable
         clip: true
+        Component.onCompleted: activeFocusOnTab = false
         Accessible.role: Accessible.EditableText
         Accessible.name: control.Accessible.name
         Accessible.description: control.Accessible.description
