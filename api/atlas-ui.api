@@ -85,12 +85,6 @@ AtlasChipGroup.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
-AtlasDoubleSpinBox.property prefix: QString
-AtlasDoubleSpinBox.property showButtons: bool
-AtlasDoubleSpinBox.property suffix: QString
-AtlasDoubleSpinBox.type
-AtlasEmailValidator.type
-AtlasEmptyState.property actionSymbol: int
 AtlasDatePicker.method close(): QVariant
 AtlasDatePicker.method open(): QVariant
 AtlasDatePicker.property clearable: bool
@@ -103,6 +97,12 @@ AtlasDatePicker.property selectedDate: QDateTime
 AtlasDatePicker.property today: QDateTime
 AtlasDatePicker.signal edited()
 AtlasDatePicker.type
+AtlasDoubleSpinBox.property prefix: QString
+AtlasDoubleSpinBox.property showButtons: bool
+AtlasDoubleSpinBox.property suffix: QString
+AtlasDoubleSpinBox.type
+AtlasEmailValidator.type
+AtlasEmptyState.property actionSymbol: int
 AtlasEmptyState.property actionText: QString
 AtlasEmptyState.property iconName: QString
 AtlasEmptyState.property symbol: int
@@ -190,6 +190,11 @@ AtlasSearchResults.property symbolRole: QString
 AtlasSearchResults.property textRole: QString
 AtlasSearchResults.signal activated(int index)
 AtlasSearchResults.type
+AtlasSegmentedControl.property count: int [readonly]
+AtlasSegmentedControl.property currentIndex: int
+AtlasSegmentedControl.property model: QVariant
+AtlasSegmentedControl.signal activated(int index)
+AtlasSegmentedControl.type
 AtlasShortcutField.method startRecording(): QVariant
 AtlasShortcutField.property conflictText: QString [readonly]
 AtlasShortcutField.property ignoreAction: QObject*
@@ -198,11 +203,6 @@ AtlasShortcutField.property recording: bool [readonly]
 AtlasShortcutField.property sequence: QString
 AtlasShortcutField.signal edited()
 AtlasShortcutField.type
-AtlasSegmentedControl.property count: int [readonly]
-AtlasSegmentedControl.property currentIndex: int
-AtlasSegmentedControl.property model: QVariant
-AtlasSegmentedControl.signal activated(int index)
-AtlasSegmentedControl.type
 AtlasShortcutLabel.property sequence: QVariant
 AtlasShortcutLabel.type
 AtlasShortcuts.method add(QObject* action): void
@@ -243,7 +243,7 @@ AtlasSpinner.type
 AtlasSplitButton.method openMenu(): QVariant
 AtlasSplitButton.property action: QQuickAction*
 AtlasSplitButton.property items: QQmlListProperty<QObject> [readonly]
-AtlasSplitButton.property menu: ContextMenu_QMLTYPE_79* [readonly]
+AtlasSplitButton.property menu: ContextMenu_QMLTYPE_88* [readonly]
 AtlasSplitButton.property mirrored: bool [readonly]
 AtlasSplitButton.property prominent: bool
 AtlasSplitButton.property symbol: int
