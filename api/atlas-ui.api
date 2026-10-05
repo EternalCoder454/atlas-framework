@@ -245,7 +245,7 @@ AtlasSpinner.type
 AtlasSplitButton.method openMenu(): QVariant
 AtlasSplitButton.property action: QQuickAction*
 AtlasSplitButton.property items: QQmlListProperty<QObject> [readonly]
-AtlasSplitButton.property menu: ContextMenu_QMLTYPE_88* [readonly]
+AtlasSplitButton.property menu: ContextMenu_QMLTYPE_91* [readonly]
 AtlasSplitButton.property mirrored: bool [readonly]
 AtlasSplitButton.property prominent: bool
 AtlasSplitButton.property symbol: int
@@ -484,20 +484,16 @@ SectionRow.property animated: bool
 SectionRow.property atlasRow: bool [readonly]
 SectionRow.property busy: bool
 SectionRow.property byMouse: bool
-SectionRow.property canActivate: bool [readonly]
 SectionRow.property checkmark: bool
 SectionRow.property chevron: bool
 SectionRow.property clickable: bool
 SectionRow.property content: QQmlListProperty<QObject> [readonly]
 SectionRow.property disclosure: bool
 SectionRow.property expanded: bool
-SectionRow.property hasContent: bool [readonly]
-SectionRow.property hasLeading: bool [readonly]
 SectionRow.property iconName: QString
 SectionRow.property isFirst: bool [readonly]
 SectionRow.property leading: QQmlListProperty<QObject> [readonly]
 SectionRow.property mirrored: bool [readonly]
-SectionRow.property ownFocus: bool [readonly]
 SectionRow.property radio: bool
 SectionRow.property showSwitch: bool
 SectionRow.property subtitle: QString
