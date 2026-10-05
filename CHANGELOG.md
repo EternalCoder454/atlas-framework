@@ -8,6 +8,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: DataTable `resizableColumns` (drag or double-click a header boundary,
+  `columnWidths`, `columnResized`), `columnsMenu` and `hiddenColumns`,
+  `selectionMode` with `selectedRows` (Ctrl/Shift click, Shift+arrows, Ctrl+A),
+  `rowContextMenuRequested` and `density`; it reads AtlasStyle tokens.
 - Atlas.Ui: AtlasUrlValidator, AtlasEmailValidator, AtlasPathValidator and
   AtlasNumberValidator, validators for an AtlasTextField; AtlasDoubleSpinBox
   (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,

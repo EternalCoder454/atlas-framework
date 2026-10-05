@@ -445,30 +445,45 @@ ContextMenuItem.property symbol: int
 ContextMenuItem.property tint: QColor [readonly]
 ContextMenuItem.type
 ContextMenuSeparator.type
+DataTable.enum SelectionMode: MultiSelection = 1
+DataTable.enum SelectionMode: NoSelection = 2
+DataTable.enum SelectionMode: SingleSelection = 0
+DataTable.method clearSelection(): QVariant
 DataTable.method openMenuAtCurrent(): QVariant
+DataTable.method selectAll(): QVariant
+DataTable.method selectRows(QVariant rows): QVariant
 DataTable.method sortBy(QVariant i): QVariant
 DataTable.property cellPadding: double [readonly]
 DataTable.property collapsedText: QString [readonly]
+DataTable.property columnWidths: QList<double>
 DataTable.property columns: QVariant
+DataTable.property columnsMenu: bool
 DataTable.property count: int [readonly]
 DataTable.property currentIndex: int
+DataTable.property density: int
 DataTable.property depthRole: QString
 DataTable.property expandableRole: QString
 DataTable.property expandedRole: QString
 DataTable.property expandedText: QString [readonly]
+DataTable.property hiddenColumns: QList<int>
 DataTable.property mirrored: bool [readonly]
 DataTable.property model: QVariant
 DataTable.property padding: double [readonly]
 DataTable.property placeholderText: QString
 DataTable.property pointerInside: bool [readonly]
+DataTable.property resizableColumns: bool
 DataTable.property rowHeight: double [readonly]
+DataTable.property selectedRows: QList<int> [readonly]
+DataTable.property selectionMode: int
 DataTable.property sortOrder: int
 DataTable.property sortRole: QString
 DataTable.property widths: QVariant [readonly]
 DataTable.signal activated(int row)
+DataTable.signal columnResized(int column, double width)
 DataTable.signal contextMenuRequested(int row, double x, double y)
 DataTable.signal deleteRequested(int row)
 DataTable.signal headerMenuRequested(double x, double y)
+DataTable.signal rowContextMenuRequested(int row, QPointF pos)
 DataTable.signal toggleRequested(int row)
 DataTable.type
 FindBar.method close(): QVariant
