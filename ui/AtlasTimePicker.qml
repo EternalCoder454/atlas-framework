@@ -10,13 +10,8 @@ import org.kde.kirigami as Kirigami
 // below 60 is the largest multiple), and an out-of-range `hours` or `minutes`
 // is clamped, so a binding to either is replaced by the corrected value. With
 // `showDay: true` a drop-down with the days of the week comes first, for a
-// weekly schedule. `minuteArrowStep` sets the step of the minutes' arrow keys
-// and wheel apart from `minuteStep` (typed minutes stay as typed): with
-// `minuteStep: 1` and `minuteArrowStep: 5`, 07 goes up to 10 and down to 05.
-// `minimumHours` and `minimumMinutes` set the earliest time: an earlier typed
-// or stepped time is raised to it and `adjusted()` is emitted, and the fields
-// stop at the minimum instead of wrapping. The minimum is in 24-hour terms,
-// also in 12-hour mode. The app's own `hours` and `minutes` are not raised.
+// weekly schedule. The arrow step and the minimum: see
+// docs/reference/atlas-ui/atlas-time-picker.md.
 //
 //   AtlasTimePicker {
 //       hours: 7; minutes: 30
@@ -58,19 +53,30 @@ T.Control {
         return Math.max(0, Math.min(top, Math.round(m / step) * step));
     }
 
-    readonly property int _minH: Math.max(0, Math.min(23, Math.floor(minimumHours) || 0))
-    // The minimum minute, on the minute grid (the next allowed minute).
-    readonly property int _minM: {
+    // The earliest time on the minute grid, as [hours, minutes]. The minute is
+    // rounded up to the grid and carries into the next hour when that passes
+    // 59. At 23 there is no later hour: the latest allowed time, 23 and the
+    // largest minute of the grid, is used.
+    readonly property var _min: {
+        const h = Math.max(0, Math.min(23, Math.floor(minimumHours) || 0));
         const m = Math.max(0, Math.min(59, Math.floor(minimumMinutes) || 0));
         const step = Math.max(1, Math.min(59, Math.floor(minuteStep) || 1));
         const top = Math.floor(59 / step) * step;
-        return Math.min(top, Math.ceil(m / step) * step);
+        const up = Math.ceil(m / step) * step;
+        if (up <= top) {
+            return [h, up];
+        }
+        return h < 23 ? [h + 1, 0] : [23, top];
     }
+    readonly property int _minH: _min[0]
+    readonly property int _minM: _min[1]
     readonly property bool _hasMinimum: _minH > 0 || _minM > 0
-    // The arrow keys' and wheel's step.
+    // The arrow keys' and wheel's step: a multiple of `minuteStep`, so every
+    // stop is on the grid.
     readonly property int _arrowStep: {
-        const a = Math.floor(minuteArrowStep);
-        return a > 0 ? Math.min(30, a) : Math.max(1, Math.min(30, Math.floor(minuteStep) || 1));
+        const grid = Math.max(1, Math.min(59, Math.floor(minuteStep) || 1));
+        const a = Math.floor(minuteArrowStep) > 0 ? Math.min(30, Math.floor(minuteArrowStep)) : grid;
+        return Math.min(Math.ceil(a / grid) * grid, Math.floor(59 / grid) * grid);
     }
 
     // Raises a time before the minimum to it. True when it did.
@@ -187,6 +193,9 @@ T.Control {
         wheelEnabled: false
         property real wheelRemainder: 0
         signal stepped(int dir)
+        // Screen readers step through the same code.
+        Accessible.onIncreaseAction: stepped(1)
+        Accessible.onDecreaseAction: stepped(-1)
         Keys.onUpPressed: event => {
             stepped(1);
             event.accepted = true;

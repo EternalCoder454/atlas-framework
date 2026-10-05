@@ -82,7 +82,19 @@ QString sized(double n, int precision, const QLocale &l, bool si)
     if (a >= kMaxInt64Size) {
         return sign + (si ? l.toString(a / 1.0e18, 'f', precision) + QLatin1String(" EB") : l.toString(a / double(Q_INT64_C(1) << 60), 'f', precision) + QLatin1String(" EiB"));
     }
-    return sign + l.formattedDataSize(a < base ? qint64(base) : qint64(a), precision, si ? QLocale::DataSizeSIFormat : QLocale::DataSizeIecFormat);
+    // The unit QLocale will pick, and whether the value rounds up to the next
+    // one ("1000.0 kB"): then ask for exactly one of the next unit.
+    double size = a < base ? base : a;
+    int unit = 0;
+    for (double v = size; v >= base && unit < 6; v /= base) {
+        ++unit;
+    }
+    const double scale = std::pow(10.0, precision);
+    const double inUnit = size / std::pow(base, unit);
+    if (unit < 6 && std::round(inUnit * scale) / scale >= base) {
+        size = std::pow(base, unit + 1);
+    }
+    return sign + l.formattedDataSize(qint64(size), precision, si ? QLocale::DataSizeSIFormat : QLocale::DataSizeIecFormat);
 }
 
 // "iec" (the default, and what an unknown name means) or "si".

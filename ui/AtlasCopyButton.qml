@@ -3,16 +3,9 @@ import QtQuick.Controls as QQC2
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A small icon button that copies `text` to the clipboard (through
-// AtlasClipboard) and shows a check mark for a moment, with the tooltip
-// "Copied". It looks like a ToolbarButton, and Tab reaches it. `copied()` is
-// emitted after each copy. Under reduced motion there is no fade: the symbol
-// just swaps. With `label` set it is a text button ("Copy Details") that shows
-// `copiedLabel` for a moment after a copy; the tooltip is dropped then.
-//
-//   AtlasCopyButton { text: command.text }
-//   AtlasCopyButton { text: token; onCopied: toast.show(qsTr("Token copied")) }
-//   AtlasCopyButton { text: details; label: qsTr("Copy Details") }
+// A ToolbarButton that copies `text` through AtlasClipboard. In text mode the
+// content item keeps room for the wider of `label` and `copiedLabel`.
+// See docs/reference/atlas-ui/atlas-copy-button.md.
 ToolbarButton {
     id: control
 

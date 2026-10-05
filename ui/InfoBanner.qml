@@ -10,11 +10,9 @@ import org.kde.kirigami as Kirigami
 // QQC2.Action) becomes a button at the trailing end; with `closable` a small
 // cross dismisses it (`closeName` is its accessible name and tooltip).
 //
-// It slides open and shut with `shown` (animations off: at once). Use
-// `shown` rather than `visible`, which cannot be animated. A dismissed banner
-// emits closed() and holds `shown` false (an app's `shown: x` binding stays
-// in place); `dismissed` is true until the app sets a new `text` or `type`,
-// or writes `shown = true`.
+// Use `shown` rather than `visible`, which cannot be animated. A dismissed
+// banner holds `shown` false with a Binding, so an app's own `shown` binding
+// survives. See docs/reference/atlas-ui/info-banner.md.
 Item {
     id: control
 
@@ -26,8 +24,6 @@ Item {
     // The close button's accessible name and tooltip.
     property string closeName: qsTr("Close")
 
-    // The user closed the banner; read-only. It stays closed until a new
-    // `text` or `type`, or `shown` written true.
     readonly property bool dismissed: priv.dismissed
 
     signal closed
