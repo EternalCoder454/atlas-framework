@@ -81,6 +81,9 @@ qt_add_qml_module(atlasui
         AtlasAction.qml
         AtlasShortcutLabel.qml
         AtlasShortcutsDialog.qml
+        AtlasSplitView.qml
+        AtlasNavigationStack.qml
+        AtlasViewSwitcher.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp

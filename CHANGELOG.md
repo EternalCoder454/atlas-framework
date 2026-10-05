@@ -8,6 +8,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasSplitView (Atlas divider, remembers sizes), AtlasNavigationStack
+  (pages with a Back header) and AtlasViewSwitcher (page tabs with symbols and
+  badges).
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
