@@ -407,7 +407,7 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   of a scroll capped by maximumHeight); it uses QQC2.ScrollBar, not
   AtlasScrollBar. Also an inset option to line up with SectionRow text.
   (Updater)
-- [ ] DESIGN.md calls AtlasButton TextButton's base with `variant`; TextButton
+- [x] DESIGN.md calls AtlasButton TextButton's base with `variant`; TextButton
   is a T.AbstractButton without it (setting it fails to load). Fix the docs,
   or give TextButton `variant` (Ghost link buttons). (Updater)
 - [ ] AtlasSettings: FileLock can msleep the GUI thread up to 1 s per flush
