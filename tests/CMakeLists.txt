@@ -213,7 +213,10 @@ target_include_directories(atlas-appearance-tests PRIVATE ${PROJECT_SOURCE_DIR}/
 target_link_libraries(atlas-appearance-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::DBus
     KF6::WindowSystem KF6::ConfigCore)
 add_test(NAME appearance COMMAND atlas-appearance-tests)
-set_tests_properties(appearance PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+# Its own config dir and no session bus: the user's kdeglobals and portal
+# settings must not reach the test (or be written by it).
+set_tests_properties(appearance PROPERTIES TIMEOUT 60 ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/appearance-config;DBUS_SESSION_BUS_ADDRESS=disabled:")
 
 # The Atlas validators (ui/atlasvalidators.cpp, compiled into the test):
 # acceptable, intermediate and invalid input of each, hostile input included.

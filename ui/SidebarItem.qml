@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -132,10 +134,10 @@ T.AbstractButton {
         Text {
             visible: !control.compact
             Layout.fillWidth: true
-            // Next to the icon: Left flips to the right side when mirrored. In a
-            // left-to-right layout a label in a right-to-left script keeps
-            // aligning by its own direction (Qt's natural alignment).
-            horizontalAlignment: control.mirrored || !/[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(control.text) ? Text.AlignLeft : Text.AlignRight
+            // Next to the icon: Left flips to the right side when mirrored.
+            // Unmirrored, Qt's natural alignment (by the label's first strong
+            // character) applies, so a right-to-left label keeps its side.
+            horizontalAlignment: control.mirrored ? Text.AlignLeft : undefined
             text: control.text
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody

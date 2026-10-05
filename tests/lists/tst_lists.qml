@@ -506,6 +506,86 @@ Item {
             }
         }
 
+        function inView(list, index) {
+            const item = list.itemAtIndex(index);
+            return item !== null && item.x + item.width <= list.contentX + list.width + 0.5 && item.x >= list.contentX - 0.5;
+        }
+
+        // Closing a tab other than a new one keeps the user's wheel scroll.
+        function test_closed_tab_keeps_wheel_scroll() {
+            const [bar, list] = overflowingBar(false);
+            bar.currentIndex = 4;
+            tryVerify(() => inView(list, 4), 2000, "the middle tab is shown");
+            mouseWheel(list, list.width / 2, list.height / 2, 0, 120 * 30);
+            tryVerify(() => Math.abs(list.contentX - list.originX) < 0.5, 2000, "the wheel scrolls to the start");
+            verify(!inView(list, 4), "the current tab is out of view");
+            bar.model.remove(bar.model.count - 1);
+            wait(100);
+            compare(list.contentX, list.originX, "closing a tab doesn't snap back to the current one");
+        }
+
+        // A pressed tab holds the strip still; on release it follows again.
+        function test_pressed_tab_holds_the_strip() {
+            const [bar, list] = overflowingBar(false);
+            bar.currentIndex = 0;
+            tryVerify(() => inView(list, 0), 2000, "the first tab is shown");
+            const first = list.itemAtIndex(0);
+            mousePress(first, first.width / 2, first.height / 2);
+            compare(list.held, 1, "one tab held");
+            const before = list.contentX;
+            bar.currentIndex = bar.model.count - 1;
+            wait(100);
+            compare(list.contentX, before, "no scroll under the pressed tab");
+            mouseRelease(first, first.width / 2, first.height / 2);
+            compare(list.held, 0, "released");
+            tryVerify(() => inView(list, bar.currentIndex), 2000, "the current tab is followed after the release");
+        }
+
+        // A tab removed while pressed doesn't leave the strip held.
+        function test_tab_removed_while_pressed() {
+            const [bar, list] = overflowingBar(false);
+            bar.currentIndex = 0;
+            tryVerify(() => inView(list, 0), 2000, "the first tab is shown");
+            const first = list.itemAtIndex(0);
+            mousePress(first, first.width / 2, first.height / 2);
+            compare(list.held, 1, "one tab held");
+            bar.model.remove(0);
+            tryCompare(list, "held", 0, 2000, "the removed tab gives back its hold");
+            mouseRelease(list, 5, list.height / 2);
+            bar.currentIndex = bar.model.count - 1;
+            tryVerify(() => inView(list, bar.currentIndex), 2000, "the strip follows again");
+        }
+
+        SignalSpy {
+            id: movedSpy
+            signalName: "moved"
+        }
+
+        // Dragging the first tab onto the second asks to move it there.
+        function test_drag_reorders() {
+            const bar = createTemporaryObject(tabBarComp, root);
+            const list = listOf(bar);
+            movedSpy.clear();
+            movedSpy.target = bar;
+            tryVerify(() => list.itemAtIndex(1) !== null, 2000, "both tabs built");
+            const a = list.itemAtIndex(0);
+            const b = list.itemAtIndex(1);
+            const y = a.height / 2;
+            const dx = (b.x + b.width / 2) - (a.x + a.width / 2);
+            mousePress(a, a.width / 2, y);
+            for (let i = 1; i <= 10; ++i) {
+                mouseMove(a, a.width / 2 + dx * i / 10, y);
+                wait(10);
+            }
+            compare(list.dropAt, 1, "the drop target is the second tab");
+            mouseRelease(a, a.width / 2 + dx, y);
+            compare(movedSpy.count, 1, "moved emitted once");
+            compare(movedSpy.signalArguments[0][0], 0, "from");
+            compare(movedSpy.signalArguments[0][1], 1, "to");
+            compare(list.dragFrom, -1, "drag state cleared");
+            compare(list.dropAt, -1, "drop target cleared");
+        }
+
         // Closing tabs until they fit gives the strip back its content width.
         function test_strip_grows_back_when_tabs_fit() {
             const [bar, list] = overflowingBar(false);

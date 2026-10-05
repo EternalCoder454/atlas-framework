@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -57,7 +59,7 @@ Item {
         Qt.callLater(control._followCurrent);
     }
     function _followCurrent() {
-        if (control._follow && !list.held && list.dragFrom < 0) {
+        if (control._follow && list.held === 0 && list.dragFrom < 0) {
             control.ensureCurrentVisible();
         }
     }
@@ -88,8 +90,10 @@ Item {
             // Where a dragged tab would land, or -1.
             property int dragFrom: -1
             property int dropAt: -1
-            // A tab is pressed: the strip doesn't scroll under the pointer.
-            property bool held: false
+            // Tabs pressed now: the strip doesn't scroll under the pointer.
+            property int held: 0
+            // The count before the last change: only a new tab is followed.
+            property int lastCount: 0
 
             Layout.fillHeight: true
             // Hugs its tabs while they fit and shrinks to the bar (then
@@ -114,6 +118,7 @@ Item {
             // a small overshoot) to the tab that becomes current. It jumps on
             // the first layout.
             highlight: Rectangle {
+                id: tint
                 z: -1
                 visible: list.currentItem !== null
                 radius: AtlasStyle.radiusSmall
@@ -129,60 +134,65 @@ Item {
                 property real _slideW: 0
                 property bool _springing: false
                 property Item _shown: null
-                x: _baseX + _slideX
-                y: _baseY
-                width: Math.max(0, _baseW + _slideW)
-                height: _baseH
+                x: tint._baseX + tint._slideX
+                y: tint._baseY
+                width: Math.max(0, tint._baseW + tint._slideW)
+                height: tint._baseH
                 Behavior on _slideX {
-                    enabled: _springing && !AtlasStyle.reducedMotion
+                    enabled: tint._springing && !AtlasStyle.reducedMotion
                     AtlasSpringAnimation {
                         expressive: true
                     }
                 }
                 Behavior on _slideW {
-                    enabled: _springing && !AtlasStyle.reducedMotion
+                    enabled: tint._springing && !AtlasStyle.reducedMotion
                     AtlasSpringAnimation {
                         expressive: true
                     }
                 }
                 function _sync() {
-                    _baseX = _item ? _item.x + 0 : 0;
-                    _baseY = _item ? _item.y + 0 : 0;
-                    _baseW = _item ? _item.width : 0;
-                    _baseH = _item ? _item.height : 0;
+                    tint._baseX = tint._item ? tint._item.x + 0 : 0;
+                    tint._baseY = tint._item ? tint._item.y + 0 : 0;
+                    tint._baseW = tint._item ? tint._item.width : 0;
+                    tint._baseH = tint._item ? tint._item.height : 0;
                 }
                 // Only a selection change slides, and only from a tint that was showing.
                 Component.onCompleted: {
-                    _sync();
-                    _shown = _item;
+                    tint._sync();
+                    tint._shown = tint._item;
                 }
                 on_ItemChanged: {
                     const oldX = x;
                     const oldW = width;
-                    const from = _shown !== null && _item !== null;
-                    _springing = false;
-                    _slideX = 0;
-                    _slideW = 0;
-                    _sync();
-                    _shown = _item;
+                    const from = tint._shown !== null && tint._item !== null;
+                    tint._springing = false;
+                    tint._slideX = 0;
+                    tint._slideW = 0;
+                    tint._sync();
+                    tint._shown = tint._item;
                     if (from) {
-                        _slideX = oldX - _baseX;
-                        _slideW = oldW - _baseW;
-                        _springing = true;
-                        _slideX = 0;
-                        _slideW = 0;
+                        tint._slideX = oldX - tint._baseX;
+                        tint._slideW = oldW - tint._baseW;
+                        tint._springing = true;
+                        tint._slideX = 0;
+                        tint._slideW = 0;
                     }
                 }
                 Connections {
-                    target: _item
-                    function onXChanged() { _sync(); }
-                    function onYChanged() { _sync(); }
-                    function onWidthChanged() { _sync(); }
-                    function onHeightChanged() { _sync(); }
+                    target: tint._item
+                    function onXChanged() { tint._sync(); }
+                    function onYChanged() { tint._sync(); }
+                    function onWidthChanged() { tint._sync(); }
+                    function onHeightChanged() { tint._sync(); }
                 }
             }
             onCountChanged: {
-                control._follow = true;
+                // A tab was added: follow again. A closed background tab
+                // keeps the user's wheel scroll.
+                if (list.count > list.lastCount) {
+                    control._follow = true;
+                }
+                list.lastCount = list.count;
                 Qt.callLater(control._followCurrent);
             }
             // The current tab's title turns medium weight, so it grows a
@@ -206,6 +216,44 @@ Item {
             }
 
             readonly property bool mirrored: LayoutMirroring.enabled
+
+            // Where the dragged tab would land. Only the tabs in view can be
+            // the target (the wheel scrolls during a drag); in the spacing
+            // between two tabs, the nearer one; past either end, the first or
+            // last.
+            // How far the dragged tab has moved from its place.
+            property real dragShift: 0
+            function updateDrop() {
+                const tab = list.itemAtIndex(list.dragFrom);
+                if (!tab) {
+                    return;
+                }
+                const centre = Math.max(list.contentX, Math.min(list.contentX + list.width - 1, tab.x + tab.width / 2 + list.dragShift));
+                const y = list.height / 2;
+                let at = list.indexAt(centre, y);
+                if (at < 0) {
+                    const before = list.indexAt(centre - list.spacing, y);
+                    const after = list.indexAt(centre + list.spacing, y);
+                    const a = list.itemAtIndex(before);
+                    const b = list.itemAtIndex(after);
+                    if (a && b) {
+                        at = centre - (a.x + a.width) <= b.x - centre ? before : after;
+                    } else {
+                        at = a ? before : after;
+                    }
+                }
+                if (at >= 0) {
+                    list.dropAt = at;
+                } else {
+                    const start = centre < list.originX + list.contentWidth / 2;
+                    list.dropAt = start !== list.mirrored ? 0 : list.count - 1;
+                }
+            }
+            onContentXChanged: {
+                if (list.dragFrom >= 0) {
+                    list.updateDrop();
+                }
+            }
 
             delegate: T.AbstractButton {
                 id: tab
@@ -256,10 +304,23 @@ Item {
                 }
 
                 onPressedChanged: {
-                    list.held = tab.pressed;
+                    list.held = Math.max(0, list.held + (tab.pressed ? 1 : -1));
                     if (!tab.pressed) {
                         Qt.callLater(control._followCurrent);
                     }
+                }
+                // Removed mid-press or mid-drag (a model reset, a tab closed
+                // by the app): give back what this tab held.
+                Component.onDestruction: {
+                    if (tab.pressed) {
+                        list.held = Math.max(0, list.held - 1);
+                    }
+                    if (list.dragFrom === tab.index && dragHandler.active) {
+                        list.dragFrom = -1;
+                        list.dropAt = -1;
+                        list.dragShift = 0;
+                    }
+                    Qt.callLater(control._followCurrent);
                 }
                 onPressed: {
                     if (!tab.current) {
@@ -303,6 +364,7 @@ Item {
                             const to = list.dropAt;
                             list.dragFrom = -1;
                             list.dropAt = -1;
+                            list.dragShift = 0;
                             tab.dragX = 0;
                             if (from >= 0 && to >= 0 && from !== to) {
                                 control.moved(from, to);
@@ -315,25 +377,8 @@ Item {
                             return;
                         }
                         tab.dragX = translation.x;
-                        // Only the tabs in view can be the target (the wheel
-                        // scrolls during a drag); past either end of the
-                        // strip, the first or last of them.
-                        const centre = Math.max(list.contentX, Math.min(list.contentX + list.width - 1, tab.x + tab.width / 2 + translation.x));
-                        const y = list.height / 2;
-                        // In the spacing between two tabs: the nearer one.
-                        let at = list.indexAt(centre, y);
-                        if (at < 0) {
-                            at = list.indexAt(centre - list.spacing, y);
-                        }
-                        if (at < 0) {
-                            at = list.indexAt(centre + list.spacing, y);
-                        }
-                        if (at >= 0) {
-                            list.dropAt = at;
-                        } else {
-                            const start = centre < list.originX + list.contentWidth / 2;
-                            list.dropAt = start !== list.mirrored ? 0 : list.count - 1;
-                        }
+                        list.dragShift = translation.x;
+                        list.updateDrop();
                     }
                 }
 
