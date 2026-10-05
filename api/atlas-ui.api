@@ -35,6 +35,11 @@ AtlasAboutPage.property license: QString
 AtlasAboutPage.property links: QVariant
 AtlasAboutPage.property maxContentWidth: double
 AtlasAboutPage.property showSystemRows: bool
+AtlasAboutPage.property status: int
+AtlasAboutPage.property statusAction: AtlasAction_QMLTYPE*
+AtlasAboutPage.property statusSymbol: int
+AtlasAboutPage.property statusText: QString
+AtlasAboutPage.property statusTitle: QString
 AtlasAboutPage.property subtitle: QString
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
@@ -636,7 +641,7 @@ AtlasSplitButton.type
 AtlasSplitView.base QQuickSplitView
 AtlasSplitView.method restoreSizes(QString sizes): bool
 AtlasSplitView.method saveSizes(): QString
-AtlasSplitView.method showPane(int i): void
+AtlasSplitView.method showPane(int i): QVariant
 AtlasSplitView.property collapseWidth: double
 AtlasSplitView.property collapsed: bool [readonly]
 AtlasSplitView.property collapsible: bool
