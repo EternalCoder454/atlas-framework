@@ -47,10 +47,10 @@ FocusScope {
     readonly property bool atlasRow: true
     // The row itself has keyboard focus, not an item inside it (activeFocus is
     // also true while a trailing control has it).
-    readonly property bool ownFocus: Window.window !== null && Window.window.activeFocusItem === root
-    readonly property bool canActivate: clickable && !busy
-    readonly property bool hasLeading: leadingRow.children.length > 0
-    readonly property bool hasContent: contentRow.children.length > 0
+    readonly property bool _ownFocus: Window.window !== null && Window.window.activeFocusItem === root
+    readonly property bool _canActivate: clickable && !busy
+    readonly property bool _hasLeading: leadingRow.children.length > 0
+    readonly property bool _hasContent: contentRow.children.length > 0
     readonly property bool mirrored: LayoutMirroring.enabled
     // The first visible row in a Section draws no separator above itself.
     readonly property bool isFirst: {
@@ -80,9 +80,9 @@ FocusScope {
     Accessible.checkable: root.radio
     Accessible.checked: root.radio && root.checkmark
     Accessible.focusable: root.clickable
-    Accessible.onPressAction: if (root.canActivate) root.clicked()
+    Accessible.onPressAction: if (root._canActivate) root.clicked()
     // Qt lists Toggle first for a checkable row; assistive tools use it to pick a radio.
-    Accessible.onToggleAction: if (root.canActivate && root.radio) root.clicked()
+    Accessible.onToggleAction: if (root._canActivate && root.radio) root.clicked()
 
     Keys.onPressed: event => {
         root.byMouse = false;
@@ -106,11 +106,11 @@ FocusScope {
 
     function activate(event) {
         // A key a trailing control left alone is not for the row.
-        if (!root.ownFocus) {
+        if (!root._ownFocus) {
             event.accepted = false;
             return;
         }
-        if (root.canActivate && !event.isAutoRepeat) {
+        if (root._canActivate && !event.isAutoRepeat) {
             root.clicked();
         }
         event.accepted = root.clickable;
@@ -135,7 +135,7 @@ FocusScope {
     }
 
     function step(forward, event) {
-        if (!root.radio || !root.ownFocus || root.busy) {
+        if (!root.radio || !root._ownFocus || root.busy) {
             event.accepted = false;
             return;
         }
@@ -153,7 +153,7 @@ FocusScope {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: Kirigami.Units.largeSpacing + (root.hasLeading ? leadingRow.width + Kirigami.Units.largeSpacing : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + Kirigami.Units.largeSpacing : 0))
+        anchors.leftMargin: Kirigami.Units.largeSpacing + (root._hasLeading ? leadingRow.width + Kirigami.Units.largeSpacing : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + Kirigami.Units.largeSpacing : 0))
         height: 1
         color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
     }
@@ -163,7 +163,7 @@ FocusScope {
         anchors.margins: 3
         radius: 7
         color: Qt.alpha(Kirigami.Theme.textColor, tap.pressed ? 0.1 : 0.05)
-        opacity: root.canActivate && hover.hovered ? 1 : 0
+        opacity: root._canActivate && hover.hovered ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
                 duration: Kirigami.Units.shortDuration
@@ -177,17 +177,17 @@ FocusScope {
         color: "transparent"
         border.width: 2
         border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
-        visible: root.ownFocus && root.clickable && !root.byMouse
+        visible: root._ownFocus && root.clickable && !root.byMouse
     }
 
     HoverHandler {
         id: hover
-        enabled: root.canActivate
+        enabled: root._canActivate
         cursorShape: Qt.PointingHandCursor
     }
     TapHandler {
         id: tap
-        enabled: root.canActivate
+        enabled: root._canActivate
         onTapped: {
             root.byMouse = true;
             root.forceActiveFocus();
@@ -206,12 +206,12 @@ FocusScope {
 
         Row {
             id: leadingRow
-            visible: root.hasLeading
+            visible: root._hasLeading
             spacing: Kirigami.Units.smallSpacing
             Layout.alignment: Qt.AlignVCenter
         }
         Kirigami.Icon {
-            visible: root.iconName.length > 0 && !root.hasLeading
+            visible: root.iconName.length > 0 && !root._hasLeading
             source: root.iconName
             fallback: "applications-other"
             Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
@@ -219,12 +219,12 @@ FocusScope {
         }
         RowLayout {
             id: contentRow
-            visible: root.hasContent
+            visible: root._hasContent
             Layout.fillWidth: true
             spacing: Kirigami.Units.smallSpacing
         }
         ColumnLayout {
-            visible: !root.hasContent
+            visible: !root._hasContent
             Layout.fillWidth: true
             Layout.minimumWidth: Kirigami.Units.gridUnit * 6
             spacing: 0
