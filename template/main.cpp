@@ -2,8 +2,8 @@
 // the app ID and names, one instance per session, logging and crash hooks.
 // Then it loads the QML module's Main with the Rust backend.
 
-// Defined by atlas-framework-ui.
-extern "C" int atlas_app_run(int argc, char *argv[], const char *qmlModule, const char *qmlType, void *(*makeBackend)());
+#include <atlas/app.h>
+
 // Defined in src/lib.rs.
 extern "C" void *atlas_backend_new();
 

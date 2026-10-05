@@ -44,6 +44,22 @@ use cxx_qt::Threading;
 use cxx_qt_lib::QString;
 use atlas_framework_system::notify::{Note, Notifier, escape};
 
+/// Held by a worker thread: when it is dropped, normally or by a panic
+/// unwinding, `busy` goes back to false on the Qt thread, so the buttons never
+/// stay disabled. A panic is logged.
+struct BusyGuard(cxx_qt::CxxQtThread<qobject::Backend>);
+
+impl Drop for BusyGuard {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            log::error!("the worker thread panicked");
+        }
+        let _ = self.0.queue(|mut obj| {
+            obj.as_mut().set_busy(false);
+        });
+    }
+}
+
 pub struct BackendRust {
     status: QString,
     busy: bool,
@@ -67,11 +83,11 @@ impl qobject::Backend {
         self.as_mut().set_status(QString::from("Working…"));
         let qt = self.qt_thread();
         std::thread::spawn(move || {
+            let _guard = BusyGuard(qt.clone());
             // Replace with the app's own work (atlas_framework_* crates, ...).
             let text = format!("Template {}", env!("CARGO_PKG_VERSION"));
             let _ = qt.queue(move |mut obj| {
                 obj.as_mut().set_status(QString::from(text.as_str()));
-                obj.as_mut().set_busy(false);
             });
         });
     }
@@ -91,6 +107,7 @@ impl qobject::Backend {
         let qt = self.qt_thread();
         // D-Bus can take a while (no server, a slow one): never on the GUI thread.
         std::thread::spawn(move || {
+            let _guard = BusyGuard(qt.clone());
             let notifier = Notifier::new(atlas_framework_ui::app_info());
             let note = Note::new(
                 "demoAction",
@@ -108,7 +125,6 @@ impl qobject::Backend {
             };
             let _ = qt.queue(move |mut obj| {
                 obj.as_mut().set_status(QString::from(text.as_str()));
-                obj.as_mut().set_busy(false);
             });
         });
     }
