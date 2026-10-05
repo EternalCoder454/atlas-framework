@@ -135,9 +135,10 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     sourceComponent: slot.index === 0 ? firstButton : otherButton
 
-                                        Component {
+                    Component {
                         id: firstButton
                         SecondaryButton {
+                            objectName: "bannerAction"
                             text: slot.modelData.text
                             icon.name: slot.modelData.icon?.name ?? ""
                             enabled: slot.modelData.enabled
@@ -147,6 +148,7 @@ Item {
                     Component {
                         id: otherButton
                         SecondaryButton {
+                            objectName: "bannerAction"
                             text: slot.modelData.text
                             enabled: slot.modelData.enabled
                             onClicked: slot.modelData.trigger()
@@ -164,9 +166,21 @@ Item {
                 focusPolicy: Qt.TabFocus // a click must not take the editor's focus
                 Accessible.role: Accessible.Button
                 Accessible.name: control.closeName
-                AtlasToolTip {
-                    text: control.closeName
-                    shown: closeButton.hovered || closeButton.visualFocus
+                // Made when the button is first hovered or focused.
+                property var _tip: null
+                function _ensureTip(): void {
+                    if (!closeButton._tip) {
+                        closeButton._tip = closeTipComponent.createObject(closeButton);
+                    }
+                }
+                onHoveredChanged: if (closeButton.hovered) closeButton._ensureTip()
+                onVisualFocusChanged: if (closeButton.visualFocus) closeButton._ensureTip()
+                Component {
+                    id: closeTipComponent
+                    AtlasToolTip {
+                        text: control.closeName
+                        shown: closeButton.hovered || closeButton.visualFocus
+                    }
                 }
                 onClicked: {
                     priv.dismissed = true;

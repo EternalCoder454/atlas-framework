@@ -33,7 +33,7 @@ Shortcut { sequence: "Ctrl+F"; onActivated: findBar.open(false) }
 | `findText` | `string` | `""` | The text in the find field. |
 | `fullHeight` | `real` (read-only) | — | The height the bar needs when open, for the owner to reserve. |
 | `matchCase` | `bool` | `false` | The match case toggle. |
-| `matchCount` | `int` | `0` | How many hits there are. Set by the owner. |
+| `matchCount` | `int` | `0` | How many hits there are. Set by the owner. The Replace and Replace All buttons are enabled only when it is above 0, and Enter in the replace field follows the Replace button: an owner that does not set `matchCount` gets neither. |
 | `opened` | `bool` | `false` | Whether the bar is shown; use `open()` and `close()`. |
 | `regularExpression` | `bool` | `false` | The regular expression toggle. |
 | `replaceText` | `string` | `""` | The text in the replace field. |

@@ -146,5 +146,28 @@ Item {
             host.x -= 40;
             tryVerify(() => p.x === x1 - 40, 2000, "the target's parent moved by 40");
         }
+
+        function test_a_new_target_while_open_is_followed() {
+            const first = createTemporaryObject(movingHostComp, root);
+            const second = createTemporaryObject(movingHostComp, root, {
+                x: 300
+            });
+            const p = createTemporaryObject(popComp, root, {
+                target: first.target
+            });
+            p.open();
+            tryVerify(() => p.visible);
+            const x0 = p.x;
+            p.target = second.target;
+            tryVerify(() => p.x === x0 + 200, 2000, "placed again at the new target");
+            const x1 = p.x;
+            // The new target's parent moves: the popover follows it.
+            second.x += 50;
+            tryVerify(() => p.x === x1 + 50, 2000, "the new target's parent is tracked");
+            // The old target's parent moves: no effect.
+            first.x += 80;
+            wait(50);
+            compare(p.x, x1 + 50);
+        }
     }
 }

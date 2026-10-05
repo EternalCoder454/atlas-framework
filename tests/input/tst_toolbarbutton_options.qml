@@ -133,6 +133,32 @@ Item {
             withPopover.popover.close();
         }
 
+        function test_a_one_letter_glyphless_button_draws_its_letter() {
+            const b = createTemporaryObject(buttonComp, root, {
+                symbol: 0,
+                text: "B",
+                _letterFallback: true
+            });
+            let letter = null;
+            const walk = item => {
+                for (const c of item.children) {
+                    if (c.text === "B" && c.textFormat === Text.PlainText) {
+                        letter = c;
+                    }
+                    walk(c);
+                }
+            };
+            walk(b.contentItem);
+            verify(letter, "the label item is made");
+            verify(letter.visible, "a one-letter text is drawn, not left blank");
+            const plainIcon = createTemporaryObject(buttonComp, root, {
+                text: "B"
+            });
+            letter = null;
+            walk(plainIcon.contentItem);
+            verify(letter === null || !letter.visible, "an icon-only button with a symbol stays icon-only");
+        }
+
         function test_round_implicit_width_follows_implicit_height() {
             const b = createTemporaryObject(buttonComp, root, {
                 round: true

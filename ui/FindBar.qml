@@ -343,6 +343,7 @@ Item {
                 }
                 Field {
                     id: replaceField
+                    objectName: "replaceField"
                     Layout.fillWidth: true
                     Layout.minimumWidth: Kirigami.Units.gridUnit * 6
                     icon: "edit-find-replace"
@@ -352,12 +353,13 @@ Item {
                         control._replaceEditing = true;
                         Qt.callLater(control._release);
                     }
-                    // As the Replace button: nothing to replace with no match.
-                    Keys.onReturnPressed: if (control.matchCount > 0) control.replaceOne()
-                    Keys.onEnterPressed: if (control.matchCount > 0) control.replaceOne()
+                    // Enter does what the Replace button does, and only when it is enabled.
+                    Keys.onReturnPressed: if (replaceButton.enabled) control.replaceOne()
+                    Keys.onEnterPressed: if (replaceButton.enabled) control.replaceOne()
                     Keys.onEscapePressed: control.close()
                 }
                 SecondaryButton {
+                    id: replaceButton
                     //: Button: replace the current match (a verb)
                     text: qsTr("Replace")
                     focusPolicy: Qt.NoFocus

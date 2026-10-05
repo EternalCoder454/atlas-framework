@@ -472,6 +472,39 @@ Item {
                 actions: [plain]
             });
             verify(b, "a banner with an action that has no icon still loads");
+            const button = findByName(b, "bannerAction");
+            verify(button, "the action's button exists");
+            compare(button.text, "Retry");
+            compare(button.icon.name, "");
+            failOnWarning(/TypeError/);
+            // A second action, to build the other button kind too.
+            b.actions = [plain, plain];
+            wait(50);
+        }
+
+        function findByName(item, name) {
+            if (item.objectName === name) {
+                return item;
+            }
+            for (const c of item.children) {
+                const r = findByName(c, name);
+                if (r) {
+                    return r;
+                }
+            }
+            return null;
+        }
+
+        function test_toast_keeps_its_action_when_shown_nothing() {
+            const t = createTemporaryObject(toastComp, root);
+            t.showAction("Deleted", "Undo");
+            compare(t.actionText, "Undo");
+            t.show(undefined);
+            compare(t.actionText, "Undo");
+            t.showAction("", "Redo");
+            compare(t.actionText, "Undo");
+            t.show("Saved");
+            compare(t.actionText, "");
         }
 
         function test_toast_show_with_nothing_shows_nothing() {
@@ -490,6 +523,7 @@ Item {
         id: plainObjectComp
         QtObject {
             property string text: "Retry"
+            property bool enabled: true
             function trigger() {}
         }
     }
@@ -576,7 +610,7 @@ Item {
         function test_enter_in_the_replace_field_with_no_match_replaces_nothing() {
             const f = createTemporaryObject(findBarComp, root);
             tryCompare(f, "height", f.fullHeight);
-            const field = findAll(f, "", []).find(c => c.hasOwnProperty("placeholderText") && c.placeholderText === "Replace");
+            const field = findAll(f, "", []).find(c => c.objectName === "replaceField");
             verify(field);
             field.forceActiveFocus();
             keyClick(Qt.Key_Return);

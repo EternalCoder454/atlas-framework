@@ -94,6 +94,8 @@ private:
     bool popupEnabled(const QString &event) const;
     void ensureConnected();
     bool m_connected = false;
+    // Bumped when the notification server's owner changes.
+    uint m_ownerGeneration = 0;
     QStringList m_extraSchemes;
     qulonglong m_counter = 0;
     // The server's number for each notification this app sent -> our id.

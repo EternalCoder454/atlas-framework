@@ -74,9 +74,21 @@ T.AbstractButton {
         event.accepted = control.clickable;
     }
 
-    AtlasToolTip {
-        text: control.toolTip
-        shown: control.toolTip.length > 0 && (control.hovered || control.visualFocus)
+    // Made when the cell is first hovered or focused, not for every cell.
+    property var _tip: null
+    function _ensureTip(): void {
+        if (!control._tip) {
+            control._tip = tipComponent.createObject(control);
+        }
+    }
+    onHoveredChanged: if (control.hovered) control._ensureTip()
+    onVisualFocusChanged: if (control.visualFocus) control._ensureTip()
+    Component {
+        id: tipComponent
+        AtlasToolTip {
+            text: control.toolTip
+            shown: control.toolTip.length > 0 && (control.hovered || control.visualFocus)
+        }
     }
 
     background: Item {

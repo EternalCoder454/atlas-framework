@@ -352,7 +352,7 @@ T.AbstractButton {
                 }
             }
             Text {
-                visible: control.display !== T.AbstractButton.IconOnly || control._label.length > 0 && control._label !== control.text
+                visible: control.display !== T.AbstractButton.IconOnly || (control._letterFallback && control._glyphless && control._label.length > 0)
                 anchors.verticalCenter: parent.verticalCenter
                 text: control._label
                 font.family: AtlasStyle.fontFamily

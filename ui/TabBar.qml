@@ -350,9 +350,15 @@ Item {
                     }
                 }
 
-                AtlasToolTip {
-                    text: tab.toolTipText
-                    shown: tab.hovered && tab.toolTipText.length > 0 && !dragHandler.active && !closeButton.hovered
+                // Made when the tab is first hovered, not for every tab.
+                property var _tip: null
+                onHoveredChanged: if (tab.hovered && !tab._tip) tab._tip = tipComponent.createObject(tab)
+                Component {
+                    id: tipComponent
+                    AtlasToolTip {
+                        text: tab.toolTipText
+                        shown: tab.hovered && tab.toolTipText.length > 0 && !dragHandler.active && !closeButton.hovered
+                    }
                 }
 
                 HoverHandler {

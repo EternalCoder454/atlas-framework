@@ -70,16 +70,19 @@ T.Dialog {
     onAboutToShow: control.scrollToTop()
 
     // Keeps the item that took the focus in view in the body.
-    Connections {
-        target: control.parent ? control.parent.Window.window : null
-        function onActiveFocusItemChanged(): void {
-            const win = control.parent ? control.parent.Window.window : null;
-            const item = win ? win.activeFocusItem : null;
-            if (control.visible && item && control._inside(item) && item !== control.contentItem && scroller && scroller.contentItem) {
-                control._reveal(item);
+    // In a list property of its own, not the default one (content).
+    readonly property list<QtObject> _watchers: [
+        Connections {
+            target: control.parent ? control.parent.Window.window : null
+            function onActiveFocusItemChanged(): void {
+                const win = control.parent ? control.parent.Window.window : null;
+                const item = win ? win.activeFocusItem : null;
+                if (control.visible && item && control._inside(item) && item !== control.contentItem && scroller && scroller.contentItem) {
+                    control._reveal(item);
+                }
             }
         }
-    }
+    ]
     function _reveal(item: Item): void {
         const top = item.mapToItem(scroller.contentItem, 0, 0).y;
         const bottom = top + item.height;

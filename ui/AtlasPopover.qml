@@ -133,7 +133,9 @@ T.Popup {
 
     // The target and everything it sits in: when one moves, the popover follows.
     property var _chain: []
-    onAboutToShow: {
+    // Rebuilds the chain, then places. Run when the popover shows, when the
+    // target changes and when an item of the chain gets a new parent.
+    function _track(): void {
         const chain = [];
         for (let i = control.target; i; i = i.parent) {
             chain.push(i);
@@ -141,23 +143,30 @@ T.Popup {
         control._chain = chain;
         control._place();
     }
+    onAboutToShow: control._track()
+    onTargetChanged: if (visible) control._track()
     onParentChanged: if (visible) control._place()
-    Connections {
-        target: control.parent
-        function onWidthChanged() { if (control.visible) control._place(); }
-        function onHeightChanged() { if (control.visible) control._place(); }
-    }
-    Instantiator {
-        model: control._chain
-        delegate: Connections {
-            required property var modelData
-            target: modelData
-            function onXChanged() { if (control.visible) control._place(); }
-            function onYChanged() { if (control.visible) control._place(); }
+    // In a list property of its own, not the default one (the column).
+    readonly property list<QtObject> _watchers: [
+        Connections {
+            target: control.parent
             function onWidthChanged() { if (control.visible) control._place(); }
             function onHeightChanged() { if (control.visible) control._place(); }
+        },
+        Instantiator {
+            model: control._chain
+            delegate: Connections {
+                required property var modelData
+                target: modelData
+                function onXChanged() { if (control.visible) control._place(); }
+                function onYChanged() { if (control.visible) control._place(); }
+                function onWidthChanged() { if (control.visible) control._place(); }
+                function onHeightChanged() { if (control.visible) control._place(); }
+                // Not rebuilt here: this delegate would be destroyed inside its own signal.
+                function onParentChanged() { if (control.visible) Qt.callLater(control._track); }
+            }
         }
-    }
+    ]
     onImplicitHeightChanged: if (visible) control._place()
     onImplicitWidthChanged: if (visible) control._place()
     onClosed: {
