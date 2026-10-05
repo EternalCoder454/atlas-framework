@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls as QQC2
-import QtCore
 import org.kde.kirigami as Kirigami
 
 // Panes side by side (or stacked) with a draggable divider in the Atlas look:
@@ -16,8 +15,8 @@ import org.kde.kirigami as Kirigami
 //   }
 //
 // `stateKey` (empty by default): when set, the sizes are saved under
-// "AtlasSplitView/<stateKey>" in the app's settings (QtCore Settings, so the
-// application and organisation names must be set) a moment after a drag, and
+// "AtlasSplitView-<stateKey>" in the app's settings file (AtlasSettings) a
+// moment after a drag, and
 // restored when the view is created. Apps with their own storage use
 // saveSizes() (a base64 string) and restoreSizes(string) instead.
 QQC2.SplitView {
@@ -67,7 +66,7 @@ QQC2.SplitView {
     function _saveNow() {
         saveTimer.stop();
         if (control.stateKey.length > 0) {
-            store.sizes = control.saveSizes();
+            control._store.setValue("Sizes", control.saveSizes());
         }
     }
     property bool _ready: false
@@ -80,7 +79,7 @@ QQC2.SplitView {
 
     Component.onCompleted: {
         if (control.stateKey.length > 0) {
-            control.restoreSizes(store.sizes);
+            control.restoreSizes(control._store.value("Sizes", ""));
         }
         _ready = true;
     }
@@ -95,10 +94,8 @@ QQC2.SplitView {
     }
 
     // Only read and written when stateKey is set.
-    Settings {
-        id: store
-        category: "AtlasSplitView/" + control.stateKey
-        property string sizes
+    readonly property AtlasSettings _store: AtlasSettings {
+        group: control.stateKey.length > 0 ? "AtlasSplitView-" + control.stateKey : ""
     }
 
     handle: Item {

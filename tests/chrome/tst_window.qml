@@ -49,6 +49,24 @@ Item {
             compare(moves, 1);
         }
 
+        function test_mirrored_positions() {
+            const h = createTemporaryObject(headerComp, root);
+            let title = null;
+            for (const c of h.children) {
+                if (c.text === "Test") {
+                    title = c;
+                }
+            }
+            verify(title);
+            const x = title.x;
+            const w = title.width;
+            h.LayoutMirroring.enabled = true;
+            h.LayoutMirroring.childrenInherit = true;
+            // Every position is the mirror image of the unmirrored one.
+            fuzzyCompare(title.x + title.width, h.width - x, 1);
+            compare(title.width, w);
+        }
+
         function test_click_without_drag_does_not_move() {
             const h = createTemporaryObject(headerComp, root);
             let moves = 0;
@@ -150,12 +168,12 @@ Item {
         name: "AtlasWindowChrome"
 
         function test_parse_buttons() {
-            compare(AtlasWindowChrome.parseButtons("HIAX"), ["minimize", "maximize", "close"]);
-            compare(AtlasWindowChrome.parseButtons("M"), ["menu"]);
-            compare(AtlasWindowChrome.parseButtons("XAI"), ["close", "maximize", "minimize"]);
-            compare(AtlasWindowChrome.parseButtons("IIX"), ["minimize", "close"]);
-            compare(AtlasWindowChrome.parseButtons("SFB"), []);
-            compare(AtlasWindowChrome.parseButtons(""), []);
+            compare(AtlasWindowChrome._parseButtons("HIAX"), ["minimize", "maximize", "close"]);
+            compare(AtlasWindowChrome._parseButtons("M"), ["menu"]);
+            compare(AtlasWindowChrome._parseButtons("XAI"), ["close", "maximize", "minimize"]);
+            compare(AtlasWindowChrome._parseButtons("IIX"), ["minimize", "close"]);
+            compare(AtlasWindowChrome._parseButtons("SFB"), []);
+            compare(AtlasWindowChrome._parseButtons(""), []);
         }
 
         function test_default_layout() {

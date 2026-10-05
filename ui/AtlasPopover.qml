@@ -81,7 +81,13 @@ T.Popup {
     onImplicitWidthChanged: if (visible) control._place()
     onClosed: {
         const t = control.target;
-        if (t && t.visible && t.enabled) {
+        const focused = t ? t.Window.window?.activeFocusItem : null;
+        let inside = !focused;
+        for (let i = focused; i && !inside; i = i.parent) {
+            inside = i === control.contentItem || i === control.background;
+        }
+        // A click into another field keeps its caret.
+        if (t && t.visible && t.enabled && inside) {
             t.forceActiveFocus(Qt.PopupFocusReason);
         }
     }

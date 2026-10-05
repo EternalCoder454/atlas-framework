@@ -9,7 +9,8 @@
 //       of minimize, maximize and close falls back to the default, so a window
 //       can always be closed. Follows kwinrc live.
 //   globalMenu  the desktop has a global menu (an owner of the D-Bus name
-//       com.canonical.AppMenu.Registrar, as Plasma's app menu widget has).
+//       com.canonical.AppMenu.Registrar, as Plasma's app menu widget has) and the
+//       Qt platform theme is KDE's, so the export can work.
 //       False until the first answer, which arrives asynchronously (a 1 s
 //       timeout, so a stalled bus never blocks the UI); follows the name live.
 #pragma once
@@ -41,7 +42,7 @@ public:
 
     // Parses a KWin button string ("MS", "HIAX") into button names. Pure, for
     // tests: unknown letters are dropped, repeats are kept once.
-    Q_INVOKABLE static QStringList parseButtons(const QString &letters);
+    Q_INVOKABLE static QStringList _parseButtons(const QString &letters);
 
 Q_SIGNALS:
     void buttonsChanged();
@@ -50,7 +51,7 @@ Q_SIGNALS:
 private:
     void readButtons();
     void checkGlobalMenu();
-    void setGlobalMenu(bool on);
+    void setRegistrar(bool owned);
 
     KSharedConfig::Ptr m_config;
     KConfigWatcher::Ptr m_watcher;
@@ -58,4 +59,5 @@ private:
     QStringList m_left;
     QStringList m_right;
     bool m_globalMenu = false;
+    bool m_ownerKnown = false;
 };
