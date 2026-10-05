@@ -81,7 +81,7 @@ Item {
 
         width: parent.width
         implicitHeight: row.implicitHeight + AtlasStyle.spacingSmall * 2 + AtlasStyle.spacingLarge
-        radius: AtlasStyle.radiusLarge
+        radius: AtlasStyle.radius
         color: Qt.alpha(control.tint, 0.14)
         border.width: 1
         border.color: Qt.alpha(control.tint, 0.4)

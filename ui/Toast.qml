@@ -98,9 +98,7 @@ Item {
         width: Math.min(row.implicitWidth + pad + (actionButton.visible ? AtlasStyle.spacingSmall : pad), Math.max(0, (control.parent ? control.parent.width : 0) - Kirigami.Units.gridUnit * 2))
         height: Math.max(label.implicitHeight, actionButton.visible ? actionButton.implicitHeight : 0) + AtlasStyle.spacingLarge * 2
         radius: AtlasStyle.radiusPill
-        // Solid fallback; tinted translucent over the blurred window when transparency is effective.
-        readonly property color _solid: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.1))
-        color: Appearance.effective ? Qt.alpha(_solid, 0.85) : _solid
+        color: AtlasStyle.floatingBackground
         border.width: 1
         border.color: AtlasStyle.separator
 
@@ -119,7 +117,7 @@ Item {
                 horizontalAlignment: actionButton.visible ? Text.AlignLeft : Text.AlignHCenter
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
-                color: Kirigami.Theme.textColor
+                color: AtlasStyle.text
             }
             TextButton {
                 id: actionButton

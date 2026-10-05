@@ -22,7 +22,7 @@ T.ScrollBar {
     implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
     // The bar is as thick as the widened thumb, so hovering it is easy; the
     // thumb inside is thin until then.
-    padding: 2
+    padding: AtlasStyle.spacingXSmall + 1
     hoverEnabled: true
     policy: T.ScrollBar.AsNeeded
     minimumSize: Math.min(1, (Kirigami.Units.gridUnit * 2) / Math.max(1, control.horizontal ? control.width : control.height))
@@ -72,14 +72,14 @@ T.ScrollBar {
 
         Rectangle {
             id: thumb
-            // Thin at rest, wider under the pointer; flush with the side the content is on.
-            property real thickness: control._steady ? Kirigami.Units.smallSpacing * 2 : Math.max(3, Kirigami.Units.smallSpacing)
+            // Thin at rest, wider under the pointer; the bar's padding keeps it a little off the edge.
+            property real thickness: control._steady ? Kirigami.Units.smallSpacing * 2 : Math.max(4, Kirigami.Units.smallSpacing)
             width: control.vertical ? thickness : parent.width
             height: control.horizontal ? thickness : parent.height
             x: control.vertical ? (control.mirrored ? 0 : parent.width - width) : 0
             y: control.horizontal ? parent.height - height : 0
             radius: Math.min(width, height) / 2
-            color: Qt.alpha(Kirigami.Theme.textColor, control.pressed ? 0.55 : control.hovered ? 0.42 : 0.3)
+            color: control.pressed ? AtlasStyle.text : control.hovered ? Qt.alpha(AtlasStyle.text, 0.75) : AtlasStyle.textMuted
             Behavior on thickness {
                 NumberAnimation {
                     duration: AtlasStyle.durationShort

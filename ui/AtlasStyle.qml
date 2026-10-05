@@ -76,6 +76,9 @@ import Atlas.Ui
 // 0.92 of body), fontSizeBody, fontSizeHeading (dialog titles, 1.15),
 // fontSizeTitle (page titles, 1.6).
 //
+// WindowTitle (a header bar's title) is fontSizeWindowTitle, the body size,
+// in fontWeightWindowTitle (DemiBold); Code is the body size in monoFamily.
+//
 // Motion: durationShort 100, duration 150, durationLong 250 ms (quick and
 // subtle). They are all 0 when `reducedMotion` is true, and `reducedMotion` follows
 // Appearance.reducedMotion (Plasma's animation speed set to instant, or
@@ -177,6 +180,10 @@ QtObject {
     readonly property real fontSizeBody: _theme.Kirigami.Theme.defaultFont.pointSize
     readonly property real fontSizeHeading: _theme.Kirigami.Theme.defaultFont.pointSize * 1.15
     readonly property real fontSizeTitle: _theme.Kirigami.Theme.defaultFont.pointSize * 1.6
+
+    readonly property real fontSizeWindowTitle: fontSizeBody
+    readonly property int fontWeightWindowTitle: Font.DemiBold
+    readonly property real fontSizeCode: fontSizeBody
 
     readonly property bool reducedMotion: Appearance.reducedMotion
     readonly property int durationShort: reducedMotion ? 0 : 100

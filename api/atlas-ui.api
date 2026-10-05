@@ -197,6 +197,10 @@ AtlasDropZone.property text: QString
 AtlasDropZone.signal browseRequested()
 AtlasDropZone.signal dropped(QList<QUrl> urls)
 AtlasDropZone.type
+AtlasEdgeGlow.property active: bool
+AtlasEdgeGlow.property animated: bool
+AtlasEdgeGlow.property size: double
+AtlasEdgeGlow.type
 AtlasEmailValidator.type
 AtlasEmptyState.property actionSymbol: int
 AtlasEmptyState.property actionText: QString
@@ -288,6 +292,7 @@ AtlasIconGrid.property textRole: QString
 AtlasIconGrid.signal activated(int index)
 AtlasIconGrid.signal contextMenuRequested(int index, double x, double y)
 AtlasIconGrid.type
+AtlasInstallButton.property animated: bool
 AtlasInstallButton.property errorText: QString
 AtlasInstallButton.property installState: QString
 AtlasInstallButton.property installText: QString
@@ -298,9 +303,11 @@ AtlasInstallButton.signal cancelRequested()
 AtlasInstallButton.type
 AtlasLabel.enum TextStyle: Body = 0
 AtlasLabel.enum TextStyle: Caption = 3
+AtlasLabel.enum TextStyle: Code = 6
 AtlasLabel.enum TextStyle: Heading = 2
 AtlasLabel.enum TextStyle: Mono = 4
 AtlasLabel.enum TextStyle: Title = 1
+AtlasLabel.enum TextStyle: WindowTitle = 5
 AtlasLabel.property textStyle: int
 AtlasLabel.type
 AtlasListView.enum SelectionMode: MultiSelection = 1
@@ -384,6 +391,7 @@ AtlasPortal.method openUrl(QUrl url): bool
 AtlasPortal.property extraSchemes: QStringList
 AtlasPortal.signal actionInvoked(QString notificationId, QString actionId)
 AtlasPortal.type
+AtlasProgressBar.property animated: bool
 AtlasProgressBar.property indeterminate: bool
 AtlasProgressBar.property status: QString
 AtlasProgressBar.property text: QString
@@ -542,8 +550,11 @@ AtlasStyle.property focus: QColor [readonly]
 AtlasStyle.property fontFamily: QString [readonly]
 AtlasStyle.property fontSizeBody: double [readonly]
 AtlasStyle.property fontSizeCaption: double [readonly]
+AtlasStyle.property fontSizeCode: double [readonly]
 AtlasStyle.property fontSizeHeading: double [readonly]
 AtlasStyle.property fontSizeTitle: double [readonly]
+AtlasStyle.property fontSizeWindowTitle: double [readonly]
+AtlasStyle.property fontWeightWindowTitle: int [readonly]
 AtlasStyle.property highContrast: bool [readonly]
 AtlasStyle.property hover: QColor [readonly]
 AtlasStyle.property monoFamily: QString [readonly]

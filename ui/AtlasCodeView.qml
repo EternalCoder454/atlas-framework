@@ -68,8 +68,8 @@ Item {
     Rectangle {
         id: frame
         anchors.fill: parent
-        radius: AtlasStyle.radiusLarge
-        color: control.framed ? AtlasStyle.surfaceAlt : "transparent"
+        radius: AtlasStyle.radius
+        color: control.framed ? AtlasStyle.codeSurface : "transparent"
         border.width: control.framed ? 1 : 0
         border.color: AtlasStyle.separator
         AtlasFocusRing {

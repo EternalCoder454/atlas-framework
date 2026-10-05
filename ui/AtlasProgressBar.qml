@@ -10,6 +10,10 @@ import org.kde.kirigami as Kirigami
 // other value is treated as "normal" (and warned about once). Without `text`
 // the track fills the item's height; with it the track is a thin bar centred
 // beside the label. The fill starts on the right in right-to-left layouts.
+// While it is working ("normal", more than 0 and less than 1 or indeterminate)
+// a soft violet-to-sakura shimmer travels along the fill; it stops when the
+// bar is idle, paused, in error or complete, and under reduced motion (a flat
+// accent fill). `animated: false` freezes the shimmer in place.
 //
 //   AtlasProgressBar { value: done / total; text: qsTr("%1 of %2").arg(done).arg(total) }
 //   AtlasProgressBar { value: 0.4; status: "error"; text: qsTr("Failed") }
@@ -21,6 +25,8 @@ Item {
     property string text
     // "normal" | "paused" | "error"; anything else counts as "normal"
     property string status: "normal"
+    // Whether the shimmer travels. False holds it still (a screenshot).
+    property bool animated: true
     property bool _warned: false
     onStatusChanged: _checkStatus()
     Component.onCompleted: _checkStatus()
@@ -31,6 +37,9 @@ Item {
         }
     }
 
+    // The shimmer shows while the bar is working, and not under reduced motion.
+    readonly property bool _working: status !== "paused" && status !== "error" && (indeterminate || (value > 0 && value < 1))
+    readonly property bool _shimmer: _working && !AtlasStyle.reducedMotion
     readonly property color _fillColor: status === "error" ? AtlasStyle.error : status === "paused" ? Qt.alpha(Kirigami.Theme.textColor, 0.4) : AtlasStyle.accent
 
     implicitWidth: Kirigami.Units.gridUnit * 16
@@ -42,6 +51,30 @@ Item {
     Accessible.description: {
         const st = root.status === "error" ? qsTr("Error") : root.status === "paused" ? qsTr("Paused") : "";
         return root.text.length > 0 && st.length > 0 ? root.text + ", " + st : root.text.length > 0 ? root.text : st;
+    }
+
+    // A bright band, violet to sakura, that crosses its parent (the fill).
+    component Shimmer: Rectangle {
+        id: band
+        // 0 to 1 crosses the fill once.
+        property real phase: 0.5
+        visible: root._shimmer
+        width: Math.max(parent.width * 0.6, Kirigami.Units.gridUnit * 3)
+        height: parent.height
+        x: -width + (parent.width + width) * phase
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: Qt.alpha(AtlasStyle.sakura, 0) }
+            GradientStop { position: 0.5; color: Qt.alpha(AtlasStyle.sakura, 0.5) }
+            GradientStop { position: 1; color: Qt.alpha(AtlasStyle.accent, 0) }
+        }
+        NumberAnimation on phase {
+            running: root._shimmer && root.animated && root.visible
+            from: 0
+            to: 1
+            duration: AtlasStyle.durationLong * 7
+            loops: Animation.Infinite
+        }
     }
 
     RowLayout {
@@ -69,6 +102,8 @@ Item {
                     x: root.LayoutMirroring.enabled ? parent.width - width : 0
                     width: root.indeterminate ? 0 : root.value > 0 ? Math.max(height, parent.width * Math.min(1, root.value)) : 0
                     color: root._fillColor
+                    clip: true
+                    Shimmer {}
                     Behavior on width {
                         NumberAnimation {
                             duration: AtlasStyle.duration
@@ -84,8 +119,10 @@ Item {
                     radius: AtlasStyle.radiusPill
                     width: parent.width * 0.3
                     color: root._fillColor
+                    clip: true
+                    Shimmer {}
                     SequentialAnimation on x {
-                        running: root.indeterminate && root.status !== "paused" && root.visible && AtlasStyle.duration > 0
+                        running: root.indeterminate && root.status !== "paused" && root.visible && root.animated && AtlasStyle.duration > 0
                         loops: Animation.Infinite
                         NumberAnimation {
                             from: 0

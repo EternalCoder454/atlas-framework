@@ -5,7 +5,8 @@ import org.kde.kirigami as Kirigami
 // A keyboard shortcut drawn as keycaps, one per key, in the platform's own
 // spelling. `sequence` is a string ("Ctrl+Shift+S") or a StandardKey number
 // (`StandardKey.Save`), such as an AtlasAction's `shortcut`. A shortcut of
-// several steps ("Ctrl+K, Ctrl+C") shows the steps one after the other. With
+// several steps ("Ctrl+K, Ctrl+C") shows the steps one after the other with a
+// comma between them, as the native text spells it. With
 // no sequence it has no size. Screen readers get the sequence as text.
 //
 //   AtlasShortcutLabel { sequence: "Ctrl+Shift+S" }
@@ -33,7 +34,7 @@ Item {
         id: row
         anchors.verticalCenter: parent.verticalCenter
         // A Row follows LayoutMirroring by itself: right to left in RTL.
-        spacing: AtlasStyle.spacingSmall * 2
+        spacing: AtlasStyle.spacingSmall
 
         Repeater {
             model: priv.chords
@@ -51,20 +52,33 @@ Item {
                         height: priv.capHeight
                         width: Math.max(height, label.implicitWidth + AtlasStyle.spacingLarge * 2)
                         radius: AtlasStyle.radiusSmall
-                        color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
+                        color: AtlasStyle.hover
                         border.width: 1
-                        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.18)
+                        border.color: AtlasStyle.controlBorder
 
                         Text {
                             id: label
                             anchors.centerIn: parent
                             text: cap.modelData
-                            color: Kirigami.Theme.textColor
+                            color: AtlasStyle.text
                             font: Kirigami.Theme.smallFont
                             textFormat: Text.PlainText
                             Accessible.ignored: true
                         }
                     }
+                }
+
+                // The separator after every step but the last: "Ctrl+K, Ctrl+C".
+                // It sits in the step's Row, so it mirrors with the caps.
+                Text {
+                    visible: chord.index < priv.chords.length - 1
+                    height: priv.capHeight
+                    verticalAlignment: Text.AlignVCenter
+                    text: ","
+                    color: AtlasStyle.textMuted
+                    font: Kirigami.Theme.smallFont
+                    textFormat: Text.PlainText
+                    Accessible.ignored: true
                 }
             }
         }

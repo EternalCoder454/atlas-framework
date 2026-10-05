@@ -44,6 +44,7 @@ qt_add_qml_module(atlasui
         AtlasSwitch.qml
         AtlasTransparencySwitch.qml
         AtlasProgressBar.qml
+        AtlasEdgeGlow.qml
         ConfirmDialog.qml
         NotesText.qml
         LiveChart.qml

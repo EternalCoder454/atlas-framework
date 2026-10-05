@@ -11,7 +11,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 320
-    implicitHeight: 230
+    implicitHeight: 260
     width: implicitWidth
     height: implicitHeight
 
@@ -19,12 +19,13 @@ Item {
         anchors.fill: parent
         anchors.margins: 16
         spacing: 14
-        AtlasProgressBar { Layout.fillWidth: true; value: 0 }
-        AtlasProgressBar { Layout.fillWidth: true; value: 0.35 }
-        AtlasProgressBar { Layout.fillWidth: true; value: 1 }
-        AtlasProgressBar { Layout.fillWidth: true; value: 0.42; text: "42 %" }
+        AtlasProgressBar { Layout.fillWidth: true; animated: root.animate; value: 0 }
+        AtlasProgressBar { Layout.fillWidth: true; animated: root.animate; value: 0.35 }
+        AtlasProgressBar { Layout.fillWidth: true; animated: root.animate; value: 1 }
+        AtlasProgressBar { Layout.fillWidth: true; animated: root.animate; value: 0.42; text: "42 %" }
         AtlasProgressBar { Layout.fillWidth: true; value: 0.6; status: "paused"; text: "3 of 5" }
         AtlasProgressBar { Layout.fillWidth: true; value: 0.3; status: "error"; text: "Failed" }
+        AtlasProgressBar { Layout.fillWidth: true; animated: root.animate; indeterminate: true; text: "Working" }
         AtlasProgressBar { Layout.fillWidth: true; indeterminate: true; status: "paused"; text: "Paused" }
     }
 }

@@ -21,8 +21,8 @@ import Atlas.Ui
 T.Popup {
     id: control
 
-    // Solid fallback is the surface; tinted translucent over the blurred window when transparency is effective.
-    readonly property color _surface: Appearance.effective ? Qt.alpha(AtlasStyle.surface, 0.85) : AtlasStyle.surface
+    // floatingBackground is tinted translucent over the blurred window, solid without it.
+    readonly property color _surface: AtlasStyle.floatingBackground
 
     // The item the popover belongs to and points at; set it before opening.
     property Item target
@@ -72,7 +72,7 @@ T.Popup {
         control.x = Math.max(0, Math.min(rawX, p.width - w));
         const centre = origin.x + t.width / 2 - control.x;
         // Keep the arrow on the straight part of the card, off the rounded corners.
-        const lo = AtlasStyle.radiusLarge + control._arrowSize;
+        const lo = AtlasStyle.radius + control._arrowSize;
         control._arrowX = Math.max(lo, Math.min(centre, w - lo));
     }
 
@@ -116,7 +116,7 @@ T.Popup {
             anchors.margins: -1
             anchors.topMargin: 1
             anchors.bottomMargin: -3
-            radius: AtlasStyle.radiusLarge + 1
+            radius: AtlasStyle.radius + 1
             color: Qt.alpha("black", 0.05)
         }
         Rectangle {
@@ -124,7 +124,7 @@ T.Popup {
             anchors.margins: -2
             anchors.topMargin: 0
             anchors.bottomMargin: -4
-            radius: AtlasStyle.radiusLarge + 2
+            radius: AtlasStyle.radius + 2
             color: Qt.alpha("black", 0.035)
         }
         Rectangle {
@@ -132,7 +132,7 @@ T.Popup {
             anchors.margins: -3
             anchors.topMargin: -1
             anchors.bottomMargin: -5
-            radius: AtlasStyle.radiusLarge + 3
+            radius: AtlasStyle.radius + 3
             color: Qt.alpha("black", 0.02)
         }
         Rectangle {
@@ -141,7 +141,7 @@ T.Popup {
             y: control.topInset
             width: parent.width
             height: parent.height - control.topInset - control.bottomInset
-            radius: AtlasStyle.radiusLarge
+            radius: AtlasStyle.radius
             color: control._surface
             border.width: 1
             border.color: AtlasStyle.separator

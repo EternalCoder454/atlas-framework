@@ -61,11 +61,13 @@ Rectangle {
                     font: Kirigami.Theme.defaultFont
                 }
                 AtlasInstallButton {
+                    animated: root.animate
                     installState: cell.modelData.label
                     // With animation off the unknown slide is replaced by a figure.
                     progress: cell.unknown && !root.animate ? 0.4 : cell.modelData.progress
                 }
                 AtlasInstallButton {
+                    animated: root.animate
                     enabled: false
                     installState: cell.modelData.label
                     progress: cell.modelData.progress < 0 ? 0.4 : cell.modelData.progress

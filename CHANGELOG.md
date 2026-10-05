@@ -8,6 +8,18 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui design pass, surfaces: menus, popovers, tooltips, toasts, the
+  command palette and dialogs use `AtlasStyle.floatingBackground` (strong tint
+  over the blur, solid without it) with radius 6 (dialogs 8); the header bar
+  and floating toolbar use `chromeBackground`; the window is `AtlasStyle.base`;
+  `Section` and `AtlasCard` are solid surfaces with light separators;
+  `AtlasCodeView` has its own `codeSurface`. `AtlasLabel` gains the
+  `WindowTitle` and `Code` styles (Code is Mono) and Heading uses the full
+  text colour. `AtlasShortcutLabel` shows a comma between the steps of a
+  two-step shortcut. `AtlasProgressBar` shimmers violet to sakura while it is
+  working (`animated: false` holds it still; flat under reduced motion). New
+  `AtlasEdgeGlow`: a soft violet-to-sakura glow along the edges of its parent,
+  for one meaning only, "the system is doing something for you now" (since 1.4.0).
 - Atlas.Ui fixes to 1.3.0 controls: `ToolbarButton` with `focusable` now takes
   Return/Enter through the normal click path, so a bound `action` fires and a
   `checked` binding survives. `AtlasProgressBar` fills its height again when it
