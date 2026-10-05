@@ -401,6 +401,12 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   (loaded through a Loader, Recommends in the spec); without it, X11 tool
   windows or the in-window glow. The Updater builds it first and hands over
   the file with measured costs.
+  Handed over 2026-10-05: atlasos-updater v0.2.0,
+  `apps/atlas-updater/qml/ScreenGlow.qml`, `GlowStrip.qml`,
+  `GlowStripLayer.qml` (tested headless: strips on 2 outputs follow a screen
+  removed and re-added, X11 clicks pass through, nothing alive while
+  inactive). Costs not measured yet: they need Zach's monitors. Not needed
+  to ship 1.5.0: the Updater keeps its copy.
 - Waits for Fedora's Qt 6.12 (Fedora 44 and 45 ship 6.11.2):
   `motionPreference`, QML hot reload, ToolTip `policy`, MenuItem shortcuts.
 
