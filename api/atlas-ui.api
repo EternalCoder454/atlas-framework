@@ -540,6 +540,34 @@ AtlasToolbar.property overflowCount: int [readonly]
 AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
 AtlasToolbar.property visibleCount: int [readonly]
 AtlasToolbar.type
+AtlasTransparencySwitch.method activate(QVariant event): QVariant
+AtlasTransparencySwitch.method ensureVisible(): QVariant
+AtlasTransparencySwitch.method step(QVariant forward, QVariant event): QVariant
+AtlasTransparencySwitch.property animated: bool
+AtlasTransparencySwitch.property atlasRow: bool [readonly]
+AtlasTransparencySwitch.property busy: bool
+AtlasTransparencySwitch.property byMouse: bool
+AtlasTransparencySwitch.property checkmark: bool
+AtlasTransparencySwitch.property chevron: bool
+AtlasTransparencySwitch.property clickable: bool
+AtlasTransparencySwitch.property content: QQmlListProperty<QObject> [readonly]
+AtlasTransparencySwitch.property density: int
+AtlasTransparencySwitch.property disclosure: bool
+AtlasTransparencySwitch.property expanded: bool
+AtlasTransparencySwitch.property iconName: QString
+AtlasTransparencySwitch.property isFirst: bool [readonly]
+AtlasTransparencySwitch.property leading: QQmlListProperty<QObject> [readonly]
+AtlasTransparencySwitch.property mirrored: bool [readonly]
+AtlasTransparencySwitch.property radio: bool
+AtlasTransparencySwitch.property showSwitch: bool
+AtlasTransparencySwitch.property subtitle: QString
+AtlasTransparencySwitch.property switchChecked: bool
+AtlasTransparencySwitch.property title: QString
+AtlasTransparencySwitch.property trailing: QQmlListProperty<QObject> [readonly]
+AtlasTransparencySwitch.property value: QString
+AtlasTransparencySwitch.signal clicked()
+AtlasTransparencySwitch.signal switchToggled(bool checked)
+AtlasTransparencySwitch.type
 AtlasTreeModel.property items: QVariantList
 AtlasTreeModel.type
 AtlasTreeView.enum SelectionMode: MultiSelection = 1

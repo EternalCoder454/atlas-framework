@@ -99,7 +99,8 @@ T.Dialog {
 
     background: Rectangle {
         radius: 14
-        color: Kirigami.Theme.backgroundColor
+        // Solid fallback; tinted translucent over the blurred window when transparency is effective.
+        color: Appearance.effective ? Qt.alpha(Kirigami.Theme.backgroundColor, 0.92) : Kirigami.Theme.backgroundColor
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
     }

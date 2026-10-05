@@ -54,11 +54,33 @@ T.Menu {
         keyNavigationWraps: true
     }
 
-    background: Rectangle {
-        radius: AtlasStyle.radiusLarge
-        color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
-        border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
+    background: Item {
+        // Soft shadow: faint outlines, no shader, so it also draws with the software renderer.
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -1
+            anchors.topMargin: 0
+            anchors.bottomMargin: -3
+            radius: AtlasStyle.radiusLarge + 1
+            color: Qt.alpha("black", 0.04)
+        }
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -2
+            anchors.topMargin: -1
+            anchors.bottomMargin: -5
+            radius: AtlasStyle.radiusLarge + 2
+            color: Qt.alpha("black", 0.025)
+        }
+        Rectangle {
+            anchors.fill: parent
+            radius: AtlasStyle.radiusLarge
+            // Solid fallback; tinted translucent over the blurred window when transparency is effective.
+            readonly property color _solid: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
+            color: Appearance.effective ? Qt.alpha(_solid, 0.85) : _solid
+            border.width: 1
+            border.color: AtlasStyle.separator
+        }
     }
 
     enter: Transition {

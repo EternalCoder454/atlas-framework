@@ -193,9 +193,9 @@ T.Control {
 
         background: Rectangle {
             radius: AtlasStyle.radiusLarge
-            color: AtlasStyle.surface
+            color: Appearance.effective ? Qt.alpha(AtlasStyle.surface, 0.85) : AtlasStyle.surface
             border.width: 1
-            border.color: Qt.alpha(AtlasStyle.text, 0.16)
+            border.color: AtlasStyle.separator
         }
 
         enter: Transition {

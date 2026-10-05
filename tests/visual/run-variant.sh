@@ -41,7 +41,7 @@ esac
 if [ "$variant" = opaque ]; then
     # Transparency off. It only shows on windows, so only those are compared.
     printf '[Appearance]\nTransparency=false\n' >"$XDG_CONFIG_HOME/atlasrc"
-    export ATLAS_DEMO_FILTER='^(AtlasWindow|AtlasPage|AtlasAboutPage)$'
+    export ATLAS_DEMO_FILTER='^(AtlasWindow|AtlasPage|AtlasAboutPage|ContextMenu|AtlasPopover|AtlasDialog|ConfirmDialog|AtlasCommandPalette|AtlasShortcutsDialog|Toast|AtlasToolTip|AtlasComboBox|AtlasDatePicker|AtlasTransparencySwitch)$'
 fi
 
 export ATLAS_VARIANT=$variant

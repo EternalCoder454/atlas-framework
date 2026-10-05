@@ -8,6 +8,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: menus, tooltips, popovers, dialogs, toasts, the command palette and
+  the combo box and date picker popups are tinted and translucent over the
+  blurred window, and solid when `Appearance.effective` is off. New
+  AtlasTransparencySwitch, a settings row for `Appearance.transparency`.
 - Atlas.Ui: AtlasTreeView, a tree on Qt Quick's TreeView in the Atlas list
   look (single or multi selection, keyboard, type-ahead, RTL), and
   AtlasTreeModel, a tree model built from nested JS objects.

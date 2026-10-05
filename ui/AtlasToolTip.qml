@@ -59,9 +59,11 @@ T.ToolTip {
 
     background: Rectangle {
         radius: AtlasStyle.radius
-        color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
+        // Solid fallback; tinted translucent over the blurred window when transparency is effective.
+        readonly property color _solid: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
+        color: Appearance.effective ? Qt.alpha(_solid, 0.85) : _solid
         border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
+        border.color: AtlasStyle.separator
     }
 
     enter: Transition {
