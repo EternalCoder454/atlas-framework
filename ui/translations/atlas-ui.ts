@@ -4,60 +4,60 @@
 <context>
     <name>AtlasAboutPage</name>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="32"/>
-        <location filename="../AtlasAboutPage.qml" line="105"/>
+        <location filename="../AtlasAboutPage.qml" line="35"/>
+        <location filename="../AtlasAboutPage.qml" line="138"/>
         <source>About</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="80"/>
+        <location filename="../AtlasAboutPage.qml" line="113"/>
         <source>Version %1</source>
         <extracomment>Version line under the app name: %1 is the version number (&quot;Version 1.2.0&quot;)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="96"/>
+        <location filename="../AtlasAboutPage.qml" line="129"/>
         <source>Copy system info</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="99"/>
+        <location filename="../AtlasAboutPage.qml" line="132"/>
         <source>Copied</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="107"/>
+        <location filename="../AtlasAboutPage.qml" line="140"/>
         <source>Version</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="112"/>
+        <location filename="../AtlasAboutPage.qml" line="145"/>
         <source>Operating system</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="117"/>
+        <location filename="../AtlasAboutPage.qml" line="150"/>
         <source>Qt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="122"/>
+        <location filename="../AtlasAboutPage.qml" line="156"/>
         <source>License</source>
         <extracomment>The software licence of the app, as in &quot;MIT License&quot; (not a driving licence)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="129"/>
+        <location filename="../AtlasAboutPage.qml" line="163"/>
         <source>Links</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="132"/>
+        <location filename="../AtlasAboutPage.qml" line="166"/>
         <source>Source code</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="138"/>
+        <location filename="../AtlasAboutPage.qml" line="172"/>
         <source>Report a problem</source>
         <translation type="unfinished"></translation>
     </message>
@@ -124,22 +124,20 @@
 <context>
     <name>AtlasBreadcrumb</name>
     <message>
-        <location filename="../AtlasBreadcrumb.qml" line="137"/>
+        <location filename="../AtlasBreadcrumb.qml" line="140"/>
         <source>Path</source>
         <extracomment>Spoken name of a path bar (breadcrumb)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasBreadcrumb.qml" line="218"/>
+        <location filename="../AtlasBreadcrumb.qml" line="221"/>
         <source>Current location</source>
         <extracomment>Spoken hint on the last segment of a path bar: it is where you are now</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasBreadcrumb.qml" line="115"/>
-        <location filename="../AtlasBreadcrumb.qml" line="290"/>
+        <location filename="../AtlasBreadcrumb.qml" line="34"/>
         <source>Hidden folders</source>
-        <extracomment>Spoken name of the &quot;…&quot; button of a path bar, which opens the folders that do not fit</extracomment>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -183,7 +181,7 @@
 <context>
     <name>AtlasCodeView</name>
     <message>
-        <location filename="../AtlasCodeView.qml" line="66"/>
+        <location filename="../AtlasCodeView.qml" line="69"/>
         <source>Code</source>
         <translation type="unfinished"></translation>
     </message>
@@ -286,12 +284,12 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasDetailGrid</name>
     <message>
-        <location filename="../AtlasDetailGrid.qml" line="121"/>
+        <location filename="../AtlasDetailGrid.qml" line="174"/>
         <source>Copy %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasDetailGrid.qml" line="149"/>
+        <location filename="../AtlasDetailGrid.qml" line="205"/>
         <source>Copy</source>
         <translation type="unfinished"></translation>
     </message>
