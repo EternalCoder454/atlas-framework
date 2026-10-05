@@ -132,6 +132,8 @@ qt_add_qml_module(atlasui
         atlasformat.h atlasformat.cpp
         atlasapp.h atlasapp.cpp
         atlasclipboard.h atlasclipboard.cpp
+        atlassettings.h atlassettings.cpp
+        atlasportal.h atlasportal.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         translations.cpp atlasuiplugin.cpp
 )
@@ -159,7 +161,7 @@ if(ATLAS_UI_DEV_BUILD)
         ATLAS_UI_TRANSLATIONS_BUILD_DIR="${CMAKE_CURRENT_BINARY_DIR}/translations")
 endif()
 # Appearance: the shared transparency switch (atlasrc) and window blur.
-target_link_libraries(atlasui PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Qml
+target_link_libraries(atlasui PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::DBus
     KF6::WindowSystem KF6::ConfigCore)
 
 # lupdate and lrelease come with qt6-linguist. Without them the module still

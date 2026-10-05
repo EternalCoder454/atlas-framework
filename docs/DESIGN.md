@@ -112,7 +112,9 @@ control takes `iconName`.
 
 | Type | What it is |
 |---|---|
-| `AtlasWindow` | The application window: blur or opaque, following `Appearance`; `sidebarColor()` for a sidebar; `widthClass` (Compact < 30 gridUnits, Wide >= 60) and `sidebarCollapsed` (true in Compact) so every app collapses its sidebar alike (since 1.4.0) |
+| `AtlasWindow` | The application window: blur or opaque, following `Appearance`; `sidebarColor()` for a sidebar; `widthClass` (Compact < 30 gridUnits, Wide >= 60) and `sidebarCollapsed` (true in Compact) so every app collapses its sidebar alike; `stateKey` saves and restores size and maximised state (since 1.4.0) |
+| `AtlasSettings` | The app's own settings file (`atlas-<app>rc`, the one the Rust `settings` module uses): `group`, `fileName`, typed `value(key, default)`, batched atomic `setValue`/`remove`, `contains`, `changed(key)` for other writers. Takes the crate's `flock`, refuses immutable keys, bad names and symlinks leading out of the config directory (since 1.4.0) |
+| `AtlasPortal` | Singleton: `openUrl(url)` opens only http(s), mailto and existing file URLs (plus `extraSchemes`); `notify(title, body, actions, options)` over org.freedesktop.Notifications with the Notifications rules below and `actionInvoked`; `escape(text)` for the body (since 1.4.0) |
 | `AtlasPage` | A scrolling page with a large bold title and centred margins; `headerTrailing` puts items at the end of the title row, `maxContentWidth` is writable (since 1.4.0) |
 | `PrimaryButton`, `SecondaryButton`, `TextButton`, `MenuButton` | Buttons (`AtlasButton` is their shared base) |
 | `AtlasSwitch` | Pill switch |
