@@ -130,7 +130,8 @@ public:
     // Highlights one line. `startState` is the state at the start of the line;
     // `line` is its text without the line break. Append the runs to `runs`, in
     // column order and without overlaps (gaps are the normal style), and return
-    // the state at the end of the line. Runs on a worker thread, possibly for
+    // the state at the end of the line. The view stores one int per line and
+    // only compares states for equality. Runs on a worker thread, possibly for
     // different views at once: it must be reentrant and must not touch the GUI
     // or QObjects of the GUI thread. It must not throw.
     virtual int highlightLine(int startState, const QString &line, QList<AtlasText::FormatRun> *runs) const = 0;
@@ -139,9 +140,11 @@ public:
 // The interface the item implements. Not a QObject; see the top of the file.
 class AtlasTextViewInterface
 {
-public:
+protected:
+    // Not deleted through this type: the item owns itself.
     virtual ~AtlasTextViewInterface() = default;
 
+public:
     // ATLAS_TEXTVIEW_INTERFACE_VERSION as the item was built (always the
     // first virtual). 1 for this interface.
     virtual int interfaceVersion() const = 0;
@@ -151,7 +154,10 @@ public:
 
     // ---- The text ----
 
-    // The whole text as a QString. Builds a copy; large files use snapshot().
+    // The whole text as a QString. Builds a copy, and only when this getter
+    // is called: the QML `textChanged` signal does not build the string, so
+    // listening to it costs nothing until a reader asks. Large files use
+    // snapshot().
     virtual QString text() const = 0;
     // Replaces everything as one load, resets undo and clears `modified`.
     virtual void setText(const QString &text) = 0;
@@ -160,6 +166,14 @@ public:
     virtual qsizetype lineCount() const = 0;
     // The text from `start` to `end`.
     virtual QString textInRange(qsizetype start, qsizetype end) const = 0;
+    // The position nearest to `itemPoint` (item coordinates), for the context
+    // menu, Ctrl+click on links, drop targets and the like. Clamped to the
+    // text; GUI thread only.
+    virtual qsizetype positionAt(const QPointF &itemPoint) const = 0;
+    // The rectangle of the character at `position`, in item coordinates, for
+    // popups placed at a word. At the end of the text it is the caret's
+    // rectangle there. Empty when the line is not laid out yet (not visible).
+    virtual QRectF rectangleAt(qsizetype position) const = 0;
     // The position of the first unit of `line`, and the line and column of
     // `position`.
     virtual qsizetype positionOfLine(qsizetype line) const = 0;
@@ -202,14 +216,19 @@ public:
     virtual void setReadOnly(bool readOnly) = 0;
     // Each of these is one undo record unless inside beginEdit()/endEdit().
     // They do nothing when readOnly or loading. They keep the caret where an
-    // edit before it would, and emit contentsChange().
+    // edit before it would, and emit contentsChange() for each change.
     virtual void insert(qsizetype position, const QString &text) = 0;
     virtual void remove(qsizetype start, qsizetype end) = 0;
     virtual void replace(qsizetype start, qsizetype end, const QString &text) = 0;
     // Group changes into one undo record. They nest; the record closes at the
     // outermost endEdit(). A beginEdit() without endEdit() is the caller's bug.
+    // contentsChange() is not grouped: inside a group it fires once per change,
+    // as it happens, not once per group.
     virtual void beginEdit() = 0;
     virtual void endEdit() = 0;
+    // Undo and redo restore the caret and the selection to what they were
+    // before the record (undo) or after it (redo), as QTextDocument does, and
+    // emit contentsChange() for each change they make.
     virtual void undo() = 0;
     virtual void redo() = 0;
     virtual bool canUndo() const = 0;
@@ -218,8 +237,12 @@ public:
     virtual void setUndoLimit(int limit) = 0;
     // True when the text differs from the last load or markSaved().
     virtual bool modified() const = 0;
-    // The kind of line break in the text, and a one-undo conversion to
-    // another. `kind` must not be Mixed.
+    // The kind of line break in the text (LF for an empty text, Mixed when
+    // there are several). CRLF counts as two positions, so positions match the
+    // file. convertLineEndings() rewrites every break to `kind` as one
+    // compound edit, so one undo restores them; `kind` must not be Mixed, and
+    // nothing happens if the text already uses only `kind`. A text kept as LF
+    // only (as Notepad does) reports LF and is never converted.
     virtual AtlasText::LineEnding lineEnding() const = 0;
     virtual void convertLineEndings(AtlasText::LineEnding kind) = 0;
 
@@ -277,6 +300,14 @@ public:
     // text is deleted disappears (and the layer's contents then differ from
     // what was set). Only ranges in visible lines cost anything.
     virtual void setDecorations(const QString &layer, const QList<AtlasText::Range> &ranges, AtlasText::DecorationStyle style) = 0;
+    // Replaces only the ranges of `layer` that lie inside `region`, leaving
+    // the rest of the layer alone; `ranges` (all in `style`) are clipped to
+    // `region`. For find-all and spelling, which set the visible range again
+    // on visibleRangeChanged(). Ships in step 3: the slot is in the interface from
+    // the start, but until step 3 lands it does nothing, so an app uses
+    // setDecorations() meanwhile.
+    virtual void replaceDecorations(const QString &layer, const AtlasText::Range &region, const QList<AtlasText::Range> &ranges,
+                                    AtlasText::DecorationStyle style) = 0;
     // Removes one layer. Unknown names are ignored.
     virtual void clearDecorations(const QString &layer) = 0;
 
@@ -285,6 +316,12 @@ public:
     // "" for none. An unknown name selects none.
     virtual QString syntax() const = 0;
     virtual void setSyntax(const QString &name) = 0;
+    // The theme the built-in highlighter uses. By default (empty name) it
+    // follows the Atlas.Ui light/dark palette on its own and switches with it.
+    // A KSyntaxHighlighting theme name overrides that; an empty name goes back
+    // to following the palette. An unknown name is ignored.
+    virtual QString syntaxTheme() const = 0;
+    virtual void setSyntaxTheme(const QString &name) = 0;
     // The definition that fits a file name and the file's first line (for
     // shebangs and modelines), or "" when none does.
     virtual QString syntaxForFile(const QString &fileName, const QString &firstLine) const = 0;
@@ -295,7 +332,18 @@ public:
     // built-in one with nullptr. The view keeps the shared pointer until it is
     // replaced or the view is destroyed, and calls it on a worker thread.
     // Setting one restyles the whole text.
+    //
+    // The view only stores the int states and compares them for equality, so an
+    // app can intern richer states (a stack, a block kind) as ints in its own
+    // table. Equal states must mean equal behaviour on the following lines.
     virtual void setHighlighter(std::shared_ptr<const AtlasTextHighlighterInterface> highlighter) = 0;
+    // Highlights lines [firstLine, lastLine] again with the current
+    // highlighter, without replacing it. For when its output depends on
+    // outside state (the theme, a dictionary, the caret line). Lines after
+    // lastLine follow if their start state changed. Clamped; GUI thread only.
+    virtual void rehighlight(qsizetype firstLine, qsizetype lastLine) = 0;
+    // All lines.
+    virtual void rehighlight() = 0;
     // The format at `position`: the name and look the highlighter gave it. The
     // result is default (empty name) where the text is not highlighted yet.
     virtual AtlasText::Format formatAt(qsizetype position) const = 0;
@@ -307,6 +355,9 @@ public:
 //   void contentsChange(qsizetype position, qsizetype removed, qsizetype added);
 //       Before the property-changed signals of the same edit. Fires for every
 //       change, user's or the app's, so it is the hook for a document model.
+//       `position` is in the text after the change; `removed` units were
+//       there before and `added` are there now, as in QTextDocument. Inside
+//       beginEdit()/endEdit() it fires once per change, not once per group.
 //   void textEdited();
 //       User edits only (keys, paste, drop, IME), not setText() or insert().
 //   void visibleRangeChanged();

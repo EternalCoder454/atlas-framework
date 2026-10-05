@@ -405,3 +405,27 @@ design left, for Notepad to confirm:
 - **Added beyond the sketch:** `cursorRectangle()`, `interfaceVersion()`,
   `item()`. Enums (`LineEnding`, `DecorationStyle`) live in `namespace
   AtlasText` with fixed integer values.
+
+Changes after Notepad's review of the headers (all in the headers now):
+
+- `positionAt(QPointF)` and `rectangleAt(position)` map points and positions
+  in item coordinates.
+- `rehighlight(first, last)` and `rehighlight()` restyle lines without
+  replacing the highlighter. The view only stores and compares int states, so
+  an app can intern richer states as ints.
+- Undo and redo restore the caret and selection from before and after the
+  record, as QTextDocument does.
+- `contentsChange` positions are in the text after the change. Inside
+  `beginEdit()`/`endEdit()` it fires once per change, not once per group.
+- The built-in highlighter follows the Atlas.Ui light/dark palette;
+  `setSyntaxTheme(name)` overrides it, and an empty name follows the palette.
+- `replaceDecorations(layer, region, ranges, style)` replaces only the ranges
+  inside `region`. It ships in step 3; until then it does nothing.
+- `~AtlasTextViewInterface()` is protected.
+- QML `text`: `textChanged` does not build the string; the getter copies only
+  when read.
+- `lineEnding()` and `convertLineEndings()` are in the API and documented
+  (CRLF is two positions; one undo restores a conversion).
+
+Scope: Notepad's Markdown Formatted view stays on QTextDocument, because it
+needs rich layout. AtlasTextView covers plain text, code and Markdown source.
