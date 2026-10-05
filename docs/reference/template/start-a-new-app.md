@@ -26,4 +26,4 @@ order: 10
    The template's own `Cargo.toml` uses `path = "../crates/..."` dependencies, because it sits in the framework's checkout; replace them.
 4. Give the app's RPM `Requires: atlas-ui` and `BuildRequires: atlas-ui` with `>= X.Y.Z`, the same version as `ui:` in the `app!` call in `src/lib.rs` (the template says `1.3.0`). Keep the two equal. See [Compatibility](../atlas-ui/compatibility.md).
 5. Add properties and invokables to `src/backend.rs`, pages to `qml/`, and list each page in `QML_FILES` in `CMakeLists.txt`.
-6. Run the framework's checks in the app's CI: `tools/lint-app.sh <app dir>` and `tools/check-app-names.sh <app dir>`.
+6. Run the framework's checks in the app's CI: `tools/lint-app.sh <app dir>` and `tools/check-app-names.sh <app dir>`. `atlas-preview <page.qml> --out <dir>` renders a page in every theme, direction and text size, and exits 1 when QML warned (the framework's tools/README.md has the options).

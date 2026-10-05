@@ -5,7 +5,7 @@ section: Guides
 order: 10
 ---
 
-Every Atlas app follows these rules. Atlas.Ui implements them, so an app that builds its pages from Atlas.Ui's controls gets them for free. The framework's `tools/lint-app.sh` fails an app on the default buttons and warns on the other default controls.
+Every Atlas app follows these rules. Atlas.Ui implements them, so an app that builds its pages from Atlas.Ui's controls gets them for free. The framework's `tools/lint-app.sh` fails an app on the default buttons and warns on the other default controls, and on raw colours, animation durations and radii where an AtlasStyle token exists.
 
 ## 1. Pages built from Atlas controls
 

@@ -36,7 +36,7 @@ Item {
         SectionRow {
             title: "Leading"
             leading: [
-                Rectangle { width: 28; height: 28; radius: 14; color: AtlasStyle.accent }
+                Rectangle { width: 28; height: 28; radius: 14; color: AtlasStyle.accent } // atlas-lint: allow-raw circular avatar sample
             ]
         }
         SectionRow {

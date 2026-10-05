@@ -336,8 +336,8 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
 - [ ] 30 AtlasSplitView `collapsible` (one pane at a time when narrow).
 - [x] 31 AtlasWindow `toast()` and `confirm()`.
 - [x] 32 AtlasGlobalShortcut (GlobalShortcuts portal).
-- [ ] 33 Token-only lint in lint-app.sh.
-- [ ] 34 atlas-preview: an app's pages through the golden matrix.
+- [x] 33 Token-only lint in lint-app.sh.
+- [x] 34 atlas-preview: an app's pages through the golden matrix.
 - [ ] 35 Popups as windows where supported; RectangularShadow.
 - [x] 36 Platform contrast, reduced motion and accent (QStyleHints and the
   portal); `Accessible.announce()` where the A2 list above says.

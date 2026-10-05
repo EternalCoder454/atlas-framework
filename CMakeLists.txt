@@ -69,6 +69,7 @@ if(ATLAS_UI_DEV_BUILD)
 endif()
 
 add_subdirectory(ui)
+add_subdirectory(tools/preview)
 
 option(ATLAS_BUILD_GALLERY "Build Atlas Symbols, the icon gallery" ON)
 if(ATLAS_BUILD_GALLERY)

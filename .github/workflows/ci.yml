@@ -377,10 +377,10 @@ jobs:
           python3 tools/docs.py check
 
       - name: Design rules in the gallery and the template
-        # These are ours, so their findings fail; so does a type name the
-        # template's own files would hide.
+        # These are ours, so their findings fail, warnings too (--strict); so
+        # does a type name the template's own files would hide.
         run: |
-          tools/lint-app.sh ui/gallery template
+          tools/lint-app.sh --strict ui/gallery template
           tools/check-app-names.sh template
 
   publish-docs:

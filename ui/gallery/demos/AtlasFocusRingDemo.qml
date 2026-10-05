@@ -28,10 +28,10 @@ Item {
         Rectangle {
             implicitWidth: 80
             implicitHeight: 36
-            radius: 18
+            radius: 18 // atlas-lint: allow-raw ring shape wraps the box
             color: Kirigami.Theme.backgroundColor
             border.color: Kirigami.Theme.disabledTextColor
-            AtlasFocusRing { shown: true; radius: 18 }
+            AtlasFocusRing { shown: true; radius: 18 } // atlas-lint: allow-raw ring shape wraps the box
         }
     }
 }

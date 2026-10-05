@@ -9,6 +9,7 @@
 //   ATLAS_VARIANT       light, dark, accent, opaque, contrast,
 //                       rtl, compact or text200
 //   ATLAS_UPDATE_GOLDENS=1 rewrites the goldens that fail instead of failing
+#include "../../tools/preview/variant.h"
 #include "../demolist.h"
 
 #include <QtQuickTest/quicktest.h>
@@ -171,44 +172,9 @@ class Setup : public QObject
 public slots:
     void applicationAvailable()
     {
-        // A fixed font, so the pictures do not depend on the machine's setting.
-        // text200 doubles it, as a desktop set to 200% text does (the font's
-        // point size over the default 10 is Appearance.textScale).
-        const QString variant = qEnvironmentVariable("ATLAS_VARIANT");
-        QGuiApplication::setFont(QFont(QStringLiteral("Noto Sans"), variant == QLatin1String("text200") ? 20 : 10));
-        // rtl: an Arabic or Hebrew desktop sets the application's layout
-        // direction, and every item and window mirrors with it.
-        if (variant == QLatin1String("contrast")) {
-            // The portal theme (see fake-portal.cpp) brings Qt's own palette
-            // and Kirigami follows it, not kdeglobals: give it the colours of
-            // schemes/BreezeHighContrast.colors.
-            QPalette p;
-            const QColor black(0, 0, 0), white(255, 255, 255), yellow(255, 255, 0), grey(40, 40, 40);
-            p.setColor(QPalette::Window, black);
-            p.setColor(QPalette::WindowText, white);
-            p.setColor(QPalette::Base, black);
-            p.setColor(QPalette::AlternateBase, QColor(28, 28, 28));
-            p.setColor(QPalette::Text, white);
-            p.setColor(QPalette::Button, black);
-            p.setColor(QPalette::ButtonText, white);
-            p.setColor(QPalette::Highlight, yellow);
-            p.setColor(QPalette::HighlightedText, black);
-            p.setColor(QPalette::ToolTipBase, black);
-            p.setColor(QPalette::ToolTipText, white);
-            p.setColor(QPalette::PlaceholderText, QColor(200, 200, 200));
-            p.setColor(QPalette::Link, QColor(102, 204, 255));
-            p.setColor(QPalette::LinkVisited, QColor(230, 150, 255));
-            p.setColor(QPalette::Light, grey);
-            p.setColor(QPalette::Mid, QColor(160, 160, 160));
-            p.setColor(QPalette::Dark, white);
-            p.setColor(QPalette::Disabled, QPalette::WindowText, QColor(150, 150, 150));
-            p.setColor(QPalette::Disabled, QPalette::Text, QColor(150, 150, 150));
-            p.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(150, 150, 150));
-            QGuiApplication::setPalette(p);
-        }
-        if (variant == QLatin1String("rtl")) {
-            QGuiApplication::setLayoutDirection(Qt::RightToLeft);
-        }
+        // The variant's font, palette and layout direction (tools/preview/variant.cpp,
+        // shared with atlas-preview).
+        AtlasVariant::applyToApplication(qEnvironmentVariable("ATLAS_VARIANT"));
     }
     void qmlEngineAvailable(QQmlEngine *engine)
     {

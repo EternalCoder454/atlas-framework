@@ -8,6 +8,14 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.5.0 (unreleased)
 
+- New: `atlas-preview`, installed with Atlas.Ui, renders an app's page or
+  component in the visual-test matrix (light, dark, accent, opaque, rtl,
+  text200, compact, contrast) on private session buses; exit 1 when QML
+  warned (tools/README.md).
+- `tools/lint-app.sh` warns on raw colours, literal animation durations and
+  radii, naming the AtlasStyle token to use (`// atlas-lint: allow-raw` on
+  the line or the one before keeps a deliberate value); `--strict` makes
+  warnings fail, as CI does for the gallery and the template.
 - Fix: `ConfirmDialog` with `destructive: true` draws the accept button in
   AtlasButton's Destructive look again (error text and border on a faint
   error fill); since 1.4.0 it was drawn in the accent.
