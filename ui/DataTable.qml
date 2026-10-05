@@ -141,7 +141,8 @@ FocusScope {
     implicitWidth: Kirigami.Units.gridUnit * 30
     implicitHeight: Kirigami.Units.gridUnit * 20
     Layout.fillWidth: true
-    activeFocusOnTab: true
+    // Not under a status: no row shows focus, and the action button is the stop.
+    activeFocusOnTab: root.status === AtlasStatus.Ready
 
     Accessible.role: Accessible.Table
     Accessible.focusable: true

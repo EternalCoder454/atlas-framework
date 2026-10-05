@@ -95,7 +95,9 @@ T.Control {
         priv.anchorRow = -1;
     }
 
-    focusPolicy: Qt.StrongFocus
+    // Not a Tab stop under a status: there is no row to show focus on, and the
+    // status's action button is the stop.
+    focusPolicy: control.status === AtlasStatus.Ready ? Qt.StrongFocus : Qt.ClickFocus
     implicitWidth: Kirigami.Units.gridUnit * 16
     implicitHeight: Kirigami.Units.gridUnit * 12
     background: null

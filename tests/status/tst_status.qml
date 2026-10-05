@@ -273,6 +273,8 @@ Item {
             compare(es.actionSymbol, Symbols.Refresh);
             const btn = findBy(es, c => c.text === "Retry" && typeof c.clicked === "function");
             verify(btn !== null && btn.visible, "the button shows");
+            // The layout settles on the next frame; a click before it misses.
+            waitForRendering(v);
             mouseClick(btn);
             compare(retrySpy.count, 1);
             // No action, no button.
@@ -368,7 +370,8 @@ Item {
             verify(!content.visible, "the content is hidden");
             const sv = statusView(p);
             verify(sv.visible);
-            verify(sv.mapToItem(p, 0, 0).y >= title.mapToItem(p, 0, title.height).y - 1);
+            // The layout settles on the next frame.
+            tryVerify(() => sv.mapToItem(p, 0, 0).y >= title.mapToItem(p, 0, title.height).y - 1);
         }
 
         function test_tree_keys_do_nothing_under_a_status() {

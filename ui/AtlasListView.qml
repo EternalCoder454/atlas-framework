@@ -393,8 +393,8 @@ ListView {
     clip: true
     boundsBehavior: Flickable.StopAtBounds
     keyNavigationEnabled: false
-    // An empty list has no row to show focus on.
-    activeFocusOnTab: control.count > 0
+    // An empty list, or one under a status, has no row to show focus on.
+    activeFocusOnTab: control.count > 0 && !control._statusActive
     currentIndex: 0
     reuseItems: true
     highlightFollowsCurrentItem: false
@@ -604,7 +604,8 @@ ListView {
         const kids = control.contentItem.children;
         for (let i = 0; i < kids.length; ++i) {
             const k = kids[i];
-            if (k.ListView.view === control && !control._hooked.has(k)) {
+            // The header and footer carry ListView.view too: they stay.
+            if (k.ListView.view === control && k !== control.headerItem && k !== control.footerItem && !control._hooked.has(k)) {
                 const binder = hiderComp.createObject(k, {
                     "target": k,
                     "when": Qt.binding(() => control._statusActive)

@@ -313,7 +313,9 @@ QQC2.SplitView {
         when: control.collapsed
         restoreMode: Binding.RestoreBindingOrValue
     }
-    Item {
+    // A property's object, not a child: a child of a container becomes one of
+    // its items (count, itemAt), and the panes would shift by one.
+    readonly property Item _backRowItem: Item {
         id: backRow
         parent: control
         x: 0
