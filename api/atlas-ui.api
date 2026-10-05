@@ -1,5 +1,8 @@
 AccessibilityState.base QObject
+AccessibilityState.property accentColor: QColor [readonly]
 AccessibilityState.property active: bool [readonly]
+AccessibilityState.property highContrast: bool [readonly]
+AccessibilityState.property reducedMotion: bool [readonly]
 AccessibilityState.type
 Appearance.base QObject
 Appearance.enum ColorScheme: DarkScheme = 2
@@ -315,6 +318,16 @@ AtlasFormat.method percent(double fraction): QString
 AtlasFormat.method percent(double fraction, int precision): QString
 AtlasFormat.method percent(double fraction, int precision, QString locale): QString
 AtlasFormat.type
+AtlasGlobalShortcut.base QObject
+AtlasGlobalShortcut.property available: bool [readonly]
+AtlasGlobalShortcut.property description: QString
+AtlasGlobalShortcut.property errorString: QString [readonly]
+AtlasGlobalShortcut.property name: QString
+AtlasGlobalShortcut.property preferredTrigger: QString
+AtlasGlobalShortcut.property trigger: QString [readonly]
+AtlasGlobalShortcut.signal activated()
+AtlasGlobalShortcut.signal deactivated()
+AtlasGlobalShortcut.type
 AtlasHeaderBar.base QQuickItem
 AtlasHeaderBar.method openWindowMenu(): QVariant
 AtlasHeaderBar.property actions: QQmlListProperty<QQuickAction> [readonly]

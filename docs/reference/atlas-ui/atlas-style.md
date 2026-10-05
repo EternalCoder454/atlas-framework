@@ -51,7 +51,7 @@ Rectangle {
 | `fontSizeTitle` | `real` (read-only) | — | Page titles: 1.6 of body. |
 | `fontSizeWindowTitle` | `real` (read-only) | — | A header bar's title: the body size. |
 | `fontWeightWindowTitle` | `int` (read-only) | — | The weight of a window title: `Font.DemiBold`. |
-| `highContrast` | `bool` (read-only) | — | Passes `Appearance.highContrast` through. |
+| `highContrast` | `bool` (read-only) | — | Passes `Appearance.highContrast` through: Qt's contrast preference or the desktop portal's `contrast`. |
 | `hover` | `color` (read-only) | — | A grey overlay for hover, never the accent, so hover never looks like selection. |
 | `monoFamily` | `string` (read-only) | — | The fixed-width family: JetBrains Mono when installed, else the system fixed font. Set `font.family: AtlasStyle.monoFamily` on code. |
 | `pressed` | `color` (read-only) | — | A grey overlay for a pressed control. |
