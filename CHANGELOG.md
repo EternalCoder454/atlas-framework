@@ -8,6 +8,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasColorField (colour pill with palette, hex field and system
+  dialog), AtlasFileField and AtlasFolderField (path field with a Browse button
+  for the system dialog), AtlasAutocompleteField (suggestions while typing) and
+  AtlasFontPicker (family and size, optionally monospace only).
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
