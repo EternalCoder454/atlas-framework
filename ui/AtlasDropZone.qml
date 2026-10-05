@@ -63,6 +63,7 @@ Item {
         enabled: !AtlasStyle.reducedMotion
         AtlasSpringAnimation {
             expressive: true
+            fine: true
         }
     }
     opacity: enabled ? 1 : 0.5

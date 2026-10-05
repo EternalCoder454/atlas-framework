@@ -48,15 +48,6 @@ Item {
     Accessible.role: Accessible.PageTabList
     Accessible.name: qsTr("Tabs")
 
-    // False until the first layout is done: the highlight then jumps.
-    property bool _placed: false
-    Timer {
-        id: placeTimer
-        interval: 50
-        onTriggered: control._placed = true
-    }
-    Component.onCompleted: placeTimer.restart()
-
     function ensureCurrentVisible() {
         if (control.currentIndex >= 0 && control.currentIndex < list.count) {
             list.positionViewAtIndex(control.currentIndex, ListView.Contain);
@@ -100,31 +91,69 @@ Item {
             highlight: Rectangle {
                 z: -1
                 visible: list.currentItem !== null
-                x: list.currentItem ? list.currentItem.x : 0
-                y: list.currentItem ? list.currentItem.y : 0
-                width: list.currentItem ? list.currentItem.width : 0
-                height: list.currentItem ? list.currentItem.height : 0
                 radius: AtlasStyle.radiusSmall
                 color: AtlasStyle.selection
-                Behavior on x {
-                    enabled: control._placed && !AtlasStyle.reducedMotion
+                property Item _item: list.currentItem
+                // Where the tint sits (follows the item directly) and how far it still
+                // lags behind after a selection change (springs back to 0).
+                property real _baseX: 0
+                property real _baseY: 0
+                property real _baseW: 0
+                property real _baseH: 0
+                property real _slideX: 0
+                property real _slideW: 0
+                property bool _springing: false
+                property Item _shown: null
+                x: _baseX + _slideX
+                y: _baseY
+                width: Math.max(0, _baseW + _slideW)
+                height: _baseH
+                Behavior on _slideX {
+                    enabled: _springing && !AtlasStyle.reducedMotion
                     AtlasSpringAnimation {
                         expressive: true
                     }
                 }
-                Behavior on width {
-                    enabled: control._placed && !AtlasStyle.reducedMotion
+                Behavior on _slideW {
+                    enabled: _springing && !AtlasStyle.reducedMotion
                     AtlasSpringAnimation {
                         expressive: true
                     }
                 }
-            }
-            readonly property bool _hasCurrent: currentItem !== null
-            on_HasCurrentChanged: {
-                if (_hasCurrent) {
-                    placeTimer.restart();
-                } else {
-                    control._placed = false;
+                function _sync() {
+                    _baseX = _item ? _item.x + 0 : 0;
+                    _baseY = _item ? _item.y + 0 : 0;
+                    _baseW = _item ? _item.width : 0;
+                    _baseH = _item ? _item.height : 0;
+                }
+                // Only a selection change slides, and only from a tint that was showing.
+                Component.onCompleted: {
+                    _sync();
+                    _shown = _item;
+                }
+                on_ItemChanged: {
+                    const oldX = x;
+                    const oldW = width;
+                    const from = _shown !== null && _item !== null;
+                    _springing = false;
+                    _slideX = 0;
+                    _slideW = 0;
+                    _sync();
+                    _shown = _item;
+                    if (from) {
+                        _slideX = oldX - _baseX;
+                        _slideW = oldW - _baseW;
+                        _springing = true;
+                        _slideX = 0;
+                        _slideW = 0;
+                    }
+                }
+                Connections {
+                    target: _item
+                    function onXChanged() { _sync(); }
+                    function onYChanged() { _sync(); }
+                    function onWidthChanged() { _sync(); }
+                    function onHeightChanged() { _sync(); }
                 }
             }
             onCountChanged: Qt.callLater(control.ensureCurrentVisible)

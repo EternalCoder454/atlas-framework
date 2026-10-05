@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import QtTest
 import Atlas.Ui
 
@@ -222,4 +223,78 @@ Item {
         }
     }
     ListModel { id: lm }
+
+    Component {
+        id: sidebarComp
+        AtlasSidebar {
+            width: 240
+            height: 300
+            SidebarItem { Layout.fillWidth: true; text: "One"; selected: true }
+            SidebarItem { Layout.fillWidth: true; text: "Two" }
+            SidebarItem { Layout.fillWidth: true; text: "Three" }
+        }
+    }
+    Component {
+        id: ringComp
+        Rectangle {
+            width: 100
+            height: 40
+            property alias ring: focusRing
+            AtlasFocusRing { id: focusRing }
+        }
+    }
+
+    TestCase {
+        name: "MotionHighlight"
+        when: windowShown
+
+        function findHighlight(item) {
+            for (const c of item.children) {
+                if (c instanceof Rectangle && c.z === -1 && Qt.colorEqual(c.color, AtlasStyle.selection)) {
+                    return c;
+                }
+                const f = findHighlight(c);
+                if (f) {
+                    return f;
+                }
+            }
+            return null;
+        }
+        function test_sidebar_selection_slides() {
+            if (AtlasStyle.reducedMotion) {
+                skip("reduced motion");
+            }
+            const sb = createTemporaryObject(sidebarComp, root);
+            verify(sb !== null);
+            const hl = findHighlight(sb);
+            verify(hl !== null);
+            tryVerify(() => hl.visible && hl.height > 0);
+            wait(100);
+            const y0 = hl.y;
+            // Moving the selection deselects the old entry first: the highlight
+            // must stay placed and slide, not jump.
+            let leaves = [];
+            const find = it => { for (const c of it.children) { if (c._sharedSelection !== undefined && c._entries === undefined && c.selected !== undefined) leaves.push(c); else find(c); } };
+            find(sb);
+            compare(leaves.length, 3);
+            leaves[0].selected = false;
+            leaves[2].selected = true;
+            wait(30);
+            verify(hl.visible);
+            verify(hl.y > y0 && hl.y < leaves[2].mapToItem(hl.parent, 0, 0).y - 1, "highlight is mid-flight, y=" + hl.y);
+            tryVerify(() => Math.abs(hl.y - leaves[2].mapToItem(hl.parent, 0, 0).y) < 1, 3000);
+        }
+        function test_focus_ring_scale_animates() {
+            if (AtlasStyle.reducedMotion) {
+                skip("reduced motion");
+            }
+            const r = createTemporaryObject(ringComp, root);
+            verify(r !== null);
+            compare(r.ring.scale, 0.96);
+            r.ring.shown = true;
+            wait(40);
+            verify(r.ring.scale > 0.96 && r.ring.scale < 1, "scale mid-flight: " + r.ring.scale);
+            tryVerify(() => Math.abs(r.ring.scale - 1) < 0.002, 2000);
+        }
+    }
 }

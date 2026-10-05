@@ -74,9 +74,26 @@ FocusScope {
         property var dropItem: null
         // The entry (or group header) the shared selection highlight sits on.
         property Item target: null
-        // False until the highlight has been laid out once: it then jumps
-        // instead of sliding in.
-        property bool placed: false
+        // How far the highlight still lags behind the target, in px. A selection
+        // change sets it to the old position minus the new one and springs it
+        // back to 0; layout changes (groups opening, filtering, text scale) move
+        // the highlight with the target directly, with no spring.
+        property real slideY: 0
+        property real slideHeight: 0
+        // Off while the lag is set, on while it springs back to 0.
+        property bool springing: false
+        Behavior on slideY {
+            enabled: priv.springing && !AtlasStyle.reducedMotion
+            AtlasSpringAnimation {
+                expressive: true
+            }
+        }
+        Behavior on slideHeight {
+            enabled: priv.springing && !AtlasStyle.reducedMotion
+            AtlasSpringAnimation {
+                expressive: true
+            }
+        }
         readonly property bool hasTarget: target !== null && target.visible && target.height > 0
         // The target's rectangle in column coordinates. Sums the positions up
         // the parent chain, so it follows any layout change above the target.
@@ -93,26 +110,58 @@ FocusScope {
             }
             return Qt.rect(x, y, t.width, t.height);
         }
+        // Moves the highlight to the selected entry. Moving the selection
+        // deselects the old entry before it selects the new one, so "nothing
+        // selected" is only believed once the change has settled.
         function updateTarget() {
-            let found = null;
+            const found = findSelected();
+            if (found === null) {
+                if (target !== null) {
+                    Qt.callLater(clearTarget);
+                }
+                return;
+            }
+            setTarget(found);
+        }
+        function clearTarget() {
+            if (findSelected() === null && target !== null) {
+                springing = false;
+                slideY = 0;
+                slideHeight = 0;
+                target = null;
+            }
+        }
+        function findSelected(): var {
             for (const e of entries()) {
                 const c = isGroup(e) ? e._header : e;
                 if (c.selected === true && (isGroup(e) || e.visible)) {
-                    found = c;
-                    break;
+                    return c;
                 }
             }
+            return null;
+        }
+        function setTarget(found: var) {
             if (found === target) {
                 return;
             }
-            if (found === null) {
-                placed = false;
-            }
+            // Slide only from a highlight that is showing and laid out.
+            const from = hasTarget && control.visible && highlightReady;
+            const oldY = selectionHighlight.y;
+            const oldH = selectionHighlight.height;
+            springing = false;
+            slideY = 0;
+            slideHeight = 0;
             target = found;
-            if (found !== null && !placed) {
-                placeTimer.restart();
+            if (from && hasTarget) {
+                slideY = oldY - (targetRect.y + column.y);
+                slideHeight = oldH - targetRect.height;
+                springing = true;
+                slideY = 0;
+                slideHeight = 0;
             }
         }
+        // True once the first layout is done, so the first selection never slides.
+        property bool highlightReady: false
         readonly property var win: control.Window.window
         // A leaf entry (SidebarItem) or a group (SidebarGroup).
         function isGroup(c: var): bool {
@@ -302,13 +351,6 @@ FocusScope {
         }
     }
 
-    // After the first layout the highlight may slide.
-    Timer {
-        id: placeTimer
-        interval: 50
-        onTriggered: priv.placed = true
-    }
-
     onFilterTextChanged: priv.schedule()
     onCurrentIndexChanged: Qt.callLater(() => priv.reveal(priv.selectedItem()))
     onCompactChanged: {
@@ -316,7 +358,10 @@ FocusScope {
             e.compact = control.compact;
         }
     }
-    Component.onCompleted: priv.rescan()
+    Component.onCompleted: {
+        priv.rescan();
+        Qt.callLater(() => priv.highlightReady = true);
+    }
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
@@ -403,23 +448,11 @@ FocusScope {
                 z: -1
                 visible: priv.hasTarget
                 x: priv.targetRect.x + column.x
-                y: priv.targetRect.y + column.y
+                y: priv.targetRect.y + column.y + priv.slideY
                 width: priv.targetRect.width
-                height: priv.targetRect.height
+                height: Math.max(0, priv.targetRect.height + priv.slideHeight)
                 radius: AtlasStyle.radiusSmall
                 color: AtlasStyle.selection
-                Behavior on y {
-                    enabled: priv.placed && !AtlasStyle.reducedMotion
-                    AtlasSpringAnimation {
-                        expressive: true
-                    }
-                }
-                Behavior on height {
-                    enabled: priv.placed && !AtlasStyle.reducedMotion
-                    AtlasSpringAnimation {
-                        expressive: true
-                    }
-                }
             }
 
             Rectangle {
