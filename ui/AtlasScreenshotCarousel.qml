@@ -168,7 +168,8 @@ T.Control {
                 }
                 Text {
                     text: qsTr("No screenshots")
-                    font: Kirigami.Theme.defaultFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeBody
                     color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
                     textFormat: Text.PlainText
                 }
@@ -241,7 +242,8 @@ T.Control {
                                     Text {
                                         visible: slide.failed
                                         text: qsTr("Screenshot unavailable")
-                                        font: Kirigami.Theme.smallFont
+                                        font.family: AtlasStyle.fontFamily
+                                        font.pointSize: AtlasStyle.fontSizeCaption
                                         color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
                                         textFormat: Text.PlainText
                                         Accessible.ignored: true
@@ -344,7 +346,8 @@ T.Control {
                 anchors.verticalCenter: parent.verticalCenter
                 //: Counter shown on a screenshot: %1 is its number, %2 how many there are ("2 / 5")
                 text: qsTr("%1 / %2").arg(control.currentIndex + 1).arg(control.count)
-                font: Kirigami.Theme.smallFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeCaption
                 color: Qt.alpha(Kirigami.Theme.textColor, 0.7)
                 textFormat: Text.PlainText
             }

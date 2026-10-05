@@ -48,7 +48,8 @@ T.ToolTip {
 
     contentItem: Text {
         text: control.text
-        font: Kirigami.Theme.smallFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeCaption
         color: Kirigami.Theme.textColor
         wrapMode: Text.Wrap
         textFormat: Text.PlainText

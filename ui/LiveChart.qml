@@ -23,8 +23,8 @@ LiveChartItem {
     color: AtlasStyle.accent
     color2: Kirigami.Theme.neutralTextColor
     textColor: Kirigami.Theme.textColor
-    font: Kirigami.Theme.smallFont
-
+    font.family: AtlasStyle.fontFamily
+    font.pointSize: AtlasStyle.fontSizeCaption
     Accessible.role: Accessible.Chart
     Accessible.name: chart.label
     Accessible.description: chart.valueText

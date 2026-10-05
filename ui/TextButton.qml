@@ -29,7 +29,8 @@ T.AbstractButton {
         Accessible.ignored: true
         verticalAlignment: Text.AlignVCenter
         text: control.text
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         textFormat: Text.PlainText
         color: control.enabled ? AtlasStyle.accent : AtlasStyle.textDisabled
         Behavior on color {

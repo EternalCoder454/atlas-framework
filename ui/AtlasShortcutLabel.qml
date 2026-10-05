@@ -61,7 +61,8 @@ Item {
                             anchors.centerIn: parent
                             text: cap.modelData
                             color: AtlasStyle.text
-                            font: Kirigami.Theme.smallFont
+                            font.family: AtlasStyle.fontFamily
+                            font.pointSize: AtlasStyle.fontSizeCaption
                             textFormat: Text.PlainText
                             Accessible.ignored: true
                         }
@@ -76,7 +77,8 @@ Item {
                     verticalAlignment: Text.AlignVCenter
                     text: ","
                     color: AtlasStyle.textMuted
-                    font: Kirigami.Theme.smallFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeCaption
                     textFormat: Text.PlainText
                     Accessible.ignored: true
                 }

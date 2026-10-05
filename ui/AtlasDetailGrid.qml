@@ -98,7 +98,7 @@ Item {
                     activeFocusOnTab: false
                     wrapMode: Text.Wrap
                     textFormat: TextEdit.PlainText
-                    font: cell.entry.mono === true ? Kirigami.Theme.fixedWidthFont : Kirigami.Theme.defaultFont
+                    font: cell.entry.mono === true ? Qt.font({ "family": AtlasStyle.monoFamily, "pointSize": AtlasStyle.fontSizeBody }) : Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeBody })
                     color: Kirigami.Theme.textColor
                     selectionColor: AtlasStyle.accent
                     selectedTextColor: AtlasStyle.accentText

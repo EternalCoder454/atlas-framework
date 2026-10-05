@@ -111,7 +111,7 @@ T.Control {
         id: priv
         // The small font in bold; `font.bold` cannot be set beside `font:`.
         readonly property font strong: {
-            const f = Kirigami.Theme.smallFont;
+            const f = Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeCaption });
             const o = {
                 "family": f.family,
                 "bold": true
@@ -271,7 +271,8 @@ T.Control {
                         width: parent.width
                         Accessible.ignored: true // the row carries the name
                         text: row.title
-                        font: Kirigami.Theme.defaultFont
+                        font.family: AtlasStyle.fontFamily
+                        font.pointSize: AtlasStyle.fontSizeBody
                         color: AtlasStyle.text
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
@@ -281,7 +282,8 @@ T.Control {
                         width: parent.width
                         Accessible.ignored: true
                         text: row.subtitle
-                        font: Kirigami.Theme.smallFont
+                        font.family: AtlasStyle.fontFamily
+                        font.pointSize: AtlasStyle.fontSizeCaption
                         color: AtlasStyle.textMuted
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
@@ -295,7 +297,8 @@ T.Control {
                     anchors.verticalCenter: parent.verticalCenter
                     Accessible.ignored: true
                     text: row.shortcut
-                    font: Kirigami.Theme.smallFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeCaption
                     color: AtlasStyle.textMuted
                     textFormat: Text.PlainText
                 }
@@ -330,7 +333,8 @@ T.Control {
             }
             Text {
                 text: control.placeholderText
-                font: Kirigami.Theme.defaultFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeBody
                 color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
             }

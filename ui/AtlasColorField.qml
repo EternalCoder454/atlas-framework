@@ -113,7 +113,8 @@ T.AbstractButton {
 
     TextMetrics {
         id: labelMetrics
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         text: control._label
     }
 
@@ -154,7 +155,8 @@ T.AbstractButton {
         Text {
             Layout.fillWidth: true
             text: control._label
-            font: Kirigami.Theme.defaultFont
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeBody
             color: control.enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
             elide: Text.ElideRight
             textFormat: Text.PlainText

@@ -114,7 +114,8 @@ T.AbstractButton {
                 verticalAlignment: Text.AlignVCenter
                 horizontalAlignment: Text.AlignHCenter
                 text: control.text
-                font: Kirigami.Theme.smallFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeCaption
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
                 color: AtlasStyle.textMuted

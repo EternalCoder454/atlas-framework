@@ -46,7 +46,7 @@ Item {
         // The default font, bold and 30% larger; a pixel-sized theme font has
         // pointSize -1, so it scales its pixel size instead.
         readonly property font titleFont: {
-            const f = Kirigami.Theme.defaultFont;
+            const f = Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeBody });
             const o = {
                 "family": f.family,
                 "bold": true
@@ -107,7 +107,8 @@ Item {
             visible: text.length > 0
             Layout.preferredHeight: visible ? implicitHeight : 0
             text: control.text
-            font: Kirigami.Theme.defaultFont
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeBody
             color: Qt.alpha(Kirigami.Theme.textColor, 0.7)
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap

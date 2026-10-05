@@ -306,7 +306,8 @@ FocusScope {
                 contentItem: Text {
                     text: internals.mark(row.modelData)
                     textFormat: Text.StyledText
-                    font: Kirigami.Theme.defaultFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeBody
                     color: Kirigami.Theme.textColor
                     verticalAlignment: Text.AlignVCenter
                     horizontalAlignment: field.rtl ? Text.AlignRight : Text.AlignLeft

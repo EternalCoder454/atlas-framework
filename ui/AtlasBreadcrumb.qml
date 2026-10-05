@@ -34,9 +34,10 @@ T.Control {
 
     QtObject {
         id: priv
+        readonly property font regular: Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeBody })
         // The default font in bold; `font.bold` cannot be set beside `font:`.
         readonly property font strong: {
-            const f = Kirigami.Theme.defaultFont;
+            const f = Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeBody });
             const o = {
                 "family": f.family,
                 "bold": true
@@ -252,7 +253,7 @@ T.Control {
                             Text {
                                 Layout.fillWidth: true
                                 text: button.text
-                                font: seg.last ? priv.strong : Kirigami.Theme.defaultFont
+                                font: seg.last ? priv.strong : priv.regular
                                 color: seg.last ? AtlasStyle.text : AtlasStyle.textMuted
                                 textFormat: Text.PlainText
                                 elide: Text.ElideRight

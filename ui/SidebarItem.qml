@@ -130,7 +130,7 @@ T.AbstractButton {
             visible: !control.compact
             Layout.fillWidth: true
             text: control.text
-            font.family: Kirigami.Theme.defaultFont.family
+            font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody
             font.weight: control.sub ? Font.Normal : Font.Medium
             textFormat: Text.PlainText
@@ -148,8 +148,8 @@ T.AbstractButton {
             visible: !control.compact && control.value.length > 0
             Layout.rightMargin: control.disclosure ? 0 : AtlasStyle.spacingLarge
             text: control.value
-            font.family: Kirigami.Theme.smallFont.family
-            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeCaption
             // Figures of one width, so a changing value doesn't jiggle.
             font.features: ({
                     "tnum": 1

@@ -98,7 +98,8 @@ T.TextField {
     color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
     selectionColor: AtlasStyle.accent
     selectedTextColor: AtlasStyle.accentText
-    font: Kirigami.Theme.defaultFont
+    font.family: AtlasStyle.fontFamily
+    font.pointSize: AtlasStyle.fontSizeBody
     selectByMouse: true
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -203,7 +204,8 @@ T.TextField {
         width: control.width - AtlasStyle.spacingLarge * 2
         visible: control.hasError
         text: control.errorText
-        font: Kirigami.Theme.smallFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeCaption
         color: AtlasStyle.error
         wrapMode: Text.Wrap
         textFormat: Text.PlainText

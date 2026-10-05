@@ -63,7 +63,7 @@ T.AbstractButton {
         id: priv
         // The default font in bold; `font.bold` cannot be set beside `font:`.
         readonly property font strong: {
-            const f = Kirigami.Theme.defaultFont;
+            const f = Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeBody });
             const o = {
                 "family": f.family,
                 "bold": true
@@ -195,7 +195,8 @@ T.AbstractButton {
                 Layout.fillWidth: true
                 visible: control.summary.length > 0
                 text: control.summary
-                font: Kirigami.Theme.smallFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeCaption
                 color: Qt.alpha(Kirigami.Theme.textColor, 0.7)
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
@@ -217,7 +218,8 @@ T.AbstractButton {
                 }
                 Text {
                     text: priv.meta
-                    font: Kirigami.Theme.smallFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeCaption
                     color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
                     textFormat: Text.PlainText
                 }

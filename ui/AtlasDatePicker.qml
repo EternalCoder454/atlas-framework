@@ -81,7 +81,8 @@ T.Control {
 
     contentItem: Text {
         text: control._hasDate ? control._text : control.placeholderText
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         color: !control.enabled ? AtlasStyle.textDisabled : control._hasDate ? AtlasStyle.text : AtlasStyle.textMuted
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft

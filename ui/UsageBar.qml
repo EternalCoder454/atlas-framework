@@ -134,13 +134,15 @@ ColumnLayout {
                 QQC2.Label {
                     text: root.labels[key.index]
                     opacity: 0.7
-                    font: Kirigami.Theme.smallFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeCaption
                     textFormat: Text.PlainText
                 }
                 QQC2.Label {
                     visible: text.length > 0
                     text: key.index < root.texts.length ? root.texts[key.index] : ""
-                    font: Kirigami.Theme.smallFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeCaption
                     textFormat: Text.PlainText
                 }
             }

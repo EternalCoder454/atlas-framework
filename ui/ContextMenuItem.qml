@@ -104,7 +104,8 @@ T.MenuItem {
         Text {
             Layout.fillWidth: true
             text: control.text
-            font: Kirigami.Theme.defaultFont
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeBody
             color: control.tint
             textFormat: Text.PlainText
             elide: Text.ElideRight
@@ -113,7 +114,8 @@ T.MenuItem {
             visible: control._effectiveShortcut.length > 0
             Layout.leftMargin: Kirigami.Units.gridUnit
             text: control._effectiveShortcut
-            font: Kirigami.Theme.smallFont
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeCaption
             color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
             textFormat: Text.PlainText
         }

@@ -64,7 +64,8 @@ Flow {
                 horizontalAlignment: Text.AlignHCenter
                 text: cell.index
                 color: Qt.alpha(Kirigami.Theme.textColor, 0.55)
-                font: Kirigami.Theme.smallFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeCaption
                 textFormat: Text.PlainText
             }
         }

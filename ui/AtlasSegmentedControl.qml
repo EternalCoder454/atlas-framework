@@ -204,7 +204,8 @@ T.Control {
                         text: seg.label
                         width: Math.min(Math.ceil(metrics.advanceWidth), seg._room)
                         elide: Text.ElideRight
-                        font: Kirigami.Theme.defaultFont
+                        font.family: AtlasStyle.fontFamily
+                        font.pointSize: AtlasStyle.fontSizeBody
                         color: seg.tint
                         textFormat: Text.PlainText
                         Accessible.ignored: true

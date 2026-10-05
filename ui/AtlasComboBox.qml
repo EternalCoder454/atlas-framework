@@ -129,7 +129,8 @@ T.ComboBox {
                 anchors.verticalCenter: parent.verticalCenter
                 width: row.availableWidth - Kirigami.Units.iconSizes.small - parent.spacing
                 text: row.text
-                font: Kirigami.Theme.defaultFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeBody
                 color: Kirigami.Theme.textColor
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
@@ -151,7 +152,8 @@ T.ComboBox {
         leftPadding: control.mirrored ? control.indicator.width + AtlasStyle.spacingSmall : 0
         rightPadding: control.mirrored ? 0 : control.indicator.width + AtlasStyle.spacingSmall
         text: control.displayText.length > 0 ? control.displayText : control.placeholderText
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         color: !control.enabled ? AtlasStyle.textDisabled : control.displayText.length > 0 ? Kirigami.Theme.textColor : AtlasStyle.textMuted
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft
@@ -260,7 +262,8 @@ T.ComboBox {
                         anchors.rightMargin: AtlasStyle.spacingLarge
                         //: Shown in a drop-down list when what was typed in its filter matches no choice
                         text: emptyRow.noChoices ? qsTr("No choices") : qsTr("No matches")
-                        font: Kirigami.Theme.defaultFont
+                        font.family: AtlasStyle.fontFamily
+                        font.pointSize: AtlasStyle.fontSizeBody
                         color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight

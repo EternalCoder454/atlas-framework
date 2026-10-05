@@ -135,7 +135,7 @@ ListView {
     // The default font a little smaller; a pixel-sized theme font has
     // pointSize -1, so it scales its pixel size instead.
     readonly property font _captionFont: {
-        const f = Kirigami.Theme.defaultFont;
+        const f = Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeBody });
         const o = {
             "family": f.family
         };
@@ -671,7 +671,8 @@ ListView {
                     Text {
                         Layout.fillWidth: true
                         text: row.title
-                        font: Kirigami.Theme.defaultFont
+                        font.family: AtlasStyle.fontFamily
+                        font.pointSize: AtlasStyle.fontSizeBody
                         color: AtlasStyle.text
                         textFormat: Text.PlainText
                         elide: Text.ElideRight

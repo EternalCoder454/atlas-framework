@@ -92,7 +92,8 @@ T.TextField {
     color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
     selectionColor: AtlasStyle.accent
     selectedTextColor: AtlasStyle.accentText
-    font: Kirigami.Theme.defaultFont
+    font.family: AtlasStyle.fontFamily
+    font.pointSize: AtlasStyle.fontSizeBody
     selectByMouse: true
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -215,7 +216,8 @@ T.TextField {
         width: control.width - AtlasStyle.spacingLarge * 2 - (internals.counterShown ? counter.implicitWidth + AtlasStyle.spacingLarge : 0)
         visible: control.hasError
         text: internals.shownError
-        font: Kirigami.Theme.smallFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeCaption
         color: AtlasStyle.error
         wrapMode: Text.Wrap
         textFormat: Text.PlainText
@@ -229,7 +231,8 @@ T.TextField {
         y: internals.fieldHeight + AtlasStyle.spacing
         visible: internals.counterShown
         text: control.length + "/" + control.maximumLength
-        font: Kirigami.Theme.smallFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeCaption
         color: control.length >= control.maximumLength ? AtlasStyle.error : AtlasStyle.textMuted
         textFormat: Text.PlainText
         Accessible.ignored: true

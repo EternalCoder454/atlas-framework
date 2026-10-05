@@ -243,7 +243,8 @@ T.Control {
             width: Math.min(implicitWidth, parent.width - (internals.showClear ? clearButton.width : 0))
             visible: internals.recording || control.sequence.length === 0
             text: internals.recording ? qsTr("Press keys…") : control.placeholderText
-            font: Kirigami.Theme.defaultFont
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeBody
             color: !control.enabled ? AtlasStyle.textDisabled : internals.recording ? AtlasStyle.accent : AtlasStyle.textMuted
             elide: Text.ElideRight
             textFormat: Text.PlainText
@@ -301,7 +302,8 @@ T.Control {
         width: control.width - AtlasStyle.spacingLarge * 2
         visible: internals.hasConflict
         text: internals.conflictText
-        font: Kirigami.Theme.smallFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeCaption
         color: AtlasStyle.error
         wrapMode: Text.Wrap
         textFormat: Text.PlainText
