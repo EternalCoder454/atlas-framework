@@ -140,6 +140,39 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Added: `AtlasAppMenu` nested submenus, model-driven rows,
   `exportShortcuts` (shortcuts in the global menu) and `modelActivated`;
   rows bound to a checkable Action stay in step with it.
+- New: `AtlasActionCollection` declares an app's actions once (`AtlasAction`
+  gains `category`); `AtlasCommandPalette`, `AtlasShortcutsDialog` and
+  `AtlasAppMenu` read it through `collection`, and shortcuts the user changes
+  are kept in `AtlasSettings`.
+- New for setup wizards (item 42): `AtlasChoiceCard`, `AtlasAccentPicker`,
+  `AtlasPasswordStrength`, `AtlasWindow.kiosk`, and `AtlasOnboarding.busy`,
+  `stepStyle` (Column or Dots), `autoAdvance` with `advanceRequested`,
+  `canGoBack` and the `nextText`, `finishText` and `backText` labels.
+- New for stores (item 41): `AtlasShelf`, a row of cards made only for what is
+  on screen; `AtlasScreenshotCarousel.expandable`, `expanded` and `opened` (a
+  full-window viewer); `AtlasInstallButton` states `"remove"` and `"queued"`
+  (`removeText`, `queuedText`); `AtlasAppCard.verified` and `compact`.
+- New: `AtlasTextView`, a virtualized read-only text view for very large text
+  (logs, files): only visible lines are laid out; selection, copy, line
+  numbers, follow mode and loading in chunks. Editing comes later in 1.5.0.
+- Added: `maximumWidth` on `AtlasButton` (and its presets) and `AtlasChip`;
+  `validator` and `invalidText` on `AtlasFileField` and `AtlasFolderField`.
+- Fix: fields and buttons: a popup gives the focus back to its field, Return
+  in a button calls `click()`, `AtlasComboBox`'s filtered list never sets a
+  delegate, the spin box prefix and suffix are optional, `AtlasUrlValidator`
+  accepts bare host names, menus open on the right side in right-to-left,
+  and `AtlasFontPicker`'s monospace scan runs (it never did).
+- Fix: placeholders in `AtlasTextField`, `SearchField` and `FindBar` follow
+  their own script in right-to-left like typed text, and are plain text.
+- Fix: `AtlasAvatar` and `AtlasChoiceCard` show their picture (square) on the
+  software renderer instead of nothing.
+- Fix: qmllint is clean down to 3 known warnings; three of the warnings were
+  real bugs (`AtlasFlowLayout`'s fill-width items now fill their row,
+  `AtlasViewSwitcher`'s tint follows its item).
+- New (atlas-framework-core): the `task` feature, one tokio runtime thread and
+  `spawn_ui` (a future with a timeout and cancellation, its result posted to
+  the UI thread); `Settings::migrate` (versioned migrations with backups) and
+  `Settings::watch` (a callback when the file changes on disk).
 - Changed: user-facing strings use US spelling like the rest of KDE:
   `AtlasColorField` says "Color", "Hex color" and "Not a color".
 - Docs: `TextButton` is not an `AtlasButton` preset and has no `variant`.
