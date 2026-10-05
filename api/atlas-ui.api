@@ -1166,6 +1166,7 @@ FindBar.signal replaceOne()
 FindBar.type
 InfoBanner.base QQuickItem
 InfoBanner.property actions: QQmlListProperty<QObject> [readonly]
+InfoBanner.property animated: bool
 InfoBanner.property closable: bool
 InfoBanner.property closeName: QString
 InfoBanner.property dismissed: bool [readonly]

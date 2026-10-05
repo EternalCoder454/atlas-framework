@@ -309,6 +309,21 @@ TestCase {
         x.clicked();
     }
 
+    function test_banner_not_animated_opens_at_once() {
+        const b = createTemporaryObject(bannerComp, tc, { shown: false, animated: false });
+        compare(b.visible, false);
+        b.shown = true;
+        // Full height in the same turn: no frames of a slide.
+        verify(b.visible);
+        verify(b.implicitHeight > 0);
+        const full = b.implicitHeight;
+        wait(AtlasStyle.durationShort + 100);
+        compare(b.implicitHeight, full);
+        b.shown = false;
+        compare(b.implicitHeight, 0);
+        compare(b.visible, false);
+    }
+
     function test_banner_dismiss_keeps_shown_bound() {
         model.flag = true;
         const b = createTemporaryObject(bannerComp, tc, {});

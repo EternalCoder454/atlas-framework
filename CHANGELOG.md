@@ -159,6 +159,8 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - New: `AtlasTextView`, a virtualized read-only text view for very large text
   (logs, files): only visible lines are laid out; selection, copy, line
   numbers, follow mode and loading in chunks. Editing comes later in 1.5.0.
+- Added: `InfoBanner.animated` (`false`: no slide, so content below does not
+  move frame by frame while a large document renders). (Notepad)
 - Added: `maximumWidth` on `AtlasButton` (and its presets) and `AtlasChip`;
   `validator` and `invalidText` on `AtlasFileField` and `AtlasFolderField`.
 - Fix: fields and buttons: a popup gives the focus back to its field, Return

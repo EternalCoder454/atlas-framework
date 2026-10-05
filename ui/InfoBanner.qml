@@ -23,6 +23,8 @@ Item {
     property list<QtObject> actions
     property bool closable: false
     property bool shown: true
+    // False: the banner opens and shuts at once instead of sliding.
+    property bool animated: true
     // The close button's accessible name and tooltip.
     property string closeName: qsTr("Close")
 
@@ -93,6 +95,7 @@ Item {
         property real progress: control.shown ? 1 : 0
 
         Behavior on progress {
+            enabled: control.animated
             NumberAnimation {
                 duration: AtlasStyle.durationShort
                 easing.type: Easing.OutCubic

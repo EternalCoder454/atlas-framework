@@ -26,6 +26,7 @@ InfoBanner {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `actions` | `list<Item>` (read-only) | — | Qt Quick Controls `Action`s (declare them as children of the list); each becomes a button at the trailing end. |
+| `animated` | `bool` | `true` | `false` opens and shuts the banner at once, with no slide. For a banner shown in the same turn as a large document, so the content under it does not move (and re-render) on each frame of the slide. Since 1.5.0. |
 | `closable` | `bool` | `false` | Shows a cross that dismisses the banner. |
 | `closeName` | `string` | `qsTr("Close")` | The accessible name and tooltip of the close button. |
 | `dismissed` | `bool` (read-only) | `false` | The user closed the banner. It stays true until a new `text` or `type`, or `shown` written true. |
