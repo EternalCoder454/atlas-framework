@@ -12,6 +12,14 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
   Kirigami.PasswordField and password TextFields to it.
+- Atlas.Ui: ConfirmDialog gains `alternativeText` and `alternative()` (a third
+  button), `defaultButton` and `destructive`; its text and body now wrap to the
+  card and scroll when taller than the window. AtlasSpinBox is as wide as its
+  widest value instead of a fixed size, gains `showButtons`, and PageUp and
+  PageDown move ten steps. AtlasComboBox gains `filterable` (type to narrow the
+  choices). AtlasTextField gains `showCounter`, `prefix`, `suffix`,
+  `invalidText` and `validateOn`. A compact SidebarItem shows its title and
+  value as a tooltip.
 
 ## 1.3.0
 

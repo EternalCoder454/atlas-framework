@@ -50,6 +50,7 @@ AtlasButton.property symbol: int
 AtlasButton.property textTint: QColor [readonly]
 AtlasButton.type
 AtlasCheckBox.type
+AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
 AtlasEmptyState.property actionText: QString
@@ -123,6 +124,7 @@ AtlasSearchResults.signal activated(int index)
 AtlasSearchResults.type
 AtlasSlider.type
 AtlasSpinBox.property prefix: QString
+AtlasSpinBox.property showButtons: bool
 AtlasSpinBox.property suffix: QString
 AtlasSpinBox.type
 AtlasSpinner.property animated: bool
@@ -132,7 +134,12 @@ AtlasTextArea.type
 AtlasTextField.property clearable: bool
 AtlasTextField.property errorText: QString
 AtlasTextField.property hasError: bool [readonly]
+AtlasTextField.property invalidText: QString
+AtlasTextField.property prefix: QString
 AtlasTextField.property rtl: bool [readonly]
+AtlasTextField.property showCounter: bool
+AtlasTextField.property suffix: QString
+AtlasTextField.property validateOn: QString
 AtlasTextField.type
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
@@ -144,14 +151,18 @@ AtlasWindow.property blurred: bool [readonly]
 AtlasWindow.property sidebarFactor: double
 AtlasWindow.type
 ConfirmDialog.property acceptText: QString
+ConfirmDialog.property alternativeText: QString
 ConfirmDialog.property body: QQmlListProperty<QObject> [readonly]
 ConfirmDialog.property closeOnAccept: bool
+ConfirmDialog.property defaultButton: QString
+ConfirmDialog.property destructive: bool
 ConfirmDialog.property focusReject: bool
 ConfirmDialog.property rejectText: QString
 ConfirmDialog.property showReject: bool
 ConfirmDialog.property text: QString
 ConfirmDialog.property title: QString
 ConfirmDialog.signal accepted()
+ConfirmDialog.signal alternative()
 ConfirmDialog.type
 ContextMenu.type
 ContextMenuItem.property destructive: bool

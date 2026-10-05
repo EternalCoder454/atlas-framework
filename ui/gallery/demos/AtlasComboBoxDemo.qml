@@ -27,6 +27,8 @@ Item {
         AtlasComboBox { model: [qsTr("Light"), qsTr("Dark"), qsTr("Automatic")]; currentIndex: 2 }
         Caption { text: "Placeholder (nothing chosen)" }
         AtlasComboBox { model: [qsTr("Light"), qsTr("Dark")]; currentIndex: -1; placeholderText: qsTr("Choose a theme") }
+        Caption { text: "Filterable (closed)" }
+        AtlasComboBox { filterable: true; model: [qsTr("Berlin"), qsTr("Paris"), qsTr("Rome"), qsTr("Madrid")]; currentIndex: 1 }
         Caption { text: "Disabled" }
         AtlasComboBox { model: [qsTr("Light")]; enabled: false }
         Caption { text: "Long text" }
