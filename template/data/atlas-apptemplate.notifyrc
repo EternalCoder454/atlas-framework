@@ -1,5 +1,5 @@
 [Global]
-IconName=net.eterneon.atlas.apptemplate
+IconName=applications-system
 Name=Atlas App
 Comment=Atlas app template
 DesktopEntry=net.eterneon.atlas.apptemplate

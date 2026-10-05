@@ -1,0 +1,29 @@
+name: Atlas checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  atlas:
+    # Pinned to a framework release tag, like atlas-framework-ui in Cargo.toml
+    # (Cargo.toml). Replace vX.Y.Z with the same tag in both places below, and
+    # move it by hand when the app moves to a newer framework release.
+    uses: EternalCoder454/atlas-framework/.github/workflows/app-checks.yml@vX.Y.Z
+    with:
+      framework-ref: vX.Y.Z
+
+  desktop-file:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install desktop-file-utils
+        run: sudo apt-get update && sudo apt-get install -y desktop-file-utils
+      - name: Validate the desktop file
+        run: desktop-file-validate data/*.desktop

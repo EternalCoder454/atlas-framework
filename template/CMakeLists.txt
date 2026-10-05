@@ -19,7 +19,35 @@ find_program(QMAKE6 NAMES qmake6 qmake REQUIRED)
 corrosion_import_crate(MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml CRATES atlas-app-template)
 corrosion_set_env_vars(atlas_app_template QMAKE=${QMAKE6})
 
+# The framework's C header (atlas/app.h) comes with the crate's sources, wherever
+# cargo put them (this checkout, or a git checkout in ~/.cargo).
+find_program(CARGO NAMES cargo REQUIRED)
+execute_process(
+    COMMAND ${CARGO} metadata --format-version 1 --locked --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml
+    OUTPUT_VARIABLE CARGO_METADATA
+    RESULT_VARIABLE CARGO_METADATA_RESULT
+    ERROR_VARIABLE CARGO_METADATA_ERROR
+    TIMEOUT 300)
+if(NOT CARGO_METADATA_RESULT EQUAL 0)
+    message(FATAL_ERROR "cargo metadata failed (${CARGO_METADATA_RESULT}): ${CARGO_METADATA_ERROR}\n"
+        "Run `cargo fetch --locked` first, or check the network/vendoring.")
+endif()
+string(JSON NPACKAGES LENGTH "${CARGO_METADATA}" packages)
+math(EXPR LAST_PACKAGE "${NPACKAGES} - 1")
+set(ATLAS_UI_CRATE_DIR "")
+foreach(i RANGE ${LAST_PACKAGE})
+    string(JSON PKG_NAME GET "${CARGO_METADATA}" packages ${i} name)
+    if(PKG_NAME STREQUAL "atlas-framework-ui")
+        string(JSON PKG_MANIFEST GET "${CARGO_METADATA}" packages ${i} manifest_path)
+        get_filename_component(ATLAS_UI_CRATE_DIR "${PKG_MANIFEST}" DIRECTORY)
+    endif()
+endforeach()
+if(NOT EXISTS "${ATLAS_UI_CRATE_DIR}/include/atlas/app.h")
+    message(FATAL_ERROR "atlas-framework-ui's include/atlas/app.h not found (looked in '${ATLAS_UI_CRATE_DIR}')")
+endif()
+
 qt_add_executable(template-app main.cpp)
+target_include_directories(template-app PRIVATE "${ATLAS_UI_CRATE_DIR}/include")
 set_target_properties(template-app PROPERTIES OUTPUT_NAME atlas-app-template)
 
 # The shared Atlas look, Atlas.Ui, is installed like Kirigami (the atlas-ui

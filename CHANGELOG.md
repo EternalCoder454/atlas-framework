@@ -80,6 +80,12 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   fails on an empty app.
 - Packaging: `build-rpm.sh` packages the committed tree only (git archive of
   HEAD) and refuses a dirty one; the spec builds and ships the translations.
+- Template: drill-down pages use `AtlasNavigationStack`; `main.cpp`
+  includes `atlas/app.h` (found through `cargo metadata --locked`); a worker
+  that panics no longer leaves `busy` set; the page timer stops while another
+  page covers it; the notifyrc names a real icon; a per-app CI workflow
+  (`.github/workflows/atlas.yml`) pinned to a framework tag; the minimum
+  Atlas.Ui is 1.4.0.
 
 ## 1.4.0
 

@@ -472,7 +472,7 @@ that lands, then go in one batch.
   hides details (lint file:line, visual-out path), treats a relative build
   dir as a volume, runs no crates; open-update-pr.sh misses a failed
   ls-tree; app-checks.yml can't fetch a short sha.
-- [ ] Template (every new app copies it): README says pin to a commit, the
+- [x] Template (every new app copies it): README says pin to a commit, the
   Cargo.toml a tag; MainPage's timer runs while hidden; a worker panic leaves
   `busy` stuck; the notifyrc icon doesn't exist; main.cpp redeclares
   `atlas_app_run` instead of including atlas/app.h; no CI workflow; StackView

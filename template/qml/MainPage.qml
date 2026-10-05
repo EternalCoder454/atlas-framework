@@ -15,7 +15,8 @@ AtlasPage {
 
     // Live data is worth fetching only while someone can see it: the timers
     // below stop while the window is minimized or hidden.
-    readonly property bool shown: page.Window.visibility !== Window.Minimized && page.Window.visibility !== Window.Hidden
+    // It is also false while another page is pushed over this one.
+    readonly property bool shown: page.visible && page.Window.visibility !== Window.Minimized && page.Window.visibility !== Window.Hidden
 
     StatusHero {
         iconName: "checkmark"

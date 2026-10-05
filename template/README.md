@@ -15,15 +15,20 @@ Atlas.Ui gives it the look and an About page. It builds on its own.
    - app ID and desktop file `net.eterneon.atlas.apptemplate` (main.cpp,
      src/lib.rs, data/), and the name and repository in `src/lib.rs`'s `app!`
    - `data/atlas-apptemplate.notifyrc`: named `atlas-` and the last part of
-     the app ID, and its `DesktopEntry=` and `IconName=` are the app ID
+     the app ID, and its `DesktopEntry=` is the app ID and its `IconName=` is the same as
+     `Icon=` in the desktop file (an icon the app ships or the theme has)
    - binary name `atlas-app-template` (CMakeLists.txt, main.cpp)
    - `atlas_backend_new` and the `atlas_app` C++ namespace if you like
-3. In `Cargo.toml`, take `atlas-framework-ui` from git pinned to a commit (the
-   comment shows how), and add `atlas-framework-system` or
+3. In `Cargo.toml`, take `atlas-framework-ui` from git pinned to a release tag (the
+   comment shows how; the tag is what the framework's update pull requests
+   move forward), and add `atlas-framework-system` or
    `atlas-framework-flatpak` only if the app needs them.
-4. Give the app's RPM `Requires: atlas-ui` and `BuildRequires: atlas-ui`
-   `>= 1.3.0` (or whatever `ui:` in `src/lib.rs` says; keep the two the same).
-5. Add properties and invokables to `src/backend.rs`, pages to `qml/` and to the
+4. Replace `vX.Y.Z` in `.github/workflows/atlas.yml` (Atlas.Ui rule checks and
+   desktop-file validation on every push) with the tag `Cargo.toml` uses.
+   The framework's update pull requests move `Cargo.toml`; move the workflow by hand.
+5. Give the app's RPM `Requires: atlas-ui` and `BuildRequires: atlas-ui`
+   `>= 1.4.0` (or whatever `ui:` in `src/lib.rs` says; keep the two the same).
+6. Add properties and invokables to `src/backend.rs`, pages to `qml/` and to the
    `QML_FILES` list in `CMakeLists.txt`.
 
 ## Build (Fedora 44)
@@ -50,12 +55,12 @@ QT_QPA_PLATFORM=offscreen ./build/atlas-app-template
   startup code (Corrosion doesn't pass a crate's native libraries on).
 - `AtlasApp` (name, version, OS, links) and `AtlasAboutPage` come from
   Atlas.Ui; `qml/Main.qml` pushes the About page.
-- `ui: "1.3.0"` in `app!` is the oldest Atlas.Ui the app works with. At
+- `ui: "1.4.0"` in `app!` is the oldest Atlas.Ui the app works with. At
   startup, before any of the app's QML, the framework asks the installed
   Atlas.Ui (`AtlasApp.uiVersion`); if it is older, or missing, the app shows
   a plain window saying which version it needs and exits with code 1. Raise
   it when the app starts using something newer. Leave `ui:` out and nothing is
-  checked. (C++ apps without `app!`: `atlas_app_require_ui("1.3.0")`.)
+  checked. (C++ apps without `app!`: `atlas_app_require_ui("1.4.0")`.)
 - Notifications: `atlas_framework_system::notify` (feature `notify`) sends
   them the way KNotification does, so Plasma groups them under the app and its
   notification settings apply. The "Send a Notification" button in
