@@ -375,6 +375,18 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   AtlasInstallButton `"remove"`, `"removing"` and `"queued"`,
   `AtlasAppCard.verified` and `compact`. Permission rows are SectionRow with
   a leading symbol and an AtlasBadge, no new type.
+- [ ] 42 AtlasOS Wizard (first-run setup, 2026-10-05): AtlasOnboarding
+  `nextText`, `finishText` and `backText`; `busy` (Next shows a spinner,
+  can't fire twice, says busy to screen readers); `autoAdvance` and
+  `advanceRequested(index)` (the app calls `next()` after its own work);
+  `canGoBack`; `stepStyle` Column or Dots (the current dot wider and accent,
+  past dots accent at 45 %, future text at 20 %, no width animation under
+  reduced motion). AtlasPasswordStrength (`score` 0 to 4, -1 empty; a bar,
+  a label and an accessible value; the scoring stays in the app).
+  AtlasChoiceCard (a 16:10 picture, a label and a check circle; checked and
+  hover rings; exclusive in a group). AtlasAccentPicker (round swatches from
+  a model of colours, exclusive, arrow keys, accessible names).
+  AtlasWindow `kiosk` (full screen, no close; a close request is refused).
 - Waits for Fedora's Qt 6.12 (Fedora 44 and 45 ship 6.11.2):
   `motionPreference`, QML hot reload, ToolTip `policy`, MenuItem shortcuts.
 
