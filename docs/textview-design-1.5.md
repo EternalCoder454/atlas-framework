@@ -1,0 +1,318 @@
+# AtlasTextView: design (1.5.0 item 38)
+
+How the virtualized text view is built, from the requirements in
+[textview-1.5.md](textview-1.5.md). This page is the proposal Notepad reviews
+before any code exists. The API sketch below is a draft. Once the type ships,
+its reference page in docs/reference/atlas-ui is the only API description, and
+the sketch is deleted from here.
+
+## Name and place
+
+- `AtlasTextView`, a C++ `QQuickItem` in Atlas.Ui, next to RepaintArea and
+  LiveChart.
+- The C++ sources are in `ui/text/`: the buffer, the layout cache, the
+  highlighter and the item.
+- New dependency: KF6SyntaxHighlighting (`kf6-syntax-highlighting`), tier 1,
+  already on every Plasma system. Containerfile.dev, the spec and CI gain it.
+- No app has a `AtlasTextView.qml` (checked against the five apps on
+  2026-10-05).
+
+## Shape
+
+```
+ Rust (app)                 C++ (Atlas.Ui)                         Qt Quick
+ ----------                 --------------                         --------
+ read file, decode  ──UTF-8 chunks──▶  TextBuffer (piece tree)
+ search, save       ◀──snapshot───────  │  line index in the tree
+                                        │
+                     background thread  ├─▶ Indexer (newlines, UTF-16 counts)
+                     background thread  ├─▶ Highlighter (state per line)
+                                        │
+                     GUI thread         └─▶ LayoutCache (QTextLayout per
+                                             visible line) ─▶ one QSGTextNode
+                                             per visible line
+```
+
+## The buffer
+
+- **Storage is UTF-8.** It holds two buffers: the original text (one
+  `QByteArray` per loaded chunk, never copied after load) and an append-only
+  add buffer for typed text. Rust hands over valid UTF-8 only; the item checks
+  it and replaces invalid sequences with U+FFFD, setting `hadInvalidText`.
+- **Pieces live in a balanced tree.** It is a B-tree with about 64 pieces per
+  node, and every node keeps aggregates: bytes, UTF-16 units and line breaks.
+  - Position to line, line to position, and UTF-16 offset to byte offset are
+    all O(log n).
+  - Within a piece, a lookup scans at most one 64 KB chunk; the original
+    buffer is split into pieces of at most 64 KB at load.
+  - No per-line array is kept, so a 1 GB file with 20 million lines costs
+    tree nodes, not 20 million entries.
+- **The tree is persistent.** Nodes are immutable, shared and reference-counted,
+  so an edit copies only the path from the root to the leaf. A snapshot is one
+  pointer copy. It is O(1) and thread-safe, and the indexer, the highlighter,
+  save and search all work on snapshots while the user keeps typing.
+- **Positions and lines in the API**
+  - Positions are in UTF-16 units, like TextEdit and every QML string.
+  - Lines and columns start at 0. Columns are in UTF-16 units too.
+  - The caret never stops inside a surrogate pair, a grapheme cluster or a CRLF.
+- **Line endings stay as they are in the file.**
+  - LF, CRLF and lone CR all count as one break. CRLF is two UTF-16 positions,
+    so positions match the file.
+  - `lineEnding` reports LF, CRLF, CR or Mixed. Enter inserts the most common
+    one, or LF in an empty file.
+  - `convertLineEndings(kind)` rewrites them as a single compound edit, so one
+    Undo restores them.
+- **Undo**
+  - Each record holds a position, the removed pieces (references into the
+    tree, not copies), the inserted pieces, and the caret and selection before
+    and after.
+  - Undoing a 50 MB delete costs nothing extra.
+  - Typing merges while it continues: same kind of edit, adjacent, the same
+    word class, and under 1 s apart.
+  - `beginEdit()` and `endEdit()` group changes into one record and nest.
+  - The default `undoLimit` is 1000 records.
+
+## Loading
+
+- `beginLoad()`, `appendData(utf8)` as often as wanted, then `endLoad()`.
+  - Rust streams the file in chunks of any size; the item cuts them into 64 KB
+    pieces.
+  - The first `appendData` that reaches a screenful is laid out and painted at
+    once, which meets the 250 ms first-text target whatever the file size.
+- Counting newlines and UTF-16 units runs on worker threads, about 1 GB/s per
+  core with a plain memchr-style loop. The tree is built from the results.
+- `loading` stays true until it is done, and `loadProgress` goes from 0 to 1.
+- Until then the view is read-only, scrolls over the part already indexed,
+  and the scroll bar grows.
+  - At 100 MB, indexing takes about 0.1 to 0.2 s, well inside the 1.5 s
+    editable target.
+- `text` is also a property, for small uses such as AtlasCodeView or a dialog:
+  - reading it builds a QString of the whole text;
+  - setting it replaces everything as one load.
+  - The reference page will say that large files use `appendData`.
+- **Tail mode** (`follow: true`) is for logs:
+  - `appendText()` and `appendData()` after `endLoad()` add to the end without
+    an undo record;
+  - when the view was at the bottom it stays there; otherwise it doesn't move.
+  - `maximumLines`, which defaults to 0 (no limit), drops the oldest lines, as
+    Monitor's log needs.
+
+## Snapshot and save
+
+- `snapshot()` returns an `AtlasTextSnapshot`, a small immutable QObject that
+  holds a tree root. It has:
+  - `length` and `lineCount`;
+  - `text(start, end)`;
+  - `utf8Chunks()`, which visits the pieces in order without copying, for
+    Rust's save and search;
+  - `revision`, which increments on every edit, so Rust can tell whether a
+    search result is stale.
+- The C++ header `atlas/textsnapshot.h` exposes the chunk visitor to C and
+  cxx-qt. That header is a contract once it ships (see "Compatibility" in
+  DESIGN.md).
+
+## Layout and painting
+
+- **Lines are laid out only when visible.** Each line visible in the viewport,
+  plus one screen above and below, gets a QTextLayout with the font, tab stops
+  and format ranges. Layouts are cached by line identity and revision, at about
+  4 screens' worth (LRU).
+- **Height and scrolling**
+  - Without wrap, every line is one row, so content height is lines × row
+    height, exactly.
+  - With wrap:
+    - A Fenwick tree keeps the row count per line.
+    - Unmeasured lines count as 1 row and are measured in the background, in
+      16 ms slices.
+    - The scroll position is anchored to a line, so the view doesn't jump as
+      estimates are replaced.
+- **Long lines**
+  - A line over 4,096 UTF-16 units is laid out in segments that break at
+    grapheme and word boundaries. Only the segments in view are laid out.
+  - Segment widths are measured when first needed. Before that they are
+    estimated from the font's average advance; with a monospace font the
+    estimate is exact.
+  - The 10 MB single-line case therefore lays out only a few kB.
+  - Bidi across a segment boundary is approximate. This only affects lines
+    over 4 kB, and is written down as a limit.
+- **Painting**
+  - One `QSGTextNode` per visible line, made with `QQuickWindow::createTextNode()`
+    (public since Qt 6.7).
+  - The nodes are reused as lines scroll in and out, and only changed lines are
+    rebuilt.
+  - Selection, current-line and decoration rectangles are rectangle nodes, so
+    they work on the software backend too.
+- **The caret**
+  - It is a rectangle node, and its blink changes only its opacity.
+  - Blinking stops when the view is unfocused or hidden, after 10 s idle, and
+    under `AccessibilityState.reducedMotion`. When it stops, the caret stays
+    shown.
+  - Idle CPU is zero.
+- **Margin**
+  - `showLineNumbers` draws a line-number gutter with the same per-line nodes.
+  - For anything else, the item exposes `firstVisibleLine`, `lastVisibleLine`
+    and `lineY(line)`. An app positions its own margin items, for example a
+    Repeater over the visible range, with no per-line QML for lines out of view.
+
+## Highlighting
+
+- **The highlighter** subclasses `KSyntaxHighlighting::AbstractHighlighter`.
+- **State per line.** The state after each line is kept in a chunked array
+  that follows the line index. A `State` is one shared pointer, 8 bytes a
+  line, so 2 million lines cost about 16 MB, and only after they are
+  highlighted.
+- **Format runs are not stored.** They are recomputed from the line's start
+  state when a line is laid out, which takes microseconds a line.
+- **After an edit**
+  - Highlighting restarts at the edited line and continues until a line's end
+    state matches the stored one.
+  - A typical keystroke re-highlights one line, synchronously, inside the 2 ms
+    budget.
+  - An edit that opens a block comment restyles the visible lines at once; the
+    rest follows in the background.
+- **The background pass**
+  - It runs ahead of the viewport on a worker thread, over a snapshot.
+  - The worker has its own `KSyntaxHighlighting::Repository`, because a
+    Repository is not thread-safe.
+  - Results come back tagged with the snapshot's revision. Lines edited since
+    then are recomputed, not trusted.
+  - When the view jumps far ahead of the known states (Ctrl+End in a 100 MB
+    file), the visible lines show plain text first and are restyled when the
+    pass arrives.
+  - A file over `highlightLimit` (default 50 MB) is not highlighted at all.
+- **Theme.** An Atlas theme is built from AtlasStyle's tokens, a light and a
+  dark variant, so code matches the rest of the app. Changing the theme
+  restyles the visible lines in the next frame and the rest lazily.
+- **The `syntax` property** takes a definition name ("Rust", "Python"). An
+  empty name means plain text. `syntaxForFile(name, firstLine)` asks the
+  repository for a guess.
+
+## Input
+
+- **Keys.** The keys come from QKeySequence::StandardKey, plus smart Home.
+  Word moves use QTextBoundaryFinder on the line, and visual movement in bidi
+  text uses `QTextLayout::leftCursorPosition` and `rightCursorPosition`.
+- **The input method**
+  - `inputMethodQuery` answers `ImSurroundingText` for the current line only,
+    capped at 1,000 characters each side, so an input method never asks for
+    10 MB.
+  - Preedit text is drawn underlined, as a decoration.
+- **The mouse**
+  - Click count comes from the platform's double-click interval.
+  - A drag selects, and an edge auto-scrolls on a timer that runs only while
+    dragging.
+  - A selection can be dragged and dropped with QDrag. It moves within the
+    view, and copies with Ctrl or when it goes to another app.
+  - A middle click pastes `QClipboard::Selection`.
+- **Accessibility**
+  - A `QAccessibleInterface` factory gives the item `QAccessibleTextInterface`
+    and `QAccessibleEditableTextInterface`.
+  - `text(start, end)` reads from the buffer, and `characterCount` is the real
+    count.
+  - Text changes go out as `QAccessibleTextUpdateEvent` with the changed range
+    only.
+
+## Decorations
+
+- `setDecorations(layer, ranges, style)` replaces one named layer.
+  - The ranges are an array of `[start, end]`.
+  - The style is one of Match, CurrentMatch, Bracket, CurrentLine, Error,
+    Warning or Info.
+  - Layers are kept in an interval tree, so only the ranges inside visible
+    lines are looked at.
+- Positions in a layer shift with edits, as markers do. A range whose text is
+  deleted disappears.
+- Notepad's find and highlight-all set a layer for the visible range only, and
+  set it again on `visibleRangeChanged`.
+
+## API sketch (draft)
+
+Properties:
+- `text`
+- `readOnly`
+- `wrap`
+- `font` (AtlasStyle's monospace font by default)
+- `tabWidth`
+- `lineCount` and `length`
+- `cursorPosition`, `selectionStart`, `selectionEnd` and `selectedText`
+- `contentX`, `contentY`, `contentWidth` and `contentHeight`
+- `firstVisibleLine` and `lastVisibleLine`
+- `lineEnding`
+- `modified`
+- `canUndo`, `canRedo` and `undoLimit`
+- `loading`, `loadProgress` and `hadInvalidText`
+- `syntax` and `highlightLimit`
+- `showLineNumbers` and `highlightCurrentLine`
+- `follow` and `maximumLines`
+
+Methods:
+- `positionOfLine(line)` and `lineColumn(position)`, which returns `{line, column}`
+- `textInRange(start, end)`
+- `select(start, end)`, `insert`, `remove` and `replace`
+- `beginEdit()` and `endEdit()`
+- `undo()` and `redo()`
+- `cut()`, `copy()`, `paste()` and `selectAll()`
+- `ensureVisible(position)` and `lineY(line)`
+- `formatAt(position)`, which returns `{name, style}`
+- `setDecorations()` and `clearDecorations(layer)`
+- `beginLoad()`, `appendData()`, `appendText()` and `endLoad()`
+- `snapshot()`
+- `convertLineEndings(kind)`
+- `syntaxForFile(name, firstLine)`
+
+Signals:
+- `contentsChange(position, removed, added)`, which fires before the
+  property-changed signals for the same edit
+- `visibleRangeChanged()`
+- `loaded()`
+- `textEdited()`, for user edits only, as the edit rule in DESIGN.md asks
+
+## How it lands (all in 1.5.0)
+
+1. **The buffer and a read-only view**
+   - The buffer, loading, wrap, highlighting, selection and copy, the mouse,
+     accessibility, line numbers, decorations, follow mode, and the snapshot.
+   - AtlasCodeView moves onto it, keeping its own API, and so does the
+     Updater's report view.
+   - The tests come with it:
+     - a fuzz test of the piece tree against a QString model, with 10,000
+       random edits per seed, the tree's invariants checked after each one,
+       and surrogates, CRLF and empty pieces;
+     - load and line-ending tests;
+     - goldens for light, dark, wrap, a selection, highlighting, RTL and a long
+       line;
+     - an a11y test.
+2. **Editing**
+   - Keys, the input method, undo with merging and compound edits, drag and
+     drop, the primary selection, and line-ending conversion.
+   - Keyboard and IME tests, using QTest key events and `QInputMethodEvent`.
+3. **The nice-to-haves from textview-1.5.md**
+   - Shown whitespace and line ends, indent guides, folding, column selection,
+     multiple carets, then the minimap.
+   - Each lands only once 1 and 2 meet every acceptance number.
+
+## Measuring
+
+- **The harness.** Notepad's harness (`bench.cpp` and `bench-s1.sh`) is
+  copied to `perf/textview/`. It runs against generated files: code, log,
+  JSON on one line, and a 1 GB file, which is generated and never committed.
+- **CI.** The perf job runs a smaller set (1 MB and 10 MB) against budgets in
+  `perf/budget.json`. The 100 MB and 1 GB runs are manual (`perf/textview/run.sh
+  --large`), and their results are written into textview-1.5.md's table.
+- **Acceptance.** The numbers are textview-1.5.md's acceptance list, on the
+  same setup: software backend, 1x, P-cores, and the median of 3 runs.
+
+## Open questions for Notepad
+
+1. How does Notepad's Rust reach a QML item today? Through a cxx-qt bridge
+   object, through C++ glue, or does it call `snapshot()` from QML? This
+   decides whether `atlas/textsnapshot.h` is needed in step 1.
+2. Do UTF-16 positions and 0-based lines suit the Rust side? Converting there
+   needs the line's text; `lineColumn` and `positionOfLine` exist for that.
+3. Does the Formatted (Markdown) view need the whole text as a QString on each
+   switch, or is `snapshot().text()` on demand enough?
+4. Does Rust always deliver UTF-8? Can it also hand over a file's original
+   bytes and encoding, so save writes back exactly what wasn't edited? With the
+   design as it stands, Rust re-encodes on save.
+5. What order do the nice-to-haves come in? The proposal is whitespace and
+   line ends, then folding, then the minimap.
