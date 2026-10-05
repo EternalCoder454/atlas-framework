@@ -25,9 +25,14 @@ namespace
 {
 constexpr int kWriteDelayMs = 400;
 constexpr int kWatchDelayMs = 100;
-// A writer waits this long for the lock before giving up (and keeping the
-// change for the next flush).
+// An explicit flush() waits this long for the lock before giving up (and
+// keeping the change for the next flush).
 constexpr int kLockWaitMs = 1000;
+// The timed write never waits: it tries once, then again after 50 ms,
+// doubling up to 1 s, for about 10 s in all, then warns once.
+constexpr int kRetryFirstMs = 50;
+constexpr int kRetryMaxMs = 1000;
+constexpr int kRetryTotalMs = 10000;
 // A settings file larger than this is not read (a real one is a few KB).
 constexpr qint64 kMaxFileBytes = 4 * 1024 * 1024;
 constexpr int kMaxNameLength = 200;
@@ -56,7 +61,7 @@ QMutex &writers()
 class FileLock
 {
 public:
-    explicit FileLock(const QString &path)
+    explicit FileLock(const QString &path, int waitMs)
     {
         const QFileInfo info(path);
         const QByteArray lockPath = QFile::encodeName(info.absolutePath() + QLatin1String("/.") + info.fileName() + QLatin1String(".lock"));
@@ -85,7 +90,8 @@ public:
                 m_error = QString::fromLocal8Bit(strerror(errno));
                 break;
             }
-            if (waited >= kLockWaitMs) {
+            if (waited >= waitMs) {
+                m_busy = true;
                 m_error = QStringLiteral("another program holds the lock");
                 break;
             }
@@ -104,9 +110,12 @@ public:
     FileLock &operator=(const FileLock &) = delete;
     bool held() const { return m_fd >= 0; }
     QString error() const { return m_error; }
+    // Not held because another process holds it (not an error of the file).
+    bool busy() const { return m_busy; }
 
 private:
     int m_fd = -1;
+    bool m_busy = false;
     QString m_error;
 };
 
@@ -365,7 +374,7 @@ AtlasSettings::AtlasSettings(QObject *parent)
 {
     m_writeTimer.setSingleShot(true);
     m_writeTimer.setInterval(kWriteDelayMs);
-    connect(&m_writeTimer, &QTimer::timeout, this, [this] { flush(); });
+    connect(&m_writeTimer, &QTimer::timeout, this, &AtlasSettings::timedWrite);
     m_watchTimer.setSingleShot(true);
     m_watchTimer.setInterval(kWatchDelayMs);
     connect(&m_watchTimer, &QTimer::timeout, this, &AtlasSettings::fileTouched);
@@ -676,7 +685,9 @@ bool AtlasSettings::setValue(const QString &key, const QVariant &value)
         return false;
     }
     m_pending.insert(key, stored);
-    m_writeTimer.start();
+    m_retryMs = 0;
+    m_retryWaitedMs = 0;
+    m_writeTimer.start(kWriteDelayMs); // a retry may have changed the interval
     return true;
 }
 
@@ -691,13 +702,51 @@ bool AtlasSettings::remove(const QString &key)
         return false;
     }
     m_pending.insert(key, QVariant());
-    m_writeTimer.start();
+    m_retryMs = 0;
+    m_retryWaitedMs = 0;
+    m_writeTimer.start(kWriteDelayMs); // a retry may have changed the interval
     return true;
 }
 
 bool AtlasSettings::flush()
 {
+    if (writePending(kLockWaitMs)) {
+        return true;
+    }
+    if (m_lockBusy && !m_pending.isEmpty()) {
+        // Stopped by another program's lock: the timer goes on trying.
+        m_retryMs = 0;
+        m_retryWaitedMs = 0;
+        m_writeTimer.start(kRetryFirstMs);
+    }
+    return false;
+}
+
+// The debounce timer fired: never wait for the lock on the GUI thread. When
+// another process holds it, the changes stay pending and this runs again
+// after a growing delay, up to once a second; past about 10 s it warns
+// once and goes on trying each second until the write succeeds.
+void AtlasSettings::timedWrite()
+{
+    if (writePending(0) || !m_lockBusy) {
+        m_retryMs = 0;
+        m_retryWaitedMs = 0;
+        m_lockWarned = false;
+        return;
+    }
+    if (m_retryWaitedMs >= kRetryTotalMs && !m_lockWarned) {
+        m_lockWarned = true;
+        qWarning("AtlasSettings: %s: another program has held the settings lock for %d seconds; %lld change(s) wait and are written when it lets go", qPrintable(path()), kRetryTotalMs / 1000, qint64(m_pending.size()));
+    }
+    m_retryMs = m_retryMs ? qMin(m_retryMs * 2, kRetryMaxMs) : kRetryFirstMs;
+    m_retryWaitedMs = qMin(m_retryWaitedMs + m_retryMs, kRetryTotalMs);
+    m_writeTimer.start(m_retryMs);
+}
+
+bool AtlasSettings::writePending(int lockWaitMs)
+{
     m_writeTimer.stop();
+    m_lockBusy = false;
     if (m_pending.isEmpty()) {
         return true;
     }
@@ -714,8 +763,12 @@ bool AtlasSettings::flush()
     bool ok = false;
     {
         QMutexLocker thread(&writers());
-        const FileLock lock(file);
+        const FileLock lock(file, lockWaitMs);
         if (!lock.held()) {
+            m_lockBusy = lock.busy();
+            if (lockWaitMs == 0 && lock.busy()) {
+                return false; // the caller retries; no warning per try
+            }
             qWarning("AtlasSettings: %s: cannot lock it: %s", qPrintable(file), qPrintable(lock.error()));
             return false;
         }
