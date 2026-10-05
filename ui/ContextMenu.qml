@@ -30,6 +30,10 @@ T.Menu {
 
     delegate: ContextMenuItem {}
 
+    // Items added just before popup() are measured before it is placed,
+    // not one turn later (when it would first be placed too narrow).
+    onAboutToShow: list._settle()
+
     contentItem: ListView {
         id: list
         readonly property real windowHeight: Window.window ? Window.window.height : Number.POSITIVE_INFINITY
@@ -39,7 +43,10 @@ T.Menu {
         // width is measured one turn later, never during the removal.
         property int _rows: 0
         function _settle(): void {
-            list._rows = control.count;
+            // A call queued by the menu's teardown can arrive after it.
+            if (control) {
+                list._rows = control.count;
+            }
         }
         Connections {
             target: control

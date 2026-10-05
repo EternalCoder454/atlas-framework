@@ -352,9 +352,10 @@ Item {
             tryVerify(() => m.implicitWidth >= last.implicitWidth, 1000, "the menu is as wide as its widest row");
         }
 
-        // takeItem() changes count while the item is half removed; a width
-        // binding that read itemAt() then crashed (AtlasToolbar's overflow).
-        function test_context_menu_take_item_while_measuring_does_not_crash() {
+        // The width follows rows taken out. (The crash a width binding once
+        // hit inside takeItem() shows only in the compiled module; the toolbar
+        // tests here and the visual tests ran into it.)
+        function test_context_menu_width_follows_taken_items() {
             const m = createTemporaryObject(menuComp, root);
             const wide = createTemporaryObject(menuItemComp, root, {
                 text: "x".repeat(200)
@@ -370,6 +371,18 @@ Item {
             while (m.count > 0)
                 m.takeItem(0);
             tryCompare(m.contentItem, "implicitWidth", 0, 1000);
+        }
+
+        function test_context_menu_width_is_current_when_it_opens() {
+            const m = createTemporaryObject(menuComp, root);
+            const wide = createTemporaryObject(menuItemComp, root, {
+                text: "x".repeat(120)
+            });
+            // Added and opened in one turn: no event loop in between.
+            m.addItem(wide);
+            m.popup(root, 0, 0);
+            verify(m.contentItem.implicitWidth >= wide.implicitWidth, "measured before it is placed");
+            m.close();
         }
 
         function test_tooltip_with_no_text_never_opens() {
