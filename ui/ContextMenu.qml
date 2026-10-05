@@ -22,8 +22,8 @@ T.Menu {
     // The window's height less the margins bounds the menu; it scrolls past that.
     readonly property real _maxHeight: list.windowHeight - topMargin - bottomMargin
     implicitHeight: Math.min(contentItem.implicitHeight + topPadding + bottomPadding, Math.max(_maxHeight, 0))
-    padding: Kirigami.Units.smallSpacing
-    margins: Kirigami.Units.smallSpacing
+    padding: AtlasStyle.spacingSmall
+    margins: AtlasStyle.spacingSmall
     overlap: 1
     modal: false
     focus: true
@@ -55,7 +55,7 @@ T.Menu {
     }
 
     background: Rectangle {
-        radius: 10
+        radius: AtlasStyle.radiusLarge
         color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
@@ -66,7 +66,7 @@ T.Menu {
             property: "opacity"
             from: 0
             to: 1
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
     exit: Transition {
@@ -74,7 +74,7 @@ T.Menu {
             property: "opacity"
             from: 1
             to: 0
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
 }

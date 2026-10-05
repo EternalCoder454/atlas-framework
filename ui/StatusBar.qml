@@ -11,8 +11,14 @@ Item {
 
     default property alias content: row.data
 
+    // AtlasStyle.Normal or AtlasStyle.Compact; Compact shrinks the height and
+    // the vertical padding to about 75%. Follows the app-wide AtlasStyle.density
+    // unless set here.
+    property int density: AtlasStyle.density
+    readonly property real _k: density === AtlasStyle.Compact ? 0.75 : 1
+
     implicitWidth: row.implicitWidth
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.6)
+    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.6 * _k)
     Accessible.role: Accessible.StatusBar
 
     // Sets `leadingSeparator` on every visible cell that follows another one.
@@ -44,8 +50,8 @@ Item {
         id: row
         anchors.fill: parent
         anchors.topMargin: 1
-        anchors.leftMargin: Kirigami.Units.smallSpacing
-        anchors.rightMargin: Kirigami.Units.smallSpacing
+        anchors.leftMargin: AtlasStyle.spacingSmall
+        anchors.rightMargin: AtlasStyle.spacingSmall
         spacing: 0
         onChildrenChanged: control.refresh()
     }

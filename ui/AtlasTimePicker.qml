@@ -195,7 +195,7 @@ T.Control {
                 Accessible.ignored: true
             }
             background: Rectangle {
-                radius: height / 2
+                radius: AtlasStyle.radiusPill
                 color: Qt.alpha(AtlasStyle.text, ampm.down ? 0.14 : ampm.hovered ? 0.12 : 0.07)
                 border.width: 1
                 border.color: Qt.alpha(AtlasStyle.text, 0.14)

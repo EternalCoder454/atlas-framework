@@ -46,7 +46,7 @@ Item {
 
     Behavior on fill {
         NumberAnimation {
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
             easing.type: Easing.OutCubic
         }
     }

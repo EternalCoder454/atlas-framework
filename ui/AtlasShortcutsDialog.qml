@@ -81,7 +81,7 @@ QQC2.Popup {
             property: "opacity"
             from: 0
             to: 1
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
     exit: Transition {
@@ -89,7 +89,7 @@ QQC2.Popup {
             property: "opacity"
             from: 1
             to: 0
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
 
@@ -107,13 +107,13 @@ QQC2.Popup {
     contentItem: ColumnLayout {
         Accessible.role: Accessible.Dialog
         Accessible.name: dialog.title
-        spacing: Kirigami.Units.largeSpacing
+        spacing: AtlasStyle.spacingLarge
 
         QQC2.Label {
             Layout.fillWidth: true
             text: dialog.title
             font.bold: true
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.15
+            font.pointSize: AtlasStyle.fontSizeHeading
             wrapMode: Text.Wrap
             textFormat: Text.PlainText
             Accessible.role: Accessible.Heading
@@ -149,8 +149,8 @@ QQC2.Popup {
                 section.delegate: QQC2.Label {
                     required property string section
                     width: ListView.view.width
-                    topPadding: Kirigami.Units.largeSpacing
-                    bottomPadding: Kirigami.Units.smallSpacing
+                    topPadding: AtlasStyle.spacingLarge
+                    bottomPadding: AtlasStyle.spacingSmall
                     text: section
                     font.bold: true
                     opacity: 0.7
@@ -163,15 +163,15 @@ QQC2.Popup {
                     id: row
                     required property var modelData
                     width: ListView.view.width
-                    height: Math.max(label.implicitHeight, keys.implicitHeight) + Kirigami.Units.smallSpacing * 2
+                    height: Math.max(label.implicitHeight, keys.implicitHeight) + AtlasStyle.spacingSmall * 2
 
                     Accessible.role: Accessible.ListItem
                     Accessible.name: row.modelData.text + ", " + row.modelData.readable
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.rightMargin: Kirigami.Units.largeSpacing + (bar.visible ? bar.width : 0)
-                        spacing: Kirigami.Units.largeSpacing
+                        anchors.rightMargin: AtlasStyle.spacingLarge + (bar.visible ? bar.width : 0)
+                        spacing: AtlasStyle.spacingLarge
                         QQC2.Label {
                             id: label
                             Layout.fillWidth: true
@@ -201,7 +201,7 @@ QQC2.Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.smallSpacing
+            Layout.topMargin: AtlasStyle.spacingSmall
             Item {
                 Layout.fillWidth: true
             }

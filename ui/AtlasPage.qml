@@ -43,7 +43,7 @@ Item {
                 opacity: parent.active ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Kirigami.Units.longDuration
+                        duration: AtlasStyle.duration
                     }
                 }
             }
@@ -63,12 +63,12 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
+                    spacing: AtlasStyle.spacingLarge
 
                     QQC2.Label {
                         Layout.fillWidth: true
                         text: root.title
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.6
+                        font.pointSize: AtlasStyle.fontSizeTitle
                         font.bold: true
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
@@ -76,7 +76,7 @@ Item {
                     }
                     Row {
                         id: headerRow
-                        spacing: Kirigami.Units.smallSpacing
+                        spacing: AtlasStyle.spacingSmall
                         visible: children.length > 0
                         Layout.alignment: Qt.AlignVCenter
                     }
@@ -101,7 +101,7 @@ Item {
         const bottom = top + flick.height;
         if (r.y >= top && r.y + r.height <= bottom)
             return;
-        const margin = Kirigami.Units.largeSpacing;
+        const margin = AtlasStyle.spacingLarge;
         const maxY = Math.max(0, flick.contentHeight - flick.height);
         flick.cancelFlick();
         if (r.y < top)

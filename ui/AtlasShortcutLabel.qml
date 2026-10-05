@@ -33,7 +33,7 @@ Item {
         id: row
         anchors.verticalCenter: parent.verticalCenter
         // A Row follows LayoutMirroring by itself: right to left in RTL.
-        spacing: Kirigami.Units.smallSpacing * 2
+        spacing: AtlasStyle.spacingSmall * 2
 
         Repeater {
             model: priv.chords
@@ -41,7 +41,7 @@ Item {
                 id: chord
                 required property var modelData
                 required property int index
-                spacing: Kirigami.Units.smallSpacing
+                spacing: AtlasStyle.spacingSmall
 
                 Repeater {
                     model: chord.modelData
@@ -49,8 +49,8 @@ Item {
                         id: cap
                         required property string modelData
                         height: priv.capHeight
-                        width: Math.max(height, label.implicitWidth + Kirigami.Units.largeSpacing * 2)
-                        radius: 6
+                        width: Math.max(height, label.implicitWidth + AtlasStyle.spacingLarge * 2)
+                        radius: AtlasStyle.radiusSmall
                         color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
                         border.width: 1
                         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.18)

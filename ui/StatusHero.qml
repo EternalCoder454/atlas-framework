@@ -36,7 +36,7 @@ ColumnLayout {
     default property alias actions: actionRow.data
 
     Layout.fillWidth: true
-    spacing: Kirigami.Units.largeSpacing
+    spacing: AtlasStyle.spacingLarge
 
     // The headline is the page's state. Say it when it changes, so a screen
     // reader hears the new state without a banner repeating it.
@@ -113,11 +113,11 @@ ColumnLayout {
                 }
             }
             RotationAnimator on rotation {
-                running: root.visible && root.busy && root.progress < 0 && Kirigami.Units.longDuration > 0
+                running: root.visible && root.busy && root.progress < 0 && AtlasStyle.duration > 0
                 from: 0
                 to: 360
                 loops: Animation.Infinite
-                duration: Kirigami.Units.veryLongDuration * 3
+                duration: AtlasStyle.durationLong * 3
             }
         }
     }
@@ -144,7 +144,7 @@ ColumnLayout {
         id: bar
         visible: root.showBar
         Layout.alignment: Qt.AlignHCenter
-        Layout.topMargin: Kirigami.Units.smallSpacing
+        Layout.topMargin: AtlasStyle.spacingSmall
         Layout.preferredWidth: Math.min(root.width, Kirigami.Units.gridUnit * 18)
         implicitHeight: 6
         clip: true
@@ -155,7 +155,7 @@ ColumnLayout {
 
         Rectangle {
             anchors.fill: parent
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: Qt.alpha(root.tint, 0.18)
         }
         Rectangle {
@@ -163,23 +163,23 @@ ColumnLayout {
             readonly property bool known: root.progress >= 0
             property real slide: 0
             height: parent.height
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: root.tint
             width: known ? Math.max(height, parent.width * Math.min(1, root.progress)) : parent.width * 0.3
             x: known ? 0 : slide
             Behavior on width {
                 enabled: fill.known
                 NumberAnimation {
-                    duration: Kirigami.Units.longDuration
+                    duration: AtlasStyle.duration
                     easing.type: Easing.OutCubic
                 }
             }
             NumberAnimation on slide {
-                running: bar.visible && !fill.known && Kirigami.Units.longDuration > 0
+                running: bar.visible && !fill.known && AtlasStyle.duration > 0
                 from: -bar.width * 0.3
                 to: bar.width
                 loops: Animation.Infinite
-                duration: Kirigami.Units.veryLongDuration * 3
+                duration: AtlasStyle.durationLong * 3
                 easing.type: Easing.InOutQuad
             }
         }
@@ -197,9 +197,9 @@ ColumnLayout {
     GridLayout {
         id: actionRow
         Layout.alignment: Qt.AlignHCenter
-        Layout.topMargin: Kirigami.Units.smallSpacing
-        columnSpacing: Kirigami.Units.largeSpacing
-        rowSpacing: Kirigami.Units.smallSpacing
+        Layout.topMargin: AtlasStyle.spacingSmall
+        columnSpacing: AtlasStyle.spacingLarge
+        rowSpacing: AtlasStyle.spacingSmall
         columns: root.sideBySide ? 100 : 1
     }
     readonly property real wideWidth: {
@@ -211,7 +211,7 @@ ColumnLayout {
                 n++;
             }
         }
-        return w + Math.max(0, n - 1) * Kirigami.Units.largeSpacing;
+        return w + Math.max(0, n - 1) * AtlasStyle.spacingLarge;
     }
     readonly property bool sideBySide: wideWidth <= root.width
 }

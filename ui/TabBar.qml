@@ -37,8 +37,14 @@ Item {
     signal moved(int from, int to)
     signal contextMenuRequested(int index, point position)
 
+    // AtlasStyle.Normal or AtlasStyle.Compact; Compact shrinks the height and
+    // the vertical padding to about 75%. Follows the app-wide AtlasStyle.density
+    // unless set here.
+    property int density: AtlasStyle.density
+    readonly property real _k: density === AtlasStyle.Compact ? 0.75 : 1
+
     implicitWidth: Kirigami.Units.gridUnit * 30
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9) + Kirigami.Units.smallSpacing * 2
+    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * _k) + Math.round(AtlasStyle.spacingSmall * 2 * _k)
     Accessible.role: Accessible.PageTabList
     Accessible.name: qsTr("Tabs")
 
@@ -56,9 +62,9 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: Kirigami.Units.smallSpacing
-        anchors.rightMargin: Kirigami.Units.smallSpacing
-        spacing: Kirigami.Units.smallSpacing
+        anchors.leftMargin: AtlasStyle.spacingSmall
+        anchors.rightMargin: AtlasStyle.spacingSmall
+        spacing: AtlasStyle.spacingSmall
 
         ListView {
             id: list
@@ -105,10 +111,10 @@ Item {
                 property real dragX: 0
 
                 implicitWidth: Math.min(control.maxTabWidth, contentItem.implicitWidth + leftPadding + rightPadding)
-                implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+                implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * control._k)
                 height: list.height
-                leftPadding: Kirigami.Units.largeSpacing
-                rightPadding: Kirigami.Units.smallSpacing
+                leftPadding: AtlasStyle.spacingLarge
+                rightPadding: AtlasStyle.spacingSmall
                 hoverEnabled: true
                 // Tab reaches the current tab only, and a click never takes the
                 // focus (the editor keeps it).
@@ -205,11 +211,11 @@ Item {
                 }
 
                 background: Rectangle {
-                    radius: 8
+                    radius: AtlasStyle.radius
                     color: tab.current ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18) : Qt.alpha(Kirigami.Theme.textColor, tab.down ? 0.1 : tab.hovered ? 0.06 : 0)
                     Behavior on color {
                         ColorAnimation {
-                            duration: Kirigami.Units.shortDuration
+                            duration: AtlasStyle.durationShort
                         }
                     }
 
@@ -234,7 +240,7 @@ Item {
                 }
 
                 contentItem: RowLayout {
-                    spacing: Kirigami.Units.smallSpacing
+                    spacing: AtlasStyle.spacingSmall
                     Rectangle {
                         visible: tab.modified
                         Layout.preferredWidth: 7
@@ -248,7 +254,7 @@ Item {
                         Layout.fillWidth: true
                         text: tab.title
                         font.family: Kirigami.Theme.defaultFont.family
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize
+                        font.pointSize: AtlasStyle.fontSizeBody
                         font.weight: tab.current ? Font.Medium : Font.Normal
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
@@ -257,7 +263,7 @@ Item {
                     }
                     T.AbstractButton {
                         id: closeButton
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
                         Layout.preferredHeight: Layout.preferredWidth
                         // Always takes its room, so a tab keeps its width on hover.
                         opacity: tab.showClose ? 1 : 0
@@ -293,7 +299,7 @@ Item {
 
         RowLayout {
             id: trailingRow
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
         }
     }
 }

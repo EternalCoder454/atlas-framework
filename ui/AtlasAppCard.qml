@@ -103,7 +103,7 @@ T.AbstractButton {
 
     implicitWidth: Kirigami.Units.gridUnit * 24
     implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
-    padding: Kirigami.Units.largeSpacing
+    padding: AtlasStyle.spacingLarge
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
 
@@ -142,7 +142,7 @@ T.AbstractButton {
             border.color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
             Behavior on color {
                 ColorAnimation {
-                    duration: Kirigami.Units.shortDuration
+                    duration: AtlasStyle.durationShort
                 }
             }
         }
@@ -153,7 +153,7 @@ T.AbstractButton {
     }
 
     contentItem: RowLayout {
-        spacing: Kirigami.Units.largeSpacing
+        spacing: AtlasStyle.spacingLarge
 
         Rectangle {
             Layout.preferredWidth: priv.iconSide
@@ -182,7 +182,7 @@ T.AbstractButton {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            spacing: Math.round(Kirigami.Units.smallSpacing / 2)
+            spacing: Math.round(AtlasStyle.spacingSmall / 2)
             Text {
                 Layout.fillWidth: true
                 text: control.name
@@ -204,7 +204,7 @@ T.AbstractButton {
             }
             RowLayout {
                 visible: priv.meta.length > 0
-                spacing: Kirigami.Units.smallSpacing
+                spacing: AtlasStyle.spacingSmall
                 Loader {
                     active: control.rating > 0
                     visible: active

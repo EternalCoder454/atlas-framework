@@ -74,14 +74,14 @@ Item {
 
         Behavior on progress {
             NumberAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
                 easing.type: Easing.OutCubic
             }
         }
 
         width: parent.width
-        implicitHeight: row.implicitHeight + Kirigami.Units.smallSpacing * 2 + Kirigami.Units.largeSpacing
-        radius: 10
+        implicitHeight: row.implicitHeight + AtlasStyle.spacingSmall * 2 + AtlasStyle.spacingLarge
+        radius: AtlasStyle.radiusLarge
         color: Qt.alpha(control.tint, 0.14)
         border.width: 1
         border.color: Qt.alpha(control.tint, 0.4)
@@ -90,9 +90,9 @@ Item {
         RowLayout {
             id: row
             anchors.fill: parent
-            anchors.leftMargin: Kirigami.Units.largeSpacing
-            anchors.rightMargin: Kirigami.Units.smallSpacing + 2
-            spacing: Kirigami.Units.largeSpacing
+            anchors.leftMargin: AtlasStyle.spacingLarge
+            anchors.rightMargin: AtlasStyle.spacingSmall + 2
+            spacing: AtlasStyle.spacingLarge
 
             Kirigami.Icon {
                 Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
@@ -140,7 +140,7 @@ Item {
                 id: closeButton
                 visible: control.closable
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+                implicitWidth: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
                 implicitHeight: implicitWidth
                 hoverEnabled: true
                 focusPolicy: Qt.TabFocus // a click must not take the editor's focus

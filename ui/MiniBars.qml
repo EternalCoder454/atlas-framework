@@ -25,7 +25,7 @@ Flow {
     property var textOf: v => Math.round(v) + "%"
 
     Layout.fillWidth: true
-    spacing: Kirigami.Units.smallSpacing
+    spacing: AtlasStyle.spacingSmall
 
     Repeater {
         model: root.values.length

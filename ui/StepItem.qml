@@ -42,22 +42,22 @@ T.AbstractButton {
     }
 
     background: Rectangle {
-        radius: 8
+        radius: AtlasStyle.radius
         color: control.current ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.06 : 0)
         border.width: control.visualFocus ? 2 : 0
         border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
         Behavior on color {
             ColorAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
     }
 
     contentItem: RowLayout {
-        spacing: Kirigami.Units.largeSpacing
+        spacing: AtlasStyle.spacingLarge
         Rectangle {
             id: dot
-            Layout.leftMargin: Kirigami.Units.largeSpacing
+            Layout.leftMargin: AtlasStyle.spacingLarge
             readonly property real size: Math.round(Kirigami.Units.gridUnit * 1.2)
             Layout.preferredWidth: size
             Layout.preferredHeight: size
@@ -88,7 +88,7 @@ T.AbstractButton {
             Layout.fillWidth: true
             text: control.text
             font.family: Kirigami.Theme.defaultFont.family
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize
+            font.pointSize: AtlasStyle.fontSizeBody
             font.weight: control.current ? Font.DemiBold : Font.Medium
             textFormat: Text.PlainText
             elide: Text.ElideRight

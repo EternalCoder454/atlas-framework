@@ -25,8 +25,8 @@ T.AbstractButton {
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.5)
-    leftPadding: Kirigami.Units.largeSpacing
-    rightPadding: closable ? Kirigami.Units.smallSpacing : Kirigami.Units.largeSpacing
+    leftPadding: AtlasStyle.spacingLarge
+    rightPadding: closable ? AtlasStyle.spacingSmall : AtlasStyle.spacingLarge
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     scale: control.down && control.enabled ? 0.97 : 1
@@ -51,7 +51,7 @@ T.AbstractButton {
     }
 
     contentItem: Row {
-        spacing: Kirigami.Units.smallSpacing
+        spacing: AtlasStyle.spacingSmall
         Loader {
             active: control.symbol !== 0 || control.showsCheck
             visible: active
@@ -81,7 +81,7 @@ T.AbstractButton {
     }
 
     background: Rectangle {
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: {
             if (control.showsCheck) {
                 return Qt.alpha(Kirigami.Theme.highlightColor, control.down ? 0.34 : control.hovered ? 0.28 : 0.22);
@@ -108,7 +108,7 @@ T.AbstractButton {
         enabled: control.enabled
         width: Math.round(control.height * 0.72)
         height: width
-        x: control.mirrored ? Kirigami.Units.smallSpacing : control.width - width - Kirigami.Units.smallSpacing
+        x: control.mirrored ? AtlasStyle.spacingSmall : control.width - width - AtlasStyle.spacingSmall
         anchors.verticalCenter: parent.verticalCenter
         hoverEnabled: true
         focusPolicy: Qt.NoFocus
@@ -116,7 +116,7 @@ T.AbstractButton {
         Accessible.name: qsTr("Remove %1").arg(control.text)
         onClicked: control.closeRequested()
         background: Rectangle {
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: Qt.alpha(control.tint, closeButton.down ? 0.25 : closeButton.hovered ? 0.15 : 0)
         }
         contentItem: Symbol {

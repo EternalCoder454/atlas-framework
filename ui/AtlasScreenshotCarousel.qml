@@ -99,7 +99,7 @@ T.Control {
         }
         Behavior on position {
             NumberAnimation {
-                duration: Kirigami.Units.longDuration
+                duration: AtlasStyle.duration
                 easing.type: Easing.OutCubic
             }
         }
@@ -149,7 +149,7 @@ T.Control {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.bottom: dots.top
-            anchors.bottomMargin: dots.visible ? Kirigami.Units.smallSpacing : 0
+            anchors.bottomMargin: dots.visible ? AtlasStyle.spacingSmall : 0
             radius: 14
             color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
             border.width: 1
@@ -158,7 +158,7 @@ T.Control {
             // Empty state.
             Column {
                 anchors.centerIn: parent
-                spacing: Kirigami.Units.smallSpacing
+                spacing: AtlasStyle.spacingSmall
                 visible: control.count === 0
                 Symbol {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -221,7 +221,7 @@ T.Control {
                                 Image {
                                     id: img
                                     anchors.fill: parent
-                                    anchors.margins: Kirigami.Units.smallSpacing
+                                    anchors.margins: AtlasStyle.spacingSmall
                                     source: slide.loadSource
                                     asynchronous: true
                                     onStatusChanged: slide.loadError = img.status === Image.Error
@@ -230,7 +230,7 @@ T.Control {
                                 }
                                 Column {
                                     anchors.centerIn: parent
-                                    spacing: Kirigami.Units.smallSpacing
+                                    spacing: AtlasStyle.spacingSmall
                                     visible: img.status !== Image.Ready
                                     Symbol {
                                         anchors.horizontalCenter: parent.horizontalCenter
@@ -261,7 +261,7 @@ T.Control {
                     readonly property int target: control.currentIndex + nav.modelData
                     readonly property bool leftSide: (nav.modelData < 0) !== control.mirrored
                     readonly property bool available: nav.target >= 0 && nav.target < control.count
-                    x: leftSide ? Kirigami.Units.smallSpacing * 2 : view.width - width - Kirigami.Units.smallSpacing * 2
+                    x: leftSide ? AtlasStyle.spacingSmall * 2 : view.width - width - AtlasStyle.spacingSmall * 2
                     y: Math.round((view.height - height) / 2)
                     width: Math.round(Kirigami.Units.gridUnit * 2)
                     height: width
@@ -274,11 +274,11 @@ T.Control {
                     onClicked: priv.step(nav.modelData)
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: Kirigami.Units.shortDuration
+                            duration: AtlasStyle.durationShort
                         }
                     }
                     background: Rectangle {
-                        radius: height / 2
+                        radius: AtlasStyle.radiusPill
                         color: Qt.alpha(Kirigami.Theme.backgroundColor, nav.down ? 0.95 : 0.8)
                         border.width: 1
                         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
@@ -303,7 +303,7 @@ T.Control {
             id: dots
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             visible: control.count > 1
             height: visible ? Math.round(Kirigami.Units.gridUnit * 1.2) : 0
 
@@ -327,7 +327,7 @@ T.Control {
                         color: dot.current ? Kirigami.Theme.highlightColor : Qt.alpha(Kirigami.Theme.textColor, 0.3)
                         Behavior on color {
                             ColorAnimation {
-                                duration: Kirigami.Units.shortDuration
+                                duration: AtlasStyle.durationShort
                             }
                         }
                     }

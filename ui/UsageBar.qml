@@ -50,7 +50,7 @@ ColumnLayout {
         return Qt.alpha(colors.length > 0 ? colors[colors.length - 1] : Kirigami.Theme.highlightColor, 0.25);
     }
 
-    spacing: Kirigami.Units.smallSpacing
+    spacing: AtlasStyle.spacingSmall
     Layout.fillWidth: true
     LayoutMirroring.childrenInherit: true
 
@@ -70,7 +70,7 @@ ColumnLayout {
 
         Rectangle {
             anchors.fill: parent
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: root.trackColor
         }
 
@@ -114,7 +114,7 @@ ColumnLayout {
     Flow {
         visible: root.legend
         Layout.fillWidth: true
-        spacing: Kirigami.Units.largeSpacing * 2
+        spacing: AtlasStyle.spacingLarge * 2
 
         Repeater {
             model: root.labels.length
@@ -122,7 +122,7 @@ ColumnLayout {
             Row {
                 id: key
                 required property int index
-                spacing: Kirigami.Units.smallSpacing
+                spacing: AtlasStyle.spacingSmall
 
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter

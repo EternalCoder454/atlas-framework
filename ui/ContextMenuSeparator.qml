@@ -5,11 +5,11 @@ import org.kde.kirigami as Kirigami
 // A thin rule between groups of ContextMenuItems.
 T.MenuSeparator {
     implicitWidth: Kirigami.Units.gridUnit * 8
-    implicitHeight: visible ? Kirigami.Units.smallSpacing * 2 + 1 : 0
-    topPadding: Kirigami.Units.smallSpacing
-    bottomPadding: Kirigami.Units.smallSpacing
-    leftPadding: Kirigami.Units.largeSpacing
-    rightPadding: Kirigami.Units.largeSpacing
+    implicitHeight: visible ? AtlasStyle.spacingSmall * 2 + 1 : 0
+    topPadding: AtlasStyle.spacingSmall
+    bottomPadding: AtlasStyle.spacingSmall
+    leftPadding: AtlasStyle.spacingLarge
+    rightPadding: AtlasStyle.spacingLarge
 
     contentItem: Rectangle {
         implicitHeight: 1

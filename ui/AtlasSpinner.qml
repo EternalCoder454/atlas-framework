@@ -17,7 +17,7 @@ T.BusyIndicator {
 
     QtObject {
         id: internals
-        readonly property bool turning: control.animated && control.running && control.visible && Kirigami.Units.longDuration > 1
+        readonly property bool turning: control.animated && control.running && control.visible && AtlasStyle.duration > 1
         readonly property real stroke: Math.max(2, Math.round(control.availableWidth / 9))
     }
 
@@ -74,7 +74,7 @@ T.BusyIndicator {
                 from: 0
                 to: 360
                 // One turn in about a second at normal speed.
-                duration: Kirigami.Units.longDuration * 4
+                duration: AtlasStyle.duration * 4
                 loops: Animation.Infinite
                 running: internals.turning
             }

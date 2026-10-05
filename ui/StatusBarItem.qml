@@ -26,7 +26,7 @@ T.AbstractButton {
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding + (leadingSeparator ? 1 : 0)
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.5)
-    leftPadding: Kirigami.Units.largeSpacing
+    leftPadding: AtlasStyle.spacingLarge
     rightPadding: leftPadding
     hoverEnabled: true
     focusPolicy: Qt.NoFocus
@@ -40,11 +40,11 @@ T.AbstractButton {
             const w = m.width > 0 ? m.width : m.implicitWidth;
             const h = m.height > 0 ? m.height : m.implicitHeight;
             let x = control.mirrored ? control.width - w : 0;
-            let y = -h - Kirigami.Units.smallSpacing;
+            let y = -h - AtlasStyle.spacingSmall;
             const win = control.Window.window;
             if (win) {
                 // Keep the menu inside the window, whichever side runs out.
-                const gap = Kirigami.Units.smallSpacing;
+                const gap = AtlasStyle.spacingSmall;
                 const at = control.mapToItem(null, x, y);
                 x += Math.max(gap, Math.min(at.x, win.width - w - gap)) - at.x;
                 y += Math.max(gap, Math.min(at.y, win.height - h - gap)) - at.y;
@@ -80,7 +80,7 @@ T.AbstractButton {
             anchors.bottomMargin: 1
             anchors.leftMargin: control.leadingSeparator ? 2 : 0
             anchors.rightMargin: 0
-            radius: 6
+            radius: AtlasStyle.radiusSmall
             color: Qt.alpha(Kirigami.Theme.textColor, !control.clickable ? 0 : control.down ? 0.14 : control.hovered ? 0.08 : 0)
         }
     }
@@ -95,7 +95,7 @@ T.AbstractButton {
         Row {
             id: row
             anchors.centerIn: parent
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             // Made only when used, so cells without one never load the fonts.
             Loader {
                 active: control.symbol !== 0

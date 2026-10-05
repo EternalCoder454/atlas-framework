@@ -62,12 +62,12 @@ T.TextField {
         }
         readonly property bool counterShown: control.showCounter && control.maximumLength < 32767
         readonly property bool rowShown: message.visible || counterShown
-        readonly property real messageHeight: rowShown ? Math.max(message.visible ? message.implicitHeight : 0, counterShown ? counter.implicitHeight : 0) + Kirigami.Units.smallSpacing : 0
-        readonly property real prefixSpace: control.prefix.length > 0 ? prefixText.implicitWidth + Kirigami.Units.smallSpacing : 0
-        readonly property real suffixSpace: control.suffix.length > 0 ? suffixText.implicitWidth + Kirigami.Units.smallSpacing : 0
-        readonly property real edgePad: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+        readonly property real messageHeight: rowShown ? Math.max(message.visible ? message.implicitHeight : 0, counterShown ? counter.implicitHeight : 0) + AtlasStyle.spacingSmall : 0
+        readonly property real prefixSpace: control.prefix.length > 0 ? prefixText.implicitWidth + AtlasStyle.spacingSmall : 0
+        readonly property real suffixSpace: control.suffix.length > 0 ? suffixText.implicitWidth + AtlasStyle.spacingSmall : 0
+        readonly property real edgePad: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
         readonly property bool showClear: control.clearable && control.text.length > 0 && control.enabled && !control.readOnly
-        readonly property real clearSpace: showClear ? clearButton.width + Kirigami.Units.smallSpacing : 0
+        readonly property real clearSpace: showClear ? clearButton.width + AtlasStyle.spacingSmall : 0
     }
 
     implicitWidth: Kirigami.Units.gridUnit * 14
@@ -102,7 +102,7 @@ T.TextField {
 
     background: Rectangle {
         height: internals.fieldHeight
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
         border.width: control.activeFocus || control.hasError ? 2 : 1
         border.color: control.hasError ? Kirigami.Theme.negativeTextColor : control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
@@ -156,9 +156,9 @@ T.TextField {
 
     T.AbstractButton {
         id: clearButton
-        x: control.rtl ? Kirigami.Units.smallSpacing + 2 : control.width - width - Kirigami.Units.smallSpacing - 2
+        x: control.rtl ? AtlasStyle.spacingSmall + 2 : control.width - width - AtlasStyle.spacingSmall - 2
         y: Math.round((internals.fieldHeight - height) / 2)
-        width: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+        width: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
         height: width
         visible: internals.showClear
         focusPolicy: Qt.NoFocus
@@ -184,9 +184,9 @@ T.TextField {
     Text {
         id: message
         // The counter sits at the trailing end; the message takes the rest.
-        x: control.rtl && internals.counterShown ? counter.implicitWidth + Kirigami.Units.largeSpacing * 2 : Kirigami.Units.largeSpacing
-        y: internals.fieldHeight + Kirigami.Units.smallSpacing
-        width: control.width - Kirigami.Units.largeSpacing * 2 - (internals.counterShown ? counter.implicitWidth + Kirigami.Units.largeSpacing : 0)
+        x: control.rtl && internals.counterShown ? counter.implicitWidth + AtlasStyle.spacingLarge * 2 : AtlasStyle.spacingLarge
+        y: internals.fieldHeight + AtlasStyle.spacingSmall
+        width: control.width - AtlasStyle.spacingLarge * 2 - (internals.counterShown ? counter.implicitWidth + AtlasStyle.spacingLarge : 0)
         visible: control.hasError
         text: internals.shownError
         font: Kirigami.Theme.smallFont
@@ -199,8 +199,8 @@ T.TextField {
 
     Text {
         id: counter
-        x: control.rtl ? Kirigami.Units.largeSpacing : control.width - Kirigami.Units.largeSpacing - width
-        y: internals.fieldHeight + Kirigami.Units.smallSpacing
+        x: control.rtl ? AtlasStyle.spacingLarge : control.width - AtlasStyle.spacingLarge - width
+        y: internals.fieldHeight + AtlasStyle.spacingSmall
         visible: internals.counterShown
         text: control.length + "/" + control.maximumLength
         font: Kirigami.Theme.smallFont

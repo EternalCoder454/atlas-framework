@@ -8,7 +8,7 @@ T.AbstractButton {
 
     implicitWidth: label.implicitWidth + leftPadding + rightPadding
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
-    leftPadding: Kirigami.Units.smallSpacing
+    leftPadding: AtlasStyle.spacingSmall
     rightPadding: leftPadding
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -35,12 +35,12 @@ T.AbstractButton {
         opacity: control.enabled ? 1 : 0.45
         Behavior on color {
             ColorAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
     }
     background: Rectangle {
-        radius: 6
+        radius: AtlasStyle.radiusSmall
         color: "transparent"
         border.width: control.visualFocus ? 2 : 0
         border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)

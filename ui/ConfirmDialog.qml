@@ -75,7 +75,7 @@ QQC2.Popup {
             property: "opacity"
             from: 0
             to: 1
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
     exit: Transition {
@@ -83,7 +83,7 @@ QQC2.Popup {
             property: "opacity"
             from: 1
             to: 0
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
 
@@ -101,7 +101,7 @@ QQC2.Popup {
     contentItem: ColumnLayout {
         Accessible.role: Accessible.Dialog
         Accessible.name: dialog.title
-        spacing: Kirigami.Units.largeSpacing
+        spacing: AtlasStyle.spacingLarge
         // From a field in the body, Return reaches here; buttons take it themselves.
         Keys.onReturnPressed: event => {
             if (!event.isAutoRepeat) {
@@ -120,7 +120,7 @@ QQC2.Popup {
             Layout.fillWidth: true
             text: dialog.title
             font.bold: true
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.15
+            font.pointSize: AtlasStyle.fontSizeHeading
             wrapMode: Text.Wrap
             textFormat: Text.PlainText
             Accessible.role: Accessible.Heading
@@ -140,7 +140,7 @@ QQC2.Popup {
             ColumnLayout {
                 id: bodyContent
                 width: scroller.width
-                spacing: Kirigami.Units.largeSpacing
+                spacing: AtlasStyle.spacingLarge
                 QQC2.Label {
                     Layout.fillWidth: true
                     visible: dialog.text.length > 0
@@ -152,14 +152,14 @@ QQC2.Popup {
                 ColumnLayout {
                     id: bodyColumn
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
+                    spacing: AtlasStyle.spacingLarge
                 }
             }
         }
         RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.smallSpacing
-            spacing: Kirigami.Units.largeSpacing
+            Layout.topMargin: AtlasStyle.spacingSmall
+            spacing: AtlasStyle.spacingLarge
             AtlasButton {
                 id: alternativeButton
                 visible: dialog.alternativeText.length > 0

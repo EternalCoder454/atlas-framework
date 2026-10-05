@@ -22,13 +22,13 @@ Item {
     QtObject {
         id: internals
         readonly property int count: Math.max(1, control.lines)
-        readonly property bool sweeping: control.animated && control.visible && control.opacity > 0 && Kirigami.Units.longDuration > 1
+        readonly property bool sweeping: control.animated && control.visible && control.opacity > 0 && AtlasStyle.duration > 1
         // 0 to 1 across the sweep.
         property real phase: 0
     }
 
     implicitWidth: Kirigami.Units.gridUnit * 12
-    implicitHeight: internals.count * control.lineHeight + (internals.count - 1) * Kirigami.Units.smallSpacing
+    implicitHeight: internals.count * control.lineHeight + (internals.count - 1) * AtlasStyle.spacingSmall
 
     Accessible.role: Accessible.Indicator
     //: Spoken name of a busy indicator or loading skeleton: content is on its way
@@ -39,14 +39,14 @@ Item {
         property: "phase"
         from: 0
         to: 1
-        duration: Kirigami.Units.veryLongDuration * 4
+        duration: AtlasStyle.durationLong * 4
         loops: Animation.Infinite
         running: internals.sweeping
     }
 
     Column {
         width: parent.width
-        spacing: Kirigami.Units.smallSpacing
+        spacing: AtlasStyle.spacingSmall
         Repeater {
             model: internals.count
             delegate: Rectangle {

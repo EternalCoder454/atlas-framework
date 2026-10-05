@@ -67,7 +67,7 @@ T.Control {
         }
         readonly property bool hasConflict: conflictText.length > 0
         readonly property bool showClear: control.sequence.length > 0 && !recording && control.enabled
-        readonly property real messageHeight: hasConflict ? message.implicitHeight + Kirigami.Units.smallSpacing : 0
+        readonly property real messageHeight: hasConflict ? message.implicitHeight + AtlasStyle.spacingSmall : 0
 
         function isModifier(key) {
             return key === Qt.Key_Shift || key === Qt.Key_Control || key === Qt.Key_Alt || key === Qt.Key_Meta
@@ -140,8 +140,8 @@ T.Control {
     implicitWidth: Kirigami.Units.gridUnit * 12
     implicitHeight: internals.fieldHeight + internals.messageHeight
     topPadding: 0
-    leftPadding: Kirigami.Units.largeSpacing
-    rightPadding: Kirigami.Units.largeSpacing
+    leftPadding: AtlasStyle.spacingLarge
+    rightPadding: AtlasStyle.spacingLarge
     bottomPadding: internals.messageHeight
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -213,7 +213,7 @@ T.Control {
         Rectangle {
             width: parent.width
             height: internals.fieldHeight
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
             border.width: internals.recording || control.activeFocus || internals.hasConflict ? 2 : 1
             border.color: internals.hasConflict ? Kirigami.Theme.negativeTextColor
@@ -252,7 +252,7 @@ T.Control {
             id: clearButton
             x: control.mirrored ? 0 : parent.width - width
             y: Math.round((parent.height - height) / 2)
-            width: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+            width: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
             height: width
             visible: internals.showClear
             focusPolicy: Qt.NoFocus
@@ -278,9 +278,9 @@ T.Control {
 
     Text {
         id: message
-        x: Kirigami.Units.largeSpacing
-        y: internals.fieldHeight + Kirigami.Units.smallSpacing
-        width: control.width - Kirigami.Units.largeSpacing * 2
+        x: AtlasStyle.spacingLarge
+        y: internals.fieldHeight + AtlasStyle.spacingSmall
+        width: control.width - AtlasStyle.spacingLarge * 2
         visible: internals.hasConflict
         text: internals.conflictText
         font: Kirigami.Theme.smallFont

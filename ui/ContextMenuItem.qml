@@ -50,8 +50,8 @@ T.MenuItem {
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
     implicitHeight: visible ? Math.round(Kirigami.Units.gridUnit * 1.8) : 0
-    leftPadding: Kirigami.Units.largeSpacing
-    rightPadding: Kirigami.Units.largeSpacing
+    leftPadding: AtlasStyle.spacingLarge
+    rightPadding: AtlasStyle.spacingLarge
     hoverEnabled: true
     icon.width: Kirigami.Units.iconSizes.small
     icon.height: Kirigami.Units.iconSizes.small
@@ -63,12 +63,12 @@ T.MenuItem {
     Accessible.checked: checked
 
     background: Rectangle {
-        radius: 6
+        radius: AtlasStyle.radiusSmall
         color: control.highlighted ? Qt.alpha(control.destructive ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor, control.down ? 0.28 : 0.18) : "transparent"
     }
 
     contentItem: RowLayout {
-        spacing: Kirigami.Units.largeSpacing
+        spacing: AtlasStyle.spacingLarge
 
         Item {
             Layout.preferredWidth: control.icon.width

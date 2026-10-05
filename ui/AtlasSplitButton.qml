@@ -116,8 +116,8 @@ Item {
             height: parent.height
             enabled: control.enabled && (!control.action || control.action.enabled)
             implicitWidth: Math.max(Math.round(Kirigami.Units.gridUnit * 3.5), mainRow.implicitWidth + leftPadding + rightPadding)
-            leftPadding: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
-            rightPadding: Kirigami.Units.largeSpacing
+            leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+            rightPadding: AtlasStyle.spacingLarge
             Accessible.role: Accessible.Button
             Accessible.name: control._text
             onClicked: {
@@ -138,7 +138,7 @@ Item {
                 Row {
                     id: mainRow
                     anchors.centerIn: parent
-                    spacing: Kirigami.Units.smallSpacing
+                    spacing: AtlasStyle.spacingSmall
                     Loader {
                         active: control._symbol !== 0
                         visible: active

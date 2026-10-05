@@ -46,6 +46,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `Appearance` (`colorScheme`, `darkMode`, `highContrast`, `reducedMotion`,
   `textScale`), live. Durations are 0 when animations are off in Plasma or
   `ATLAS_REDUCED_MOTION=1`.
+- Atlas.Ui: the existing controls read the `AtlasStyle` tokens (radii, spacing,
+  fonts, durations) and stop looping animations under reduced motion; SectionRow,
+  TabBar, StatusBar and SidebarItem follow `AtlasStyle.density` (Compact is about
+  75% of the height) and have a local `density` property.
 - Atlas.Ui: ConfirmDialog gains `alternativeText` and `alternative()` (a third
   button), `defaultButton` and `destructive`; its text and body now wrap to the
   card and scroll when taller than the window. AtlasSpinBox is as wide as its
