@@ -411,7 +411,7 @@ T.Control {
                 anchors.leftMargin: AtlasStyle.spacingSmall
                 anchors.rightMargin: AtlasStyle.spacingSmall
                 radius: AtlasStyle.radiusSmall
-                color: row.selected ? Qt.alpha(AtlasStyle.accent, 0.2) : hover.hovered ? Qt.alpha(AtlasStyle.text, 0.06) : "transparent"
+                color: row.selected ? (control.activeFocus ? AtlasStyle.selection : AtlasStyle.selectionInactive) : hover.hovered ? AtlasStyle.hover : "transparent"
                 AtlasFocusRing {
                     radius: pill.radius + gap
                     shown: control.visualFocus && row.current

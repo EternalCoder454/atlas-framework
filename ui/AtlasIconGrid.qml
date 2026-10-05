@@ -200,8 +200,8 @@ T.Control {
                     id: pill
                     anchors.fill: parent
                     anchors.margins: AtlasStyle.spacingSmall
-                    radius: 12
-                    color: cell.current ? Qt.alpha(AtlasStyle.accent, control.activeFocus ? 0.22 : 0.14) : Qt.alpha(Kirigami.Theme.textColor, hover.hovered ? 0.06 : 0)
+                    radius: AtlasStyle.radius
+                    color: cell.current ? (control.activeFocus ? AtlasStyle.selection : AtlasStyle.selectionInactive) : hover.hovered ? AtlasStyle.hover : "transparent"
                     AtlasFocusRing {
                         radius: pill.radius + gap
                         shown: cell.current && control.visualFocus
@@ -241,7 +241,7 @@ T.Control {
                     Accessible.ignored: true // the cell carries the name
                     text: cell.title
                     font: Kirigami.Theme.defaultFont
-                    color: Kirigami.Theme.textColor
+                    color: AtlasStyle.text
                     textFormat: Text.PlainText
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -280,12 +280,12 @@ T.Control {
                 anchors.horizontalCenter: parent.horizontalCenter
                 icon: Symbols.FolderOpen
                 size: Kirigami.Units.iconSizes.large
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+                color: AtlasStyle.textMuted
             }
             Text {
                 text: control.placeholderText
                 font: Kirigami.Theme.defaultFont
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
             }
         }

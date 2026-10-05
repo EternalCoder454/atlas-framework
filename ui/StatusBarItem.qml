@@ -72,16 +72,16 @@ T.AbstractButton {
             anchors.verticalCenter: parent.verticalCenter
             width: 1
             height: Math.round(parent.height * 0.6)
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.15)
+            color: AtlasStyle.separator
         }
         Rectangle {
             anchors.fill: parent
             anchors.topMargin: 1
             anchors.bottomMargin: 1
-            anchors.leftMargin: control.leadingSeparator ? 2 : 0
+            anchors.leftMargin: control.leadingSeparator ? AtlasStyle.spacingXSmall : 0
             anchors.rightMargin: 0
             radius: AtlasStyle.radiusSmall
-            color: Qt.alpha(Kirigami.Theme.textColor, !control.clickable ? 0 : control.down ? 0.14 : control.hovered ? 0.08 : 0)
+            color: !control.clickable ? "transparent" : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
         }
     }
 
@@ -91,7 +91,6 @@ T.AbstractButton {
         implicitWidth: label.implicitWidth + (control.symbol !== 0 ? content.symbolWidth + row.spacing : 0)
         implicitHeight: Math.max(label.implicitHeight, control.symbol !== 0 ? content.symbolWidth : 0)
         readonly property real symbolWidth: Math.round(Kirigami.Units.iconSizes.small * 1.2)
-        opacity: 0.8
         Row {
             id: row
             anchors.centerIn: parent
@@ -104,7 +103,7 @@ T.AbstractButton {
                 sourceComponent: Symbol {
                     icon: control.symbol
                     size: Math.round(Kirigami.Units.iconSizes.small * 1.2)
-                    color: Kirigami.Theme.textColor
+                    color: AtlasStyle.textMuted
                 }
             }
             Text {
@@ -118,7 +117,7 @@ T.AbstractButton {
                 font: Kirigami.Theme.smallFont
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
-                color: Kirigami.Theme.textColor
+                color: AtlasStyle.textMuted
             }
         }
     }

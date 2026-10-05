@@ -48,7 +48,7 @@ ColumnLayout {
 
     Layout.fillWidth: true
     // The gap between entries; match the sidebar column it sits in.
-    spacing: 2
+    spacing: AtlasStyle.spacingXSmall
 
     SidebarItem {
         id: header

@@ -119,6 +119,12 @@ Icons are Material Symbols through `Symbol` and the `symbol:` property of
 the buttons, sidebar items and menu items, or theme icons by name where a
 control takes `iconName`.
 
+Filled symbols: only the selected item of a navigation control (sidebar
+entry, tab bar or view switcher tab) turns solid (`Symbol.filled`);
+everything else, selected or not, uses the outline. The selection tint of
+those controls is one rectangle that slides to the new item (an expressive
+`AtlasSpringAnimation`, off under reduced motion, never on the first layout).
+
 ## Atlas.Ui
 
 | Type | What it is |

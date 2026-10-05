@@ -46,7 +46,7 @@ T.MenuItem {
     }
     readonly property bool showsCheck: checkable && checked && !radio
     readonly property bool _showsDot: radio && checked
-    readonly property color tint: destructive ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
+    readonly property color tint: !enabled ? AtlasStyle.textDisabled : destructive ? AtlasStyle.error : AtlasStyle.text
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
     implicitHeight: visible ? Math.round(Kirigami.Units.gridUnit * 1.8) : 0
@@ -55,7 +55,6 @@ T.MenuItem {
     hoverEnabled: true
     icon.width: Kirigami.Units.iconSizes.small
     icon.height: Kirigami.Units.iconSizes.small
-    opacity: enabled ? 1 : 0.45
 
     Accessible.name: text
     Accessible.description: _effectiveShortcut
@@ -64,7 +63,7 @@ T.MenuItem {
 
     background: Rectangle {
         radius: AtlasStyle.radiusSmall
-        color: control.highlighted ? Qt.alpha(control.destructive ? Kirigami.Theme.negativeTextColor : AtlasStyle.accent, control.down ? 0.28 : 0.18) : "transparent"
+        color: control.highlighted ? (control.destructive ? AtlasStyle.errorFill : control.down ? AtlasStyle.pressed : AtlasStyle.hover) : "transparent"
     }
 
     contentItem: RowLayout {
@@ -115,7 +114,7 @@ T.MenuItem {
             Layout.leftMargin: Kirigami.Units.gridUnit
             text: control._effectiveShortcut
             font: Kirigami.Theme.smallFont
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+            color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
             textFormat: Text.PlainText
         }
         Kirigami.Icon {
@@ -124,7 +123,7 @@ T.MenuItem {
             Layout.preferredHeight: Layout.preferredWidth
             source: control.mirrored ? "go-previous" : "go-next"
             isMask: true
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+            color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
         }
     }
 }

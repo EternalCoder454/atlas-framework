@@ -224,8 +224,8 @@ T.Control {
                             Rectangle {
                                 id: pill
                                 anchors.fill: parent
-                                radius: AtlasStyle.radius
-                                color: Qt.alpha(Kirigami.Theme.textColor, button.down ? 0.14 : button.hovered ? 0.08 : 0)
+                                radius: AtlasStyle.radiusSmall
+                                color: button.down ? AtlasStyle.pressed : button.hovered ? AtlasStyle.hover : "transparent"
                                 Behavior on color {
                                     ColorAnimation {
                                         duration: AtlasStyle.durationShort
@@ -246,14 +246,14 @@ T.Control {
                                 sourceComponent: Symbol {
                                     icon: seg.info.symbol ?? 0
                                     size: Math.round(Kirigami.Units.iconSizes.small * 1.2)
-                                    color: seg.last ? Kirigami.Theme.textColor : Qt.alpha(Kirigami.Theme.textColor, 0.7)
+                                    color: seg.last ? AtlasStyle.text : AtlasStyle.textMuted
                                 }
                             }
                             Text {
                                 Layout.fillWidth: true
                                 text: button.text
                                 font: seg.last ? priv.strong : Kirigami.Theme.defaultFont
-                                color: seg.last ? Kirigami.Theme.textColor : Qt.alpha(Kirigami.Theme.textColor, 0.7)
+                                color: seg.last ? AtlasStyle.text : AtlasStyle.textMuted
                                 textFormat: Text.PlainText
                                 elide: Text.ElideRight
                             }
@@ -265,7 +265,7 @@ T.Control {
                         anchors.verticalCenter: parent.verticalCenter
                         icon: control.mirrored ? Symbols.ChevronLeft : Symbols.ChevronRight
                         size: Kirigami.Units.iconSizes.smallMedium
-                        color: Qt.alpha(Kirigami.Theme.textColor, 0.4)
+                        color: AtlasStyle.textMuted
                     }
                     // The "…" button, after the first segment.
                     Loader {
@@ -295,8 +295,8 @@ T.Control {
                                     Rectangle {
                                         id: morePill
                                         anchors.fill: parent
-                                        radius: AtlasStyle.radius
-                                        color: Qt.alpha(Kirigami.Theme.textColor, more.down || moreMenu.visible ? 0.14 : more.hovered ? 0.08 : 0)
+                                        radius: AtlasStyle.radiusSmall
+                                        color: more.down || moreMenu.visible ? AtlasStyle.pressed : more.hovered ? AtlasStyle.hover : "transparent"
                                     }
                                     AtlasFocusRing {
                                         radius: morePill.radius + gap
@@ -308,7 +308,7 @@ T.Control {
                                         anchors.centerIn: parent
                                         icon: Symbols.MoreHoriz
                                         size: Kirigami.Units.iconSizes.smallMedium
-                                        color: Qt.alpha(Kirigami.Theme.textColor, 0.7)
+                                        color: AtlasStyle.textMuted
                                     }
                                 }
                             }
@@ -317,7 +317,7 @@ T.Control {
                                 anchors.verticalCenter: parent.verticalCenter
                                 icon: control.mirrored ? Symbols.ChevronLeft : Symbols.ChevronRight
                                 size: Kirigami.Units.iconSizes.smallMedium
-                                color: Qt.alpha(Kirigami.Theme.textColor, 0.4)
+                                color: AtlasStyle.textMuted
                             }
                         }
                     }

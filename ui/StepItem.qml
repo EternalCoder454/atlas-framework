@@ -42,10 +42,10 @@ T.AbstractButton {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radius
-        color: control.current ? Qt.alpha(AtlasStyle.accent, 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.06 : 0)
+        radius: AtlasStyle.radiusSmall
+        color: control.current ? AtlasStyle.selection : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
         border.width: control.visualFocus ? 2 : 0
-        border.color: Qt.alpha(AtlasStyle.focus, 0.85)
+        border.color: AtlasStyle.focus
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
@@ -64,7 +64,7 @@ T.AbstractButton {
             radius: size / 2
             color: control.current || control.done ? AtlasStyle.accent : "transparent"
             border.width: control.current || control.done ? 0 : 1
-            border.color: Qt.alpha(Kirigami.Theme.textColor, 0.35)
+            border.color: AtlasStyle.controlBorder
             Text {
                 anchors.centerIn: parent
                 visible: !control.done || control.current
@@ -72,7 +72,7 @@ T.AbstractButton {
                 font.family: Kirigami.Theme.defaultFont.family
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
                 font.weight: Font.DemiBold
-                color: control.current ? AtlasStyle.accentText : Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                color: control.current ? AtlasStyle.accentText : AtlasStyle.textMuted
             }
             Kirigami.Icon {
                 anchors.centerIn: parent
@@ -92,8 +92,7 @@ T.AbstractButton {
             font.weight: control.current ? Font.DemiBold : Font.Medium
             textFormat: Text.PlainText
             elide: Text.ElideRight
-            color: Kirigami.Theme.textColor
-            opacity: control.current || control.done ? 1 : 0.6
+            color: control.current || control.done ? AtlasStyle.text : AtlasStyle.textMuted
         }
     }
 }
