@@ -111,6 +111,9 @@ qt_add_qml_module(atlasui
         AtlasFontPicker.qml
         AtlasDropZone.qml
         AtlasOnboarding.qml
+        AtlasPasswordStrength.qml
+        AtlasChoiceCard.qml
+        AtlasAccentPicker.qml
         AtlasToolbar.qml
         AtlasFloatingToolbar.qml
         AtlasFlowLayout.qml

@@ -44,6 +44,10 @@ Row {
     Kirigami.Theme.colorSet: Kirigami.Theme.Header
     Kirigami.Theme.inherit: false
 
+    // `w` is untyped: only an AtlasWindow has `kiosk`, and a plain Window does not.
+    function _kioskOf(w: var): bool {
+        return w ? w["kiosk"] === true : false;
+    }
     function _minimize() {
         if (Window.window) {
             Window.window.showMinimized();
@@ -105,6 +109,9 @@ Row {
                 }
             }
 
+            // No close button in a kiosk window (AtlasWindow.kiosk).
+            // Nor Maximize or Restore: a kiosk window stays full screen.
+            visible: !((_isClose || modelData === "maximize") && root._kioskOf(Window.window))
             implicitWidth: 32
             implicitHeight: 32
             focusPolicy: Qt.NoFocus
