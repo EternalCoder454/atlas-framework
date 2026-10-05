@@ -25,8 +25,8 @@ Rectangle {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `accent` | `color` (read-only) | — | Atlas violet (`#6858E2` Light, `#8A7AF4` Dark); the user's Plasma accent wins. For selection, indicators and checked states. |
-| `accentStrong` | `color` (read-only) | — | The prominent (primary) button fill: `#5B4BD6` in Light (6:1 with white), `#A396F7` in Dark. |
-| `accentStrongText` | `color` (read-only) | — | Text on `accentStrong` (4.5:1 or more). |
+| `accentStrong` | `color` (read-only) | — | The prominent (primary) button fill: `#5B4BD6` in Light (6:1 with white), `#A396F7` in Dark. The user's Plasma accent wins when they picked one. |
+| `accentStrongText` | `color` (read-only) | — | Text on `accentStrong` (4.5:1 or more); the Plasma highlighted-text colour with a user accent. |
 | `accentText` | `color` (read-only) | — | Text readable on `accent`. |
 | `base` | `color` (read-only) | — | The window background (tonal step 0), tinted slightly toward violet (not under high contrast). |
 | `chromeBackground` | `color` (read-only) | — | Header bars, sidebars and floating toolbars: lightly blurred (94%), solid without blur. |

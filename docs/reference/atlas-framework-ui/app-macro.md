@@ -45,12 +45,12 @@ The version in `AppInfo.version` is not a field: it is the `CARGO_PKG_VERSION` o
 `ui:` is the oldest Atlas.Ui the app works with.
 
 - At build time, a `ui:` that is not plain numbers separated by dots (at most three parts, each at most six digits) fails to compile with "ui: must be a version like \"1.3.0\"". Examples that pass: `"1"`, `"1.3"`, `"1.3.0"`. Examples that fail: `""`, `"1.3.0-dev"`, `"v1"`, `"1.2.3.4"`.
-- At startup, before any of the app's QML loads, the installed Atlas.Ui is asked for `AtlasApp.uiVersion` (about 12 ms) and compared with the numbers, missing parts counting as 0 (`1.3` equals `1.3.0`, and `1.10` is above `1.9`).
+- At startup, before any of the app's QML loads, the installed Atlas.Ui is asked for `AtlasApp.uiVersion` (the time it takes is logged with `QT_LOGGING_RULES=atlas.ui.debug=true`) and compared with the numbers, missing parts counting as 0 (`1.3` equals `1.3.0`, and `1.10` is above `1.9`).
 - When the installed Atlas.Ui is older, is older than 1.3.0 (which has no `uiVersion`), or cannot be loaded, the app logs why, shows a plain window with no Atlas.Ui in it (which version is needed, which is installed, how to fix it) and exits with code 1 once the window is closed. On the offscreen and minimal Qt platforms it logs and exits at once.
 - Without `ui:` nothing is checked and nothing is paid.
 - Keep `ui:` equal to the RPM's `Requires: atlas-ui >=`.
-- `atlas_app_run` runs the check after the single-instance registration, so a second launch that only raises the window skips it. A C++ call to [`atlas_app_require_ui`](c-api.md#atlas_app_require_ui) overrides `ui:`.
+- `atlas_app_run` runs the check after the single-instance registration, so a second launch that only raises the window skips it. A C++ call to [`atlas_app_require_ui`](c-api.md#atlas_app_require_ui) with a version overrides `ui:`.
 
 ## Generated items
 
-The macro defines two `#[no_mangle]` functions, `atlas_framework_ui_app_info` and `atlas_framework_ui_required_ui`, which the crate and the C++ side call. They are not part of the API: do not call or define them yourself. The macro also uses the hidden `ui_version_ok` function for the compile-time check.
+The macro defines two `#[no_mangle]` functions, `atlas_framework_ui_app_info` and `atlas_framework_ui_required_ui`, which the crate calls. They are not part of the API: do not call or define them yourself. The macro also uses the hidden `ui_version_ok` function for the compile-time check.

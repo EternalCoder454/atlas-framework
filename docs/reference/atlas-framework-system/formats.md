@@ -37,10 +37,10 @@ ScheduledAt=1700000000
 | Field | Description |
 |---|---|
 | `format` | `1`. Absent on lines from before 1.3.0 |
-| `version` | OS version; may be absent |
+| `version` | OS version; may be `null` or absent |
 | `digest` | Image digest |
-| `image` | Image reference; may be absent |
-| `timestamp` | Image build time, RFC 3339; may be absent |
+| `image` | Image reference; may be `null` or absent |
+| `timestamp` | Image build time, RFC 3339; may be `null` or absent |
 | `first_booted` | When this machine first booted it, RFC 3339 UTC |
 
 ## Events
@@ -65,7 +65,7 @@ ScheduledAt=1700000000
 
 ## Crash reporting
 
-All user files are under XDG directories and written with mode 0600 in directories of mode 0700, without following symlinks.
+All user files except `crash-reporting.toml` (0644) are under XDG directories and written with mode 0600 in directories of mode 0700, without following symlinks.
 
 | Path | Contents |
 |---|---|

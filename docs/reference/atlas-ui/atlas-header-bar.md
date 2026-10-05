@@ -7,7 +7,7 @@ since: "1.4.0"
 
 AtlasHeaderBar is the window menu and app icon, the title, the main tools and the window buttons in one 32 px row. Give it to an [AtlasWindow](atlas-window.md) as its `header`, and that window turns frameless (no KWin title bar).
 
-Left to right: the window menu button, `leading`, the title, the `actions` in an [AtlasToolbar](atlas-toolbar.md) (the ones that don't fit go behind its "more" button), `trailing`, the window buttons. KWin's own button layout (`kwinrc`) decides the sides; the AtlasOS default is the window menu on the left, and minimise, maximise and close on the right. The title leads, left aligned. With `centerTitle` it is centred when the bar is wide (40 grid units), and leads again when it is narrower. The colours are the Header colour set, drawn over the window's blur at the window's own alpha, with a hairline below.
+Left to right: the window menu button, `leading`, the title, the `actions` in an [AtlasToolbar](atlas-toolbar.md) (the ones that don't fit go behind its "more" button), `trailing`, the window buttons. KWin's own button layout (`kwinrc`) decides the sides; the AtlasOS default is the window menu on the left, and minimise, maximise and close on the right. The title leads, left aligned. With `centerTitle` it is centred when the bar is wide (40 grid units), and leads again when it is narrower. The bar is filled with `AtlasStyle.chromeBackground` (lightly see-through over the window's blur, solid without blur), with an `AtlasStyle.separator` hairline below; text and icons use the Header colour set.
 
 ## Example
 
@@ -27,7 +27,7 @@ AtlasWindow {
 }
 ```
 
-## Keyboard
+## Mouse and keyboard
 
 Dragging the empty bar moves the window, and a double click maximises or restores it. A right click, Alt+Space or the window menu button opens a menu with Minimize, Maximize or Restore, and Close: the compositor's own menu is out of reach of a frameless client. Buttons and anything else in the bar keep their clicks.
 

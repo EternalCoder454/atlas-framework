@@ -26,12 +26,12 @@ In async code, use `notifier.send(&conn, &note).await` on a session-bus `zbus::C
 
 ## The notifyrc file
 
-The names the app gives KNotification come from its `AppInfo`: the component (the notifyrc's name) is `AppInfo::short_name()`, the desktop entry and the icon are the app ID, and the app name is the display name. Each app ships `<short name>.notifyrc` (`atlas-` and the last part of the app ID) in `/usr/share/knotifications6/` with `DesktopEntry=<app id>` and one camelCase `[Event/<eventId>]` per kind of notification, whose `Action=` says `Popup`. The app template has one. Plasma writes the user's choice to `~/.config/<component>.notifyrc` (`[Event/<id>] Action=`, a `|`-separated list); without one the shipped file's `Popup` applies.
+The names the app gives KNotification come from its `AppInfo`: the component (the notifyrc's name) is `AppInfo::short_name()`, the desktop entry and the icon are the app ID, and the app name is the display name. Each app ships `<short name>.notifyrc` (`atlas-` and the last part of the app ID) in `/usr/share/knotifications6/` with `DesktopEntry=<app id>` and one camelCase `[Event/<eventId>]` per kind of notification, whose `Action=` says `Popup`. The app template has one. Plasma writes the user's choice to `~/.config/<component>.notifyrc` (`[Event/<id>] Action=`, a `|`-separated list); without a user file, an `[Event/<id>]` group or an `Action` key there, the event pops up.
 
 ## AtlasOS rules for notifications
 
 - Notify only when the user can act on it, or must know: not for progress or success they did not wait for.
-- Popups only, no sounds. Urgency is low or normal; `persistent` only when ignoring the notification has consequences (a restart is due).
+- Popups only, no sounds. Leave `urgency` as `None` or `Normal` (`Critical` only when ignoring it has consequences); `persistent` only when ignoring the notification has consequences (a restart is due).
 - Actions are short verbs that open the right page ("Restart now", "Open Atlas Updater"), never "OK" or "Dismiss". `DEFAULT_ACTION` is the click on the notification itself.
 - Never from root to a user's session. A system service records the event, and the user-session app notices it and notifies.
 - Do Not Disturb is Plasma's: do not second-guess it.

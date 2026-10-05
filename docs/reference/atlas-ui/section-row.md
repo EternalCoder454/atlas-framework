@@ -6,7 +6,7 @@ section: Layout
 
 SectionRow is a row of a [Section](section.md). It has an optional icon, a title and subtitle on the left, and a value, extra items, a check mark, a switch or a chevron on the right. A clickable row takes keyboard focus (Tab), shows a focus ring and activates with Enter or Space. A `radio` row also moves selection with Up and Down.
 
-SectionRow is a `FocusScope`. It has three slots, all lists of items: `leading` (before the title; an avatar, a check box), `content` (replaces the title and subtitle column; a slider that spans the row) and `trailing` (the default property: a button, a combo box, a spin box).
+SectionRow is a `FocusScope`. It has three slots, all lists of items (since 1.4.0): `leading` (before the title; an avatar, a check box), `content` (replaces the title and subtitle column; a slider that spans the row) and `trailing` (the default property: a button, a combo box, a spin box).
 
 ## Example
 
