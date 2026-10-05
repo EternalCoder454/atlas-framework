@@ -23,31 +23,47 @@ Item {
     readonly property var groups: [
         {
             title: qsTr("Buttons"),
-            types: ["AtlasButton", "PrimaryButton", "SecondaryButton", "TextButton", "ToolbarButton", "MenuButton", "AtlasInstallButton"]
+            types: ["AtlasButton", "PrimaryButton", "SecondaryButton", "TextButton", "ToolbarButton", "MenuButton", "AtlasInstallButton", "AtlasSplitButton", "AtlasCopyButton", "AtlasSegmentedControl", "AtlasToolbar", "AtlasFloatingToolbar"]
         },
         {
-            title: qsTr("Forms"),
-            types: ["AtlasTextField", "AtlasPasswordField", "AtlasTextArea", "SearchField", "AtlasCheckBox", "AtlasRadioButton", "AtlasSwitch", "AtlasSlider", "AtlasSpinBox", "AtlasComboBox"]
+            title: qsTr("Inputs"),
+            types: ["AtlasTextField", "AtlasPasswordField", "AtlasTextArea", "SearchField", "AtlasSpinBox", "AtlasDoubleSpinBox", "AtlasSlider", "AtlasAutocompleteField", "AtlasFileField", "AtlasShortcutField", "AtlasDropZone"]
         },
         {
-            title: qsTr("Feedback"),
-            types: ["AtlasProgressBar", "AtlasSpinner", "InfoBanner", "Toast", "AtlasToolTip", "ConfirmDialog", "UsageBar", "AtlasPlaceholder", "AtlasEmptyState"]
+            title: qsTr("Pickers"),
+            types: ["AtlasComboBox", "AtlasDatePicker", "AtlasTimePicker", "AtlasCalendar", "AtlasColorField", "AtlasFontPicker"]
         },
         {
-            title: qsTr("Lists and data"),
-            types: ["DataTable", "LiveChart", "MiniBars", "AtlasIconGrid", "AtlasSearchResults", "AtlasAppCard", "AtlasScreenshotCarousel", "NotesText"]
+            title: qsTr("Selection"),
+            types: ["AtlasCheckBox", "AtlasRadioButton", "AtlasSwitch", "AtlasTransparencySwitch", "AtlasRating", "AtlasChip"]
         },
         {
-            title: qsTr("Navigation"),
-            types: ["SidebarItem", "SidebarGroup", "TabBar", "AtlasBreadcrumb", "ContextMenu", "FindBar", "StepItem"]
+            title: qsTr("Lists and tables"),
+            types: ["AtlasListView", "AtlasTreeView", "DataTable", "AtlasIconGrid", "AtlasSearchResults", "AtlasScrollBar", "AtlasFlowLayout"]
         },
         {
-            title: qsTr("Windows and pages"),
-            types: ["AtlasWindow", "AtlasPage", "AtlasAboutPage", "StatusBar"]
+            title: qsTr("Navigation and layout"),
+            types: ["SidebarItem", "SidebarGroup", "AtlasSidebar", "TabBar", "AtlasViewSwitcher", "AtlasBreadcrumb", "AtlasNavigationStack", "AtlasSplitView", "ContextMenu", "FindBar", "StepItem", "AtlasCommandPalette", "AtlasExpandableSection"]
         },
         {
-            title: qsTr("App building blocks"),
-            types: ["Section", "SectionRow", "StatusHero", "Symbol", "AtlasFocusRing"]
+            title: qsTr("Windows and dialogs"),
+            types: ["AtlasWindow", "AtlasWindowButtons", "AtlasHeaderBar", "AtlasPage", "AtlasAboutPage", "AtlasDialog", "ConfirmDialog", "AtlasPopover", "AtlasOnboarding", "AtlasShortcutsDialog", "StatusBar"]
+        },
+        {
+            title: qsTr("Feedback and status"),
+            types: ["AtlasProgressBar", "AtlasSpinner", "InfoBanner", "Toast", "AtlasToolTip", "UsageBar", "AtlasPlaceholder", "AtlasEmptyState", "AtlasBadge", "StatusHero"]
+        },
+        {
+            title: qsTr("Data display"),
+            types: ["LiveChart", "MiniBars", "AtlasSparkline", "AtlasStat", "AtlasDetailGrid", "AtlasAppCard", "AtlasCard", "AtlasScreenshotCarousel", "AtlasAvatar"]
+        },
+        {
+            title: qsTr("Text"),
+            types: ["AtlasLabel", "NotesText", "AtlasCodeView", "AtlasShortcutLabel"]
+        },
+        {
+            title: qsTr("Style and services"),
+            types: ["AtlasStyle", "AtlasFormat", "AtlasAction", "AtlasValidators", "Section", "SectionRow", "Symbol", "AtlasFocusRing"]
         }
     ]
 
@@ -220,22 +236,11 @@ Item {
                 }
             }
 
-            Rectangle {
+            AtlasCodeView {
                 Layout.fillWidth: true
-                implicitHeight: code.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: 8
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
-                QQC2.Label {
-                    id: code
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
-                    text: root.snippet
-                    font.family: Kirigami.Theme.fixedWidthFont.family
-                    font.pointSize: Kirigami.Theme.smallFont.pointSize
-                    elide: Text.ElideRight
-                    maximumLineCount: 10
-                    wrapMode: Text.NoWrap
-                }
+                text: root.snippet
+                maximumHeight: Kirigami.Units.gridUnit * 12
+                Accessible.name: qsTr("QML snippet")
             }
         }
     }
