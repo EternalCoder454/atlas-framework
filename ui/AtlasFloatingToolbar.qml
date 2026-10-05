@@ -39,7 +39,7 @@ Item {
     property string accessibleName: qsTr("Tools")
 
     // The inner toolbar, e.g. for its "more" menu.
-    readonly property var toolbar: bar
+    readonly property AtlasToolbar toolbar: bar
 
     readonly property real _shadow: 6
     // The slide: it moves up by this much as it appears.

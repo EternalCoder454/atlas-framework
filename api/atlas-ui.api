@@ -219,7 +219,7 @@ AtlasFloatingToolbar.property content: QQmlListProperty<QObject> [readonly]
 AtlasFloatingToolbar.property focusable: bool
 AtlasFloatingToolbar.property margin: double
 AtlasFloatingToolbar.property shown: bool
-AtlasFloatingToolbar.property toolbar: QVariant [readonly]
+AtlasFloatingToolbar.property toolbar: AtlasToolbar_QMLTYPE* [readonly]
 AtlasFloatingToolbar.type
 AtlasFlowLayout.property rowSpacing: double
 AtlasFlowLayout.property spacing: double
@@ -517,7 +517,7 @@ AtlasToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
 AtlasToolbar.property flat: bool
 AtlasToolbar.property focusable: bool
 AtlasToolbar.property leading: QQmlListProperty<QObject> [readonly]
-AtlasToolbar.property moreMenu: QVariant [readonly]
+AtlasToolbar.property moreMenu: ContextMenu_QMLTYPE* [readonly]
 AtlasToolbar.property overflowCount: int [readonly]
 AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
 AtlasToolbar.property visibleCount: int [readonly]

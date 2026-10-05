@@ -47,7 +47,7 @@ Item {
     // Number of actions in the "more" menu.
     readonly property int overflowCount: actions.length - _fit.count
     // The "more" menu, to open it from code.
-    readonly property var moreMenu: menu
+    readonly property ContextMenu moreMenu: menu
 
     readonly property real _pad: AtlasStyle.spacingSmall
     readonly property real _gap: AtlasStyle.spacingSmall
