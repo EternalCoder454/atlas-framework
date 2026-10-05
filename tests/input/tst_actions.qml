@@ -440,8 +440,12 @@ Item {
                 verify(lists.length > 0);
                 const list = lists[0];
                 tryVerify(() => list.contentHeight > list.height);
-                // Scrolled as far as it goes, which a rebuilt model would reset.
-                list.contentY = list.contentHeight - list.height;
+                // Scrolled to the end with the wheel, as a user does (only the
+                // user's own scrolling is kept); a rebuilt model would reset it.
+                for (let i = 0; i < 30 && list.contentY < list.contentHeight - list.height - 1; ++i) {
+                    mouseWheel(list, list.width / 2, list.height / 2, 0, -360);
+                }
+                tryVerify(() => !list.moving, 3000);
                 const before = list.contentY;
                 verify(before > 0);
                 verify(c.setShortcut("a0", "Ctrl+Alt+Home"));
