@@ -1,11 +1,11 @@
 ---
 title: AtlasFontPicker
-summary: A font chooser: a pill showing the family in its own face and the size, opening a searchable list of installed families.
+summary: A font chooser: a small rounded button showing the family in its own face and the size, opening a searchable list of installed families.
 section: Fields and pickers
 since: "1.4.0"
 ---
 
-AtlasFontPicker is a pill with the family drawn in its own face and the size. Clicking it opens a card with a search field, the list of installed families (each in its own face, drawn only while visible) and a size spin box. `font` is the chosen font (its `family` and `pointSize`); the other parts of `font` are left as they are. With `fixedOnly`, the list holds monospace families only, found a few at a time after the first opening, so the list fills in.
+AtlasFontPicker is a small rounded button (4 px corners) with the family drawn in its own face and the size. Clicking it opens a card with a search field, the list of installed families (each in its own face, drawn only while visible) and a size spin box. `font` is the chosen font (its `family` and `pointSize`); the other parts of `font` are left as they are. With `fixedOnly`, the list holds monospace families only, found a few at a time after the first opening, so the list fills in.
 
 AtlasFontPicker is a Qt Quick Templates `AbstractButton`; its inherited `font` property holds the choice. See <https://doc.qt.io/qt-6/qml-qtquick-controls-abstractbutton.html>.
 

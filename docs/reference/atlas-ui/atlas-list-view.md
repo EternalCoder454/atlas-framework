@@ -5,7 +5,7 @@ section: Lists and tables
 since: "1.4.0"
 ---
 
-A list in the Atlas look: rows of `AtlasStyle.rowHeight`, a hover tint, the selected rows in an accent pill, and a focus ring on the current row when the keyboard moved there. It makes rows only for what is on screen, so ten thousand rows cost what a screenful does. For icons in a grid, use [AtlasIconGrid](atlas-icon-grid.md).
+A list in the Atlas look: rows of `AtlasStyle.rowHeight`, a hover tint, the selected rows in a rounded accent highlight (4 px corners), and a focus ring on the current row when the keyboard moved there. It makes rows only for what is on screen, so ten thousand rows cost what a screenful does. For icons in a grid, use [AtlasIconGrid](atlas-icon-grid.md).
 
 AtlasListView is a Qt Quick [`ListView`](https://doc.qt.io/qt-6/qml-qtquick-listview.html); `model`, `delegate`, `currentIndex`, `count` and the rest work as usual.
 

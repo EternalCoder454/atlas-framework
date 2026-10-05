@@ -5,7 +5,7 @@ section: Lists and tables
 since: "1.3.0"
 ---
 
-A grid of files or apps: an icon over a name, with the current one in a rounded pill. It scrolls on its own and builds cells only for what is visible, so a folder of ten thousand files costs what a screenful does. For a single column of rows, use [AtlasListView](atlas-list-view.md).
+A grid of files or apps: an icon over a name, with the current one in a rounded highlight. It scrolls on its own and builds cells only for what is visible, so a folder of ten thousand files costs what a screenful does. For a single column of rows, use [AtlasListView](atlas-list-view.md).
 
 AtlasIconGrid is a Qt Quick Controls [`Control`](https://doc.qt.io/qt-6/qml-qtquick-templates-control.html); its inherited properties work as usual.
 
@@ -29,7 +29,7 @@ AtlasIconGrid {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `count` | `int` (read-only) | — | The number of items in the model. |
-| `currentIndex` | `int` | `0` | The current item, drawn in the pill. `-1` for none. |
+| `currentIndex` | `int` | `0` | The current item, drawn in the highlight. `-1` for none. |
 | `iconRole` | `string` | `""` | The model role (or key of an array's objects) holding an icon name or an image url. |
 | `iconSize` | `real` | about 3.4 grid units | The icon's side in pixels. Cells grow with it. |
 | `model` | `var` | `undefined` | A `QAbstractItemModel`, a `ListModel` or a JS array. An array of plain strings shows the strings as names. |
