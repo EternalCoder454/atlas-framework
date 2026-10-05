@@ -324,7 +324,7 @@ In 1.5.0 (robustness, performance and accessibility; no large new API):
 New API from the research, also in 1.5.0 (the user, 2026-10-05: no 1.6.0
 split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
 
-- [ ] 24 AtlasStyle `alpha()` and `mix()`, and the module moved to them.
+- [ ] 24 AtlasStyle `alpha()` and `mix()`, and the module moved to them. (API done; module move after the merges)
 - [ ] 25 AtlasForm and AtlasFormEntry (label, help, errors, required,
   `valid`, `validate()`).
 - [ ] 26 `settingKey`: entries that load and save their control's value.
