@@ -32,7 +32,7 @@ A screen that reports "all is well" (no updates, nothing to fix) shows the OS lo
 
 Calm and precise, Light and Dark equally.
 
-- Violet is the accent (`AtlasStyle.accent`) for buttons and selection; pink-violet (`AtlasStyle.focus`) is for focus rings. When the user has chosen an accent in Plasma, that accent wins, as in other KDE apps.
+- Violet is the accent (`AtlasStyle.accent`) for buttons and selection; magenta-violet (`AtlasStyle.focus`) is for focus rings. When the user has chosen an accent in Plasma, that accent wins, as in other KDE apps.
 - Fonts are IBM Plex Sans and JetBrains Mono for code (`AtlasStyle.fontFamily` and `monoFamily`), falling back to the system fonts. The application font's size stays the user's.
 - Corners are small (4, 6 and 8) and motion is quick and subtle (100, 150 and 250 ms).
 - Every colour comes from [AtlasStyle](atlas-style.md) or `Kirigami.Theme`, every size from `Kirigami.Units` or AtlasStyle's scale. No hard-coded colours, so light, dark and the user's accent all work.

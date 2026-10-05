@@ -97,7 +97,7 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasCheckBox](atlas-check-box.md): A check box with an optional partly-checked state.
 - [AtlasRadioButton](atlas-radio-button.md): A radio button; siblings form a group.
 - [AtlasSegmentedControl](atlas-segmented-control.md): Joined segments with one selected.
-- [AtlasChip](atlas-chip.md): A small pill for a tag, filter or value.
+- [AtlasChip](atlas-chip.md): A small chip for a tag, filter or value.
 - [AtlasChipGroup](atlas-chip-group.md): A wrapping group of chips, optionally one-of.
 
 ### Fields and pickers

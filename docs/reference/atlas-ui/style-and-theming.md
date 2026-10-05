@@ -28,7 +28,7 @@ Colours follow the system colour scheme, light or dark. The neutrals are tinted 
 | `accent` | Selection, indicators and checked states: Atlas violet (`#6858E2` in Light, `#8A7AF4` in Dark) unless the user chose an accent in Plasma. |
 | `accentText` | Text readable on `accent`. |
 | `accentStrong`, `accentStrongText` | The prominent (primary) button fill and its text (4.5:1 or more). |
-| `focus` | The keyboard focus ring: a magenta-violet pink (`#A62A8C` Light, `#E28BE0` Dark), or the user's Plasma accent. |
+| `focus` | The keyboard focus ring: a magenta-violet (`#A62A8C` Light, `#E28BE0` Dark), or the user's Plasma accent. |
 | `base` | The window background (tonal step 0). |
 | `surface` | A card over the page, such as a Section (step 1). |
 | `surfaceRaised` | Menus, popovers, dialogs and tooltips (step 2). |
