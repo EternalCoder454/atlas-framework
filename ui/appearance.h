@@ -20,7 +20,8 @@
 //                  (animations off), or the environment has
 //                  ATLAS_REDUCED_MOTION=1. Missing kdeglobals means false.
 //   textScale      the application font's point size over 10 (Plasma's
-//                  default), so 1.0 is the default size, 1.2 is 20% larger.
+//                  default), so 1.0 is the default size, 1.2 is 20% larger. Kept
+//                  between 0.5 and 4.
 //
 // The Atlas brand (since 1.4.0), set once when Atlas.Ui loads:
 //   accentFromSystem  the user chose an accent colour in Plasma (AccentColor

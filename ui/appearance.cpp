@@ -1,4 +1,5 @@
 #include "appearance.h"
+#include "textscale.h"
 
 #include <KConfigGroup>
 #include <KWindowEffects>
@@ -154,10 +155,9 @@ void Appearance::readSystem()
     const bool dark = mine == DarkScheme || (mine == UnknownScheme && qGuiApp->palette().color(QPalette::Window).lightnessF() < 0.5);
     const bool contrast = hints->accessibility()->contrastPreference() == Qt::ContrastPreference::HighContrast;
     qreal scale = qGuiApp->font().pointSizeF() / kDefaultPointSize;
-    if (!(scale > 0)) {
-        // A pixel-sized font has no point size (-1).
-        scale = 1.0;
-    }
+    // A pixel-sized font has no point size (-1): that and NaN are the default;
+    // anything else is held between 0.5 and 4.
+    scale = AtlasTextScale::clamp(scale);
 
     if (mine != m_colorScheme) {
         m_colorScheme = mine;

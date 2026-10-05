@@ -7,6 +7,8 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 Q_LOGGING_CATEGORY(lcShortcuts, "atlas.ui.shortcuts")
 
@@ -113,13 +115,29 @@ QKeySequence AtlasShortcuts::toSequence(const QVariant &sequence)
     case QMetaType::Int:
     case QMetaType::UInt:
     case QMetaType::Long:
+    case QMetaType::ULong:
     case QMetaType::LongLong:
-    case QMetaType::Double: {
-        const int n = sequence.toInt();
-        // The StandardKey numbers end at the last enum value; anything above is a key code.
-        if (n <= 0) {
-            return {};
+    case QMetaType::ULongLong:
+    case QMetaType::Double:
+    case QMetaType::Float: {
+        // Checked before it is converted: NaN, infinity and values outside
+        // int are not keys (a plain cast of them is undefined).
+        int n = 0;
+        if (sequence.metaType().id() == QMetaType::Double || sequence.metaType().id() == QMetaType::Float) {
+            const double d = sequence.toDouble();
+            if (!std::isfinite(d) || d < 1 || d > double(std::numeric_limits<int>::max())) {
+                return {};
+            }
+            n = int(d);
+        } else {
+            bool ok = false;
+            const qlonglong ll = sequence.toLongLong(&ok);
+            if (!ok || ll < 1 || ll > std::numeric_limits<int>::max()) {
+                return {};
+            }
+            n = int(ll);
         }
+        // The StandardKey numbers end at the last enum value; anything above is a key code.
         return n <= static_cast<int>(QKeySequence::Cancel) ? QKeySequence(static_cast<QKeySequence::StandardKey>(n)) : QKeySequence(n);
     }
     default:

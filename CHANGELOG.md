@@ -33,6 +33,11 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   until the current tab changes, the strip doesn't move under a pressed or
   dragged tab, a dragged tab drops only on tabs in view, and the wheel stops
   at the strip's real start.
+- Fix: `AtlasTreeModel` no longer follows a `QModelIndex` that is another
+  model's or outlived `setItems()` (best effort), caps its nodes at
+  100000 and reads `symbol` safely; `AtlasShortcuts` ignores NaN, infinite
+  and out-of-range numbers as key sequences; `Appearance.textScale` is kept
+  between 0.5 and 4.
 
 ## 1.4.0
 

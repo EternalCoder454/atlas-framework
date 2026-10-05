@@ -9,6 +9,9 @@
 #include <QSignalSpy>
 #include <QtTest>
 
+#include <cmath>
+#include <limits>
+
 class FakeAction : public QObject
 {
     Q_OBJECT
@@ -102,6 +105,50 @@ private Q_SLOTS:
         QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel)), QKeySequence(QKeySequence::Cancel));
         QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel) + 1), QKeySequence(int(QKeySequence::Cancel) + 1));
         QCOMPARE(AtlasShortcuts::toSequence(0), QKeySequence());
+    }
+
+    void hostileNumbers()
+    {
+        // Out of range, negative, NaN and infinite are no key at all, and
+        // must not be converted (undefined behaviour) on the way.
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        const double inf = std::numeric_limits<double>::infinity();
+        for (const QVariant &v : {QVariant(nan), QVariant(inf), QVariant(-inf), QVariant(1e300), QVariant(-1.0), QVariant(0.5),
+                                  QVariant(qlonglong(1) << 40), QVariant(qulonglong(1) << 63), QVariant(-5), QVariant(qlonglong(-1) << 40)}) {
+            QVERIFY2(AtlasShortcuts::toSequence(v).isEmpty(), qPrintable(v.toString()));
+        }
+        QVERIFY(AtlasShortcuts::toSequence(2147483648.0).isEmpty());
+        QVERIFY(AtlasShortcuts::toSequence(float(1e30)).isEmpty());
+        QVERIFY(AtlasShortcuts::toSequence(float(-3)).isEmpty());
+        QVERIFY(AtlasShortcuts::toSequence(qulonglong(2147483648u)).isEmpty());
+        QVERIFY(AtlasShortcuts::toSequence(QVariant::fromValue(ulong(1) << 40)).isEmpty());
+        // In range: no crash, a key (INT_MAX as int and as double).
+        const int big = std::numeric_limits<int>::max();
+        QCOMPARE(AtlasShortcuts::toSequence(big), AtlasShortcuts::toSequence(double(big)));
+        QCOMPARE(AtlasShortcuts::toSequence(1.5), AtlasShortcuts::toSequence(1));
+        QCOMPARE(AtlasShortcuts::toSequence(QVariant::fromValue(ulong(Qt::Key_Escape))), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(AtlasShortcuts::toSequence(float(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(AtlasShortcuts::toSequence(double(int(Qt::Key_Escape))), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel) + 0.0), QKeySequence(QKeySequence::Cancel));
+        QCOMPARE(AtlasShortcuts::toSequence(qlonglong(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
+    }
+
+    void conflictsGetterIsPure()
+    {
+        // Reading `conflicts` never emits a signal; the registry computes once per turn.
+        AtlasShortcuts reg;
+        FakeAction a("Save", "Ctrl+S"), b("Sort", "Ctrl+S");
+        reg.add(&a);
+        QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict"));
+        reg.add(&b);
+        QSignalSpy spy(&reg, &AtlasShortcuts::conflictsChanged);
+        QVERIFY(reg.conflicts().isEmpty());
+        QCOMPARE(spy.count(), 0);
+        QTRY_COMPARE(reg.conflicts().size(), 1);
+        QCOMPARE(spy.count(), 1);
+        reg.conflicts();
+        reg.conflicts();
+        QCOMPARE(spy.count(), 1);
     }
 
     void windows()

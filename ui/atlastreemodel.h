@@ -15,7 +15,9 @@
 //   }
 //   AtlasTreeView { model: tree; symbolRole: "symbol" }
 //
-// Setting `items` again replaces the whole tree (the view collapses).
+// Setting `items` again replaces the whole tree (the view collapses). At most
+// kMaxNodes nodes are built. An index that outlived setItems() never crashes;
+// it is best effort: with the same address and row it may name the new item.
 #pragma once
 
 #include <QAbstractItemModel>
@@ -24,6 +26,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 class AtlasTreeModel : public QAbstractItemModel
@@ -68,9 +71,13 @@ private:
     enum Role { SymbolRole = Qt::UserRole + 1, IconRole };
 
     static constexpr int kMaxDepth = 64;
+    static constexpr size_t kMaxNodes = 100000;
     void fill(Node &into, const QVariantList &list, int depth);
     Node *node(const QModelIndex &index) const;
 
     QVariantList m_items;
     Node m_root;
+    // Every live node, so an index is checked before its pointer is followed.
+    std::unordered_set<const Node *> m_nodes;
+    bool m_capWarned = false;
 };
