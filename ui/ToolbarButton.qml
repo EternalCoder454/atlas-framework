@@ -7,6 +7,8 @@ import org.kde.kirigami as Kirigami
 // takes the keyboard focus from the editor. `checkable` makes it a toggle,
 // drawn with the selection fill, an accent border and an accent icon while
 // checked. The tooltip is the text plus the optional `shortcutText`: "Bold (Ctrl+B)".
+// The tooltip hides while the button is pressed and after it was used (a menu
+// it opened must not sit under it); it returns once the pointer has left.
 //
 // With an `action` (an AtlasAction or a plain Qt Action) the button follows
 // it: the tooltip is `action.toolTip`, else `action.text`, else `text`; the
@@ -73,7 +75,17 @@ T.AbstractButton {
         }
     }
 
-    QQC2.ToolTip.visible: control.hovered && control._tipName.length > 0
+    // Set by a press or a click, cleared when the pointer leaves: the button
+    // may have opened a menu or popup (the app calls popup() in onClicked),
+    // and the tooltip must not sit on top of it.
+    property bool _used: false
+    // The tooltip shows while hovered, but not while pressed or after use.
+    readonly property bool _tipShown: control.hovered && !control.down && !control._used && control._tipName.length > 0
+    onPressed: control._used = true
+    onClicked: control._used = true
+    onHoveredChanged: if (!control.hovered) control._used = false
+
+    QQC2.ToolTip.visible: control._tipShown
     QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
     //: Tooltip: %1 is the action ("Bold"), %2 its keyboard shortcut ("Ctrl+B")
     QQC2.ToolTip.text: control._effectiveShortcut.length > 0 ? qsTr("%1 (%2)").arg(control._tipName).arg(control._effectiveShortcut) : control._tipName

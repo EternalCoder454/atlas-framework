@@ -8,7 +8,7 @@ import Atlas.Ui
 // The general modal dialog: a title row, a scrolling body and a row of
 // buttons (ConfirmDialog is the yes/no one). The window behind is dimmed,
 // Escape closes it, and the focus starts on the first thing in the body that
-// can take it. A body taller than the window scrolls instead of outgrowing it,
+// can take it (the dialog itself when the body has nothing, never a button). A body taller than the window scrolls instead of outgrowing it,
 // and the dialog is never wider than the window.
 //
 // The header has an optional Back button at the leading edge (`showBack`,
@@ -56,17 +56,19 @@ T.Dialog {
     height: Math.min(implicitHeight, parent ? parent.height - control._margin : implicitHeight)
     spacing: AtlasStyle.spacingLarge
 
+    // True when item is in the body (the content item), not the header or the footer.
     function _inside(item: Item): bool {
         for (let i = item; i; i = i.parent) {
-            if (i === control.contentItem || i === control.footer) {
+            if (i === control.contentItem) {
                 return true;
             }
         }
         return false;
     }
 
-    // The first item the Tab key reaches in the body or the buttons; the
-    // dialog itself when there is none, so Escape still works.
+    // The first item the Tab key reaches in the body; the dialog itself when
+    // there is none (never a header or footer button, so Return right after
+    // opening cannot press Back, Close or Cancel), so Escape still works.
     onOpened: {
         const first = control.contentItem.nextItemInFocusChain(true);
         if (first && control._inside(first)) {
