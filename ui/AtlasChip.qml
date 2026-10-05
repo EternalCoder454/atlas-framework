@@ -20,7 +20,32 @@ T.AbstractButton {
     // A Material Symbol (Symbols.<Name>); 0 for none.
     property int symbol: 0
     property bool closable: false
+    // The widest the chip asks for (its implicit width); a longer text is
+    // elided. 0 means no limit. Since 1.5.0.
+    property real maximumWidth: 0
     signal closeRequested
+
+    // The AtlasChipGroup that holds the chip, set by the group; it is told when
+    // the chip is shown, hidden, enabled or disabled (the roving Tab stop).
+    property Item _tabOwner: null
+    onVisibleChanged: _tabOwner?._chipStateChanged()
+    onEnabledChanged: _tabOwner?._chipStateChanged()
+    // A chip moved out of its group stops telling the group, and is a Tab stop again.
+    onParentChanged: {
+        const owner = _tabOwner;
+        if (!owner) {
+            return;
+        }
+        let p = parent;
+        while (p && p !== owner) {
+            p = p.parent;
+        }
+        if (!p) {
+            _tabOwner = null;
+            focusPolicy = Qt.StrongFocus;
+            owner._chipStateChanged();
+        }
+    }
 
     readonly property color tint: Kirigami.Theme.textColor
     readonly property bool showsCheck: checkable && checked
@@ -39,6 +64,18 @@ T.AbstractButton {
     Accessible.checkable: checkable
     Accessible.checked: checked
 
+    // Return and Enter press the chip like Space: click() toggles a checkable
+    // chip and runs its action, where emitting clicked() would not.
+    Keys.onReturnPressed: event => {
+        if (enabled && !event.isAutoRepeat) {
+            control.click();
+        }
+    }
+    Keys.onEnterPressed: event => {
+        if (enabled && !event.isAutoRepeat) {
+            control.click();
+        }
+    }
     Keys.onPressed: event => {
         if (control.closable && control.enabled && (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace)) {
             event.accepted = true;
@@ -56,6 +93,7 @@ T.AbstractButton {
     contentItem: Row {
         spacing: AtlasStyle.spacingSmall
         Loader {
+            id: symbolSlot
             active: control.symbol !== 0 || control.showsCheck
             visible: active
             anchors.verticalCenter: parent.verticalCenter
@@ -74,9 +112,13 @@ T.AbstractButton {
             font.pointSize: AtlasStyle.fontSizeBody
             color: !control.enabled ? AtlasStyle.textDisabled : control.showsCheck ? AtlasStyle.accent : control.tint
             textFormat: Text.PlainText
+            elide: Text.ElideRight
+            // With maximumWidth the text gives way; else it keeps its own width.
+            width: control.maximumWidth > 0 ? Math.min(implicitWidth, Math.max(0, control.maximumWidth - control.leftPadding - control.rightPadding - (symbolSlot.visible ? symbolSlot.width + AtlasStyle.spacingSmall : 0) - (closeSpace.visible ? closeSpace.width + AtlasStyle.spacingSmall : 0))) : implicitWidth
         }
         // Room for the close button, which sits over it.
         Item {
+            id: closeSpace
             visible: control.closable
             width: closeButton.width
             height: 1

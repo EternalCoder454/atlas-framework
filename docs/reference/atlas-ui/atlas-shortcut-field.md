@@ -47,3 +47,5 @@ AtlasShortcutField {
 ## Keyboard
 
 Click, or Space or Return, starts recording. The first non-modifier key sets the shortcut, Escape cancels, and Backspace or Delete clears it.
+
+Since 1.5.0: Escape, Backspace and Delete cancel or clear only when pressed alone; with Ctrl, Shift, Alt or Meta held they are recorded.

@@ -19,7 +19,8 @@ T.Switch {
     indicator: Rectangle {
         implicitWidth: 40
         implicitHeight: 24
-        x: control.leftPadding
+        // At the right end when mirrored, also in a wide switch.
+        x: control.mirrored ? control.width - width - control.rightPadding : control.leftPadding
         y: Math.round((control.height - height) / 2)
         // The track stays a pill.
         radius: AtlasStyle.radiusPill

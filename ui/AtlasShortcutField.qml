@@ -97,6 +97,10 @@ T.Control {
             names[Qt.Key_PageUp] = "PgUp";
             names[Qt.Key_PageDown] = "PgDown";
             names[Qt.Key_Insert] = "Ins";
+            // Recorded only with a modifier: on their own they cancel or clear.
+            names[Qt.Key_Delete] = "Del";
+            names[Qt.Key_Escape] = "Esc";
+            names[Qt.Key_Backspace] = "Backspace";
             names[Qt.Key_Print] = "Print";
             names[Qt.Key_Pause] = "Pause";
             names[Qt.Key_Menu] = "Menu";
@@ -189,9 +193,12 @@ T.Control {
             event.accepted = true;
             return;
         }
-        if (event.key === Qt.Key_Escape) {
+        // Escape, Backspace and Delete cancel or clear only on their own; with
+        // Ctrl, Shift, Alt or Meta held they are recorded like any key.
+        const bare = !(event.modifiers & ~Qt.KeypadModifier);
+        if (event.key === Qt.Key_Escape && bare) {
             internals.recording = false;
-        } else if (event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) {
+        } else if ((event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) && bare) {
             internals.recording = false;
             control.sequence = "";
             control.edited();

@@ -42,10 +42,26 @@ Item {
     function _sync() {
         const chips = _chips();
         _current = Math.max(0, Math.min(chips.length - 1, _current));
+        // Every chip tells the group when it is shown, hidden, enabled or
+        // disabled, so the Tab stop never stays on a chip that cannot take it;
+        // the ones out of the list are not Tab stops.
+        for (let i = 0; i < flow.children.length; ++i) {
+            const c = flow.children[i];
+            if (c && c.closable !== undefined) {
+                c._tabOwner = control;
+                if (chips.indexOf(c) < 0) {
+                    c.focusPolicy = Qt.ClickFocus;
+                }
+            }
+        }
         for (let i = 0; i < chips.length; ++i) {
             // Only the current chip is a Tab stop; the others take focus by click or arrow.
             chips[i].focusPolicy = i === _current ? Qt.StrongFocus : Qt.ClickFocus;
         }
+    }
+    // Called by a chip whose `visible` or `enabled` changed.
+    function _chipStateChanged() {
+        Qt.callLater(_sync);
     }
     function _syncGroup() {
         group.syncButtons(_chips());

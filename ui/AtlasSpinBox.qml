@@ -78,6 +78,20 @@ T.SpinBox {
         event.accepted = true;
     }
 
+    // Only the number is checked: the text may be the prefix, digits (with a
+    // sign and the locale's separators) and the suffix, so what is typed
+    // between them cannot be a letter. Prefix and suffix are both optional (a
+    // number typed over a selection has neither), and a part of one still
+    // matches, as a partial match. Arabic separators (U+066B, U+066C) and the
+    // direction marks (U+061C, U+200E, U+200F) some locales put round a sign
+    // are part of a number. Since 1.5.0.
+    readonly property var _pattern: {
+        const esc = s => s.replace(/[.*+?^${}()|[\]\\\/]/g, "\\$&");
+        return new RegExp("^(?:" + esc(prefix) + ")?[\u061c\u200e\u200f]*[-+\u2212]?[0-9\u0660-\u0669\u06f0-\u06f9,.\u066b\u066c\u061c\u200e\u200f\\s\u00a0\u202f'\u2019]*(?:" + esc(suffix) + ")?$");
+    }
+    validator: RegularExpressionValidator {
+        regularExpression: control._pattern
+    }
     textFromValue: (value, locale) => prefix + Number(value).toLocaleString(locale, 'f', 0) + suffix
     valueFromText: (text, locale) => {
         let t = text;
@@ -88,7 +102,7 @@ T.SpinBox {
             t = t.slice(0, t.length - suffix.length);
         }
         try {
-            const n = Number.fromLocaleString(locale, t.trim());
+            const n = Number.fromLocaleString(locale, t.replace(/[\u061c\u200e\u200f]/g, "").trim());
             return isNaN(n) ? control.value : n;
         } catch (e) {
             return control.value;

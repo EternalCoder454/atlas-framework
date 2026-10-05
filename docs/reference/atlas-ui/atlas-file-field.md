@@ -27,10 +27,12 @@ AtlasFileField {
 |---|---|---|---|
 | `editable` | `bool` | `true` | `false` leaves only the button: the path cannot be typed, only chosen. |
 | `nameFilters` | `list<string>` | `[]` | The dialog's filters, such as `["Images (*.png *.jpg)", "All files (*)"]`. |
+| `invalidText` | `string` | `""` | The message under the field for a path the `validator` does not accept. Since 1.5.0. |
 | `path` | `string` | `""` | The path as text. |
 | `placeholderText` | `string` | `""` | Hint shown while the field is empty. |
 | `saveMode` | `bool` | `false` | `true` asks for a file to save to, `false` for one to open. |
 | `title` | `string` | `""` | The dialog's title; empty for the system's own. |
+| `validator` | `QValidator` | `null` | Checks the typed path, such as `AtlasPathValidator`. Since 1.5.0. |
 | `url` | `url` (read-only) | — | `path` as a file URL; empty when `path` is empty or not absolute. |
 
 ## Signals

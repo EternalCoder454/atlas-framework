@@ -30,6 +30,7 @@ The accessible name is the text. The close button's is "Remove" followed by the 
 |---|---|---|---|
 | `closable` | `bool` | `false` | Shows an x button; it, or Delete/Backspace, emits `closeRequested()`. |
 | `showsCheck` | `bool` (read-only) | — | `true` when the chip is checkable and checked, so it shows a check mark. |
+| `maximumWidth` | `real` | `0` | The widest the chip asks for; a longer text is elided. 0 means no limit. Since 1.5.0. |
 | `symbol` | `int` (a `Symbols.<Name>` value, see [Symbols](symbols.md)) | `0` | A Material Symbol before the text; 0 for none. |
 | `tint` | `color` (read-only) | the theme's text colour | The chip's text colour, for custom content. |
 

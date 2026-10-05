@@ -35,7 +35,9 @@ private Q_SLOTS:
         QTest::newRow("no host") << "https://" << QValidator::Intermediate;
         QTest::newRow("padded") << "  https://example.com " << QValidator::Intermediate;
         QTest::newRow("bad scheme") << "ftp://example.com" << QValidator::Invalid;
-        QTest::newRow("not a scheme") << "example.com" << QValidator::Invalid;
+        QTest::newRow("bare host") << "example.com" << QValidator::Intermediate;
+        QTest::newRow("bare host and port") << "example.com:8080/a" << QValidator::Intermediate;
+        QTest::newRow("not a url") << "exa<mple" << QValidator::Invalid;
         QTest::newRow("inner space") << "https://exa mple.com" << QValidator::Invalid;
         QTest::newRow("NUL") << QString::fromLatin1("https://a\0b.com", 15) << QValidator::Invalid;
         QTest::newRow("newline") << "https://a.com\n" << QValidator::Intermediate;
@@ -49,6 +51,34 @@ private Q_SLOTS:
         QFETCH(S, state);
         AtlasUrlValidator v;
         QCOMPARE(check(v, text), state);
+    }
+    void urlBareHostFixup()
+    {
+        AtlasUrlValidator v;
+        QString s = QStringLiteral("example.com");
+        v.fixup(s);
+        QCOMPARE(s, QStringLiteral("https://example.com"));
+        QCOMPARE(check(v, s), QValidator::Acceptable);
+        s = QStringLiteral("ftp://example.com");
+        v.fixup(s);
+        QCOMPARE(s, QStringLiteral("ftp://example.com"));
+    }
+    void urlFixupLeavesWhatIsNotABareHost()
+    {
+        AtlasUrlValidator v;
+        v.setSchemes({QStringLiteral("https")});
+        QString s = QStringLiteral("http://x");
+        v.fixup(s);
+        QCOMPARE(s, QStringLiteral("http://x"));
+        s = QStringLiteral("user:pw@host");
+        v.fixup(s);
+        QCOMPARE(s, QStringLiteral("user:pw@host"));
+        s = QStringLiteral("example.com:8080");
+        v.fixup(s);
+        QCOMPARE(s, QStringLiteral("https://example.com:8080"));
+        s = QString();
+        v.fixup(s);
+        QCOMPARE(s, QString());
     }
     void urlSchemes()
     {

@@ -44,8 +44,19 @@ T.TextField {
             pause.restart();
         }
     }
+    // Return and Enter give the app the text typed so far, not the one before the pause.
+    Keys.onReturnPressed: event => {
+        pause.stop();
+        query = text;
+        event.accepted = false;
+    }
+    Keys.onEnterPressed: event => {
+        pause.stop();
+        query = text;
+        event.accepted = false;
+    }
     Keys.onEscapePressed: event => {
-        if (text.length > 0) {
+        if (text.length > 0 && !readOnly) {
             clear();
         } else {
             event.accepted = false;
@@ -103,7 +114,7 @@ T.TextField {
         anchors.verticalCenter: parent.verticalCenter
         width: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
         height: width
-        visible: control.text.length > 0
+        visible: control.text.length > 0 && !control.readOnly
         focusPolicy: Qt.NoFocus
         hoverEnabled: true
         Accessible.name: qsTr("Clear Search")

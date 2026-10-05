@@ -15,12 +15,12 @@ T.AbstractButton {
     Accessible.name: control.text
     Keys.onReturnPressed: event => {
         if (enabled && !event.isAutoRepeat) {
-            control.clicked();
+            control.click();
         }
     }
     Keys.onEnterPressed: event => {
         if (enabled && !event.isAutoRepeat) {
-            control.clicked();
+            control.click();
         }
     }
 

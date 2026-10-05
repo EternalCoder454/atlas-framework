@@ -75,7 +75,8 @@ T.AbstractButton {
             return "#" + (control.showAlpha && a < 255 ? pad(a) : "") + r;
         }
         function toLabel(c: color): string {
-            if (c.a >= 1) {
+            // 0.999 rounds to 1 in the label, so it is shown as the plain hex.
+            if (Math.round(c.a * 100) / 100 >= 1) {
                 return toHex(c);
             }
             const alpha = String(Math.round(c.a * 100) / 100);
@@ -121,7 +122,8 @@ T.AbstractButton {
         readonly property var swatches: {
             const h = control.hex.toLowerCase();
             const list = palette.slice();
-            if (control.color.a === 1 && list.indexOf(h) < 0 || control.color.a < 1) {
+            // Once: a translucent colour whose hex is in the palette adds no second swatch.
+            if (list.indexOf(h) < 0) {
                 list.unshift(h);
             }
             return list;
@@ -207,13 +209,36 @@ T.AbstractButton {
             hexField.forceActiveFocus(Qt.PopupFocusReason);
         }
         property bool _hadFocus: false
+        // True when item is the root or a descendant (Item.contains takes a point).
+        function _holds(root: Item, item: Item): bool {
+            for (let i = item; i; i = i.parent) {
+                if (i === root) {
+                    return true;
+                }
+            }
+            return false;
+        }
         onAboutToHide: _hadFocus = hexField.activeFocus || contentItem.activeFocus
+        // After the close is over (a click outside has then reached its
+        // target): the focus comes back to the field unless the user put it on
+        // something that takes focus. Qt leaves it on the window's root item.
         onClosed: {
-            const item = control.Window.activeFocusItem;
-            if (popup._hadFocus && (!item || popup.contentItem.contains(item))) {
+            if (popup._hadFocus) {
+                popup._hadFocus = false;
+                Qt.callLater(popup._giveFocusBack);
+            }
+        }
+        function _giveFocusBack(): void {
+            const w = control.Window.window;
+            if (!w || popup.visible || !control.visible || !control.enabled) {
+                return;
+            }
+            const item = w.activeFocusItem;
+            const chosen = item && !popup._holds(popup.contentItem, item)
+                && ((item.focusPolicy ?? 0) !== 0 || item.activeFocusOnTab || item.activeFocusOnPress === true);
+            if (!chosen) {
                 control.forceActiveFocus(Qt.PopupFocusReason);
             }
-            popup._hadFocus = false;
         }
 
         contentItem: ColumnLayout {
