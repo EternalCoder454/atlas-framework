@@ -54,6 +54,18 @@ AtlasAppCard.property symbol: int
 AtlasAppCard.signal actionClicked()
 AtlasAppCard.signal cancelRequested()
 AtlasAppCard.type
+AtlasAutocompleteField.property clearable: bool
+AtlasAutocompleteField.property errorText: QString
+AtlasAutocompleteField.property filter: QString
+AtlasAutocompleteField.property maxSuggestions: int
+AtlasAutocompleteField.property model: QVariant
+AtlasAutocompleteField.property placeholderText: QString
+AtlasAutocompleteField.property popupOpen: bool [readonly]
+AtlasAutocompleteField.property readOnly: bool
+AtlasAutocompleteField.property text: QString
+AtlasAutocompleteField.property textRole: QString
+AtlasAutocompleteField.signal accepted(QString text)
+AtlasAutocompleteField.type
 AtlasBreadcrumb.property count: int [readonly]
 AtlasBreadcrumb.property segments: QVariant
 AtlasBreadcrumb.signal activated(int index)
@@ -83,6 +95,12 @@ AtlasChipGroup.property content: QQmlListProperty<QObject> [readonly]
 AtlasChipGroup.property exclusive: bool
 AtlasChipGroup.property spacing: double
 AtlasChipGroup.type
+AtlasColorField.property color: QColor
+AtlasColorField.property hex: QString [readonly]
+AtlasColorField.property showAlpha: bool
+AtlasColorField.property showMore: bool
+AtlasColorField.signal edited()
+AtlasColorField.type
 AtlasComboBox.property filterable: bool
 AtlasComboBox.property placeholderText: QString
 AtlasComboBox.type
@@ -111,9 +129,28 @@ AtlasEmptyState.property text: QString
 AtlasEmptyState.property title: QString
 AtlasEmptyState.signal triggered()
 AtlasEmptyState.type
+AtlasFileField.property editable: bool
+AtlasFileField.property nameFilters: QStringList
+AtlasFileField.property path: QString
+AtlasFileField.property placeholderText: QString
+AtlasFileField.property saveMode: bool
+AtlasFileField.property title: QString
+AtlasFileField.property url: QUrl [readonly]
+AtlasFileField.signal edited()
+AtlasFileField.type
 AtlasFocusRing.property gap: double
 AtlasFocusRing.property shown: bool
 AtlasFocusRing.type
+AtlasFolderField.property editable: bool
+AtlasFolderField.property path: QString
+AtlasFolderField.property placeholderText: QString
+AtlasFolderField.property title: QString
+AtlasFolderField.property url: QUrl [readonly]
+AtlasFolderField.signal edited()
+AtlasFolderField.type
+AtlasFontPicker.property fixedOnly: bool
+AtlasFontPicker.signal edited()
+AtlasFontPicker.type
 AtlasIconGrid.property count: int [readonly]
 AtlasIconGrid.property currentIndex: int
 AtlasIconGrid.property iconRole: QString

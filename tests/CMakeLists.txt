@@ -60,6 +60,19 @@ foreach(shard RANGE 0 3)
         TIMEOUT 300
         ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-state-tests>;ATLAS_STATE_SHARD=${shard}/4;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/state-out-${shard};QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 endforeach()
+# Behaviour of the field controls (tests/fields): AtlasAutocompleteField's
+# keyboard handling, AtlasColorField's hex parsing.
+add_executable(atlas-fields-tests fields/main.cpp)
+target_compile_definitions(atlas-fields-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fields")
+target_link_libraries(atlas-fields-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-fields-tests atlasui)
+add_test(NAME fields
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(fields PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-fields-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/fields-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
 # The translation test: a throwaway atlas-ui_de.qm (tests/i18n) in a directory
 # of its own, found through ATLAS_UI_TRANSLATIONS_DIR (development builds only).

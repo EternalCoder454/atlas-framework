@@ -94,6 +94,11 @@ qt_add_qml_module(atlasui
         AtlasSplitView.qml
         AtlasNavigationStack.qml
         AtlasViewSwitcher.qml
+        AtlasColorField.qml
+        AtlasFileField.qml
+        AtlasFolderField.qml
+        AtlasAutocompleteField.qml
+        AtlasFontPicker.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp
