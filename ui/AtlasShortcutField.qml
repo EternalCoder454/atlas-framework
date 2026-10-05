@@ -97,6 +97,10 @@ T.Control {
             names[Qt.Key_PageUp] = "PgUp";
             names[Qt.Key_PageDown] = "PgDown";
             names[Qt.Key_Insert] = "Ins";
+            // Recorded only with a modifier: on their own they cancel or clear.
+            names[Qt.Key_Delete] = "Del";
+            names[Qt.Key_Escape] = "Esc";
+            names[Qt.Key_Backspace] = "Backspace";
             names[Qt.Key_Print] = "Print";
             names[Qt.Key_Pause] = "Pause";
             names[Qt.Key_Menu] = "Menu";

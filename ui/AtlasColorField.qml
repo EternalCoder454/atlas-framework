@@ -219,12 +219,26 @@ T.AbstractButton {
             return false;
         }
         onAboutToHide: _hadFocus = hexField.activeFocus || contentItem.activeFocus
+        // After the close is over (a click outside has then reached its
+        // target): the focus comes back to the field unless the user put it on
+        // something that takes focus. Qt leaves it on the window's root item.
         onClosed: {
-            const item = control.Window.activeFocusItem;
-            if (popup._hadFocus && (!item || popup._holds(popup.contentItem, item))) {
+            if (popup._hadFocus) {
+                popup._hadFocus = false;
+                Qt.callLater(popup._giveFocusBack);
+            }
+        }
+        function _giveFocusBack(): void {
+            const w = control.Window.window;
+            if (!w || popup.visible || !control.visible || !control.enabled) {
+                return;
+            }
+            const item = w.activeFocusItem;
+            const chosen = item && !popup._holds(popup.contentItem, item)
+                && ((item.focusPolicy ?? 0) !== 0 || item.activeFocusOnTab || item.activeFocusOnPress === true);
+            if (!chosen) {
                 control.forceActiveFocus(Qt.PopupFocusReason);
             }
-            popup._hadFocus = false;
         }
 
         contentItem: ColumnLayout {

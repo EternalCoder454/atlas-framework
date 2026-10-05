@@ -729,7 +729,10 @@ Item {
             verify(tf !== null);
             verify(!tf.hasError, "nothing shows before the user has typed");
             tf.forceActiveFocus();
-            keyClick("x");
+            // Not "x": the fixup makes a bare host https://x, which is valid.
+            for (const k of "http:")
+                keyClick(k);
+            compare(tf.text, "http:");
             keyClick(Qt.Key_Return);
             tryVerify(() => tf.hasError, 2000, "invalidText shows for an invalid path");
         }
@@ -832,7 +835,8 @@ Item {
         function test_font_picker_pixel_font_shows_no_minus_one_pt() {
             const f = createTemporaryObject(pickerComp, root);
             f.font.pixelSize = 14;
-            compare(f.font.pointSize, -1);
+            // QML reads it back in points, never -1 (pixels * 72 / 96).
+            compare(f.font.pointSize, 10.5);
             const texts = [];
             for (const t of walk(f)) {
                 if (typeof t.text === "string") {
@@ -845,7 +849,10 @@ Item {
 
         function test_font_picker_scan_is_shared() {
             const a = createTemporaryObject(pickerComp, root, {fixedOnly: true});
+            // The scan runs only while the list is open.
+            mouseClick(a);
             tryVerify(() => a._scanned > 0, 5000);
+            keyClick(Qt.Key_Escape);
             const b = createTemporaryObject(pickerComp, root, {fixedOnly: true});
             verify(b._scanned >= a._scanned, "a second picker starts where the first got to");
         }

@@ -180,7 +180,7 @@ T.AbstractButton {
             textFormat: Text.PlainText
         }
         Text {
-            // A font set in pixels has pointSize -1: no size is shown.
+            // QML gives a font set in pixels its size in points (pixels * 72 / 96).
             text: control.font.pointSize > 0 ? qsTr("%1 pt").arg(Math.round(control.font.pointSize * 10) / 10) : ""
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody
