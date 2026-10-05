@@ -60,7 +60,7 @@ All derive `Debug, Clone, PartialEq, Serialize, Deserialize, Default` with camel
 | `HostStatus` | `staged`, `booted`, `rollback`: `Option<BootEntry>`; `rollback_queued: bool`; `host_type: Option<String>` (JSON `type`: `bootcHost` on a bootc system, null on a plain container) |
 | `BootEntry` | `image: Option<ImageStatus>` (null for a deployment that is not a container image), `cached_update: Option<ImageStatus>` (an update bootc found with `upgrade --check` but has not downloaded), `incompatible: bool`, `pinned: bool`, `store: Option<String>`, `ostree: Option<OstreeEntry>` |
 | `OstreeEntry` | `checksum: String`, `deploy_serial: u32`, `stateroot: String` |
-| `ImageStatus` | `image: ImageReference`, `architecture: Option<String>`, `version: Option<String>`, `timestamp: Option<String>` (build time, RFC 3339), `image_digest: String` |
+| `ImageStatus` | `image: ImageReference` (missing reads as empty), `architecture: Option<String>`, `version: Option<String>`, `timestamp: Option<String>` (build time, RFC 3339), `image_digest: String` |
 | `ImageReference` | `image: String` (name with tag, such as `ghcr.io/eternalcoder454/atlasos:stable`), `transport: Option<String>` (`registry`, `oci`, `containers-storage`, ...; missing means `registry`), `signature: Option<serde_json::Value>` |
 
 Methods on these:

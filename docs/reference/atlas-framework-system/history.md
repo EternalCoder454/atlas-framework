@@ -36,8 +36,8 @@ for e in history::read_default()? {
 | `DEFAULT_PATH` | `pub const &str` | `/var/lib/atlas-core/history.jsonl` |
 | `FORMAT` | `pub const u32` | `1`, the line format the writers produce |
 | `read_default` | `pub fn read_default() -> io::Result<Vec<Entry>>` | Reads the history at the default path, newest first |
-| `read` | `pub fn read(path: &Path) -> io::Result<Vec<Entry>>` | Reads a history file, newest first. A missing file is an empty history; lines that do not parse are skipped |
-| `append_if_new` | `pub fn append_if_new(path: &Path, entry: &Entry) -> io::Result<bool>` | Appends `entry` unless the newest entry has the same digest. Returns whether a line was written. Creates the directory and the file (mode 0644), and refuses a symlink at the file |
+| `read` | `pub fn read(path: &Path) -> io::Result<Vec<Entry>>` | Reads a history file, newest first. A missing file is an empty history; lines that do not parse are skipped. A file that is not a regular file or is over 16 MB is an error |
+| `append_if_new` | `pub fn append_if_new(path: &Path, entry: &Entry) -> io::Result<bool>` | Appends `entry` unless the newest entry has the same digest. Returns whether a line was written. Creates the directory and the file (mode 0644), and refuses a symlink at the file. A lock file (`history.jsonl.lock`, 0600, as for [events](events.md)) makes the check and the write one step; waiting for it is bounded (2 seconds, then `ErrorKind::TimedOut`) |
 | `record_boot` | `pub fn record_boot(path: &Path, status: &bootc::Status, now: &str) -> io::Result<bool>` | Records the booted deployment of a [`Status`](bootc.md#status). Errors when bootc reports no booted image |
 | `now_rfc3339` | `pub fn now_rfc3339() -> String` | The current time as `YYYY-MM-DDTHH:MM:SSZ` |
 | `rfc3339_from_unix` | `pub fn rfc3339_from_unix(secs: u64) -> String` | Unix seconds as UTC RFC 3339 |

@@ -21,7 +21,6 @@
 
 use std::fs;
 use std::io::{self, Write};
-use std::os::fd::AsRawFd;
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -52,7 +51,7 @@ impl Settings {
     /// The value, unescaped; `None` if the file, group or key is missing.
     /// The last of duplicate keys wins, as in KConfig.
     pub fn get(&self, group: &str, key: &str) -> Option<String> {
-        get_in(&fs::read_to_string(&self.path).ok()?, group, key)
+        get_in(&read_text(&self.path).ok()?, group, key)
     }
 
     pub fn get_bool(&self, group: &str, key: &str) -> Option<bool> {
@@ -86,8 +85,11 @@ impl Settings {
         if let Some(dir) = target.parent() {
             fs::create_dir_all(dir)?;
         }
-        let _thread = WRITERS.lock().unwrap_or_else(|e| e.into_inner());
+        // The file lock first, with its deadline: a stuck holder of one file
+        // must not make writers of other files wait on the thread lock.
         let _file = lock(&target)?;
+        let _thread = lock_writers()?;
+        sweep_temps(&target);
         // Again under the lock: another writer may have changed it.
         let (out, changed, meta) = change(&target, group, key, value)?;
         if !changed {
@@ -105,7 +107,7 @@ fn change(
     key: &str,
     value: Option<&str>,
 ) -> io::Result<(String, bool, Option<fs::Metadata>)> {
-    let (text, meta) = match fs::read_to_string(target) {
+    let (text, meta) = match read_text(target) {
         Ok(t) => (t, Some(fs::metadata(target)?)),
         Err(e) if e.kind() == io::ErrorKind::NotFound => (String::new(), None),
         Err(e) => return Err(e),
@@ -200,7 +202,74 @@ fn resolve_link(path: &Path) -> io::Result<PathBuf> {
 /// sharing it need their own lock).
 static WRITERS: Mutex<()> = Mutex::new(());
 
-/// An exclusive `flock` on `.<name>.lock` beside `path`, held until dropped.
+/// The process-wide writer lock, waited for at most [`crate::fsutil::LOCK_WAIT`]
+/// (another thread may sit in its own wait for the file lock).
+fn lock_writers() -> io::Result<std::sync::MutexGuard<'static, ()>> {
+    let end = std::time::Instant::now() + crate::fsutil::LOCK_WAIT;
+    loop {
+        match WRITERS.try_lock() {
+            Ok(g) => return Ok(g),
+            Err(std::sync::TryLockError::Poisoned(e)) => return Ok(e.into_inner()),
+            Err(std::sync::TryLockError::WouldBlock) => {
+                if std::time::Instant::now() >= end {
+                    return Err(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "timed out waiting for another settings writer",
+                    ));
+                }
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+        }
+    }
+}
+
+/// The biggest settings file read (4 MB; a real one is a few KB).
+const MAX_BYTES: u64 = 4 * 1024 * 1024;
+
+/// The file's text, read without blocking on a FIFO, only if it is a regular
+/// file of at most [`MAX_BYTES`]. Bytes that are not UTF-8 become U+FFFD, so
+/// one bad byte never makes a key unwritable (the rewrite repairs that line).
+fn read_text(path: &Path) -> io::Result<String> {
+    let bytes = crate::fsutil::read_capped(path, MAX_BYTES)?;
+    Ok(String::from_utf8(bytes)
+        .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned()))
+}
+
+/// Remove `.<name>.tmp*` files a crashed writer left, older than a day.
+/// Under the lock, so no live writer's temp file is a candidate; best effort.
+fn sweep_temps(path: &Path) {
+    let (Some(dir), Some(name)) = (path.parent(), path.file_name()) else {
+        return;
+    };
+    let dir = if dir.as_os_str().is_empty() {
+        Path::new(".")
+    } else {
+        dir
+    };
+    let prefix = format!(".{}.tmp", name.to_string_lossy());
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let day = std::time::Duration::from_secs(24 * 3600);
+    for e in entries.flatten() {
+        if !e.file_name().to_string_lossy().starts_with(&prefix) {
+            continue;
+        }
+        let old = e
+            .metadata()
+            .ok()
+            .filter(|m| m.is_file())
+            .and_then(|m| m.modified().ok())
+            .and_then(|t| t.elapsed().ok())
+            .is_some_and(|age| age > day);
+        if old {
+            let _ = fs::remove_file(e.path());
+        }
+    }
+}
+
+/// An exclusive `flock` on `.<name>.lock` beside `path`, held until dropped,
+/// waited for at most 2 s (`TimedOut` after that).
 /// Opened read-only (flock doesn't need more). Root gives a lock file it
 /// creates to the directory's owner, so the user can still take it.
 fn lock(path: &Path) -> io::Result<fs::File> {
@@ -233,16 +302,8 @@ fn lock(path: &Path) -> io::Result<fs::File> {
     {
         std::os::unix::fs::fchown(&f, Some(d.uid()), Some(d.gid()))?;
     }
-    loop {
-        // SAFETY: flock on a descriptor this function owns.
-        if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX) } == 0 {
-            return Ok(f);
-        }
-        let e = io::Error::last_os_error();
-        if e.kind() != io::ErrorKind::Interrupted {
-            return Err(e);
-        }
-    }
+    crate::fsutil::lock_with_deadline(&f, crate::fsutil::LOCK_WAIT)?;
+    Ok(f)
 }
 
 /// Write a temp file beside `path`, sync it and rename it over `path`, then
@@ -681,6 +742,71 @@ mod tests {
                 assert_eq!(s.get("G", &format!("K{t}_{i}")).as_deref(), Some("v"));
             }
         }
+    }
+
+    #[test]
+    fn non_utf8_content_does_not_block_writes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("atlas-xrc");
+        fs::write(&path, b"[G]\nBad=\xff\xfe\nK=1\n").unwrap();
+        let s = Settings::at(&path);
+        assert_eq!(s.get("G", "K").as_deref(), Some("1"));
+        s.set("G", "K", Some("2")).unwrap();
+        assert_eq!(s.get("G", "K").as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn a_fifo_or_huge_file_is_not_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("atlas-xrc");
+        let c = std::ffi::CString::new(path.to_str().unwrap()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
+        let s = Settings::at(&path);
+        assert_eq!(s.get("G", "K"), None);
+        assert!(s.set("G", "K", Some("v")).is_err());
+        fs::remove_file(&path).unwrap();
+        fs::write(&path, vec![b'#'; MAX_BYTES as usize + 1]).unwrap();
+        assert!(s.set("G", "K", Some("v")).is_err());
+    }
+
+    #[test]
+    fn a_held_lock_times_out_instead_of_hanging() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("atlas-xrc");
+        let s = Settings::at(&path);
+        s.set("G", "K", Some("1")).unwrap();
+        let held = lock(&path).unwrap();
+        let t = std::time::Instant::now();
+        let e = s.set("G", "K", Some("2")).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::TimedOut);
+        assert!(t.elapsed() < std::time::Duration::from_secs(10));
+        drop(held);
+        s.set("G", "K", Some("2")).unwrap();
+    }
+
+    #[test]
+    fn old_temp_leftovers_are_swept_and_fresh_ones_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("atlas-xrc");
+        let (old, fresh, other) = (
+            dir.path().join(".atlas-xrc.tmp1-0"),
+            dir.path().join(".atlas-xrc.tmp2-0"),
+            dir.path().join(".atlas-yrc.tmp1-0"),
+        );
+        for p in [&old, &fresh, &other] {
+            fs::write(p, "x").unwrap();
+        }
+        let two_days = std::time::SystemTime::now() - std::time::Duration::from_secs(2 * 86400);
+        for p in [&old, &other] {
+            fs::File::options()
+                .write(true)
+                .open(p)
+                .unwrap()
+                .set_modified(two_days)
+                .unwrap();
+        }
+        Settings::at(&path).set("G", "K", Some("1")).unwrap();
+        assert!(!old.exists() && fresh.exists() && other.exists());
     }
 
     #[test]

@@ -4,13 +4,22 @@
 //! The path keeps the old atlas-core name: existing systems hold data there.
 
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
 const MAX_ERROR_CHARS: usize = 300;
+/// `Event::new` cuts `event` and `version` to these many characters.
+const MAX_EVENT_CHARS: usize = 64;
+const MAX_VERSION_CHARS: usize = 128;
+/// `append` refuses a line longer than this (a line is about 2.5 KB at most
+/// when built by [`Event::new`]); a truncation drops such lines.
+const MAX_LINE_BYTES: usize = 8 * 1024;
+/// The biggest events file `read` takes (it is cut to 512 KB; this is for a
+/// file something else grew).
+const MAX_READ_BYTES: u64 = 16 * 1024 * 1024;
 pub const DEFAULT_PATH: &str = "/var/lib/atlas-core/events.jsonl";
 
 /// The line format the writers produce (`"format": 1`, before the event's
@@ -53,8 +62,8 @@ impl Event {
         // paths and addresses included: the file is world-readable
         let scrubber = crate::crash::Scrubber::for_system();
         Event {
-            event: event.to_string(),
-            version,
+            event: event.chars().take(MAX_EVENT_CHARS).collect(),
+            version: version.map(|v| v.chars().take(MAX_VERSION_CHARS).collect()),
             error: error.map(|e| {
                 scrubber
                     .scrub_message(e)
@@ -74,8 +83,12 @@ impl Event {
 const MAX_BYTES: u64 = 512 * 1024;
 const KEEP_BYTES: usize = 256 * 1024;
 const KEEP_LINES: usize = 1000;
+/// A cut reads this much of the end of the file.
+const TAIL_BYTES: u64 = 1024 * 1024;
 
-/// Append one event (file created 0644). A lock file serializes the helper
+/// Append one event (file created 0644). Fails with `InvalidInput` when the
+/// line is over 8 KB, and with `TimedOut` when the lock file is still held
+/// after 2 s. A lock file serializes the helper
 /// and `record-event` (greenboot), so no line is lost to a concurrent cut.
 /// A failed cut is logged and does not fail the append.
 pub fn append(path: &Path, event: &Event) -> io::Result<()> {
@@ -87,36 +100,67 @@ pub fn append(path: &Path, event: &Event) -> io::Result<()> {
         event,
     })
     .map_err(io::Error::other)?;
+    if line.len() > MAX_LINE_BYTES {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!(
+                "event line is {} bytes, the limit is {MAX_LINE_BYTES}",
+                line.len()
+            ),
+        ));
+    }
     let lock = fs::OpenOptions::new()
         .create(true)
         .append(true)
         .mode(0o600)
         .custom_flags(libc::O_NOFOLLOW)
         .open(path.with_extension("jsonl.lock"))?;
-    lock.lock()?; // released when `lock` is dropped
+    // released when `lock` is dropped; waits 2 s at most
+    crate::fsutil::lock_with_deadline(&lock, crate::fsutil::LOCK_WAIT)?;
     crate::fsutil::append_line(path, &line, 0o644)?;
     if fs::symlink_metadata(path)?.len() > MAX_BYTES
         && let Err(e) = truncate(path)
     {
-        eprintln!("atlas-system-helper: cannot shrink {}: {e}", path.display());
+        log::warn!("cannot shrink {}: {e}", path.display());
     }
     Ok(())
 }
 
 fn truncate(path: &Path) -> io::Result<()> {
-    let bytes = fs::read(path)?;
+    // Only the tail is read: what is kept comes from the end, and a file
+    // something else grew must not be read whole.
+    let mut f = fs::File::open(path)?;
+    let start = f.metadata()?.len().saturating_sub(TAIL_BYTES);
+    f.seek(SeekFrom::Start(start))?;
+    let mut bytes = Vec::new();
+    f.take(TAIL_BYTES).read_to_end(&mut bytes)?;
+    if start > 0 {
+        // the first line is cut; drop it
+        let at = bytes
+            .iter()
+            .position(|b| *b == b'\n')
+            .map_or(bytes.len(), |i| i + 1);
+        bytes.drain(..at);
+    }
     let lines: Vec<&[u8]> = bytes
         .split(|b| *b == b'\n')
         .filter(|l| !l.is_empty())
         .collect();
-    let (mut total, mut first) = (0usize, lines.len());
-    while first > 0
-        && lines.len() - first < KEEP_LINES
-        && total + lines[first - 1].len() < KEEP_BYTES
-    {
-        first -= 1;
-        total += lines[first].len() + 1;
+    // Newest first; a line over the limit is dropped, never the reason to
+    // keep nothing.
+    let mut kept: Vec<&[u8]> = Vec::new();
+    let mut total = 0usize;
+    for l in lines.iter().rev() {
+        if l.len() > MAX_LINE_BYTES {
+            continue;
+        }
+        if kept.len() >= KEEP_LINES || total + l.len() >= KEEP_BYTES {
+            break;
+        }
+        total += l.len() + 1;
+        kept.push(l);
     }
+    kept.reverse();
     let tmp = path.with_extension(format!("jsonl.{}.tmp", std::process::id()));
     let _ = fs::remove_file(&tmp);
     let mut f = fs::OpenOptions::new()
@@ -125,7 +169,7 @@ fn truncate(path: &Path) -> io::Result<()> {
         .mode(0o644)
         .open(&tmp)?;
     let res = (|| {
-        for l in &lines[first..] {
+        for l in &kept {
             f.write_all(l)?;
             f.write_all(b"\n")?;
         }
@@ -138,9 +182,19 @@ fn truncate(path: &Path) -> io::Result<()> {
     res
 }
 
-/// All events, oldest first. A missing file or bad lines give fewer events.
+/// All events, oldest first. A missing file, a file that is not a regular
+/// file or is over 16 MB, or bad lines give fewer events.
 pub fn read(path: &Path) -> Vec<Event> {
-    crate::fsutil::lossy_lines(&fs::read(path).unwrap_or_default())
+    let bytes = match crate::fsutil::read_capped(path, MAX_READ_BYTES) {
+        Ok(b) => b,
+        Err(e) => {
+            if e.kind() != io::ErrorKind::NotFound {
+                log::warn!("cannot read {}: {e}", path.display());
+            }
+            Vec::new()
+        }
+    };
+    crate::fsutil::lossy_lines(&bytes)
         .iter()
         .filter_map(|l| serde_json::from_str(l).ok())
         .collect()
@@ -225,6 +279,55 @@ mod tests {
         append(&p, &Event::new("rollback-requested", None, None)).unwrap();
         let names: Vec<_> = read(&p).into_iter().map(|e| e.event).collect();
         assert_eq!(names, ["update-staged", "rollback-requested"]);
+    }
+
+    #[test]
+    fn event_and_version_are_capped() {
+        let e = Event::new("e".repeat(500).as_str(), Some("v".repeat(500)), None);
+        assert_eq!(e.event.chars().count(), 64);
+        assert_eq!(e.version.unwrap().chars().count(), 128);
+    }
+
+    #[test]
+    fn a_line_over_8_kb_is_refused() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("e.jsonl");
+        let mut e = Event::new("update-failed", None, None);
+        e.error = Some("x".repeat(9000));
+        assert_eq!(
+            append(&p, &e).unwrap_err().kind(),
+            io::ErrorKind::InvalidInput
+        );
+        assert!(!p.exists());
+    }
+
+    #[test]
+    fn one_huge_line_does_not_empty_the_file_on_a_cut() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("e.jsonl");
+        let e = Event::new("update-staged", None, None);
+        append(&p, &e).unwrap();
+        // a foreign writer's 600 KB line puts the file over the limit
+        let mut f = fs::OpenOptions::new().append(true).open(&p).unwrap();
+        f.write_all(&vec![b'x'; 600 * 1024]).unwrap();
+        f.write_all(b"\n").unwrap();
+        drop(f);
+        append(&p, &Event::new("rollback-requested", None, None)).unwrap();
+        let names: Vec<_> = read(&p).into_iter().map(|e| e.event).collect();
+        assert_eq!(names, ["update-staged", "rollback-requested"]);
+        assert!(fs::metadata(&p).unwrap().len() < 1024);
+    }
+
+    #[test]
+    fn a_held_lock_file_times_out() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("e.jsonl");
+        let held = fs::File::create(p.with_extension("jsonl.lock")).unwrap();
+        held.lock().unwrap();
+        let e = append(&p, &Event::new("update-staged", None, None)).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::TimedOut);
+        drop(held);
+        append(&p, &Event::new("update-staged", None, None)).unwrap();
     }
 
     #[test]

@@ -4,6 +4,7 @@
 
 use std::fs;
 use std::io;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -45,6 +46,9 @@ struct Line<'a> {
     entry: &'a Entry,
 }
 
+/// The biggest history file read (16 MB; a real one is a few KB).
+const MAX_READ_BYTES: u64 = 16 * 1024 * 1024;
+
 /// Read the history at the default path, newest first.
 pub fn read_default() -> io::Result<Vec<Entry>> {
     read(Path::new(DEFAULT_PATH))
@@ -53,7 +57,7 @@ pub fn read_default() -> io::Result<Vec<Entry>> {
 /// Read a history file, newest first. A missing file is an empty history;
 /// lines that do not parse are skipped.
 pub fn read(path: &Path) -> io::Result<Vec<Entry>> {
-    let bytes = match fs::read(path) {
+    let bytes = match crate::fsutil::read_capped(path, MAX_READ_BYTES) {
         Ok(t) => t,
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(e) => return Err(e),
@@ -67,15 +71,25 @@ pub fn read(path: &Path) -> io::Result<Vec<Entry>> {
 }
 
 /// Append `entry` unless the last entry has the same digest. Returns whether
-/// a line was written. The file is created 0644.
+/// a line was written. The file is created 0644. A lock file beside it
+/// (`<path>.lock`, the pattern of [`crate::events`]) makes the check and the
+/// write one step for concurrent callers; it fails with `TimedOut` when the
+/// lock is still held after 2 s.
 pub fn append_if_new(path: &Path, entry: &Entry) -> io::Result<bool> {
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    let lock = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(path.with_extension("jsonl.lock"))?;
+    crate::fsutil::lock_with_deadline(&lock, crate::fsutil::LOCK_WAIT)?;
     if let Some(last) = read(path)?.first()
         && last.digest == entry.digest
     {
         return Ok(false);
-    }
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)?;
     }
     let line = serde_json::to_string(&Line {
         format: FORMAT,
@@ -189,6 +203,38 @@ mod tests {
         let got = read(&p).unwrap();
         assert_eq!(got.len(), 2);
         assert_eq!(got[0].digest, "sha256:b");
+    }
+
+    #[test]
+    fn concurrent_appenders_of_one_digest_write_one_line() {
+        let d = tempfile::tempdir().unwrap();
+        let p = std::sync::Arc::new(d.path().join("h.jsonl"));
+        let wrote: usize = (0..8)
+            .map(|_| {
+                let p = p.clone();
+                std::thread::spawn(move || append_if_new(&p, &entry("sha256:a")).unwrap())
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|h| usize::from(h.join().unwrap()))
+            .sum();
+        assert_eq!(wrote, 1);
+        assert_eq!(read(&p).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_held_lock_times_out_and_a_fifo_is_not_read() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("h.jsonl");
+        let held = fs::File::create(p.with_extension("jsonl.lock")).unwrap();
+        held.lock().unwrap();
+        let e = append_if_new(&p, &entry("sha256:a")).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::TimedOut);
+        drop(held);
+        let f = d.path().join("fifo.jsonl");
+        let c = std::ffi::CString::new(f.to_str().unwrap()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
+        assert!(read(&f).is_err()); // returns, does not block
     }
 
     #[test]

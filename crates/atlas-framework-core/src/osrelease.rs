@@ -27,7 +27,9 @@ impl OsRelease {
     }
 
     pub fn load_from(path: &Path) -> Option<OsRelease> {
-        std::fs::read_to_string(path).ok().map(|t| Self::parse(&t))
+        // regular files only, at most 1 MB, bad UTF-8 replaced
+        let bytes = crate::fsutil::read_capped(path, 1024 * 1024).ok()?;
+        Some(Self::parse(&String::from_utf8_lossy(&bytes)))
     }
 
     pub fn parse(text: &str) -> OsRelease {
