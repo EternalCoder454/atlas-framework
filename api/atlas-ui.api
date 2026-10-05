@@ -74,6 +74,17 @@ AtlasEmptyState.property text: QString
 AtlasEmptyState.property title: QString
 AtlasEmptyState.signal triggered()
 AtlasEmptyState.type
+AtlasFloatingToolbar.property accessibleName: QString
+AtlasFloatingToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
+AtlasFloatingToolbar.property content: QQmlListProperty<QObject> [readonly]
+AtlasFloatingToolbar.property focusable: bool
+AtlasFloatingToolbar.property margin: double
+AtlasFloatingToolbar.property shown: bool
+AtlasFloatingToolbar.property toolbar: QVariant [readonly]
+AtlasFloatingToolbar.type
+AtlasFlowLayout.property rowSpacing: double
+AtlasFlowLayout.property spacing: double
+AtlasFlowLayout.type
 AtlasFocusRing.property gap: double
 AtlasFocusRing.property shown: bool
 AtlasFocusRing.type
@@ -212,6 +223,16 @@ AtlasTextField.property validateOn: QString
 AtlasTextField.type
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
+AtlasToolbar.property accessibleName: QString
+AtlasToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
+AtlasToolbar.property flat: bool
+AtlasToolbar.property focusable: bool
+AtlasToolbar.property leading: QQmlListProperty<QObject> [readonly]
+AtlasToolbar.property moreMenu: QVariant [readonly]
+AtlasToolbar.property overflowCount: int [readonly]
+AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
+AtlasToolbar.property visibleCount: int [readonly]
+AtlasToolbar.type
 AtlasWindow.method sidebarColor(QColor base): QColor
 AtlasWindow.method syncBlur(): QVariant
 AtlasWindow.method tinted(QColor base, double factor): QColor
