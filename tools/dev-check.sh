@@ -13,9 +13,16 @@
 #
 # ATLAS_DEV_BUILD_DIR is the build directory on the host, an absolute path (default: one per
 # checkout under ~/.cache/atlas-framework-dev, so worktrees don't share one).
+# ATLAS_DEV_JOBS caps the build and test jobs (default: every CPU), for several runs at once.
 # ATLAS_DEV_IMAGE is the container (default localhost/atlas-framework-dev:44,
 # built from packaging/Containerfile.dev).
 set -euo pipefail
+
+jobs=${ATLAS_DEV_JOBS:-}
+if [ -n "$jobs" ] && ! [[ $jobs =~ ^[1-9][0-9]*$ ]]; then
+    echo "dev-check: ATLAS_DEV_JOBS must be a positive number: $jobs" >&2
+    exit 1
+fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 key=$(printf '%s' "$root" | cksum | cut -d' ' -f1)
@@ -96,6 +103,7 @@ rc=0
 podman run --rm --init --name "atlas-dev-check-$key-$$" --security-opt label=disable \
     -v "$root:/src:$mode" -v "$build:/b" "${gitmount[@]}" -w /src \
     -e PYTHONDONTWRITEBYTECODE=1 -e ATLAS_DEMO_FILTER="$filter" -e TRANSLATIONS="$translations" \
+    -e JOBS="$jobs" -e CMAKE_BUILD_PARALLEL_LEVEL="$jobs" \
     "$image" bash -euo pipefail -c '
 step() { printf "\n== %s\n" "$1"; }
 [ -f /b/build/build.ninja ] || cmake -S /src -B /b/build -G Ninja -DATLAS_UI_TESTS=ON >/dev/null
@@ -111,7 +119,7 @@ echo "ok ($(grep -c "^Warning" /b/qmllint.log || true) warnings, /b/qmllint.log)
 step tests
 rm -rf /b/build/visual-out
 [ -z "$ATLAS_DEMO_FILTER" ] || echo "demos: $ATLAS_DEMO_FILTER"
-ctest --test-dir /b/build -j "$(nproc)" --output-on-failure >/b/ctest.log 2>&1 || { grep -E "FAIL!|Failed|tests passed" /b/ctest.log; exit 1; }
+ctest --test-dir /b/build -j "${JOBS:-$(nproc)}" --output-on-failure >/b/ctest.log 2>&1 || { grep -E "FAIL!|Failed|tests passed" /b/ctest.log; exit 1; }
 grep "tests passed" /b/ctest.log
 step api
 tools/check-api.sh /b/build
