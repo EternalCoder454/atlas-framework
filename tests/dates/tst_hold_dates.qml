@@ -333,4 +333,62 @@ TestCase {
         tryVerify(() => p.opened);
         compare(day(p._popup.contentItem.selectedDate), 20260305);
     }
+
+    Component {
+        id: calDefault
+        AtlasCalendar {
+            locale: Qt.locale("en_US")
+            today: new Date(2026, 2, 12)
+        }
+    }
+    Component {
+        id: calLiteralMonth
+        AtlasCalendar {
+            locale: Qt.locale("en_US")
+            today: new Date(2026, 2, 12)
+            month: 5
+        }
+    }
+    function test_show_date_keeps_the_default_binding() {
+        const c = createTemporaryObject(calDefault, this);
+        c.showDate(new Date(2026, 6, 1));
+        compare(c.month, 6);
+        c.selectedDate = new Date(2026, 9, 3);
+        compare(c.month, 9, "a later selection still turns the month");
+        c.showDate(new Date(2027, 0, 1));
+        compare(c.month, 0);
+        compare(c.year, 2027);
+        c.selectedDate = new Date(2026, 4, 3);
+        compare(c.month, 4);
+        compare(c.year, 2026);
+    }
+    function test_show_date_writes_a_literal_month() {
+        const c = createTemporaryObject(calLiteralMonth, this);
+        compare(c.month, 5);
+        c.showDate(new Date(2026, 8, 1));
+        compare(c.month, 8, "as in 1.4.0");
+        wait(50);
+        compare(c.month, 8);
+    }
+    function test_picker_popup_follows_a_changed_selection() {
+        const p = createTemporaryObject(pickAccept, this);
+        app.day = new Date(2026, 8, 5);
+        p.open();
+        tryVerify(() => p.opened);
+        compare(p._popup.contentItem.month, 8);
+        p.close();
+        tryVerify(() => !p.opened);
+        app.day = new Date(2026, 10, 7);
+        p.open();
+        tryVerify(() => p.opened);
+        compare(p._popup.contentItem.month, 10);
+        compare(p._popup.contentItem.year, 2026);
+        p.close();
+        tryVerify(() => !p.opened);
+        app.day = new Date(2027, 1, 7);
+        p.open();
+        tryVerify(() => p.opened);
+        compare(p._popup.contentItem.month, 1);
+        compare(p._popup.contentItem.year, 2027);
+    }
 }

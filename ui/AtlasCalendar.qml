@@ -113,8 +113,14 @@ T.Control {
     function showDate(d: date): void {
         if (_isValid(d)) {
             _viewDate(d);
-            month = d.getMonth();
-            year = d.getFullYear();
+            // The default binding already follows the view and survives; an
+            // app's literal or binding on month or year still differs here.
+            if (month !== d.getMonth()) {
+                month = d.getMonth();
+            }
+            if (year !== d.getFullYear()) {
+                year = d.getFullYear();
+            }
         }
     }
     // The control's own turn to the month of `d`, with no write to `month` or `year`.
