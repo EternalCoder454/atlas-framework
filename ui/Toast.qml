@@ -58,7 +58,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
 
@@ -89,15 +89,15 @@ Item {
         anchors.bottomMargin: -3
         anchors.leftMargin: -1
         anchors.rightMargin: -1
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: Qt.rgba(0, 0, 0, 0.18)
     }
     Rectangle {
         id: pill
         readonly property real pad: Kirigami.Units.gridUnit
-        width: Math.min(row.implicitWidth + pad + (actionButton.visible ? Kirigami.Units.smallSpacing : pad), Math.max(0, (control.parent ? control.parent.width : 0) - Kirigami.Units.gridUnit * 2))
-        height: Math.max(label.implicitHeight, actionButton.visible ? actionButton.implicitHeight : 0) + Kirigami.Units.largeSpacing * 2
-        radius: height / 2
+        width: Math.min(row.implicitWidth + pad + (actionButton.visible ? AtlasStyle.spacingSmall : pad), Math.max(0, (control.parent ? control.parent.width : 0) - Kirigami.Units.gridUnit * 2))
+        height: Math.max(label.implicitHeight, actionButton.visible ? actionButton.implicitHeight : 0) + AtlasStyle.spacingLarge * 2
+        radius: AtlasStyle.radiusPill
         color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.1))
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
@@ -108,8 +108,8 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.leftMargin: pill.pad
-            anchors.rightMargin: actionButton.visible ? Kirigami.Units.smallSpacing : pill.pad
-            spacing: Kirigami.Units.largeSpacing
+            anchors.rightMargin: actionButton.visible ? AtlasStyle.spacingSmall : pill.pad
+            spacing: AtlasStyle.spacingLarge
 
             QQC2.Label {
                 id: label

@@ -16,7 +16,7 @@ T.CheckBox {
 
     implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
     implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 1.4), implicitContentHeight + topPadding + bottomPadding)
-    spacing: Kirigami.Units.largeSpacing
+    spacing: AtlasStyle.spacingLarge
     padding: 0
     leftPadding: control.mirrored ? 0 : indicator.width + spacing
     rightPadding: control.mirrored ? indicator.width + spacing : 0
@@ -35,13 +35,13 @@ T.CheckBox {
         implicitHeight: implicitWidth
         x: control.mirrored ? control.width - width : 0
         y: Math.round((control.height - height) / 2)
-        radius: 6
+        radius: AtlasStyle.radiusSmall
         color: control.checkState !== Qt.Unchecked ? (control.enabled ? Kirigami.Theme.highlightColor : control.palette.active.highlight) : Qt.alpha(Kirigami.Theme.textColor, control.hovered ? 0.12 : 0.07)
         border.width: 1
         border.color: control.checkState !== Qt.Unchecked ? "transparent" : Qt.alpha(Kirigami.Theme.textColor, 0.3)
         Behavior on color {
             ColorAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
         Loader {

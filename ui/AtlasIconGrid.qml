@@ -163,13 +163,13 @@ T.Control {
                 id: bar
                 policy: T.ScrollBar.AsNeeded
                 contentItem: Rectangle {
-                    implicitWidth: Math.round(Kirigami.Units.smallSpacing * 1.5)
+                    implicitWidth: Math.round(AtlasStyle.spacingSmall * 1.5)
                     radius: width / 2
                     color: Qt.alpha(Kirigami.Theme.textColor, 0.3)
                     opacity: bar.active ? 1 : 0
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: Kirigami.Units.shortDuration
+                            duration: AtlasStyle.durationShort
                         }
                     }
                 }
@@ -199,7 +199,7 @@ T.Control {
                 Rectangle {
                     id: pill
                     anchors.fill: parent
-                    anchors.margins: Kirigami.Units.smallSpacing
+                    anchors.margins: AtlasStyle.spacingSmall
                     radius: 12
                     color: cell.current ? Qt.alpha(Kirigami.Theme.highlightColor, control.activeFocus ? 0.22 : 0.14) : Qt.alpha(Kirigami.Theme.textColor, hover.hovered ? 0.06 : 0)
                     AtlasFocusRing {
@@ -211,7 +211,7 @@ T.Control {
                 Item {
                     id: iconBox
                     anchors.horizontalCenter: parent.horizontalCenter
-                    y: Kirigami.Units.largeSpacing
+                    y: AtlasStyle.spacingLarge
                     width: control.iconSize
                     height: control.iconSize
                     Kirigami.Icon {
@@ -233,11 +233,11 @@ T.Control {
                 }
                 Text {
                     anchors.top: iconBox.bottom
-                    anchors.topMargin: Kirigami.Units.smallSpacing
+                    anchors.topMargin: AtlasStyle.spacingSmall
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.leftMargin: Kirigami.Units.largeSpacing
-                    anchors.rightMargin: Kirigami.Units.largeSpacing
+                    anchors.leftMargin: AtlasStyle.spacingLarge
+                    anchors.rightMargin: AtlasStyle.spacingLarge
                     Accessible.ignored: true // the cell carries the name
                     text: cell.title
                     font: Kirigami.Theme.defaultFont
@@ -274,7 +274,7 @@ T.Control {
 
         Column {
             anchors.centerIn: parent
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             visible: grid.count === 0 && control.placeholderText.length > 0
             Symbol {
                 anchors.horizontalCenter: parent.horizontalCenter

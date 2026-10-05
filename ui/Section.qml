@@ -31,11 +31,11 @@ ColumnLayout {
     signal foldRequested(bool fold)
 
     Layout.fillWidth: true
-    spacing: Kirigami.Units.smallSpacing
+    spacing: AtlasStyle.spacingSmall
 
     QQC2.Label {
         visible: root.title.length > 0 && !root.foldable
-        Layout.leftMargin: Kirigami.Units.largeSpacing
+        Layout.leftMargin: AtlasStyle.spacingLarge
         text: root.title
         font.bold: true
         opacity: 0.65
@@ -51,8 +51,8 @@ ColumnLayout {
         // settles at no room for the title at all.
         Layout.fillWidth: true
         // The wider space on the title's side, either way round.
-        leftPadding: mirrored ? Kirigami.Units.smallSpacing : Kirigami.Units.largeSpacing
-        rightPadding: mirrored ? Kirigami.Units.largeSpacing : Kirigami.Units.smallSpacing
+        leftPadding: mirrored ? AtlasStyle.spacingSmall : AtlasStyle.spacingLarge
+        rightPadding: mirrored ? AtlasStyle.spacingLarge : AtlasStyle.spacingSmall
         topPadding: 2
         bottomPadding: 2
         hoverEnabled: true
@@ -71,20 +71,20 @@ ColumnLayout {
         // Around the title and chevron only, not the whole row.
         background: Rectangle {
             x: fold.mirrored ? fold.width - width : 0
-            width: Math.min(fold.width, label.implicitWidth + chevron.width + Kirigami.Units.smallSpacing + fold.leftPadding + fold.rightPadding)
+            width: Math.min(fold.width, label.implicitWidth + chevron.width + AtlasStyle.spacingSmall + fold.leftPadding + fold.rightPadding)
             height: fold.height
-            radius: 6
+            radius: AtlasStyle.radiusSmall
             color: Qt.alpha(Kirigami.Theme.textColor, fold.pressed ? 0.1 : fold.hovered ? 0.05 : 0)
             border.width: fold.visualFocus ? 2 : 0
             border.color: Kirigami.Theme.focusColor
         }
 
         contentItem: RowLayout {
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
 
             QQC2.Label {
                 id: label
-                Layout.maximumWidth: Math.max(0, fold.availableWidth - Kirigami.Units.iconSizes.small - Kirigami.Units.smallSpacing)
+                Layout.maximumWidth: Math.max(0, fold.availableWidth - Kirigami.Units.iconSizes.small - AtlasStyle.spacingSmall)
                 text: fold.text
                 font.bold: true
                 opacity: 0.65
@@ -110,7 +110,7 @@ ColumnLayout {
         visible: !root.folded
         Layout.fillWidth: true
         implicitHeight: col.implicitHeight + 2
-        radius: 10
+        radius: AtlasStyle.radiusLarge
         // Slightly raised over the page in both light and dark.
         color: Qt.alpha(Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06)), root.Window.window && root.Window.window.blurred === true ? 0.94 : 1)
         border.width: 1
@@ -127,12 +127,12 @@ ColumnLayout {
     Text {
         visible: root.footer.length > 0 && !root.folded
         Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.largeSpacing
-        Layout.rightMargin: Kirigami.Units.largeSpacing
+        Layout.leftMargin: AtlasStyle.spacingLarge
+        Layout.rightMargin: AtlasStyle.spacingLarge
         text: root.footer
         wrapMode: Text.Wrap
         font.family: Kirigami.Theme.defaultFont.family
-        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.92
+        font.pointSize: AtlasStyle.fontSizeCaption
         color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
         textFormat: Text.PlainText
     }

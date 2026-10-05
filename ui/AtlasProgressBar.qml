@@ -34,7 +34,7 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        spacing: Kirigami.Units.largeSpacing
+        spacing: AtlasStyle.spacingLarge
 
         Item {
             Layout.fillWidth: true
@@ -46,20 +46,20 @@ Item {
                 width: parent.width
                 height: Math.round(Kirigami.Units.gridUnit * 0.45)
                 anchors.verticalCenter: parent.verticalCenter
-                radius: height / 2
+                radius: AtlasStyle.radiusPill
                 color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
                 clip: true
 
                 Rectangle {
                     visible: !root.indeterminate
                     height: parent.height
-                    radius: height / 2
+                    radius: AtlasStyle.radiusPill
                     x: Qt.locale().textDirection === Qt.RightToLeft ? parent.width - width : 0
                     width: root.indeterminate ? 0 : root.value > 0 ? Math.max(height, parent.width * Math.min(1, root.value)) : 0
                     color: root._fillColor
                     Behavior on width {
                         NumberAnimation {
-                            duration: Kirigami.Units.longDuration
+                            duration: AtlasStyle.duration
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -69,22 +69,22 @@ Item {
                     id: slider
                     visible: root.indeterminate
                     height: parent.height
-                    radius: height / 2
+                    radius: AtlasStyle.radiusPill
                     width: parent.width * 0.3
                     color: root._fillColor
                     SequentialAnimation on x {
-                        running: root.indeterminate && root.status !== "paused" && root.visible && Kirigami.Units.longDuration > 0
+                        running: root.indeterminate && root.status !== "paused" && root.visible && AtlasStyle.duration > 0
                         loops: Animation.Infinite
                         NumberAnimation {
                             from: 0
                             to: track.width - slider.width
-                            duration: Kirigami.Units.veryLongDuration * 2
+                            duration: AtlasStyle.durationLong * 2
                             easing.type: Easing.InOutQuad
                         }
                         NumberAnimation {
                             from: track.width - slider.width
                             to: 0
-                            duration: Kirigami.Units.veryLongDuration * 2
+                            duration: AtlasStyle.durationLong * 2
                             easing.type: Easing.InOutQuad
                         }
                     }

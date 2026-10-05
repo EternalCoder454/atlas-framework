@@ -33,8 +33,14 @@ T.AbstractButton {
     // What the badge means, for screen readers ("2 problems").
     property string badgeText
 
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * (sub ? 1.8 : 2.1))
-    implicitWidth: compact ? implicitHeight + Kirigami.Units.smallSpacing : Kirigami.Units.gridUnit * 10
+    // AtlasStyle.Normal or AtlasStyle.Compact; Compact shrinks the height and
+    // the vertical padding to about 75%. Follows the app-wide AtlasStyle.density
+    // unless set here.
+    property int density: AtlasStyle.density
+    readonly property real _k: density === AtlasStyle.Compact ? 0.75 : 1
+
+    implicitHeight: Math.round(Kirigami.Units.gridUnit * (sub ? 1.8 : 2.1) * _k)
+    implicitWidth: compact ? implicitHeight + AtlasStyle.spacingSmall : Kirigami.Units.gridUnit * 10
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     Accessible.name: control.text
@@ -61,19 +67,19 @@ T.AbstractButton {
     }
 
     background: Rectangle {
-        radius: 8
+        radius: AtlasStyle.radius
         color: control.selected ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.06 : 0)
         border.width: control.visualFocus ? 2 : 0
         border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
         Behavior on color {
             ColorAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
     }
 
     contentItem: RowLayout {
-        spacing: Kirigami.Units.largeSpacing
+        spacing: AtlasStyle.spacingLarge
         Item {
             Layout.fillWidth: control.compact
             visible: control.compact
@@ -81,7 +87,7 @@ T.AbstractButton {
         Item {
             id: iconSlot
             readonly property int side: control.sub ? Kirigami.Units.iconSizes.small : Kirigami.Units.iconSizes.smallMedium
-            Layout.leftMargin: control.compact ? 0 : Kirigami.Units.largeSpacing + (control.sub ? Kirigami.Units.gridUnit : 0)
+            Layout.leftMargin: control.compact ? 0 : AtlasStyle.spacingLarge + (control.sub ? Kirigami.Units.gridUnit : 0)
             Layout.preferredWidth: side
             Layout.preferredHeight: side
 
@@ -121,7 +127,7 @@ T.AbstractButton {
             Layout.fillWidth: true
             text: control.text
             font.family: Kirigami.Theme.defaultFont.family
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize
+            font.pointSize: AtlasStyle.fontSizeBody
             font.weight: control.sub ? Font.Normal : Font.Medium
             textFormat: Text.PlainText
             elide: Text.ElideRight
@@ -129,14 +135,14 @@ T.AbstractButton {
         }
         Kirigami.Icon {
             visible: !control.compact && control.badge.length > 0
-            Layout.rightMargin: control.value.length > 0 || control.disclosure ? 0 : Kirigami.Units.largeSpacing
+            Layout.rightMargin: control.value.length > 0 || control.disclosure ? 0 : AtlasStyle.spacingLarge
             Layout.preferredWidth: Kirigami.Units.iconSizes.small
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             source: control.badge
         }
         QQC2.Label {
             visible: !control.compact && control.value.length > 0
-            Layout.rightMargin: control.disclosure ? 0 : Kirigami.Units.largeSpacing
+            Layout.rightMargin: control.disclosure ? 0 : AtlasStyle.spacingLarge
             text: control.value
             font.family: Kirigami.Theme.smallFont.family
             font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -149,7 +155,7 @@ T.AbstractButton {
         }
         Kirigami.Icon {
             visible: !control.compact && control.disclosure
-            Layout.rightMargin: Kirigami.Units.largeSpacing
+            Layout.rightMargin: AtlasStyle.spacingLarge
             Layout.preferredWidth: Kirigami.Units.iconSizes.small
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             source: control.mirrored ? "arrow-left" : "arrow-right"
@@ -160,7 +166,7 @@ T.AbstractButton {
             rotation: control.expanded ? (control.mirrored ? -90 : 90) : 0
             Behavior on rotation {
                 NumberAnimation {
-                    duration: Kirigami.Units.shortDuration
+                    duration: AtlasStyle.durationShort
                 }
             }
         }

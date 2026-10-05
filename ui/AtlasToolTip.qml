@@ -34,14 +34,14 @@ T.ToolTip {
     }
 
     x: parent ? Math.round((parent.width - implicitWidth) / 2) : 0
-    y: -implicitHeight - Kirigami.Units.smallSpacing
+    y: -implicitHeight - AtlasStyle.spacingSmall
     implicitWidth: Math.min(Kirigami.Units.gridUnit * 20, implicitContentWidth + leftPadding + rightPadding)
     implicitHeight: implicitContentHeight + topPadding + bottomPadding
-    leftPadding: Kirigami.Units.largeSpacing
-    rightPadding: Kirigami.Units.largeSpacing
-    topPadding: Kirigami.Units.smallSpacing + 2
-    bottomPadding: Kirigami.Units.smallSpacing + 2
-    margins: Kirigami.Units.smallSpacing
+    leftPadding: AtlasStyle.spacingLarge
+    rightPadding: AtlasStyle.spacingLarge
+    topPadding: AtlasStyle.spacingSmall + 2
+    bottomPadding: AtlasStyle.spacingSmall + 2
+    margins: AtlasStyle.spacingSmall
     delay: Kirigami.Units.toolTipDelay
     timeout: Kirigami.Units.toolTipDelay * 10
     closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutsideParent | T.Popup.CloseOnReleaseOutsideParent
@@ -58,7 +58,7 @@ T.ToolTip {
     }
 
     background: Rectangle {
-        radius: 8
+        radius: AtlasStyle.radius
         color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
@@ -69,7 +69,7 @@ T.ToolTip {
             property: "opacity"
             from: 0
             to: 1
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
     exit: Transition {
@@ -77,7 +77,7 @@ T.ToolTip {
             property: "opacity"
             from: 1
             to: 0
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
         }
     }
 }

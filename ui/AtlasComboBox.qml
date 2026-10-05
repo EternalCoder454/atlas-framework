@@ -64,8 +64,8 @@ T.ComboBox {
 
     implicitWidth: Kirigami.Units.gridUnit * 12
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-    leftPadding: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
-    rightPadding: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+    leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+    rightPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     opacity: enabled ? 1 : 0.5
@@ -90,8 +90,8 @@ T.ComboBox {
         width: ListView.view ? ListView.view.width : implicitWidth
         implicitHeight: visible ? Math.round(Kirigami.Units.gridUnit * 1.8) : 0
         height: implicitHeight
-        leftPadding: Kirigami.Units.largeSpacing
-        rightPadding: Kirigami.Units.largeSpacing
+        leftPadding: AtlasStyle.spacingLarge
+        rightPadding: AtlasStyle.spacingLarge
         hoverEnabled: true
         visible: internals.flags[index] !== false
         highlighted: control.filterable ? internals.current === index : control.highlightedIndex === index
@@ -105,11 +105,11 @@ T.ComboBox {
         Accessible.name: text
 
         background: Rectangle {
-            radius: 6
+            radius: AtlasStyle.radiusSmall
             color: row.highlighted ? Qt.alpha(Kirigami.Theme.highlightColor, row.down ? 0.28 : 0.18) : "transparent"
         }
         contentItem: Row {
-            spacing: Kirigami.Units.largeSpacing
+            spacing: AtlasStyle.spacingLarge
             Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Kirigami.Units.iconSizes.small
@@ -150,8 +150,8 @@ T.ComboBox {
     }
 
     contentItem: Text {
-        leftPadding: control.mirrored ? control.indicator.width + Kirigami.Units.smallSpacing : 0
-        rightPadding: control.mirrored ? 0 : control.indicator.width + Kirigami.Units.smallSpacing
+        leftPadding: control.mirrored ? control.indicator.width + AtlasStyle.spacingSmall : 0
+        rightPadding: control.mirrored ? 0 : control.indicator.width + AtlasStyle.spacingSmall
         text: control.displayText.length > 0 ? control.displayText : control.placeholderText
         font: Kirigami.Theme.defaultFont
         color: control.displayText.length > 0 ? Kirigami.Theme.textColor : Qt.alpha(Kirigami.Theme.textColor, 0.5)
@@ -162,13 +162,13 @@ T.ComboBox {
     }
 
     background: Rectangle {
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: Qt.alpha(Kirigami.Theme.textColor, control.down || control.popup.visible ? 0.14 : control.hovered ? 0.12 : 0.07)
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.14)
         Behavior on color {
             ColorAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
         AtlasFocusRing {
@@ -178,11 +178,11 @@ T.ComboBox {
     }
 
     popup: T.Popup {
-        y: control.height + Kirigami.Units.smallSpacing
+        y: control.height + AtlasStyle.spacingSmall
         width: control.width
         implicitHeight: Math.min(contentItem.implicitHeight + topPadding + bottomPadding, Kirigami.Units.gridUnit * 16)
-        padding: Kirigami.Units.smallSpacing
-        margins: Kirigami.Units.smallSpacing
+        padding: AtlasStyle.spacingSmall
+        margins: AtlasStyle.spacingSmall
         modal: false
         closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutsideParent
 
@@ -205,7 +205,7 @@ T.ComboBox {
         }
 
         contentItem: ColumnLayout {
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             AtlasTextField {
                 id: filterField
                 property bool hadFocus: false
@@ -257,8 +257,8 @@ T.ComboBox {
                     Accessible.name: noChoices ? qsTr("No choices") : qsTr("No matches")
                     Text {
                         anchors.fill: parent
-                        anchors.leftMargin: Kirigami.Units.largeSpacing
-                        anchors.rightMargin: Kirigami.Units.largeSpacing
+                        anchors.leftMargin: AtlasStyle.spacingLarge
+                        anchors.rightMargin: AtlasStyle.spacingLarge
                         //: Shown in a drop-down list when what was typed in its filter matches no choice
                         text: emptyRow.noChoices ? qsTr("No choices") : qsTr("No matches")
                         font: Kirigami.Theme.defaultFont
@@ -273,7 +273,7 @@ T.ComboBox {
         }
 
         background: Rectangle {
-            radius: 10
+            radius: AtlasStyle.radiusLarge
             color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
             border.width: 1
             border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
@@ -284,7 +284,7 @@ T.ComboBox {
                 property: "opacity"
                 from: 0
                 to: 1
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
         exit: Transition {
@@ -292,7 +292,7 @@ T.ComboBox {
                 property: "opacity"
                 from: 1
                 to: 0
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
     }

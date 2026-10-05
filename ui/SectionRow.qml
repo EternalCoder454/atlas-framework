@@ -63,8 +63,14 @@ FocusScope {
         return true;
     }
 
+    // AtlasStyle.Normal or AtlasStyle.Compact; Compact shrinks the height and
+    // the vertical padding to about 75%. Follows the app-wide AtlasStyle.density
+    // unless set here.
+    property int density: AtlasStyle.density
+    readonly property real _k: density === AtlasStyle.Compact ? 0.75 : 1
+
     Layout.fillWidth: true
-    implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 2.5), rowLayout.implicitHeight + Kirigami.Units.largeSpacing * 1.6)
+    implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 2.5 * _k), rowLayout.implicitHeight + Math.round(AtlasStyle.spacingLarge * 1.6 * _k))
     activeFocusOnTab: root.clickable
     opacity: !root.enabled || (!root.clickable && root.chevron) ? 0.5 : 1
 
@@ -126,7 +132,7 @@ FocusScope {
             return;
         }
         var p = root.mapToItem(f.contentItem, 0, 0);
-        var m = Kirigami.Units.smallSpacing;
+        var m = AtlasStyle.spacingSmall;
         if (p.y < f.contentY) {
             f.contentY = Math.max(0, p.y - m);
         } else if (p.y + root.height > f.contentY + f.height) {
@@ -153,7 +159,7 @@ FocusScope {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: Kirigami.Units.largeSpacing + (root._hasLeading ? leadingRow.width + Kirigami.Units.largeSpacing : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + Kirigami.Units.largeSpacing : 0))
+        anchors.leftMargin: AtlasStyle.spacingLarge + (root._hasLeading ? leadingRow.width + AtlasStyle.spacingLarge : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + AtlasStyle.spacingLarge : 0))
         height: 1
         color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
     }
@@ -166,7 +172,7 @@ FocusScope {
         opacity: root._canActivate && hover.hovered ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
     }
@@ -200,14 +206,14 @@ FocusScope {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: Kirigami.Units.largeSpacing
-        anchors.rightMargin: Kirigami.Units.largeSpacing
-        spacing: Kirigami.Units.largeSpacing
+        anchors.leftMargin: AtlasStyle.spacingLarge
+        anchors.rightMargin: AtlasStyle.spacingLarge
+        spacing: AtlasStyle.spacingLarge
 
         Row {
             id: leadingRow
             visible: root._hasLeading
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             Layout.alignment: Qt.AlignVCenter
         }
         Kirigami.Icon {
@@ -221,7 +227,7 @@ FocusScope {
             id: contentRow
             visible: root._hasContent
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
         }
         ColumnLayout {
             visible: !root._hasContent
@@ -258,7 +264,7 @@ FocusScope {
         }
         Row {
             id: trailingRow
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             Layout.alignment: Qt.AlignVCenter
         }
         AtlasSpinner {
@@ -300,7 +306,7 @@ FocusScope {
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             Behavior on rotation {
                 NumberAnimation {
-                    duration: Kirigami.Units.shortDuration
+                    duration: AtlasStyle.durationShort
                 }
             }
         }

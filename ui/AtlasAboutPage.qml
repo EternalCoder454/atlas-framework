@@ -63,7 +63,7 @@ AtlasPage {
     ColumnLayout {
         Layout.fillWidth: true
         Layout.topMargin: Kirigami.Units.gridUnit
-        spacing: Kirigami.Units.smallSpacing
+        spacing: AtlasStyle.spacingSmall
 
         Kirigami.Icon {
             Layout.alignment: Qt.AlignHCenter
@@ -74,7 +74,7 @@ AtlasPage {
         }
         Kirigami.Heading {
             Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: Kirigami.Units.smallSpacing
+            Layout.topMargin: AtlasStyle.spacingSmall
             text: AtlasApp.name
             textFormat: Text.PlainText
         }
@@ -97,7 +97,7 @@ AtlasPage {
         }
         SecondaryButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: Kirigami.Units.smallSpacing
+            Layout.topMargin: AtlasStyle.spacingSmall
             symbol: Symbols.ContentCopy
             text: qsTr("Copy system info")
             onClicked: {

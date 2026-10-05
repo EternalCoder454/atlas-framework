@@ -22,7 +22,7 @@ T.TextArea {
         ? Math.max(Kirigami.Units.gridUnit * 14, contentWidth + leftPadding + rightPadding)
         : Kirigami.Units.gridUnit * 14
     implicitHeight: Math.max(Kirigami.Units.gridUnit * 6, contentHeight + topPadding + bottomPadding)
-    padding: Kirigami.Units.largeSpacing
+    padding: AtlasStyle.spacingLarge
     wrapMode: TextEdit.Wrap
     placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
     color: Kirigami.Theme.textColor
@@ -54,7 +54,7 @@ T.TextArea {
     }
 
     background: Rectangle {
-        radius: 10
+        radius: AtlasStyle.radiusLarge
         color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
         border.width: control.activeFocus ? 2 : 1
         border.color: control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)

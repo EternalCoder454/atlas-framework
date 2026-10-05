@@ -205,8 +205,8 @@ T.Control {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(implicitWidth, seg.implicitWidth - (seg.last ? 0 : priv.chevronWidth))
                         height: Math.round(Kirigami.Units.gridUnit * 1.6)
-                        leftPadding: Kirigami.Units.largeSpacing
-                        rightPadding: Kirigami.Units.largeSpacing
+                        leftPadding: AtlasStyle.spacingLarge
+                        rightPadding: AtlasStyle.spacingLarge
                         hoverEnabled: true
                         focusPolicy: Qt.NoFocus
                         text: seg.info.title ?? ""
@@ -224,11 +224,11 @@ T.Control {
                             Rectangle {
                                 id: pill
                                 anchors.fill: parent
-                                radius: 8
+                                radius: AtlasStyle.radius
                                 color: Qt.alpha(Kirigami.Theme.textColor, button.down ? 0.14 : button.hovered ? 0.08 : 0)
                                 Behavior on color {
                                     ColorAnimation {
-                                        duration: Kirigami.Units.shortDuration
+                                        duration: AtlasStyle.durationShort
                                     }
                                 }
                             }
@@ -239,7 +239,7 @@ T.Control {
                         }
                         contentItem: RowLayout {
                             id: label
-                            spacing: Kirigami.Units.smallSpacing
+                            spacing: AtlasStyle.spacingSmall
                             Loader {
                                 active: (seg.info.symbol ?? 0) !== 0
                                 visible: active
@@ -295,7 +295,7 @@ T.Control {
                                     Rectangle {
                                         id: morePill
                                         anchors.fill: parent
-                                        radius: 8
+                                        radius: AtlasStyle.radius
                                         color: Qt.alpha(Kirigami.Theme.textColor, more.down || moreMenu.visible ? 0.14 : more.hovered ? 0.08 : 0)
                                     }
                                     AtlasFocusRing {

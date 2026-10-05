@@ -18,8 +18,8 @@ T.TextField {
 
     implicitWidth: Kirigami.Units.gridUnit * 14
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-    leftPadding: (rtl ? clearButton.width : icon.width) + Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
-    rightPadding: (rtl ? icon.width : clearButton.width) + Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+    leftPadding: (rtl ? clearButton.width : icon.width) + AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+    rightPadding: (rtl ? icon.width : clearButton.width) + AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
     verticalAlignment: TextInput.AlignVCenter
     placeholderText: qsTr("Search")
     placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
@@ -57,7 +57,7 @@ T.TextField {
     }
 
     background: Rectangle {
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
         border.width: control.activeFocus ? 2 : 1
         border.color: control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
@@ -80,7 +80,7 @@ T.TextField {
 
     Kirigami.Icon {
         id: icon
-        x: control.rtl ? control.width - width - Kirigami.Units.largeSpacing : Kirigami.Units.largeSpacing
+        x: control.rtl ? control.width - width - AtlasStyle.spacingLarge : AtlasStyle.spacingLarge
         anchors.verticalCenter: parent.verticalCenter
         width: Kirigami.Units.iconSizes.small
         height: width
@@ -92,9 +92,9 @@ T.TextField {
 
     T.AbstractButton {
         id: clearButton
-        x: control.rtl ? Kirigami.Units.smallSpacing : control.width - width - Kirigami.Units.smallSpacing
+        x: control.rtl ? AtlasStyle.spacingSmall : control.width - width - AtlasStyle.spacingSmall
         anchors.verticalCenter: parent.verticalCenter
-        width: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+        width: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
         height: width
         visible: control.text.length > 0
         focusPolicy: Qt.NoFocus

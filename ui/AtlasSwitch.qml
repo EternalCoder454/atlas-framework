@@ -20,7 +20,7 @@ T.Switch {
         implicitHeight: 24
         x: control.leftPadding
         y: Math.round((control.height - height) / 2)
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         // A disabled item gets Kirigami's Disabled colours, whose highlight
         // is near the background: a held switch that is on would look off.
         // The palette's active group keeps the accent; the fade below says
@@ -31,19 +31,19 @@ T.Switch {
         opacity: control.enabled ? 1 : 0.45
         Behavior on color {
             ColorAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
         Rectangle {
             width: 20
             height: 20
-            radius: 10
+            radius: height / 2
             y: 2
             x: (control.checked !== control.mirrored) ? parent.width - width - 2 : 2
             color: "white"
             Behavior on x {
                 NumberAnimation {
-                    duration: Kirigami.Units.shortDuration
+                    duration: AtlasStyle.durationShort
                     easing.type: Easing.OutCubic
                 }
             }

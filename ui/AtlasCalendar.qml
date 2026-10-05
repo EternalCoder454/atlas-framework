@@ -134,8 +134,8 @@ T.Control {
     }
 
     implicitWidth: internals.cell * 7 + leftPadding + rightPadding
-    implicitHeight: header.implicitHeight + internals.cell * 7 + topPadding + bottomPadding + Kirigami.Units.smallSpacing
-    padding: Kirigami.Units.smallSpacing
+    implicitHeight: header.implicitHeight + internals.cell * 7 + topPadding + bottomPadding + AtlasStyle.spacingSmall
+    padding: AtlasStyle.spacingSmall
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     opacity: enabled ? 1 : 0.5
@@ -201,7 +201,7 @@ T.Control {
     background: Item {}
 
     contentItem: ColumnLayout {
-        spacing: Kirigami.Units.smallSpacing
+        spacing: AtlasStyle.spacingSmall
 
         RowLayout {
             id: header

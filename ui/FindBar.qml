@@ -59,7 +59,7 @@ Item {
         return matchCount === 0 ? qsTr("No results") : qsTr("%1 of %2").arg(currentMatch).arg(matchCount);
     }
     readonly property bool failed: error.length > 0 || (findText.length > 0 && matchCount === 0)
-    readonly property real fullHeight: card.implicitHeight + Kirigami.Units.smallSpacing
+    readonly property real fullHeight: card.implicitHeight + AtlasStyle.spacingSmall
 
     implicitWidth: Kirigami.Units.gridUnit * 30
     implicitHeight: fullHeight
@@ -71,7 +71,7 @@ Item {
 
     Behavior on height {
         NumberAnimation {
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
             easing.type: Easing.OutCubic
         }
     }
@@ -86,8 +86,8 @@ Item {
 
         implicitWidth: Kirigami.Units.gridUnit * 10
         implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-        leftPadding: Kirigami.Units.largeSpacing + (rtl ? 0 : fieldIcon.visible ? fieldIcon.width + Kirigami.Units.smallSpacing : 0) + Kirigami.Units.smallSpacing
-        rightPadding: Kirigami.Units.largeSpacing + (rtl ? (fieldIcon.visible ? fieldIcon.width + Kirigami.Units.smallSpacing : 0) : 0) + Kirigami.Units.smallSpacing
+        leftPadding: AtlasStyle.spacingLarge + (rtl ? 0 : fieldIcon.visible ? fieldIcon.width + AtlasStyle.spacingSmall : 0) + AtlasStyle.spacingSmall
+        rightPadding: AtlasStyle.spacingLarge + (rtl ? (fieldIcon.visible ? fieldIcon.width + AtlasStyle.spacingSmall : 0) : 0) + AtlasStyle.spacingSmall
         verticalAlignment: TextInput.AlignVCenter
         placeholderTextColor: Qt.alpha(Kirigami.Theme.textColor, 0.5)
         color: Kirigami.Theme.textColor
@@ -101,7 +101,7 @@ Item {
         Accessible.name: placeholderText
 
         background: Rectangle {
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: Qt.alpha(Kirigami.Theme.textColor, field.hovered && !field.activeFocus ? 0.09 : 0.06)
             border.width: field.activeFocus ? 2 : 1
             border.color: field.activeFocus ? Qt.alpha(field.invalid ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
@@ -122,7 +122,7 @@ Item {
         Kirigami.Icon {
             id: fieldIcon
             visible: field.icon.length > 0
-            x: field.rtl ? field.width - width - Kirigami.Units.largeSpacing : Kirigami.Units.largeSpacing
+            x: field.rtl ? field.width - width - AtlasStyle.spacingLarge : AtlasStyle.spacingLarge
             anchors.verticalCenter: parent.verticalCenter
             width: Kirigami.Units.iconSizes.small
             height: width
@@ -136,8 +136,8 @@ Item {
     Rectangle {
         id: card
         width: parent.width
-        implicitHeight: column.implicitHeight + Kirigami.Units.smallSpacing * 2
-        radius: 10
+        implicitHeight: column.implicitHeight + AtlasStyle.spacingSmall * 2
+        radius: AtlasStyle.radiusLarge
         color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06))
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
@@ -145,11 +145,11 @@ Item {
         ColumnLayout {
             id: column
             anchors.fill: parent
-            anchors.margins: Kirigami.Units.smallSpacing
-            spacing: Kirigami.Units.smallSpacing
+            anchors.margins: AtlasStyle.spacingSmall
+            spacing: AtlasStyle.spacingSmall
 
             RowLayout {
-                spacing: Kirigami.Units.smallSpacing
+                spacing: AtlasStyle.spacingSmall
 
                 ToolbarButton {
                     id: chevron
@@ -247,7 +247,7 @@ Item {
 
             RowLayout {
                 visible: control.replaceVisible
-                spacing: Kirigami.Units.smallSpacing
+                spacing: AtlasStyle.spacingSmall
 
                 // Lines the field up under the find field.
                 Item {
@@ -285,7 +285,7 @@ Item {
         property bool on: false
         anchors.centerIn: parent
         font.family: Kirigami.Theme.defaultFont.family
-        font.pointSize: Kirigami.Theme.defaultFont.pointSize
+        font.pointSize: AtlasStyle.fontSizeBody
         font.weight: Font.Medium
         textFormat: Text.PlainText
         color: Kirigami.Theme.textColor

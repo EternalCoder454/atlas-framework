@@ -123,8 +123,8 @@ T.Control {
             }
             return Qt.font(o);
         }
-        readonly property real rowHeight: Math.round(Kirigami.Units.gridUnit * 2.9)
-        readonly property real headerHeight: Math.round(Kirigami.Units.gridUnit * 1.8)
+        readonly property real rowHeight: Math.round(Kirigami.Units.gridUnit * 2.9 * (AtlasStyle.compact ? 0.75 : 1))
+        readonly property real headerHeight: Math.round(Kirigami.Units.gridUnit * 1.8 * (AtlasStyle.compact ? 0.75 : 1))
         readonly property int page: Math.max(1, Math.floor(list.height / priv.rowHeight) - 1)
         function pick(model, role) {
             if (role.length > 0) {
@@ -157,7 +157,7 @@ T.Control {
             currentIndex: 0
             reuseItems: true
             cacheBuffer: 0
-            highlightMoveDuration: Kirigami.Units.shortDuration
+            highlightMoveDuration: AtlasStyle.durationShort
             highlightMoveVelocity: -1
             highlightResizeDuration: 0
 
@@ -171,9 +171,9 @@ T.Control {
                 Accessible.name: section
                 Text {
                     anchors.left: parent.left
-                    anchors.leftMargin: Kirigami.Units.largeSpacing * 2
+                    anchors.leftMargin: AtlasStyle.spacingLarge * 2
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: Kirigami.Units.smallSpacing
+                    anchors.bottomMargin: AtlasStyle.spacingSmall
                     text: parent.section
                     font: priv.strong
                     color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
@@ -186,9 +186,9 @@ T.Control {
                 Rectangle {
                     id: pill
                     anchors.fill: parent
-                    anchors.leftMargin: Kirigami.Units.smallSpacing
-                    anchors.rightMargin: Kirigami.Units.smallSpacing
-                    radius: 10
+                    anchors.leftMargin: AtlasStyle.spacingSmall
+                    anchors.rightMargin: AtlasStyle.spacingSmall
+                    radius: AtlasStyle.radiusLarge
                     color: Qt.alpha(Kirigami.Theme.highlightColor, 0.2)
                     AtlasFocusRing {
                         radius: pill.radius + gap
@@ -201,13 +201,13 @@ T.Control {
                 id: bar
                 policy: T.ScrollBar.AsNeeded
                 contentItem: Rectangle {
-                    implicitWidth: Math.round(Kirigami.Units.smallSpacing * 1.5)
+                    implicitWidth: Math.round(AtlasStyle.spacingSmall * 1.5)
                     radius: width / 2
                     color: Qt.alpha(Kirigami.Theme.textColor, 0.3)
                     opacity: bar.active ? 1 : 0
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: Kirigami.Units.shortDuration
+                            duration: AtlasStyle.durationShort
                         }
                     }
                 }
@@ -240,7 +240,7 @@ T.Control {
                 Item {
                     id: iconBox
                     anchors.left: parent.left
-                    anchors.leftMargin: Kirigami.Units.largeSpacing * 2
+                    anchors.leftMargin: AtlasStyle.spacingLarge * 2
                     anchors.verticalCenter: parent.verticalCenter
                     width: Kirigami.Units.iconSizes.medium
                     height: width
@@ -263,9 +263,9 @@ T.Control {
                 }
                 Column {
                     anchors.left: iconBox.right
-                    anchors.leftMargin: Kirigami.Units.largeSpacing
+                    anchors.leftMargin: AtlasStyle.spacingLarge
                     anchors.right: hint.visible ? hint.left : parent.right
-                    anchors.rightMargin: Kirigami.Units.largeSpacing * 2
+                    anchors.rightMargin: AtlasStyle.spacingLarge * 2
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
                         width: parent.width
@@ -291,7 +291,7 @@ T.Control {
                     id: hint
                     visible: row.shortcut.length > 0
                     anchors.right: parent.right
-                    anchors.rightMargin: Kirigami.Units.largeSpacing * 2
+                    anchors.rightMargin: AtlasStyle.spacingLarge * 2
                     anchors.verticalCenter: parent.verticalCenter
                     Accessible.ignored: true
                     text: row.shortcut
@@ -320,7 +320,7 @@ T.Control {
 
         Column {
             anchors.centerIn: parent
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             visible: list.count === 0 && control.placeholderText.length > 0
             Symbol {
                 anchors.horizontalCenter: parent.horizontalCenter

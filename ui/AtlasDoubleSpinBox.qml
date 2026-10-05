@@ -29,7 +29,7 @@ T.DoubleSpinBox {
     QtObject {
         id: internals
         readonly property real buttonSize: Math.round(Kirigami.Units.gridUnit * 1.9)
-        readonly property real sidePadding: control.showButtons ? buttonSize : Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+        readonly property real sidePadding: control.showButtons ? buttonSize : AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
         // The widest text the field can show: the longest of the two ends.
         readonly property real textWidth: Math.max(metricsFrom.advanceWidth, metricsTo.advanceWidth)
     }
@@ -45,7 +45,7 @@ T.DoubleSpinBox {
         text: control.textFromValue(control.to, null)
     }
 
-    implicitWidth: Math.ceil(Math.max(Kirigami.Units.gridUnit * 5, internals.textWidth + internals.sidePadding * 2 + Kirigami.Units.largeSpacing * 2))
+    implicitWidth: Math.ceil(Math.max(Kirigami.Units.gridUnit * 5, internals.textWidth + internals.sidePadding * 2 + AtlasStyle.spacingLarge * 2))
     implicitHeight: internals.buttonSize
     leftPadding: internals.sidePadding
     rightPadding: internals.sidePadding
@@ -126,7 +126,7 @@ T.DoubleSpinBox {
         Rectangle {
             anchors.fill: parent
             anchors.margins: 3
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: Qt.alpha(Kirigami.Theme.textColor, control.up.pressed ? 0.2 : control.up.hovered ? 0.12 : 0)
         }
         Rectangle {
@@ -154,7 +154,7 @@ T.DoubleSpinBox {
         Rectangle {
             anchors.fill: parent
             anchors.margins: 3
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: Qt.alpha(Kirigami.Theme.textColor, control.down.pressed ? 0.2 : control.down.hovered ? 0.12 : 0)
         }
         Rectangle {
@@ -167,7 +167,7 @@ T.DoubleSpinBox {
     }
 
     background: Rectangle {
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
         border.width: control.activeFocus ? 2 : 1
         border.color: control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)

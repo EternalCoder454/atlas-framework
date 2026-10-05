@@ -79,7 +79,7 @@ T.Control {
     }
 
     background: Rectangle {
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: Qt.alpha(Kirigami.Theme.textColor, 0.07)
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.14)
@@ -93,7 +93,7 @@ T.Control {
             y: 2
             width: cell
             height: parent.height - 4
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: control.enabled ? Kirigami.Theme.highlightColor : Qt.alpha(Kirigami.Theme.textColor, 0.2)
             Behavior on x {
                 NumberAnimation {
@@ -127,7 +127,7 @@ T.Control {
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                implicitWidth: inner.implicitWidth + Kirigami.Units.largeSpacing * 2
+                implicitWidth: inner.implicitWidth + AtlasStyle.spacingLarge * 2
                 implicitHeight: ctl.implicitHeight
 
                 Accessible.role: Accessible.PageTab
@@ -139,7 +139,7 @@ T.Control {
                 Row {
                     id: inner
                     anchors.centerIn: parent
-                    spacing: Kirigami.Units.smallSpacing
+                    spacing: AtlasStyle.spacingSmall
                     Loader {
                         active: ctl._symbol(seg.index) !== 0
                         visible: active

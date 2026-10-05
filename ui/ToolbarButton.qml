@@ -47,7 +47,7 @@ T.AbstractButton {
 
     implicitWidth: Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
-    padding: Kirigami.Units.smallSpacing + 1
+    padding: AtlasStyle.spacingSmall + 1
     display: T.AbstractButton.IconOnly
     hoverEnabled: true
     focusPolicy: control.focusable ? Qt.StrongFocus : Qt.NoFocus
@@ -79,11 +79,11 @@ T.AbstractButton {
     QQC2.ToolTip.text: control._effectiveShortcut.length > 0 ? qsTr("%1 (%2)").arg(control._tipName).arg(control._effectiveShortcut) : control._tipName
 
     background: Rectangle {
-        radius: 6
+        radius: AtlasStyle.radiusSmall
         color: control.checked ? Qt.alpha(Kirigami.Theme.highlightColor, control.down ? 0.28 : 0.18) : Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.12 : control.hovered ? 0.07 : 0)
         Behavior on color {
             ColorAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
         AtlasFocusRing {
@@ -98,7 +98,7 @@ T.AbstractButton {
         Row {
             id: row
             anchors.centerIn: parent
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             // Made only when used, so buttons without one never load the fonts.
             Loader {
                 active: control.symbol !== 0 && control.display !== T.AbstractButton.TextOnly
@@ -126,7 +126,7 @@ T.AbstractButton {
                 anchors.verticalCenter: parent.verticalCenter
                 Behavior on rotation {
                     NumberAnimation {
-                        duration: Kirigami.Units.shortDuration
+                        duration: AtlasStyle.durationShort
                     }
                 }
             }

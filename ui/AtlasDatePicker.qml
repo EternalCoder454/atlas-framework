@@ -147,7 +147,7 @@ T.Control {
     }
 
     background: Rectangle {
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: Qt.alpha(AtlasStyle.text, control._popup.visible ? 0.14 : control.hovered ? 0.12 : 0.07)
         border.width: 1
         border.color: Qt.alpha(AtlasStyle.text, 0.14)

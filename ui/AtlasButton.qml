@@ -14,7 +14,7 @@ T.AbstractButton {
 
     implicitWidth: Math.max(Math.round(Kirigami.Units.gridUnit * 4.5), contentItem.implicitWidth + leftPadding + rightPadding)
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
-    leftPadding: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+    leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
     rightPadding: leftPadding
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -34,7 +34,7 @@ T.AbstractButton {
 
     Behavior on scale {
         NumberAnimation {
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
             easing.type: Easing.OutCubic
         }
     }
@@ -45,7 +45,7 @@ T.AbstractButton {
         Row {
             id: row
             anchors.centerIn: parent
-            spacing: Kirigami.Units.smallSpacing
+            spacing: AtlasStyle.spacingSmall
             // Made only when used, so buttons without one never load the fonts.
             Loader {
                 active: control.symbol !== 0
@@ -82,7 +82,7 @@ T.AbstractButton {
     }
 
     background: Rectangle {
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: {
             if (control.prominent) {
                 if (!control.enabled) {
@@ -96,13 +96,13 @@ T.AbstractButton {
         border.color: Qt.alpha(control.textTint, 0.14)
         Behavior on color {
             ColorAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
             }
         }
         Rectangle {
             anchors.fill: parent
             anchors.margins: -3
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: "transparent"
             border.width: 2
             border.color: Qt.alpha(control.accent, 0.6)

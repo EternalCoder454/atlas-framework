@@ -47,8 +47,8 @@ T.TextField {
         id: internals
         property bool shown: false
         readonly property real fieldHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-        readonly property real messageHeight: message.visible ? message.implicitHeight + Kirigami.Units.smallSpacing : 0
-        readonly property real toggleSpace: toggle.width + Kirigami.Units.smallSpacing
+        readonly property real messageHeight: message.visible ? message.implicitHeight + AtlasStyle.spacingSmall : 0
+        readonly property real toggleSpace: toggle.width + AtlasStyle.spacingSmall
         // Focus on the eye is still focus on the field.
         readonly property bool focused: control.activeFocus || toggle.activeFocus
         onFocusedChanged: {
@@ -86,8 +86,8 @@ T.TextField {
 
     implicitWidth: Kirigami.Units.gridUnit * 14
     implicitHeight: internals.fieldHeight + internals.messageHeight
-    leftPadding: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing + (rtl ? internals.toggleSpace : 0)
-    rightPadding: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing + (rtl ? 0 : internals.toggleSpace)
+    leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall + (rtl ? internals.toggleSpace : 0)
+    rightPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall + (rtl ? 0 : internals.toggleSpace)
     topPadding: 0
     bottomPadding: internals.messageHeight
     verticalAlignment: TextInput.AlignVCenter
@@ -121,7 +121,7 @@ T.TextField {
 
     background: Rectangle {
         height: internals.fieldHeight
-        radius: height / 2
+        radius: AtlasStyle.radiusPill
         color: Qt.alpha(Kirigami.Theme.textColor, control.hovered && !control.activeFocus ? 0.09 : 0.06)
         border.width: control.activeFocus || control.hasError ? 2 : 1
         border.color: control.hasError ? Kirigami.Theme.negativeTextColor : control.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.7) : Qt.alpha(Kirigami.Theme.textColor, 0.1)
@@ -150,9 +150,9 @@ T.TextField {
     // The eye. Tab reaches it; a click does not take the focus from the field.
     T.AbstractButton {
         id: toggle
-        x: control.rtl ? Kirigami.Units.smallSpacing + 2 : control.width - width - Kirigami.Units.smallSpacing - 2
+        x: control.rtl ? AtlasStyle.spacingSmall + 2 : control.width - width - AtlasStyle.spacingSmall - 2
         y: Math.round((internals.fieldHeight - height) / 2)
-        width: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+        width: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
         height: width
         focusPolicy: Qt.TabFocus
         hoverEnabled: true
@@ -185,9 +185,9 @@ T.TextField {
 
     Text {
         id: message
-        x: Kirigami.Units.largeSpacing
-        y: internals.fieldHeight + Kirigami.Units.smallSpacing
-        width: control.width - Kirigami.Units.largeSpacing * 2
+        x: AtlasStyle.spacingLarge
+        y: internals.fieldHeight + AtlasStyle.spacingSmall
+        width: control.width - AtlasStyle.spacingLarge * 2
         visible: control.hasError
         text: control.errorText
         font: Kirigami.Theme.smallFont

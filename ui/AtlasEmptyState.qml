@@ -64,7 +64,7 @@ Item {
         id: column
         anchors.centerIn: parent
         width: Math.min(parent.width - Kirigami.Units.gridUnit * 2, Kirigami.Units.gridUnit * 22)
-        spacing: Kirigami.Units.largeSpacing
+        spacing: AtlasStyle.spacingLarge
 
         Item {
             id: iconSlot
@@ -116,7 +116,7 @@ Item {
         }
         PrimaryButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: Kirigami.Units.smallSpacing
+            Layout.topMargin: AtlasStyle.spacingSmall
             visible: control.actionText.length > 0
             Layout.preferredHeight: visible ? implicitHeight : 0
             text: control.actionText

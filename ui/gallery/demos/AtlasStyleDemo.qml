@@ -12,7 +12,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 460
-    implicitHeight: 330
+    implicitHeight: 560
     width: implicitWidth
     height: implicitHeight
 
@@ -90,6 +90,30 @@ Item {
             QQC2.Label { text: "Heading"; font.pointSize: AtlasStyle.fontSizeHeading; font.bold: true }
             QQC2.Label { text: "Body text"; font.pointSize: AtlasStyle.fontSizeBody }
             QQC2.Label { text: "Caption"; font.pointSize: AtlasStyle.fontSizeCaption; color: AtlasStyle.textMuted }
+        }
+
+        // Density: the same controls forced to Compact (about 75% of the height).
+        QQC2.Label { text: "Density: Compact"; font.pointSize: AtlasStyle.fontSizeCaption; color: AtlasStyle.textMuted }
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: AtlasStyle.spacingSmall
+            SectionRow { Layout.fillWidth: true; density: AtlasStyle.Compact; title: "Compact row"; value: "42" }
+            TabBar {
+                Layout.fillWidth: true
+                density: AtlasStyle.Compact
+                model: ListModel {
+                    ListElement { title: "One"; modified: false; toolTip: "" }
+                    ListElement { title: "Two"; modified: false; toolTip: "" }
+                }
+                currentIndex: 0
+            }
+            StatusBar {
+                Layout.fillWidth: true
+                density: AtlasStyle.Compact
+                StatusBarItem { text: "Ln 3, Col 14" }
+                Item { Layout.fillWidth: true }
+                StatusBarItem { text: "100%" }
+            }
         }
         Item { Layout.fillHeight: true }
     }

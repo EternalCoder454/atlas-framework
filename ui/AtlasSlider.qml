@@ -79,7 +79,7 @@ T.Slider {
         scale: control.pressed ? 1.1 : 1
         Behavior on scale {
             NumberAnimation {
-                duration: Kirigami.Units.shortDuration
+                duration: AtlasStyle.durationShort
                 easing.type: Easing.OutCubic
             }
         }

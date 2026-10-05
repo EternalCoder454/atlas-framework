@@ -70,7 +70,7 @@ T.AbstractButton {
 
     implicitWidth: Math.max(Math.round(Kirigami.Units.gridUnit * 5.5), contentItem.implicitWidth + leftPadding + rightPadding)
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
-    leftPadding: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+    leftPadding: AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
     rightPadding: leftPadding
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -99,7 +99,7 @@ T.AbstractButton {
 
     Behavior on scale {
         NumberAnimation {
-            duration: Kirigami.Units.shortDuration
+            duration: AtlasStyle.durationShort
             easing.type: Easing.OutCubic
         }
     }
@@ -121,7 +121,7 @@ T.AbstractButton {
         Rectangle {
             id: bg
             anchors.fill: parent
-            radius: height / 2
+            radius: AtlasStyle.radiusPill
             color: {
                 const accent = Kirigami.Theme.highlightColor;
                 if (priv.filled) {
@@ -137,7 +137,7 @@ T.AbstractButton {
             }
             Behavior on color {
                 ColorAnimation {
-                    duration: Kirigami.Units.shortDuration
+                    duration: AtlasStyle.durationShort
                 }
             }
 
@@ -149,12 +149,12 @@ T.AbstractButton {
                 visible: priv.installing && !priv.indeterminate
                 x: 0
                 height: parent.height
-                radius: height / 2
+                radius: AtlasStyle.radiusPill
                 width: priv.fraction > 0 ? Math.min(parent.width, Math.max(height, parent.width * priv.fraction)) : 0
                 color: Qt.alpha(Kirigami.Theme.highlightColor, 0.55)
                 Behavior on width {
                     NumberAnimation {
-                        duration: Kirigami.Units.longDuration
+                        duration: AtlasStyle.duration
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -164,22 +164,22 @@ T.AbstractButton {
                 visible: priv.indeterminate
                 x: 0
                 height: parent.height
-                radius: height / 2
+                radius: AtlasStyle.radiusPill
                 width: Math.min(parent.width, parent.width * 0.35)
                 color: Qt.alpha(Kirigami.Theme.highlightColor, 0.55)
                 SequentialAnimation on x {
-                    running: priv.indeterminate && control.visible && Kirigami.Units.longDuration > 0
+                    running: priv.indeterminate && control.visible && AtlasStyle.duration > 0
                     loops: Animation.Infinite
                     NumberAnimation {
                         from: 0
                         to: Math.max(0, bg.width - slider.width)
-                        duration: Kirigami.Units.veryLongDuration * 2
+                        duration: AtlasStyle.durationLong * 2
                         easing.type: Easing.InOutQuad
                     }
                     NumberAnimation {
                         from: Math.max(0, bg.width - slider.width)
                         to: 0
-                        duration: Kirigami.Units.veryLongDuration * 2
+                        duration: AtlasStyle.durationLong * 2
                         easing.type: Easing.InOutQuad
                     }
                 }

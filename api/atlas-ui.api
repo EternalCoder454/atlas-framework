@@ -589,6 +589,7 @@ SectionRow.property checkmark: bool
 SectionRow.property chevron: bool
 SectionRow.property clickable: bool
 SectionRow.property content: QQmlListProperty<QObject> [readonly]
+SectionRow.property density: int
 SectionRow.property disclosure: bool
 SectionRow.property expanded: bool
 SectionRow.property iconName: QString
@@ -619,6 +620,7 @@ SidebarGroup.type
 SidebarItem.property badge: QString
 SidebarItem.property badgeText: QString
 SidebarItem.property compact: bool
+SidebarItem.property density: int
 SidebarItem.property disclosure: bool
 SidebarItem.property expanded: bool
 SidebarItem.property selected: bool
@@ -629,6 +631,7 @@ SidebarItem.property value: QString
 SidebarItem.type
 StatusBar.method refresh(): QVariant
 StatusBar.property content: QQmlListProperty<QObject> [readonly]
+StatusBar.property density: int
 StatusBar.type
 StatusBarItem.property clickable: bool
 StatusBarItem.property leadingSeparator: bool
@@ -681,6 +684,7 @@ Symbols.method names(): QStringList
 Symbols.type
 TabBar.method ensureCurrentVisible(): QVariant
 TabBar.property currentIndex: int
+TabBar.property density: int
 TabBar.property maxTabWidth: double [readonly]
 TabBar.property model: QVariant
 TabBar.property trailing: QQmlListProperty<QObject> [readonly]

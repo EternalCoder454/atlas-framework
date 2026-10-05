@@ -14,7 +14,7 @@ SecondaryButton {
     default property alias items: menu.contentData
 
     rightPadding: control.mirrored ? leftPadding : leftPadding + Kirigami.Units.iconSizes.small
-    leftPadding: control.mirrored ? Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing + Kirigami.Units.iconSizes.small : Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+    leftPadding: control.mirrored ? AtlasStyle.spacingLarge + AtlasStyle.spacingSmall + Kirigami.Units.iconSizes.small : AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
     Accessible.role: Accessible.ButtonMenu
     // Qt has no Accessible.expanded for QML: the state is the description,
     // and a change of it is announced (see the menu below).
@@ -28,7 +28,7 @@ SecondaryButton {
     onClicked: menu.popup(control, 0, control.height + 4)
 
     Kirigami.Icon {
-        x: control.mirrored ? Kirigami.Units.smallSpacing + 2 : parent.width - width - Kirigami.Units.smallSpacing - 2
+        x: control.mirrored ? AtlasStyle.spacingSmall + 2 : parent.width - width - AtlasStyle.spacingSmall - 2
         anchors.verticalCenter: parent.verticalCenter
         source: "arrow-down"
         isMask: true
