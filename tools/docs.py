@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Check the reference docs in docs/reference and build what the site reads.
 
-    tools/docs.py [--root DIR] check              fail on any broken page (CI runs this)
-    tools/docs.py [--root DIR] build <out dir>    check, then write the pages, the
+    tools/docs.py [--root DIR] [--api FILE] check              fail on any broken page (CI runs this)
+    tools/docs.py [--root DIR] [--api FILE] build <out dir>    check, then write the pages, the
                                                   images and index.json into
                                                   <out dir> (docs-published)
+
+`check` also fails when a type or public member in api/atlas-ui.api is missing
+from the atlas-ui pages: docs/reference is the single source for the API.
+`--root` skips that check unless `--api FILE` names the API file too.
 
 The AtlasOS site (atlasos.eterneon.net/framework) reads the docs-published branch.
 docs/reference/README.md is the contract: the layout, the frontmatter and the
@@ -25,6 +29,8 @@ import urllib.parse
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REF = os.path.join(ROOT, "docs", "reference")  # `--root DIR` replaces it (the tests do)
 CUSTOM_ROOT = False  # True when REF was given with --root
+API = os.path.join(ROOT, "api", "atlas-ui.api")  # None: no API coverage check (`--root` without `--api`)
+API_LIBRARY = "atlas-ui"  # the library whose pages describe that API
 
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 KEYS = {"title", "summary", "order", "since", "section", "deprecated"}
@@ -542,7 +548,109 @@ def check():
     images = {path for lib in libraries for path in lib.images}
     for page in every:
         check_links(page, prose[page.path], by_path, images, errors)
+    if API:
+        check_api_coverage(libraries, errors)
     return overview, libraries, errors
+
+
+def page_slug(type_name):
+    """AtlasButton -> atlas-button, DataTable -> data-table."""
+    return re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "-", type_name).lower()
+
+
+def read_api(errors):
+    """{type: set of public member names} from the apidump file; enum values
+    count as members. Members starting with _ are private."""
+    types = {}
+    try:
+        with open(API, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except (OSError, UnicodeDecodeError) as e:
+        errors.append(f"{API}: cannot read the API file ({e})")
+        return types
+    for number, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        m = re.fullmatch(r"(\w+)\.type", line)
+        if m:
+            types.setdefault(m.group(1), set())
+            continue
+        m = re.match(r"(\w+)\.(property|signal|method) (\w+)", line)
+        if m:
+            name = m.group(3)
+        else:
+            m = re.match(r"(\w+)\.enum \w+: (\w+)", line)
+            name = m.group(2) if m else None
+        if not m:
+            errors.append(f"{os.path.basename(API)}:{number}: unrecognised line")
+            continue
+        if not name.startswith("_"):
+            types.setdefault(m.group(1), set()).add(name)
+    return types
+
+
+NAME_SPAN = re.compile(r"(?:\w+\.)*(\w+)")
+
+
+def documented_names(page):
+    """Names a page puts in backticks: `name`, `name(` or `Type.name`, outside
+    code fences. A signal's `onName` handler counts for the signal."""
+    names = set()
+    fenced = False
+    for _, text in page.body:
+        if FENCE.match(text):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        for span in CODE_SPAN.finditer(text):
+            if span.group(1) is None:
+                continue
+            m = NAME_SPAN.match(span.group(2).strip())
+            if m:
+                name = m.group(1)
+                names.add(name)
+                if name.startswith("on") and len(name) > 2 and name[2].isupper():
+                    names.add(name[2].lower() + name[3:])
+    return names
+
+
+def check_api_coverage(libraries, errors):
+    """Every API type has a page and every public member is on it, or on the
+    page of a type it links to that has the member (an inherited one)."""
+    lib = next((l for l in libraries if l.name == API_LIBRARY), None)
+    if lib is None:
+        errors.append(f"{API_LIBRARY}: no such library, but the API file lists types")
+        return
+    api = read_api(errors)
+    pages = {os.path.basename(p.path)[:-3]: p for p in lib.pages}
+    cache = {}
+
+    def names(page):
+        if page.path not in cache:
+            cache[page.path] = documented_names(page)
+        return cache[page.path]
+
+    for type_name in sorted(api):
+        slug = page_slug(type_name)
+        page = pages.get(slug)
+        if page is None:
+            errors.append(f"{API_LIBRARY}/{slug}.md: no page for {type_name} (api/{os.path.basename(API)})")
+            continue
+        linked = set()
+        for _, text in page.body:
+            for m in LINK.finditer(without_code(text)):
+                target = m.group(3).split("#")[0]
+                if target.endswith(".md") and "/" not in target and target[:-3] in pages:
+                    linked.add(target[:-3])
+        bases = [t for t in api if page_slug(t) in linked and t != type_name]
+        mine = names(page)
+        for member in sorted(api[type_name]):
+            if member in mine:
+                continue
+            if any(member in api[t] and member in names(pages[page_slug(t)]) for t in bases):
+                continue
+            errors.append(f"{page.rel}: `{member}` of {type_name} is not documented (add it, or link the base type's page that has it)")
 
 
 def git(*args):
@@ -641,7 +749,7 @@ def build(out, overview, libraries):
 
 
 def main(argv):
-    global REF, CUSTOM_ROOT
+    global REF, CUSTOM_ROOT, API
     argv = list(argv)
     if "--root" in argv:  # the reference folder to check (the tests use it)
         i = argv.index("--root")
@@ -649,6 +757,13 @@ def main(argv):
             sys.exit(__doc__.strip().split("\n\n")[1])
         REF = os.path.abspath(argv[i + 1])
         CUSTOM_ROOT = True
+        del argv[i:i + 2]
+        API = None
+    if "--api" in argv:  # the API file to check coverage of (default: api/atlas-ui.api, none with --root)
+        i = argv.index("--api")
+        if i + 1 >= len(argv):
+            sys.exit(__doc__.strip().split("\n\n")[1])
+        API = os.path.abspath(argv[i + 1])
         del argv[i:i + 2]
     if len(argv) < 2 or argv[1] not in ("check", "build") or (argv[1] == "build") != (len(argv) == 3):
         sys.exit(__doc__.strip().split("\n\n")[1])
