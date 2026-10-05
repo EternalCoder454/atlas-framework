@@ -141,3 +141,7 @@ target_include_directories(atlas-validators-tests PRIVATE ${PROJECT_SOURCE_DIR}/
 target_link_libraries(atlas-validators-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
 add_test(NAME validators COMMAND atlas-validators-tests)
 set_tests_properties(validators PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# lint-app.sh's replacement and deprecation rules (tests/lint/run.sh).
+add_test(NAME lint COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/lint/run.sh)
+set_tests_properties(lint PROPERTIES TIMEOUT 60)

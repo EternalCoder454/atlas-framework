@@ -441,6 +441,12 @@ change that breaks an app breaks it on users' machines.
   functions in `include/atlas/app.h` (only add new ones), and anything on
   disk or on D-Bus (the settings file format, crash report and history
   files, polkit action IDs): read the old form forever.
+- **Deprecation.** A type or property can be deprecated for one more minor
+  version before it is removed in the next major. It keeps working; its
+  header comment says "Deprecated since X.Y: use Z"; the table above marks
+  it; and `tools/lint-app.sh` warns (not errors) when an app uses it. The
+  names live in `tools/deprecated.txt` (`Name<TAB>since<TAB>replacement`),
+  which lint-app.sh reads; it is empty for now.
 - **Dependency floors are what CI tests.** A crate's requirement on another
   crate names the version in this repository's Cargo.lock (`zbus =
   "5.19.0"`, not `"5"`). CI builds only against the lock, so a looser floor

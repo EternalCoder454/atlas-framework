@@ -173,6 +173,7 @@ Item {
                     weight: root.weight
                     color: Kirigami.Theme.highlightColor
                 }
+                // atlas-lint: allow the gallery shows Kirigami.Heading as is
                 Kirigami.Heading {
                     Layout.fillWidth: true
                     Layout.topMargin: Kirigami.Units.largeSpacing
