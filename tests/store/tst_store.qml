@@ -323,6 +323,85 @@ Item {
             const list = findChild(s, "list");
             tryVerify(() => list.height >= 40 + 3 * 10);
         }
+
+        // The index of the card that holds the focus, or -1.
+        function focusedIndex(list) {
+            let it = list.Window.activeFocusItem;
+            while (it && it.parent !== list.contentItem)
+                it = it.parent;
+            if (!it)
+                return -1;
+            const p = it.mapToItem(list.contentItem, 1, 1);
+            return list.indexAt(p.x, p.y);
+        }
+
+        // Scrolling far away and back makes the first cards again, after the
+        // others among the list's children (the order Qt's focus chain
+        // follows); Tab and Shift+Tab still go card by card in index order.
+        function test_tab_goes_by_index_after_scrolling() {
+            const s = make();
+            const list = findChild(s, "list");
+            tryVerify(() => list.contentWidth > list.width);
+            list.contentX = list.originX + list.contentWidth - list.width;
+            tryVerify(() => list.itemAtIndex(0) === null, 3000, "card 0 is released once scrolled far away");
+            list.contentX = list.originX;
+            tryVerify(() => list.itemAtIndex(0) !== null);
+            list.itemAtIndex(0).forceActiveFocus(Qt.TabFocusReason);
+            // Each card is two stops: the card, then its install button.
+            const seen = [focusedIndex(list)];
+            for (let i = 0; i < 15; ++i) {
+                keyClick(Qt.Key_Tab);
+                seen.push(focusedIndex(list));
+            }
+            compare(seen.join(","), "0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7");
+            verify(list.Window.activeFocusItem !== list.itemAtIndex(7), "Tab reached the last card's button");
+            const back = [];
+            for (let i = 0; i < 15; ++i) {
+                keyClick(Qt.Key_Backtab);
+                back.push(focusedIndex(list));
+            }
+            compare(back.join(","), "7,6,6,5,5,4,4,3,3,2,2,1,1,0,0");
+            compare(list.Window.activeFocusItem, list.itemAtIndex(0));
+        }
+
+        // Focus that comes from outside the row (a click elsewhere, then a
+        // card focused) still scrolls the card fully into view.
+        function test_focus_from_outside_scrolls_the_card_into_view() {
+            const s = make();
+            const list = findChild(s, "list");
+            tryVerify(() => list.contentWidth > list.width);
+            let card = null;
+            for (let i = 0; i < list.count && !card; ++i) {
+                const c = list.itemAtIndex(i);
+                if (c && c.x + c.width > list.contentX + list.width + 1)
+                    card = c;
+            }
+            verify(card !== null, "a card that is partly hidden");
+            root.forceActiveFocus();
+            verify(!list.activeFocus);
+            card.forceActiveFocus(Qt.TabFocusReason);
+            tryVerify(() => card.x + card.width <= list.contentX + list.width + 0.5, 3000, "the card is scrolled fully into view");
+        }
+
+        // The default cards take the row's height, and the row still
+        // shrinks when a new model holds only shorter cards.
+        function test_default_cards_share_the_row_height() {
+            const s = make(shelfComp, {
+                model: [{ name: "Short" }, { name: "Tall", summary: "A summary long enough to wrap onto a second line of the card", rating: 4.5, sizeText: "3 MB" }]
+            });
+            const list = findChild(s, "list");
+            tryVerify(() => list.itemAtIndex(0) !== null && list.itemAtIndex(1) !== null);
+            const a = list.itemAtIndex(0);
+            const b = list.itemAtIndex(1);
+            const tall = b.implicitHeight;
+            verify(tall > a.implicitHeight, "the second card is taller");
+            tryCompare(a, "height", b.height);
+            compare(list.height, tall);
+            s.model = [{ name: "Short" }, { name: "Also short" }];
+            tryVerify(() => list.height < tall, 3000, "the row shrinks for shorter cards");
+            tryVerify(() => list.itemAtIndex(0) !== null);
+            compare(list.itemAtIndex(0).height, list.height);
+        }
     }
 
     TestCase {

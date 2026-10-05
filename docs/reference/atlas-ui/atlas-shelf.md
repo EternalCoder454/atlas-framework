@@ -22,11 +22,11 @@ AtlasShelf {
 }
 ```
 
-The default delegate is an [AtlasAppCard](atlas-app-card.md). It reads `name`, `summary`, `sizeText`, `rating`, `iconName`, `installState`, `progress` and `verified` from each entry (a list of objects, or the roles of an item model) and emits `activated(index)` when pressed. A custom `delegate` gets the usual `index`, `model` and `modelData`, and sets its own width; `cardWidth` is the width the default card uses. The row is as high as the tallest card made so far (its implicit or its set height), and is measured again when the model changes. A delegate must not size its height from the list, or the row could never shrink.
+The default delegate is an [AtlasAppCard](atlas-app-card.md). It reads `name`, `summary`, `sizeText`, `rating`, `iconName`, `installState`, `progress` and `verified` from each entry (a list of objects, or the roles of an item model) and emits `activated(index)` when pressed. A custom `delegate` gets the usual `index`, `model` and `modelData`, and sets its own width; `cardWidth` is the width the default card uses. The row is as high as the tallest card made so far (its implicit or its set height), and is measured again when the model changes; the default cards all take the row's height, so a row is even. A delegate must not size its height from the list, or the row could never shrink.
 
 ## Keyboard
 
-The cards are Tab stops. Left and Right move to the previous and next card (swapped in a right-to-left layout), Home and End go to the first and last. A card that takes focus is scrolled fully into view.
+The cards are Tab stops, and Tab and Shift+Tab go through them in index order (each card's own stops, such as its install button, in between), then on out of the row. Left and Right move to the previous and next card (swapped in a right-to-left layout), Home and End go to the first and last. A card that takes focus is scrolled fully into view.
 
 ## Right-to-left and motion
 

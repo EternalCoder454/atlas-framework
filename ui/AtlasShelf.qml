@@ -24,9 +24,9 @@ import org.kde.kirigami as Kirigami
 // delegate must not size itself from the list's height, or the row could
 // never shrink.
 //
-// The cards are Tab stops, and the Left and Right arrows (Home, End) move
-// between them and scroll the next one into view. In a right-to-left layout
-// the row and its buttons are mirrored.
+// The cards are Tab stops, in index order, and the Left and Right arrows
+// (Home, End) move between them and scroll the next one into view. In a
+// right-to-left layout the row and its buttons are mirrored.
 T.Control {
     id: control
 
@@ -50,7 +50,10 @@ T.Control {
             // A list of objects arrives as `modelData`; an item model's roles
             // are read from `model`.
             readonly property var entry: card.model.modelData !== undefined ? card.model.modelData : card.model
+            // The default cards share the row's height, so a row looks even.
+            readonly property bool _fillsRow: true
             width: control.cardWidth
+            height: Math.max(card.implicitHeight, priv.rowHeight)
             name: String(card.entry.name ?? "")
             summary: String(card.entry.summary ?? "")
             sizeText: String(card.entry.sizeText ?? "")
@@ -71,8 +74,15 @@ T.Control {
         function tallest() {
             let h = 0;
             for (const c of list.contentItem.children) {
+                // With no highlight component a ListView still makes a plain
+                // item the size of the current card; it is not a card.
+                if (c === list.highlightItem) {
+                    continue;
+                }
                 // A delegate that sets a height of its own has no implicit one.
-                h = Math.max(h, c.implicitHeight, c.height);
+                // A default card's height follows the row, so only its
+                // implicit height counts (or the row could never shrink).
+                h = Math.max(h, c.implicitHeight, c._fillsRow === true ? 0 : c.height);
             }
             return h;
         }
@@ -100,16 +110,25 @@ T.Control {
             scrollAnim.to = Math.max(lo, Math.min(hi, from + direction * priv.stepWidth));
             scrollAnim.start();
         }
-        // The first Tab stop of a card's root item, or null.
-        function focusTarget(root) {
-            if (!root) {
-                return null;
+        // The card (a child of the list's content item) that holds `item`, or null.
+        function cardOf(item) {
+            let it = item;
+            while (it && it.parent !== list.contentItem) {
+                it = it.parent;
             }
-            if (root.activeFocusOnTab) {
-                return root;
+            return it;
+        }
+        // The first Tab stop of a card: the card, or the first one inside it.
+        function focusTarget(card) {
+            if (!card || (card.activeFocusOnTab && card.visible && card.enabled)) {
+                return card;
             }
-            const next = root.nextItemInFocusChain(true);
-            return next && root.contains(root.mapFromItem(next, 0, 0)) && next !== root ? next : root;
+            const next = card.nextItemInFocusChain(true);
+            return next && priv.cardOf(next) === card ? next : card;
+        }
+        function indexOfCard(card) {
+            const p = card.mapToItem(list.contentItem, 1, 1);
+            return list.indexAt(p.x, p.y);
         }
         function focusIndex(i) {
             if (i < 0 || i >= list.count) {
@@ -118,10 +137,41 @@ T.Control {
             scrollAnim.stop();
             list.positionViewAtIndex(i, ListView.Contain);
             list.forceLayout();
+            priv.order();
             const target = priv.focusTarget(list.itemAtIndex(i));
             if (target) {
                 target.forceActiveFocus(Qt.TabFocusReason);
             }
+        }
+        // Keeps the cards in index order among the list's children. Qt's
+        // Tab chain follows that order, and a ListView adds a card it makes
+        // again (after a scroll away and back) at the end, so Tab and
+        // Shift+Tab would jump about the row.
+        property bool ordering: false
+        function order() {
+            if (priv.ordering) {
+                return;
+            }
+            const cards = [];
+            for (const c of list.contentItem.children) {
+                const i = c === list.highlightItem ? -1 : priv.indexOfCard(c);
+                if (i >= 0) {
+                    cards.push({ card: c, index: i });
+                }
+            }
+            let sorted = true;
+            for (let k = 1; k < cards.length && sorted; ++k) {
+                sorted = cards[k - 1].index < cards[k].index;
+            }
+            if (sorted) {
+                return;
+            }
+            cards.sort((a, b) => a.index - b.index);
+            priv.ordering = true;
+            for (let k = 1; k < cards.length; ++k) {
+                AccessibilityState._stackAfter(cards[k].card, cards[k - 1].card);
+            }
+            priv.ordering = false;
         }
     }
 
@@ -149,7 +199,9 @@ T.Control {
             color: Kirigami.Theme.textColor
             textFormat: Text.PlainText
             elide: Text.ElideRight
-            horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft
+            // Left, which a mirrored layout turns to right (an explicit
+            // AlignRight would be mirrored back to the left).
+            horizontalAlignment: Text.AlignLeft
             Accessible.role: Accessible.Heading
         }
 
@@ -204,26 +256,33 @@ T.Control {
             }
         }
 
-        // Follows the focus: a card that takes it (Tab, an arrow) is
-        // scrolled fully into view, and becomes the current one.
+        // Follows the focus: a card that takes it (Tab, an arrow, a click) is
+        // scrolled fully into view, and becomes the current one. Not gated on
+        // the shelf's activeFocus: the window reports the new focus item
+        // before that changes, so a gate would miss the focus coming in.
         Connections {
             target: scope.Window.window
-            enabled: scope.activeFocus
             function onActiveFocusItemChanged() {
-                let it = scope.Window.window.activeFocusItem;
-                while (it && it.parent !== list.contentItem) {
-                    it = it.parent;
-                }
-                if (!it) {
+                const card = priv.cardOf(scope.Window.window.activeFocusItem);
+                if (!card) {
                     return;
                 }
-                const p = it.mapToItem(list.contentItem, 1, 1);
-                const i = list.indexAt(p.x, p.y);
+                const i = priv.indexOfCard(card);
                 if (i >= 0) {
                     list.currentIndex = i;
                     scrollAnim.stop();
                     list.positionViewAtIndex(i, ListView.Contain);
+                    priv.order();
                 }
+            }
+        }
+
+        // Cards made while scrolling go to the end of the children; put
+        // them back in index order before the next key press.
+        Connections {
+            target: list.contentItem
+            function onChildrenChanged() {
+                Qt.callLater(priv.order);
             }
         }
 

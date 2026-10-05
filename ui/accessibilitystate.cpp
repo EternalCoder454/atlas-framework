@@ -43,3 +43,10 @@ void AccessibilityState::refresh()
         Q_EMIT accentColorChanged();
     }
 }
+
+void AccessibilityState::_stackAfter(QQuickItem *item, QQuickItem *sibling) const
+{
+    if (item && sibling && item != sibling && item->parentItem() && item->parentItem() == sibling->parentItem()) {
+        item->stackAfter(sibling);
+    }
+}
