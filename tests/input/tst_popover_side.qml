@@ -92,4 +92,82 @@ Item {
             verify(q.y + q.height <= root.height);
         }
     }
+
+    Component {
+        id: noTargetComp
+        AtlasPopover {
+            QQC2.Label {
+                text: "Hello there"
+            }
+        }
+    }
+    Component {
+        id: movingHostComp
+        Item {
+            property alias target: inner
+            x: 100
+            y: 50
+            width: 200
+            height: 200
+            Item {
+                id: inner
+                width: 40
+                height: 30
+                x: 10
+                y: 10
+            }
+        }
+    }
+
+    TestCase {
+        name: "AtlasPopoverPlacement"
+        when: windowShown
+
+        function test_no_target_opens_in_the_middle() {
+            const p = createTemporaryObject(noTargetComp, root);
+            p.open();
+            tryVerify(() => p.visible);
+            verify(Math.abs(p.x - (root.width - p.width) / 2) <= 1, "centred across: " + p.x);
+            verify(Math.abs(p.y - (root.height - p.height) / 2) <= 1, "centred down: " + p.y);
+            compare(p._arrowSize, 0, "no arrow without a target");
+        }
+
+        function test_follows_a_target_that_moves() {
+            const host = createTemporaryObject(movingHostComp, root);
+            const p = createTemporaryObject(popComp, root, {
+                target: host.target
+            });
+            p.open();
+            tryVerify(() => p.visible);
+            const x0 = p.x;
+            host.target.x += 60;
+            tryVerify(() => p.x === x0 + 60, 2000, "the target moved by 60");
+            const x1 = p.x;
+            host.x -= 40;
+            tryVerify(() => p.x === x1 - 40, 2000, "the target's parent moved by 40");
+        }
+
+        function test_a_new_target_while_open_is_followed() {
+            const first = createTemporaryObject(movingHostComp, root);
+            const second = createTemporaryObject(movingHostComp, root, {
+                x: 300
+            });
+            const p = createTemporaryObject(popComp, root, {
+                target: first.target
+            });
+            p.open();
+            tryVerify(() => p.visible);
+            const x0 = p.x;
+            p.target = second.target;
+            tryVerify(() => p.x === x0 + 200, 2000, "placed again at the new target");
+            const x1 = p.x;
+            // The new target's parent moves: the popover follows it.
+            second.x += 50;
+            tryVerify(() => p.x === x1 + 50, 2000, "the new target's parent is tracked");
+            // The old target's parent moves: no effect.
+            first.x += 80;
+            wait(50);
+            compare(p.x, x1 + 50);
+        }
+    }
 }

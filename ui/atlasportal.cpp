@@ -9,6 +9,7 @@
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
+#include <QDBusServiceWatcher>
 #include <QDesktopServices>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -327,6 +328,16 @@ void AtlasPortal::ensureConnected()
     // program cannot invent an action.
     bus.connect(QString::fromLatin1(kService), QString::fromLatin1(kPath), QString::fromLatin1(kInterface), QStringLiteral("ActionInvoked"), this, SLOT(onServerAction(uint, QString)));
     bus.connect(QString::fromLatin1(kService), QString::fromLatin1(kPath), QString::fromLatin1(kInterface), QStringLiteral("NotificationClosed"), this, SLOT(onServerClosed(uint, uint)));
+    // A restarted server numbers from the start again: the old numbers would
+    // match other notifications, so forget them when the server's owner goes.
+    auto *owner = new QDBusServiceWatcher(QString::fromLatin1(kService), bus, QDBusServiceWatcher::WatchForOwnerChange, this);
+    connect(owner, &QDBusServiceWatcher::serviceOwnerChanged, this, [this](const QString &, const QString &oldOwner, const QString &) {
+        if (!oldOwner.isEmpty()) {
+            ++m_ownerGeneration; // replies to Notify calls made before this are stale
+            m_byServerId.clear();
+            m_order.clear();
+        }
+    });
 }
 
 QString AtlasPortal::notify(const QString &title, const QString &body, const QVariantList &actions, const QVariantMap &options)
@@ -384,11 +395,18 @@ QString AtlasPortal::notify(const QString &title, const QString &body, const QVa
     const QString ourId = QStringLiteral("atlas-notification-%1").arg(++m_counter);
     // Asynchronous: the UI thread never waits for the server.
     auto *watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call, kCallTimeoutMs), this);
-    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, ourId, eventId](QDBusPendingCallWatcher *w) {
+    const uint generation = m_ownerGeneration;
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, ourId, eventId, generation](QDBusPendingCallWatcher *w) {
         w->deleteLater();
         const QDBusPendingReply<uint> reply = *w;
         if (reply.isError()) {
             qWarning("AtlasPortal: notification %s was not shown: %s", qPrintable(eventId), qPrintable(reply.error().message()));
+            return;
+        }
+        // A server that restarted since the call numbers from the start again:
+        // this id belongs to the old server and could match another notification.
+        // Untested: it needs a fake notification server on a private bus.
+        if (generation != m_ownerGeneration) {
             return;
         }
         const uint serverId = reply.value();

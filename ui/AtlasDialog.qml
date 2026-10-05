@@ -10,7 +10,8 @@ import Atlas.Ui
 // Escape closes it, and the focus starts on the first thing in the body that
 // can take it (the dialog itself when the body has nothing, never a button).
 // A body taller than the window scrolls instead of outgrowing it, and the
-// dialog is never wider than the window.
+// dialog is never wider than the window. The body scrolls to a field that
+// takes the focus.
 //
 // The header has an optional Back button at the leading edge (`showBack`,
 // then `backRequested()`; the dialog doesn't close itself), the `title`,
@@ -52,9 +53,9 @@ T.Dialog {
     padding: AtlasStyle.spacingLarge * 2
     // The footer has its own bottom margin.
     bottomPadding: footerRow.children.length > 0 ? 0 : padding
-    width: Math.min(control.preferredWidth, parent ? parent.width - control._margin : control.preferredWidth)
+    width: Math.min(control.preferredWidth, parent ? Math.max(0, parent.width - control._margin) : control.preferredWidth)
     implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, contentHeight + topPadding + bottomPadding + (implicitHeaderHeight > 0 ? implicitHeaderHeight + spacing : 0) + (implicitFooterHeight > 0 ? implicitFooterHeight + spacing : 0))
-    height: Math.min(implicitHeight, parent ? parent.height - control._margin : implicitHeight)
+    height: Math.min(implicitHeight, parent ? Math.max(0, parent.height - control._margin) : implicitHeight)
     spacing: AtlasStyle.spacingLarge
 
     // Moves the body to its top, with no animation. Focus does not move.
@@ -67,6 +68,32 @@ T.Dialog {
     }
     // A reopened dialog does not keep the last scroll.
     onAboutToShow: control.scrollToTop()
+
+    // Keeps the item that took the focus in view in the body.
+    // In a list property of its own, not the default one (content).
+    readonly property list<QtObject> _watchers: [
+        Connections {
+            target: control.parent ? control.parent.Window.window : null
+            function onActiveFocusItemChanged(): void {
+                const win = control.parent ? control.parent.Window.window : null;
+                const item = win ? win.activeFocusItem : null;
+                if (control.visible && item && control._inside(item) && item !== control.contentItem && scroller && scroller.contentItem) {
+                    control._reveal(item);
+                }
+            }
+        }
+    ]
+    function _reveal(item: Item): void {
+        const top = item.mapToItem(scroller.contentItem, 0, 0).y;
+        const bottom = top + item.height;
+        const view = scroller.height;
+        if (top < scroller.contentY) {
+            scroller.contentY = Math.max(scroller.originY, top);
+        } else if (bottom > scroller.contentY + view) {
+            // A tall item (a text area) shows its top rather than its end.
+            scroller.contentY = Math.min(top, bottom - view);
+        }
+    }
 
     // True when item is in the body (the content item), not the header or the footer.
     function _inside(item: Item): bool {

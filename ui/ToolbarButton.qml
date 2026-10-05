@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 
 // A small icon button for formatting toolbars (Bold, Italic, ...). It never
@@ -75,6 +74,16 @@ T.AbstractButton {
     }
     // The tooltip's name: toolTipText when set, else the spoken name.
     readonly property string _tipName: control.toolTipText.length > 0 ? control.toolTipText.replace(/&(.)/g, "$1") : control._spokenName
+    // Set by AtlasToolbar: a button with no symbol or icon draws its text's
+    // first letter (the slot is one icon wide) instead of staying blank.
+    property bool _letterFallback: false
+    readonly property bool _glyphless: control.symbol === 0 && control.icon.name.length === 0 && control.icon.source.toString().length === 0
+    readonly property string _label: {
+        if (!control._letterFallback || !control._glyphless || control.display !== T.AbstractButton.IconOnly) {
+            return control.text;
+        }
+        return Array.from(control.text.replace(/&(&|.)/g, "$1"))[0] ?? "";
+    }
     readonly property color _iconColor: !control.enabled ? AtlasStyle.textDisabled : control.checked ? AtlasStyle.accent : Kirigami.Theme.textColor
 
     implicitWidth: control.round ? implicitHeight : Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
@@ -228,19 +237,20 @@ T.AbstractButton {
         }
     }
 
-    // A tooltip beside the button, for Start and End.
+    // The tooltip: made when first wanted (hover, keyboard focus), or at once
+    // for Start and End.
     property var _tip: null
     // True when the tip is at the physical right of the button.
     property bool _tipRight: false
+    // True when a tip below the button is put above it (no room below).
+    property bool _tipAbove: false
     readonly property bool _tipBeside: control.tipSide !== ToolbarButton.Below
-    on_TipBesideChanged: control._syncTip()
-    Component.onCompleted: control._syncTip()
-    function _syncTip(): void {
-        if (control._tipBeside && !control._tip) {
+    on_TipBesideChanged: if (control._tipBeside) control._ensureTip()
+    Component.onCompleted: if (control._tipBeside) control._ensureTip()
+    onVisualFocusChanged: if (control.visualFocus) control._ensureTip()
+    function _ensureTip(): void {
+        if (!control._tip) {
             control._tip = tipComponent.createObject(control);
-        } else if (!control._tipBeside && control._tip) {
-            control._tip.destroy();
-            control._tip = null;
         }
     }
     Component {
@@ -248,26 +258,34 @@ T.AbstractButton {
         AtlasToolTip {
             text: control._tipText
             shown: (control.hovered && !control.down && !control._used || control.visualFocus) && control._tipName.length > 0
-            x: control._tipRight ? control.width + AtlasStyle.spacingSmall : -implicitWidth - AtlasStyle.spacingSmall
-            y: Math.round((control.height - implicitHeight) / 2)
+            x: control._tipBeside ? (control._tipRight ? control.width + AtlasStyle.spacingSmall : -implicitWidth - AtlasStyle.spacingSmall) : Math.round((control.width - implicitWidth) / 2)
+            y: control._tipBeside ? Math.round((control.height - implicitHeight) / 2) : (control._tipAbove ? -implicitHeight - AtlasStyle.spacingSmall : control.height + AtlasStyle.spacingSmall)
             onAboutToShow: {
                 const w = control._window ? control._window.width : 0;
-                const sx = control.mapToItem(null, 0, 0).x;
+                const h = control._window ? control._window.height : 0;
+                const at = control.mapToItem(null, 0, 0);
                 const gap = AtlasStyle.spacingSmall;
+                if (!control._tipBeside) {
+                    control._tipAbove = at.y + control.height + gap + implicitHeight > h && at.y - gap - implicitHeight >= 0;
+                    return;
+                }
                 const wantRight = (control.tipSide === ToolbarButton.End) !== control.mirrored;
-                const fitsRight = sx + control.width + gap + implicitWidth <= w;
-                const fitsLeft = sx - gap - implicitWidth >= 0;
+                const fitsRight = at.x + control.width + gap + implicitWidth <= w;
+                const fitsLeft = at.x - gap - implicitWidth >= 0;
                 control._tipRight = wantRight ? (fitsRight || !fitsLeft) : (!fitsLeft && fitsRight);
             }
         }
     }
-    onHoveredChanged: if (!control.hovered) control._used = false
+    onHoveredChanged: {
+        if (control.hovered) {
+            control._ensureTip();
+        } else {
+            control._used = false;
+        }
+    }
 
-    QQC2.ToolTip.visible: control._tipShown && !control._tipBeside
-    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
     //: Tooltip: %1 is the action ("Bold"), %2 its keyboard shortcut ("Ctrl+B")
     readonly property string _tipText: control._effectiveShortcut.length > 0 ? qsTr("%1 (%2)").arg(control._tipName).arg(control._effectiveShortcut) : control._tipName
-    QQC2.ToolTip.text: control._tipText
 
     background: Rectangle {
         radius: control.round ? Math.min(width, height) / 2 : AtlasStyle.radiusSmall
@@ -334,9 +352,9 @@ T.AbstractButton {
                 }
             }
             Text {
-                visible: control.display !== T.AbstractButton.IconOnly
+                visible: control.display !== T.AbstractButton.IconOnly || (control._letterFallback && control._glyphless && control._label.length > 0)
                 anchors.verticalCenter: parent.verticalCenter
-                text: control.text
+                text: control._label
                 font.family: AtlasStyle.fontFamily
                 font.pointSize: AtlasStyle.fontSizeBody
                 color: Kirigami.Theme.textColor

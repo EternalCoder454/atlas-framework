@@ -67,7 +67,8 @@ Item {
                 shortcutText: "Ctrl+B",
                 toolTipText: "Make the text bold"
             });
-            compare(b.QQC2.ToolTip.text, "Make the text bold (Ctrl+B)");
+            b._ensureTip();
+            compare(b._tip.text, "Make the text bold (Ctrl+B)");
             compare(b.Accessible.name, "Bold");
         }
 
@@ -89,8 +90,12 @@ Item {
                 tipSide: ToolbarButton.End
             });
             verify(b._tip !== null);
-            b.tipSide = ToolbarButton.Below;
-            verify(b._tip === null);
+            const c = createTemporaryObject(buttonComp, root, {
+                text: "Bold"
+            });
+            verify(c._tip === null, "a tip below is made when first wanted");
+            mouseMove(c, c.width / 2, c.height / 2);
+            tryVerify(() => c._tip !== null);
         }
 
         function test_plain_action_triggers() {
@@ -126,6 +131,32 @@ Item {
             compare(withPopover.popover.target, b);
             compare(withPopover.count, 0);
             withPopover.popover.close();
+        }
+
+        function test_a_one_letter_glyphless_button_draws_its_letter() {
+            const b = createTemporaryObject(buttonComp, root, {
+                symbol: 0,
+                text: "B",
+                _letterFallback: true
+            });
+            let letter = null;
+            const walk = item => {
+                for (const c of item.children) {
+                    if (c.text === "B" && c.textFormat === Text.PlainText) {
+                        letter = c;
+                    }
+                    walk(c);
+                }
+            };
+            walk(b.contentItem);
+            verify(letter, "the label item is made");
+            verify(letter.visible, "a one-letter text is drawn, not left blank");
+            const plainIcon = createTemporaryObject(buttonComp, root, {
+                text: "B"
+            });
+            letter = null;
+            walk(plainIcon.contentItem);
+            verify(letter === null || !letter.visible, "an icon-only button with a symbol stays icon-only");
         }
 
         function test_round_implicit_width_follows_implicit_height() {

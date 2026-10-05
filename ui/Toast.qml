@@ -25,11 +25,17 @@ Item {
     readonly property bool _showing: timer.showing
 
     function show(message) {
+        if (priv.textOf(message).length === 0) {
+            return;
+        }
         control.actionText = "";
         priv.display(message);
     }
     // Shows `message` with an action button labelled `actionText`.
     function showAction(message, actionText) {
+        if (priv.textOf(message).length === 0) {
+            return;
+        }
         control.actionText = actionText;
         priv.display(message);
     }
@@ -40,9 +46,17 @@ Item {
 
     QtObject {
         id: priv
+        // Nothing (undefined, null, "") has nothing to say.
+        function textOf(message) {
+            return message === undefined || message === null ? "" : String(message);
+        }
         function display(message) {
-            label.text = message;
-            control.Accessible.announce(control.actionText.length > 0 ? message + ", " + control.actionText : message);
+            const text = priv.textOf(message);
+            if (text.length === 0) {
+                return;
+            }
+            label.text = text;
+            control.Accessible.announce(control.actionText.length > 0 ? text + ", " + control.actionText : text);
             timer.showing = true;
             timer.restart();
         }

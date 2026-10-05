@@ -1,6 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 
 // One cell of a StatusBar: a short text such as "Ln 3, Col 14". With
@@ -29,8 +30,10 @@ T.AbstractButton {
     leftPadding: AtlasStyle.spacingLarge
     rightPadding: leftPadding
     hoverEnabled: true
-    focusPolicy: Qt.NoFocus
+    // A clickable cell is a Tab stop; a click doesn't take the editor's focus.
+    focusPolicy: control.clickable ? Qt.TabFocus : Qt.NoFocus
     Accessible.role: clickable ? Accessible.Button : Accessible.StaticText
+    Accessible.focusable: control.clickable
     Accessible.name: control.text
     Accessible.description: control.toolTip
 
@@ -54,15 +57,41 @@ T.AbstractButton {
     }
     onVisibleChanged: {
         // The parent is the bar's row; the bar is above it.
-        const bar = parent ? parent.parent : null;
-        if (bar && typeof bar.refresh === "function") {
+        const bar = (control.parent ? control.parent.parent : null) as StatusBar;
+        if (bar) {
             bar.refresh();
         }
     }
 
-    QQC2.ToolTip.visible: control.toolTip.length > 0 && control.hovered
-    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
-    QQC2.ToolTip.text: control.toolTip
+    Keys.onReturnPressed: event => {
+        if (control.clickable && !event.isAutoRepeat) {
+            control.clicked();
+        }
+        event.accepted = control.clickable;
+    }
+    Keys.onEnterPressed: event => {
+        if (control.clickable && !event.isAutoRepeat) {
+            control.clicked();
+        }
+        event.accepted = control.clickable;
+    }
+
+    // Made when the cell is first hovered or focused, not for every cell.
+    property var _tip: null
+    function _ensureTip(): void {
+        if (!control._tip) {
+            control._tip = tipComponent.createObject(control);
+        }
+    }
+    onHoveredChanged: if (control.hovered) control._ensureTip()
+    onVisualFocusChanged: if (control.visualFocus) control._ensureTip()
+    Component {
+        id: tipComponent
+        AtlasToolTip {
+            text: control.toolTip
+            shown: control.toolTip.length > 0 && (control.hovered || control.visualFocus)
+        }
+    }
 
     background: Item {
         // The leading edge is the left, or the right when mirrored.
@@ -82,6 +111,10 @@ T.AbstractButton {
             anchors.rightMargin: 0
             radius: AtlasStyle.radiusSmall
             color: !control.clickable ? "transparent" : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
+            AtlasFocusRing {
+                radius: parent.radius + gap
+                shown: control.visualFocus
+            }
         }
     }
 

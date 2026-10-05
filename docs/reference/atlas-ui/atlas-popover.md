@@ -5,7 +5,7 @@ section: Menus, dialogs and popups
 since: "1.4.0"
 ---
 
-A raised card that opens next to a control: surface colour, rounded corners, a soft shadow and a hairline border, with an optional arrow that points at `target`. It opens below the target, or above when there is no room below, lines up with the target's leading edge (trailing in a right-to-left layout) and is kept inside the window. Escape and a click outside close it, and the focus goes back to the target. Put anything in it.
+A raised card that opens next to a control: surface colour, rounded corners, a soft shadow and a hairline border, with an optional arrow that points at `target`. It opens below the target, or above when there is no room below, lines up with the target's leading edge (trailing in a right-to-left layout) and is kept inside the window. Escape and a click outside close it, and the focus goes back to the target. While it is open it is placed again when the window is resized or when the target, or anything the target sits in, moves. With no `target` it opens in the middle of the window, with no arrow. Put anything in it.
 
 `side` picks where it opens. If the chosen side has no room it flips to the opposite side; if neither fits it takes the side with more room and is clamped into the window. `placedSide` reports the side in use. `Start` and `End` are logical: `End` is the right of the target in a left-to-right layout and the left in a right-to-left one. A popover on `Start` or `End` is centred on the target vertically, and its arrow sits on the edge that faces the target.
 

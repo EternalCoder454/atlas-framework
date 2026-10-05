@@ -1,7 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Templates as T
 import QtQuick.Controls as QQC2
+import QtQml
 import org.kde.kirigami as Kirigami
 import Atlas.Ui
 
@@ -11,7 +14,9 @@ import Atlas.Ui
 // room below (`side` picks another side: Above, Start or End, and flips to
 // the opposite one when there is no room), lines up with the target's leading
 // edge (trailing in a right-to-left layout) and is kept inside the window. Escape and a click
-// outside close it, and the focus goes back to the target. Put anything in it.
+// outside close it, and the focus goes back to the target. It is placed again
+// when the window is resized or the target (or anything it sits in) moves. With
+// no target it opens in the middle of the window, with no arrow. Put anything in it.
 //
 //   AtlasButton { id: more; text: qsTr("More"); onClicked: info.open() }
 //   AtlasPopover {
@@ -52,7 +57,7 @@ T.Popup {
     property real _arrowX: width / 2
     property real _arrowY: height / 2
 
-    readonly property real _arrowSize: control.showArrow ? Kirigami.Units.smallSpacing * 2 : 0
+    readonly property real _arrowSize: control.showArrow && control.target ? Kirigami.Units.smallSpacing * 2 : 0
     readonly property real _gap: Kirigami.Units.smallSpacing
     readonly property real _edge: Kirigami.Units.smallSpacing * 2
 
@@ -79,7 +84,12 @@ T.Popup {
     function _place(): void {
         const t = control.target;
         const p = control.parent;
-        if (!t || !p) {
+        if (!p) {
+            return;
+        }
+        if (!t) {
+            control.x = Math.max(0, Math.round((p.width - control.implicitWidth) / 2));
+            control.y = Math.max(0, Math.round((p.height - control.implicitHeight) / 2));
             return;
         }
         const origin = t.mapToItem(p, 0, 0);
@@ -123,10 +133,46 @@ T.Popup {
         control._arrowY = Math.max(lo, Math.min(origin.y + t.height / 2 - control.y, h - lo));
     }
 
-    onAboutToShow: control._place()
+    // The target and everything it sits in: when one moves, the popover follows.
+    property var _chain: []
+    // Rebuilds the chain, then places. Run when the popover shows, when the
+    // target changes and when an item of the chain gets a new parent.
+    function _track(): void {
+        const chain = [];
+        for (let i = control.target; i; i = i.parent) {
+            chain.push(i);
+        }
+        control._chain = chain;
+        control._place();
+    }
+    onAboutToShow: control._track()
+    onTargetChanged: if (visible) control._track()
+    onParentChanged: if (visible) control._place()
+    // In a list property of its own, not the default one (the column).
+    readonly property list<QtObject> _watchers: [
+        Connections {
+            target: control.parent
+            function onWidthChanged() { if (control.visible) control._place(); }
+            function onHeightChanged() { if (control.visible) control._place(); }
+        },
+        Instantiator {
+            model: control._chain
+            delegate: Connections {
+                required property var modelData
+                target: modelData
+                function onXChanged() { if (control.visible) control._place(); }
+                function onYChanged() { if (control.visible) control._place(); }
+                function onWidthChanged() { if (control.visible) control._place(); }
+                function onHeightChanged() { if (control.visible) control._place(); }
+                // Not rebuilt here: this delegate would be destroyed inside its own signal.
+                function onParentChanged() { if (control.visible) Qt.callLater(control._track); }
+            }
+        }
+    ]
     onImplicitHeightChanged: if (visible) control._place()
     onImplicitWidthChanged: if (visible) control._place()
     onClosed: {
+        control._chain = [];
         const t = control.target;
         const focused = t ? t.Window.window?.activeFocusItem : null;
         let inside = !focused;

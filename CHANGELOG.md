@@ -199,6 +199,36 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   page covers it; the notifyrc names a real icon; a per-app CI workflow
   (`.github/workflows/atlas.yml`) pinned to a framework tag; the minimum
   Atlas.Ui is 1.4.0.
+- Fix: `ContextMenuItem` no longer shows an action's `&` mnemonic marker
+  ("&Save") in its text or its accessible name.
+- Fix: `ContextMenu` is as wide as its widest row, also a long one further
+  down a long menu (the width counted only the rows in view, so labels elided).
+- Fix: `AtlasNavigationStack`'s Back arrow flips around the button's own
+  middle in right-to-left, not the stack's; `AtlasBreadcrumb`'s chevrons and
+  "..." button follow the segment's side in right-to-left, and it announces the
+  focused segment from the control.
+- Fix: `AtlasPopover` is placed again when the window is resized or the target
+  (or an item it sits in) moves, and opens in the middle of the window, with no
+  arrow, when it has no `target` (it opened at 0,0).
+- Fix: `AtlasDialog` scrolls its body to the field that takes the focus, and
+  neither it nor `ConfirmDialog` gets a negative width or height in a tiny
+  window; `ConfirmDialog` exposes its text as the accessible description and
+  uses `AtlasScrollBar`.
+- Fix: Enter in `FindBar`'s replace field with no match replaces nothing, as
+  the disabled button.
+- Fix: a clickable `StatusBarItem` is reached with Tab (focus ring; Return and
+  Space press it) and a disabled `SectionRow` ignores the accessible press action.
+- Fix: `AtlasToolTip` with no text draws and opens nothing, and opens below its
+  item when there is no room above; `ToolbarButton`, `StatusBarItem`, `TabBar`
+  and `InfoBanner` use it in place of the stock tooltip (the tip below a
+  `ToolbarButton` goes above it when the window ends below).
+- Fix: `AtlasToolbar` draws the first letter of a text-only action instead of a
+  blank button.
+- Fix: `Section`'s Return key no longer repeats while held; `AtlasAboutPage`
+  shows the links section with only `issuesUrl`; `InfoBanner` accepts an action
+  object with no `icon`; `Toast.show(undefined)` shows nothing.
+- Fix: `AtlasPortal` forgets its notification ids when the notification
+  server restarts (the new server counts from 1 again).
 
 ## 1.4.0
 
