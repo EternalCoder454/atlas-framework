@@ -47,11 +47,19 @@ if [ ${#demos[@]} -gt 0 ]; then
 fi
 
 mkdir -p "$build"
+# In a git worktree, .git is a file naming the main repository's git
+# directory: mount that too (read-only, same path), or the API check can't
+# read the tags.
+gitmount=()
+if [ -f "$root/.git" ]; then
+    common=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)
+    gitmount=(-v "$common:$common:ro")
+fi
 # The source is read-only unless the translations are being rewritten.
 mode=ro
 [ "$translations" = 1 ] && mode=rw
 exec podman run --rm --security-opt label=disable \
-    -v "$root:/src:$mode" -v "$build:/b" -w /src \
+    -v "$root:/src:$mode" -v "$build:/b" "${gitmount[@]}" -w /src \
     -e ATLAS_DEMO_FILTER="$filter" -e TRANSLATIONS="$translations" \
     "$image" bash -euo pipefail -c '
 step() { printf "\n== %s\n" "$1"; }
