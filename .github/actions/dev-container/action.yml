@@ -1,0 +1,18 @@
+name: Dev container
+description: >
+  Builds packaging/Containerfile.dev as atlas-framework-dev:ci (layers cached in
+  the GitHub Actions cache), for the jobs that build and test in it.
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+    - name: Build the dev container
+      uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+      with:
+        context: packaging
+        file: packaging/Containerfile.dev
+        load: true
+        tags: atlas-framework-dev:ci
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
