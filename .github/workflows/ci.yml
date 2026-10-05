@@ -158,13 +158,21 @@ jobs:
       contents: write
     concurrency:
       group: publish-docs
-      cancel-in-progress: true
+      # Not cancelled: a tag run on an older commit would cancel the newest
+      # main run and then skip itself. GitHub keeps one pending run, and the
+      # main-tip guard below skips stale commits.
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # Tags: index.json says whether this commit is the release.
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Fetch all tags
+        # Runs are serialised by the group, so a main run that follows the tag
+        # run sees the tag: `released` does not depend on run order. Public repo, no auth.
+        run: git fetch --force --tags origin
 
       - name: Build the published tree
         run: python3 tools/docs.py build "$RUNNER_TEMP/docs-published"
@@ -179,14 +187,16 @@ jobs:
           echo "::add-mask::$auth"
           # Only main's tip is published: a re-run or an out-of-order run of an
           # older commit must not roll the branch back.
-          main=$(git -c http.extraheader="AUTHORIZATION: basic $auth" \
-            ls-remote "https://github.com/$REPO.git" refs/heads/main | cut -f1) || main=
-          if [ -z "$main" ]; then
+          head=$(git rev-parse HEAD)
+          tips=$(git -c http.extraheader="AUTHORIZATION: basic $auth" \
+            ls-remote --exit-code --heads "https://github.com/$REPO.git" refs/heads/main) || tips=
+          if [ -z "$tips" ] || [ "$(printf '%s\n' "$tips" | wc -l)" -ne 1 ]; then
             echo "::error::cannot read main's tip from $REPO"
             exit 1
           fi
-          if [ "$main" != "$SHA" ]; then
-            echo "::notice::main is at $main, not $SHA: not publishing these docs"
+          main=${tips%%[[:space:]]*}
+          if [ "$main" != "$head" ]; then
+            echo "::notice::main is at $main, not $head: not publishing these docs"
             exit 0
           fi
           cd "$RUNNER_TEMP/docs-published" || exit 1

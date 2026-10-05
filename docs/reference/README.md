@@ -62,7 +62,10 @@ The body is CommonMark plus GFM: tables, task lists, strikethrough and autolinks
 - a relative link to a page or `#anchor` that doesn't exist;
 - a link out of `docs/reference`;
 - an image without alt text, or one stored anywhere other than `<library>/images/`;
-- a plain `http://` link, or a link or autolink scheme other than `https:` and `mailto:`.
+- a plain `http://` link, or a link or autolink scheme other than `https:` and `mailto:`;
+- a line over 10,000 characters, or a bare carriage return.
+
+The checker is a guard, not the security boundary: the site's sanitiser is the real control for HTML and links.
 
 Callouts use GitHub alerts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`. Pages link to each other with relative `.md` links (`../atlas-ui/atlas-button.md#properties`); the site rewrites them.
 

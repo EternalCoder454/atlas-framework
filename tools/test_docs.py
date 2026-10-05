@@ -4,8 +4,10 @@
     python3 tools/test_docs.py
 """
 
+import json
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 
@@ -15,6 +17,8 @@ import docs  # noqa: E402
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 16
 WEBP = b"RIFF\0\0\0\0WEBPVP8 " + b"\0" * 8
+
+ROOT_AT_START = docs.ROOT
 
 
 def page(body="Text.\n", **meta):
@@ -32,6 +36,8 @@ class DocsCase(unittest.TestCase):
         self.saved = docs.REF
         docs.REF = self.ref
         self.addCleanup(setattr, docs, "REF", self.saved)
+        docs.CUSTOM_ROOT = True  # the fixture is not under the repo root
+        self.addCleanup(setattr, docs, "CUSTOM_ROOT", False)
         self.write("lib/index.md", page(title="Lib"))
 
     def write(self, rel, content):
@@ -123,7 +129,7 @@ class Frontmatter(DocsCase):
             self.assertFlags(self.body("x\n", **{key: '""'}), f"`{key}` is empty")
 
     def test_control_and_bidi_characters(self):
-        for bad in ("a\x01b", "a\x7fb", "a\u2028b", "a\u2029b", "a\u202eb", "a\u2066b"):
+        for bad in ("a\x01b", "a\x7fb", "a\u2028b", "a\u2029b", "a\u202eb", "a\u2066b", "a\x85b", "a\u200bb", "a\u061cb", "a\ufeffb"):
             for key in ("title", "summary", "section", "deprecated"):
                 self.assertFlags(self.body("x\n", **{key: bad}), "bidi character")
 
@@ -180,7 +186,7 @@ class Links(DocsCase):
 
     def test_unparseable_links(self):
         self.assertFlags(self.body("[x](<a b.md>)\n"), "can't parse")
-        self.assertTrue(self.body("![alt](images/a_(b).png)\n"))  # fails closed, whatever the message
+        self.assertFlags(self.body("![alt](images/a_(b).png)\n"), "missing image: images/a_(b")
         self.assertFlags(self.body("![alt][ref]\n"), "can't parse")
 
     def test_image_nested_in_link_is_checked(self):
@@ -283,9 +289,20 @@ class Images(DocsCase):
             '<svg><a href="https://example.org"/></svg>',
             '<svg><image xlink:href="javascript:x"/></svg>',
             "<svg><use href='data:x'/></svg>",
+            b"\xff\xfe<\0s\0v\0g\0/\0>\0",
+            b"<svg>\xff</svg>",
+            b"<\0s\0v\0g\0/\0>\0",
+            "<!DOCTYPE svg><svg/>",
+            '<!DOCTYPE svg [<!ENTITY x "y">]><svg/>',
+            "<svg><x:script/></svg>",
+            "<svg><set attributeName='x'/></svg>",
+            "<svg><animateTransform/></svg>",
+            '<svg><rect style="fill:url(https://e.org/x)"/></svg>',
+            "<svg><style>@import 'x';</style></svg>",
+            "<svg><style>a{fill:url(x)}</style></svg>",
         ]
         for i, svg in enumerate(bad):
-            self.assertFlags(self.image_errors(f"s{i}.svg", svg), "SVG", )
+            self.assertFlags(self.image_errors(f"s{i}.svg", svg), "SVG")
             os.unlink(os.path.join(self.ref, f"lib/images/s{i}.svg"))
         self.assertClean(self.image_errors("ok.svg", '<svg><use xlink:href="#a"/><g id="a"/></svg>'))
 
@@ -338,6 +355,152 @@ class Limits(DocsCase):
         with self.assertRaises(SystemExit):
             docs.build(out, overview, libraries)
         self.assertEqual(os.listdir(self.tmp), ["reference"])
+
+
+class Round2(DocsCase):
+    def test_escaped_backticks_do_not_make_a_span(self):
+        self.assertFlags(self.body("a \\`<b>x</b> and \\`\n"), "raw HTML")
+        self.assertClean(self.body("a `<b>x</b>` and \\\\`<c>` d\n"))
+
+    def test_code_spans_do_not_pair_across_blocks(self):
+        self.assertFlags(self.body("- a `x <b>y</b>\n- b` z\n"), "raw HTML")
+        self.assertFlags(self.body("a `x <b>\n## H `\n"), "raw HTML")
+        self.assertFlags(self.body("| a `x <b> |\n| b ` |\n"), "raw HTML")
+
+    def test_fence_ends_with_its_quote(self):
+        self.assertFlags(self.body("> ```qml\n> x\n\n<b>raw</b>\n"), "raw HTML")
+        self.assertFlags(self.body("> ```qml\n> x\n<b>raw</b>\n"), "raw HTML")
+
+    def test_fence_ends_with_its_list_item(self):
+        self.assertFlags(self.body("- item\n\n  ```qml\n  x\n\nPara <b>raw</b>\n"), "raw HTML")
+
+    def test_quote_marker_inside_a_top_level_fence_is_content(self):
+        self.assertClean(self.body("```qml\n> ```\n<b>x</b>\n```\n"))
+
+    def test_bare_cr(self):
+        self.write("lib/a.md", page("a\rb\n").encode())
+        self.assertFlags(self.errors(), "bare CR")
+        self.write("lib/a.md", page("a\nb\n").replace("\n", "\r\n").encode())
+        self.assertClean(self.errors())
+
+    def test_reference_definition_after_list_marker(self):
+        self.assertFlags(self.body("- [a]: javascript:x\n"), "scheme not allowed")
+        self.assertFlags(self.body("1. [a]: nope.md\n"), "does not exist")
+
+    def test_any_lt_letter_is_html(self):
+        for text in ("<img/src=x>\n", "<a/onclick=x>\n", "x <!x\n", "a <?x\n", "</b>\n"):
+            self.assertFlags(self.body(text), "raw HTML")
+        self.assertClean(self.body("1 < 2 and <https://example.org> and `<b>`\n"))
+
+    def test_setext_headings(self):
+        self.assertFlags(self.body("Title\n=====\n"), "`#` heading")
+        self.assertClean(self.body("Sub head\n--------\n\n[x](a.md#sub-head)\n"))
+        self.assertFlags(self.body("Sub head\n--------\n\n[x](a.md#nope)\n"), "no heading")
+        self.assertClean(self.body("Para\n\n---\n\nText\n\n[x](a.md)\n"))
+        self.assertClean(self.body("- item\n---\n"))
+
+    def test_long_lines(self):
+        self.assertFlags(self.body("a" * 10001 + "\n"), "over 10000 characters")
+        self.assertClean(self.body("## " + "# " * 2000 + "\n"))
+
+    def test_order_cap(self):
+        self.assertClean(self.body("x\n", order="1000000000"))
+        for bad in ("1000000001", "9" * 13, "-1000000001", "1." + "0" * 20):
+            self.assertFlags(self.body("x\n", order=bad), "`order` must be")
+
+    def test_overview_remote_image_message(self):
+        self.write("index.md", page("![a](https://example.org/x.png)\n", title="O"))
+        errors = self.errors()
+        self.assertFlags(errors, "remote image")
+        self.assertFalse(any("None" in e for e in errors), errors)
+
+    def test_symlinked_reference_root_and_ancestors(self):
+        repo = os.path.join(self.tmp, "repo")
+        real = os.path.join(self.tmp, "realdocs")
+        shutil.copytree(self.ref, os.path.join(real, "reference"))
+        os.makedirs(repo)
+        os.symlink(real, os.path.join(repo, "docs"))
+        saved = (docs.ROOT, docs.CUSTOM_ROOT)
+        self.addCleanup(lambda: (setattr(docs, "ROOT", saved[0]), setattr(docs, "CUSTOM_ROOT", saved[1])))
+        docs.ROOT, docs.CUSTOM_ROOT = repo, False
+        docs.REF = os.path.join(repo, "docs", "reference")
+        self.assertFlags(self.errors(), "symbolic link")
+        docs.CUSTOM_ROOT = True  # --root given: the caller chose the path
+        self.assertClean(self.errors())
+
+
+class BuildAndGit(DocsCase):
+    def make_repo(self, tag):
+        repo = os.path.join(self.tmp, "repo")
+        os.makedirs(repo)
+        with open(os.path.join(repo, "CMakeLists.txt"), "w") as f:
+            f.write("project(atlas-framework VERSION 1.2.3)\n")
+        env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+               "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+               "GIT_COMMITTER_EMAIL": "t@t", "PATH": os.environ["PATH"]}
+        for args in [["init", "-q"], ["add", "."], ["commit", "-q", "-m", "x"]] + ([["tag", tag]] if tag else []):
+            subprocess.run(["git", "-C", repo, *args], check=True, env=env, capture_output=True)
+        saved = docs.ROOT
+        self.addCleanup(setattr, docs, "ROOT", saved)
+        docs.ROOT = repo
+
+    def build(self, out):
+        overview, libraries, errors = docs.check()
+        self.assertClean(errors)
+        docs.build(out, overview, libraries)
+
+    def released(self, tag):
+        self.make_repo(tag)
+        out = os.path.join(self.tmp, "out")
+        self.build(out)
+        with open(os.path.join(out, "index.json"), encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertEqual(len(data["commit"]), 40)
+        return data["released"]
+
+    def test_released_with_and_without_the_tag(self):
+        self.assertTrue(self.released("v1.2.3"))
+
+    def test_not_released_without_the_tag(self):
+        self.assertFalse(self.released(None))
+
+    def test_not_released_with_another_tag(self):
+        self.assertFalse(self.released("v9.9.9"))
+
+    def test_git_failure_stops_the_build(self):
+        docs.ROOT = os.path.join(self.tmp, "norepo")
+        os.makedirs(docs.ROOT)
+        with open(os.path.join(docs.ROOT, "CMakeLists.txt"), "w") as f:
+            f.write("project(atlas-framework VERSION 1.2.3)\n")
+        self.addCleanup(setattr, docs, "ROOT", ROOT_AT_START)
+        overview, libraries, errors = docs.check()
+        with self.assertRaises(SystemExit) as cm:
+            docs.build(os.path.join(self.tmp, "out"), overview, libraries)
+        self.assertIn("git", str(cm.exception))
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "out")))
+
+    def test_out_dir_states(self):
+        self.make_repo(None)
+        empty = os.path.join(self.tmp, "empty")
+        os.makedirs(empty)
+        self.build(empty)
+        self.assertTrue(os.path.isfile(os.path.join(empty, "index.json")))
+        full = os.path.join(self.tmp, "full")
+        os.makedirs(full)
+        with open(os.path.join(full, "keep"), "w") as f:
+            f.write("x")
+        overview, libraries, _ = docs.check()
+        with self.assertRaises(SystemExit) as cm:
+            docs.build(full, overview, libraries)
+        self.assertIn("new or empty", str(cm.exception))
+        self.assertEqual(os.listdir(full), ["keep"])
+        target = os.path.join(self.tmp, "target")
+        os.makedirs(target)
+        link = os.path.join(self.tmp, "link")
+        os.symlink(target, link)
+        with self.assertRaises(SystemExit):
+            docs.build(link, overview, libraries)
+        self.assertEqual(os.listdir(target), [])
 
 
 if __name__ == "__main__":

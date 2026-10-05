@@ -24,6 +24,7 @@ import urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REF = os.path.join(ROOT, "docs", "reference")  # `--root DIR` replaces it (the tests do)
+CUSTOM_ROOT = False  # True when REF was given with --root
 
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 KEYS = {"title", "summary", "order", "since", "section", "deprecated"}
@@ -42,23 +43,27 @@ MAX_PAGES = 500
 MAX_LIBRARIES = 50
 RESERVED = {"images", "index"}  # page and library slugs the site keeps for itself
 DEFAULT_ORDER = 1000
+MAX_ORDER = 1000000000
 FENCE = re.compile(r"^( *)(`{3,}|~{3,})(.*)$")
+MAX_LINE = 10000
 LIST_ITEM = re.compile(r"^( {0,3})([-*+]|\d{1,9}[.)])( +|$)")
 QUOTE = re.compile(r"^ {0,3}> ?")
 # Control characters, line and paragraph separators and bidi controls: never in a title.
-BAD_CHARS = re.compile("[\x00-\x1f\x7f\u2028\u2029\u202a-\u202e\u2066-\u2069]")
-# A tag, comment, declaration or processing instruction outside code: <b>,
-# </div>, <br/>, <!-- -->, <!DOCTYPE>, <?php. An autolink is not HTML.
-HTML = re.compile(r"<(/?[A-Za-z][A-Za-z0-9-]*(\s[^<>]*)?/?)>|<!|<\?")
-# A tag start whose `>` is not on the same line (the tag is split across lines).
-HTML_SPLIT = re.compile(r"<(?:/?[A-Za-z][A-Za-z0-9-]*)(?:\s[^<>\n]*)?$", re.M)
+BAD_CHARS = re.compile("[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]")
+# Any `<` that starts a tag, comment, declaration or processing instruction
+# outside code: <b>, </div>, <img/src=x>, <!-- -->, <?php. Valid autolinks are
+# blanked before this runs.
+HTML = re.compile(r"<[A-Za-z/!?]")
 AUTOLINK = re.compile(r"<([a-zA-Z][a-zA-Z0-9+.-]{1,31}:[^\s<>]*|[^\s<>@]+@[^\s<>@]+)>")
-CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.S)
+# A backslash escape is matched first, so \` neither opens nor closes a span.
+CODE_SPAN = re.compile(r"\\.|(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.S)
 TITLE = r"(?:\"[^\"]*\"|'[^']*'|\([^)]*\))"
 LINK = re.compile(r"(!?)\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\s*<?([^)\s>]*)>?(?:\s+" + TITLE + r")?\s*\)")
-REF_DEF = re.compile(r"^ {0,3}\[([^\]^][^\]]*)\]:[ \t]*<?([^\s>]*)>?", re.M)
+REF_DEF = re.compile(r"^ *(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)?\[([^\]^][^\]]*)\]:[ \t]*<?([^\s>]*)>?", re.M)
 UNPARSED = re.compile(r"\]\(|!\[")
-HEADING = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
+HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?$")
+SETEXT_H1 = re.compile(r"^ {0,3}=+[ \t]*$")
+SETEXT_H2 = re.compile(r"^ {0,3}-{2,}[ \t]*$")
 SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 SVG_HREF = re.compile(r"(?:xlink:)?href\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))", re.I)
@@ -104,11 +109,15 @@ def read_page(page, errors):
         if os.path.getsize(page.path) > PAGE_BYTES:
             fail(errors, page, 0, f"over {PAGE_BYTES // 1024} KiB: split the page")
             return
-        with open(page.path, encoding="utf-8") as f:
-            lines = f.read().split("\n")
+        with open(page.path, encoding="utf-8", newline="") as f:  # newline="": see any bare CR
+            text = f.read()
     except (OSError, UnicodeDecodeError) as e:
         fail(errors, page, 0, f"cannot read: {e}")
         return
+    if re.search(r"\r(?!\n)", text):
+        fail(errors, page, 0, "a bare CR (carriage return without a line feed): use LF or CRLF line ends")
+        return
+    lines = text.replace("\r\n", "\n").split("\n")
     if not lines or lines[0].strip() != "---":
         fail(errors, page, 1, "no frontmatter (the file must start with ---)")
         return
@@ -145,15 +154,14 @@ def read_page(page, errors):
         value = page.meta.get(key, "")
         if BAD_CHARS.search(value):
             fail(errors, page, 0, f"`{key}` has a control, line-separator or bidi character")
-        plain = without_code(value)
-        if HTML.search(plain) or HTML_SPLIT.search(plain):
+        if HTML.search(AUTOLINK.sub("", without_code(value))):
             fail(errors, page, 0, f"`{key}` has raw HTML (put it in backticks)")
     if "order" in page.meta:
         raw = page.meta["order"]
-        if re.fullmatch(r"-?\d+(\.\d+)?", raw, re.A):
+        if re.fullmatch(r"-?\d{1,12}(\.\d{1,9})?", raw, re.A) and abs(float(raw)) <= MAX_ORDER:
             page.meta["order"] = float(raw) if "." in raw else int(raw)
         else:
-            fail(errors, page, 0, "`order` must be a number")
+            fail(errors, page, 0, f"`order` must be a number between -{MAX_ORDER} and {MAX_ORDER}")
             del page.meta["order"]
     if "since" in page.meta and not re.fullmatch(r"\d+\.\d+\.\d+", page.meta["since"], re.A):
         fail(errors, page, 0, "`since` must be a version like 1.4.0")
@@ -164,19 +172,22 @@ def github_slug(text):
     """The anchor GitHub gives a heading: lowercase, punctuation dropped,
     spaces to hyphens. Markup is removed first, as the rendered text has none."""
     text = LINK.sub(lambda m: m.group(2), text)
-    text = CODE_SPAN.sub(lambda m: m.group(2), text)
+    text = CODE_SPAN.sub(lambda m: m.group(2) if m.group(1) else m.group(0), text)
     text = re.sub(r"[*~]", "", text).strip().lower()
     text = re.sub(r"[^\w\- ]", "", text)
     return text.replace(" ", "-")
 
 
-def strip_quotes(line):
-    """The line without its blockquote markers (nested ones too)."""
-    while True:
+def split_quotes(line, limit=None):
+    """(depth, rest): the blockquote markers removed (at most `limit`)."""
+    depth = 0
+    while limit is None or depth < limit:
         m = QUOTE.match(line)
         if not m:
-            return line
+            break
         line = line[m.end():]
+        depth += 1
+    return depth, line
 
 
 def blank(text):
@@ -185,7 +196,7 @@ def blank(text):
 
 
 def without_code(text):
-    return CODE_SPAN.sub(lambda m: blank(m.group(0)), text)
+    return CODE_SPAN.sub(lambda m: blank(m.group(0)) if m.group(1) else m.group(0), text)
 
 
 def scan_body(page, errors):
@@ -193,32 +204,58 @@ def scan_body(page, errors):
     as (first line number, text with newlines)."""
     paragraphs = []
     para = []
-    fence = None  # (marker, indent)
+    para_is_item = False
+    fence = None  # (marker, indent, quote depth, inside a list)
     seen = {}
     prev_blank = True
     in_list = False
 
     def flush():
+        nonlocal para_is_item
         if para:
             paragraphs.append((para[0][0], "\n".join(t for _, t in para)))
             para.clear()
+        para_is_item = False
+
+    def add_anchor(text):
+        base = github_slug(text)
+        n = seen.get(base, 0)
+        candidate = base
+        while candidate in page.anchors:  # GitHub: keep counting until the name is free
+            n += 1
+            candidate = f"{base}-{n}"
+        seen[base] = n
+        page.anchors.add(candidate)
 
     for number, raw in page.body:
-        line = strip_quotes(raw.expandtabs(4))
-        m = FENCE.match(line)
-        if fence:
-            if m and m.group(2)[0] == fence[0][0] and len(m.group(2)) >= len(fence[0]) \
-                    and not m.group(3).strip() and len(m.group(1)) - fence[1] <= 3:
-                fence = None
-                prev_blank = True
+        if len(raw) > MAX_LINE:
+            fail(errors, page, number, f"line over {MAX_LINE} characters")
             continue
+        raw = raw.expandtabs(4)
+        depth, _ = split_quotes(raw)
+        if fence:
+            marker, f_indent, f_depth, f_list = fence
+            _, content = split_quotes(raw, f_depth)
+            ended = depth < f_depth or (f_list and content.strip() and len(content) - len(content.lstrip(" ")) < f_indent)
+            if ended:  # the quote or list item that held the fence is over
+                fence = None
+                fail(errors, page, 0, "a code fence is never closed")
+            else:
+                m = FENCE.match(content)
+                if m and m.group(2)[0] == marker[0] and len(m.group(2)) >= len(marker) \
+                        and not m.group(3).strip() and len(m.group(1)) - f_indent <= 3:
+                    fence = None
+                    prev_blank = True
+                continue
+        line = split_quotes(raw)[1]
+        m = FENCE.match(line)
         indent = len(line) - len(line.lstrip(" "))
         item = LIST_ITEM.match(line)
         if not m and item:  # a fence can open on a list item's own line
             m = FENCE.match(" " * item.end() + line[item.end():])
         if m and (len(m.group(1)) <= 3 or in_list or item) and not (m.group(2)[0] == "`" and "`" in m.group(3)):
             flush()
-            fence = (m.group(2), len(m.group(1)))
+            fence = (m.group(2), len(m.group(1)), depth, bool(in_list or item))
             if not m.group(3).strip():
                 fail(errors, page, number, "code fence without a language (```qml, ```rust, ```sh, ```text ...)")
             if item:
@@ -232,7 +269,17 @@ def scan_body(page, errors):
             flush()
             fail(errors, page, number, "indented code block: use a fence with a language")
             continue
-        h = HEADING.match(line)
+        if para and not prev_blank and not para_is_item:
+            if SETEXT_H1.match(line):
+                fail(errors, page, number, "`#` heading: the title comes from frontmatter, start at ##")
+                add_anchor(" ".join(t.strip() for _, t in para))
+                flush()
+                continue
+            if SETEXT_H2.match(line):
+                add_anchor(" ".join(t.strip() for _, t in para))
+                flush()
+                continue
+        h = HEADING.match(line.rstrip())
         if item:
             in_list = True
         elif indent <= 1 and (prev_blank or h):
@@ -242,14 +289,17 @@ def scan_body(page, errors):
             flush()
             if len(h.group(1)) == 1:
                 fail(errors, page, number, "`#` heading: the title comes from frontmatter, start at ##")
-            base = github_slug(h.group(2))
-            n = seen.get(base, 0)
-            candidate = base
-            while candidate in page.anchors:  # GitHub: keep counting until the name is free
-                n += 1
-                candidate = f"{base}-{n}"
-            seen[base] = n
-            page.anchors.add(candidate)
+            add_anchor(h.group(2))
+            para.append((number, line))
+            flush()
+            continue
+        if item or "|" in line:  # a list item or a table row is its own block
+            flush()
+            para_is_item = bool(item)
+            para.append((number, line))
+            if "|" in line and not item:
+                flush()
+            continue
         para.append((number, line))
     flush()
     if fence:
@@ -260,7 +310,7 @@ def scan_body(page, errors):
         return []
     for start, text in paragraphs:
         cleaned = AUTOLINK.sub(lambda m: blank(m.group(0)), without_code(text))
-        found = HTML.search(cleaned) or HTML_SPLIT.search(cleaned)
+        found = HTML.search(cleaned)
         if found:
             fail(errors, page, start + cleaned.count("\n", 0, found.start()),
                  "raw HTML (the site removes it; put it in backticks or use Markdown)")
@@ -279,7 +329,7 @@ def scan_links(text, offset, found, unparsed):
 
 
 def check_target(page, number, target, image, pages_by_path, images, errors):
-    library_dir = page.rel.split("/")[0] if "/" in page.rel else None
+    library_dir = page.rel.split("/")[0] if "/" in page.rel else "<library>"
     if SCHEME.match(target):
         if target.startswith("http://"):
             fail(errors, page, number, f"plain http link: {target} (use https)")
@@ -346,6 +396,36 @@ def check_links(page, paragraphs, pages_by_path, images, errors):
             fail(errors, page, line_of(offset), "link the checker can't parse (spaces or brackets in the address?): write it plainly")
 
 
+def check_svg(data, errors, name):
+    """An SVG is an image, not a program: no script, no external reference,
+    no DTD, no animation, no CSS that loads anything."""
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff") or b"\0" in data:
+        errors.append(f"{name}: an SVG must be UTF-8 (this one looks like UTF-16 or has NUL bytes)")
+        return
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        errors.append(f"{name}: an SVG must be valid UTF-8")
+        return
+    low = text.lower()
+    if "<script" in low or "<foreignobject" in low or re.search(r"[\s\"'/]on\w+\s*=", low):
+        errors.append(f"{name}: an SVG must not hold scripts, event handlers or foreignObject")
+    if "<!doctype" in low or "<!entity" in low:
+        errors.append(f"{name}: an SVG must not have a DOCTYPE or entities")
+    if re.search(r"<\s*/?\s*[a-z_][\w.-]*:", low):
+        errors.append(f"{name}: an SVG must not use prefixed element names (<x:script>)")
+    if re.search(r"<\s*(set\b|animate)", low):
+        errors.append(f"{name}: an SVG must not use <set> or <animate*>")
+    styles = [m.group(1) for m in re.finditer(r"<style\b[^>]*>(.*?)</style\s*>", low, re.S)]
+    styles += [m.group(1) or m.group(2) for m in re.finditer(r"\bstyle\s*=\s*(?:\"([^\"]*)\"|'([^']*)')", low)]
+    if "@import" in low or any("url(" in st or "\\" in st for st in styles):
+        errors.append(f"{name}: an SVG's CSS must not use url(), @import or escapes")
+    for h in SVG_HREF.finditer(text):
+        if not next(g for g in h.groups() if g is not None).strip().startswith("#"):
+            errors.append(f"{name}: an SVG may only link to #anchors inside itself")
+            break
+
+
 def check_image(path, errors, name):
     """The file really is what its extension says, and an SVG runs nothing."""
     try:
@@ -364,14 +444,7 @@ def check_image(path, errors, name):
     elif ext == ".webp" and not (data[:4] == b"RIFF" and data[8:12] == b"WEBP"):
         errors.append(f"{name}: not a WebP file")
     elif ext == ".svg":
-        text = data.decode("utf-8", "replace")
-        low = text.lower()
-        if "<script" in low or "<foreignobject" in low or re.search(r"[\s\"'/]on\w+\s*=", low):
-            errors.append(f"{name}: an SVG must not hold scripts, event handlers or foreignObject")
-        for h in SVG_HREF.finditer(text):
-            if not next(g for g in h.groups() if g is not None).strip().startswith("#"):
-                errors.append(f"{name}: an SVG may only link to #anchors inside itself")
-                break
+        check_svg(data, errors, name)
     return size
 
 
@@ -382,6 +455,13 @@ def collect(errors):
         errors.append("docs/reference does not exist")
         return None, []
     real_ref = os.path.realpath(REF)
+    if not CUSTOM_ROOT:  # REF and every folder between it and the repo root
+        here = REF
+        while here != ROOT and here != os.path.dirname(here):
+            if os.path.islink(here):
+                errors.append(f"{os.path.relpath(here, ROOT)}: symbolic links are not allowed")
+                return None, []
+            here = os.path.dirname(here)
 
     def safe(path, label):
         if os.path.islink(path):
@@ -466,7 +546,14 @@ def check():
 
 
 def git(*args):
-    return subprocess.run(["git", "-C", ROOT, *args], capture_output=True, text=True, check=False).stdout.strip()
+    """Git's output; any failure stops the build."""
+    try:
+        done = subprocess.run(["git", "-C", ROOT, *args], capture_output=True, text=True, check=False, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        sys.exit(f"docs: git {' '.join(args)} failed: {e}")
+    if done.returncode != 0:
+        sys.exit(f"docs: git {' '.join(args)} failed: {done.stderr.strip()}")
+    return done.stdout.strip()
 
 
 def project_version():
@@ -505,6 +592,8 @@ def build(out, overview, libraries):
             sys.exit(f"docs: {out} must be a new or empty directory")
     version = project_version()
     commit = git("rev-parse", "HEAD")
+    if not re.fullmatch(r"[0-9a-f]{40,64}", commit):
+        sys.exit(f"docs: git gave no commit id ({commit!r})")
     released = git("tag", "--points-at", "HEAD", "--list", f"v{version}") == f"v{version}"
     index = {
         "version": version,
@@ -537,14 +626,12 @@ def build(out, overview, libraries):
                 for img in lib.images:
                     shutil.copyfile(img, os.path.join(tmp, lib.name, "images", os.path.basename(img)))
         index["libraries"].sort(key=sort_key)
-        data = json.dumps(index, indent=1, ensure_ascii=False) + "\n"
+        data = json.dumps(index, indent=1, ensure_ascii=False, allow_nan=False) + "\n"
         if len(data.encode("utf-8")) > INDEX_BYTES:
             sys.exit(f"docs: index.json is over {INDEX_BYTES // 1024} KiB, which the site refuses")
         with open(os.path.join(tmp, "index.json"), "w", encoding="utf-8") as f:
             f.write(data)
         os.chmod(tmp, 0o755)
-        if os.path.isdir(out):
-            os.rmdir(out)  # empty, checked above
         os.rename(tmp, out)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -554,13 +641,14 @@ def build(out, overview, libraries):
 
 
 def main(argv):
-    global REF
+    global REF, CUSTOM_ROOT
     argv = list(argv)
     if "--root" in argv:  # the reference folder to check (the tests use it)
         i = argv.index("--root")
         if i + 1 >= len(argv):
             sys.exit(__doc__.strip().split("\n\n")[1])
         REF = os.path.abspath(argv[i + 1])
+        CUSTOM_ROOT = True
         del argv[i:i + 2]
     if len(argv) < 2 or argv[1] not in ("check", "build") or (argv[1] == "build") != (len(argv) == 3):
         sys.exit(__doc__.strip().split("\n\n")[1])
