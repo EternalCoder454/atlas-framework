@@ -18,14 +18,19 @@ Item {
         opacity: 0.6
     }
 
-    ColumnLayout {
+    // Two columns: four states stacked are taller than the test window.
+    GridLayout {
         id: layout
         anchors.centerIn: parent
-        spacing: Kirigami.Units.largeSpacing
+        columns: 2
+        flow: GridLayout.TopToBottom
+        rows: 4
+        rowSpacing: Kirigami.Units.largeSpacing
+        columnSpacing: Kirigami.Units.gridUnit
 
         Caption { text: "Symbol, title, text, action" }
         AtlasEmptyState {
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 22
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 18
             symbol: Symbols.FolderOpen
             title: qsTr("No files")
             text: qsTr("Files you download will show up here.")
@@ -34,19 +39,19 @@ Item {
         }
         Caption { text: "Without action" }
         AtlasEmptyState {
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 22
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 18
             iconName: "edit-find"
             title: qsTr("No results")
             text: qsTr("Try a different search.")
         }
         Caption { text: "Title only" }
         AtlasEmptyState {
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 22
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 18
             title: qsTr("Nothing here")
         }
         Caption { text: "Long text" }
         AtlasEmptyState {
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 22
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 18
             symbol: Symbols.Error
             title: "A very long title that has to wrap onto a second line"
             text: "A long explanation that goes on for a while so that it wraps over several lines and shows how the block stays centred."
