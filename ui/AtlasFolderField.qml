@@ -28,6 +28,10 @@ Item {
     // The path as a file URL; empty when `path` is empty or not absolute.
     readonly property url url: internals.toUrl(control.path)
     property string placeholderText
+    // Checks the typed path (any QValidator, such as AtlasPathValidator), and
+    // the message the field shows for a path it does not accept.
+    property alias validator: field.validator
+    property alias invalidText: field.invalidText
     // False: the path cannot be typed, only chosen.
     property bool editable: true
     // The dialog's title; empty for the system's own.
@@ -61,6 +65,38 @@ Item {
         Qt.callLater(control._release);
     }
 
+    // The dialog (null until first use), and whether it has been seen open since
+    // Browse was pressed: a dialog that cannot open reports no Loader error, so
+    // the field looks for it shortly after open() and says so if it is not there.
+    readonly property var _dialog: dialogLoader.item
+    property bool _sawOpen: false
+    // A test sets this to a component that never shows, to see the message.
+    property Component _dialogOverride: null
+    function _openDialog(): void {
+        control._dialog.currentFolder = control.url;
+        control._dialog.open();
+        openCheck.restart();
+    }
+    Timer {
+        id: openCheck
+        interval: 1000
+        onTriggered: {
+            if (!control._sawOpen && !(control._dialog && control._dialog.visible)) {
+                internals.dialogFailed = true;
+            }
+        }
+    }
+    Connections {
+        target: control._dialog
+        function onVisibleChanged(): void {
+            if (control._dialog.visible) {
+                control._sawOpen = true;
+                // A dialog that took longer than the check is not an error.
+                internals.dialogFailed = false;
+            }
+        }
+    }
+
     QtObject {
         id: internals
 
@@ -88,6 +124,7 @@ Item {
                 return "";
             }
         }
+        property bool dialogFailed: false
         function chosen(u: url): void {
             const p = fromUrl(u);
             if (p.length > 0 && p !== control.path) {
@@ -95,9 +132,10 @@ Item {
             }
         }
         function browse(): void {
-            if (dialogLoader.item) {
-                (dialogLoader.item as FolderDialog).currentFolder = control.url;
-                (dialogLoader.item as FolderDialog).open();
+            dialogFailed = false;
+            control._sawOpen = false;
+            if (control._dialog) {
+                control._openDialog();
             } else {
                 dialogLoader.active = true;
             }
@@ -117,8 +155,11 @@ Item {
             Layout.fillWidth: true
             placeholderText: control.placeholderText
             readOnly: !control.editable
+            // Said when the dialog cannot be made; a typed or chosen path clears it.
+            errorText: internals.dialogFailed ? qsTr("The dialog could not be opened.") : ""
             Accessible.name: control.placeholderText.length > 0 ? control.placeholderText : qsTr("Folder path")
             onTextEdited: {
+                internals.dialogFailed = false;
                 control._userSet(text);
             }
         }
@@ -133,13 +174,23 @@ Item {
     Loader {
         id: dialogLoader
         active: false
-        sourceComponent: FolderDialog {
-            id: dialog
-            parentWindow: control.Window.window
-            title: control.title
-            currentFolder: control.url
-            onAccepted: internals.chosen(dialog.selectedFolder)
+        sourceComponent: control._dialogOverride ?? defaultDialog
+        Component {
+            id: defaultDialog
+            FolderDialog {
+                id: dialog
+                parentWindow: control.Window.window
+                title: control.title
+                currentFolder: control.url
+                onAccepted: internals.chosen(dialog.selectedFolder)
+            }
         }
-        onLoaded: (item as FolderDialog).open()
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                internals.dialogFailed = true;
+                active = false;
+            }
+        }
+        onLoaded: control._openDialog()
     }
 }

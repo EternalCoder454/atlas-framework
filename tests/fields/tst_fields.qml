@@ -341,4 +341,526 @@ Item {
             compare(d.valueFromText("", d.locale), d.value);
         }
     }
+
+    // ROADMAP B2, Fields and buttons.
+    Component {
+        id: buttonWithAction
+        AtlasButton {
+            text: "Go"
+            checkable: true
+        }
+    }
+    Component {
+        id: chipComp
+        AtlasChip {
+            text: "Tag"
+            checkable: true
+        }
+    }
+    Component {
+        id: splitComp
+        AtlasSplitButton {
+            text: "Save"
+            ContextMenuItem { text: "Save As" }
+        }
+    }
+    Component {
+        id: chipGroupComp
+        AtlasChipGroup {
+            width: 300
+            AtlasChip { objectName: "chipA"; text: "A" }
+            AtlasChip { objectName: "chipB"; text: "B" }
+            AtlasChip { objectName: "chipC"; text: "C" }
+        }
+    }
+    Component {
+        id: dropComp
+        AtlasDropZone {
+            width: 300
+            height: 150
+            browseText: "Browse"
+            nameFilters: ["*.png", "a?.txt"]
+        }
+    }
+    Component {
+        id: searchComp
+        SearchField {
+            width: 200
+            delay: 5000
+        }
+    }
+    Component {
+        id: shortcutComp
+        AtlasShortcutField {
+            width: 200
+        }
+    }
+    Component {
+        id: segComp
+        AtlasSegmentedControl {
+            width: 240
+        }
+    }
+    Component {
+        id: comboComp
+        AtlasComboBox {
+            width: 200
+        }
+    }
+    Component {
+        id: spinComp
+        AtlasSpinBox {
+            from: 0
+            to: 999
+            editable: true
+            prefix: "$ "
+            suffix: " GB"
+        }
+    }
+    Component {
+        id: neverDialog
+        Item {
+            property url currentFile
+            property url currentFolder
+            visible: false
+            function open() {
+            }
+        }
+    }
+    Component {
+        id: briefDialog
+        Item {
+            property url currentFile
+            property url currentFolder
+            visible: false
+            function open() {
+                visible = true;
+                Qt.callLater(() => visible = false);
+            }
+        }
+    }
+    Component {
+        id: slowDialog
+        Item {
+            property url currentFile
+            property url currentFolder
+            visible: false
+            // Shows after the field's open check has given up.
+            Timer {
+                id: late
+                interval: 1500
+                onTriggered: parent.visible = true
+            }
+            function open() {
+                late.start();
+            }
+        }
+    }
+    Component {
+        id: folderFieldComp
+        AtlasFolderField {
+            width: 300
+        }
+    }
+    Component {
+        id: fileFieldComp
+        AtlasFileField {
+            width: 300
+        }
+    }
+    Component {
+        id: pickerComp
+        AtlasFontPicker {
+            width: 300
+        }
+    }
+    ListModel {
+        id: bigModel
+    }
+    ListModel {
+        id: segModel
+        ListElement { text: "One" }
+        ListElement { text: "Two" }
+    }
+
+    TestCase {
+        name: "FieldsAndButtons"
+        when: windowShown
+
+        // Every item under `item`, itself first.
+        function walk(item) {
+            const out = [item];
+            for (let i = 0; i < item.children.length; ++i) {
+                out.push(...walk(item.children[i]));
+            }
+            return out;
+        }
+
+        // The first item inside `parent` with this objectName.
+        function part(parent, name) {
+            const item = findChild(parent, name);
+            verify(item !== null, name + " exists");
+            return item;
+        }
+
+        function test_return_clicks_through_click_not_clicked() {
+            const b = createTemporaryObject(buttonWithAction, root);
+            b.forceActiveFocus();
+            verify(b.activeFocus);
+            keyClick(Qt.Key_Return);
+            verify(b.checked, "Return toggles a checkable button");
+            const c = createTemporaryObject(chipComp, root);
+            c.forceActiveFocus();
+            keyClick(Qt.Key_Return);
+            verify(c.checked, "Return toggles a checkable chip");
+            keyClick(Qt.Key_Enter);
+            verify(!c.checked);
+        }
+
+        function test_split_button_return_presses_the_focused_part() {
+            const b = createTemporaryObject(splitComp, root);
+            const spy = createTemporaryObject(signalSpyComp, root, {target: b, signalName: "clicked"});
+            const main = part(b, "mainPart");
+            main.forceActiveFocus();
+            verify(main.activeFocus);
+            keyClick(Qt.Key_Return);
+            compare(spy.count, 1);
+        }
+
+        Component {
+            id: signalSpyComp
+            SignalSpy {}
+        }
+
+        function test_chip_group_tab_stop_moves_when_the_chip_hides() {
+            const g = createTemporaryObject(chipGroupComp, root);
+            const a = part(g, "chipA");
+            const b = part(g, "chipB");
+            const c = part(g, "chipC");
+            tryCompare(a, "focusPolicy", Qt.StrongFocus);
+            a.visible = false;
+            tryCompare(b, "focusPolicy", Qt.StrongFocus);
+            compare(a.focusPolicy, Qt.ClickFocus);
+            b.enabled = false;
+            tryCompare(c, "focusPolicy", Qt.StrongFocus);
+        }
+
+        function test_chip_moved_out_of_its_group_is_a_tab_stop_again() {
+            const g = createTemporaryObject(chipGroupComp, root);
+            const b = part(g, "chipB");
+            tryCompare(b, "focusPolicy", Qt.ClickFocus);
+            compare(b._tabOwner, g);
+            b.parent = root;
+            compare(b._tabOwner, null);
+            compare(b.focusPolicy, Qt.StrongFocus);
+            // The group no longer hears from it.
+            failOnWarning(new RegExp(".*"));
+            b.visible = false;
+            b.destroy();
+            wait(0);
+        }
+
+        function test_chip_group_destroyed_with_its_chips_warns_nothing() {
+            failOnWarning(new RegExp(".*"));
+            const g = chipGroupComp.createObject(root);
+            tryCompare(part(g, "chipA"), "focusPolicy", Qt.StrongFocus);
+            part(g, "chipB").visible = false;
+            g.destroy();
+            wait(50);
+        }
+
+        function test_autocomplete_mark_survives_a_length_changing_lowercase() {
+            const f = createTemporaryObject(autocomplete, root);
+            f.text = "stan";
+            compare(f._mark("\u0130stanbul"), "\u0130<b>stan</b>bul");
+            compare(f._mark("Berlin & Bern"), "Berlin &amp; Bern");
+        }
+
+        function test_autocomplete_clear_closes_the_list() {
+            const f = createTemporaryObject(autocomplete, root);
+            f.forceActiveFocus();
+            tryVerify(() => f._field.activeFocus);
+            keyClick("b");
+            tryVerify(() => f.popupOpen);
+            f._field.clear();
+            verify(!f.popupOpen, "clearing the text closes the list");
+        }
+
+        function test_drop_zone_glob_matches_a_newline_and_browse_emits_once() {
+            const z = createTemporaryObject(dropComp, root);
+            verify(z._accepts("file:///tmp/a%0Ab.png"), "* matches a newline");
+            verify(z._accepts("file:///tmp/a%0A.txt"), "? matches a newline");
+            verify(!z._accepts("file:///tmp/a.jpg"));
+            const spy = createTemporaryObject(signalSpyComp, root, {target: z, signalName: "browseRequested"});
+            const button = part(z, "browseButton");
+            mouseClick(button, button.width / 2, button.height / 2);
+            compare(spy.count, 1, "one browseRequested per click");
+        }
+
+        function test_search_field_query_follows_return_and_clear_is_off_when_read_only() {
+            const f = createTemporaryObject(searchComp, root);
+            f.forceActiveFocus();
+            keyClick("a");
+            compare(f.query, "");
+            keyClick(Qt.Key_Return);
+            compare(f.query, "a");
+            f.readOnly = true;
+            keyClick(Qt.Key_Escape);
+            compare(f.text, "a", "Escape does not clear a read-only field");
+        }
+
+        function test_shortcut_field_records_ctrl_delete_and_ctrl_escape() {
+            const f = createTemporaryObject(shortcutComp, root);
+            f.forceActiveFocus();
+            f.startRecording();
+            keyClick(Qt.Key_Delete, Qt.ControlModifier);
+            compare(f.sequence, "Ctrl+Del");
+            f.startRecording();
+            keyClick(Qt.Key_Escape, Qt.ControlModifier);
+            compare(f.sequence, "Ctrl+Esc");
+            f.startRecording();
+            keyClick(Qt.Key_Delete);
+            compare(f.sequence, "", "a bare Delete still clears");
+        }
+
+        function test_segmented_control_takes_a_list_model_and_a_number() {
+            const s = createTemporaryObject(segComp, root, {model: segModel});
+            compare(s.count, 2);
+            compare(s._text(1), "Two");
+            s.model = 3;
+            compare(s.count, 3);
+            const t = createTemporaryObject(segComp, root, {model: ["A", "B"]});
+            mouseClick(t, t.width * 0.75, t.height / 2);
+            verify(t.activeFocus, "a click gives the control the focus");
+        }
+
+        function test_combo_box_null_entry_and_missing_role_do_not_throw() {
+            const c = createTemporaryObject(comboComp, root, {model: [null, {name: "x"}, undefined], textRole: "name", filterable: true});
+            failOnWarning(new RegExp(".*"));
+            c.popup.open();
+            tryVerify(() => c.popup.visible);
+            compare(c.count, 3);
+            compare(c.textAt(0), "");
+            const list = part(c.popup.contentItem, "choices");
+            compare(list.count, 3, "no filter: every row, including the null ones, is listed");
+            part(c.popup.contentItem, "filterField").text = "x";
+            tryCompare(list, "count", 1);
+            c.popup.close();
+        }
+
+        function test_combo_box_rows_survive_switching_filterable() {
+            const c = createTemporaryObject(comboComp, root, {model: ["One", "Two", "Three"]});
+            c.popup.open();
+            tryVerify(() => c.popup.visible);
+            tryCompare(part(c.popup.contentItem, "choices"), "count", 3);
+            c.filterable = true;
+            tryCompare(part(c.popup.contentItem, "choices"), "count", 3);
+            c.filterable = false;
+            tryCompare(part(c.popup.contentItem, "choices"), "count", 3);
+            c.popup.close();
+            // And opened again in each mode.
+            c.popup.open();
+            tryVerify(() => c.popup.visible);
+            tryCompare(part(c.popup.contentItem, "choices"), "count", 3);
+            c.popup.close();
+        }
+
+        function test_color_field_duplicate_swatch() {
+            // A translucent colour that is in the palette adds no second swatch.
+            const f = createTemporaryObject(colorField, root, {showAlpha: true, color: Qt.rgba(218 / 255, 68 / 255, 83 / 255, 0.5)});
+            f.forceActiveFocus();
+            mouseClick(f);
+            const swatches = [];
+            for (const w of walk(f.Window.window.contentItem)) {
+                if (w.hasOwnProperty("modelData") && typeof w.modelData === "string" && w.modelData.charAt(0) === "#" && w.hasOwnProperty("current")) {
+                    swatches.push(w.modelData);
+                }
+            }
+            compare(swatches.filter(h => h === "#da4453").length, 1);
+        }
+
+        function test_popup_close_with_focus_moving_does_not_throw() {
+            const f = createTemporaryObject(colorField, root, {x: 10, y: 10});
+            const other = createTemporaryObject(emailField, root, {x: 10, y: 200});
+            f.forceActiveFocus();
+            failOnWarning(new RegExp(".*"));
+            mouseClick(f);
+            tryVerify(() => f.Window.window.activeFocusItem !== f, 2000);
+            keyClick(Qt.Key_Escape);
+            tryVerify(() => f.activeFocus, 2000, "focus comes back to the field when it was in the popup");
+            // Open again and click elsewhere: focus stays where the user put it.
+            mouseClick(f);
+            tryVerify(() => f.Window.window.activeFocusItem !== f, 2000);
+            mouseClick(other);
+            tryVerify(() => other.activeFocus, 2000);
+            verify(!f.activeFocus);
+        }
+
+        function _browseButton(f) {
+            for (const w of walk(f)) {
+                if (w.hasOwnProperty("symbol") && w.hasOwnProperty("clicked") && w.text === "Browse\u2026") {
+                    return w;
+                }
+            }
+            return null;
+        }
+
+        function _textField(f) {
+            for (const w of walk(f)) {
+                if (w.hasOwnProperty("invalidText") && w.hasOwnProperty("hasError")) {
+                    return w;
+                }
+            }
+            return null;
+        }
+
+        function test_file_field_symbols_and_validator() {
+            verify(Symbols.FileOpen !== undefined && Symbols.Save !== undefined);
+            const f = createTemporaryObject(fileFieldComp, root);
+            const b = _browseButton(f);
+            verify(b !== null, "the Browse button exists");
+            compare(b.symbol, Symbols.FileOpen);
+            f.saveMode = true;
+            compare(b.symbol, Symbols.Save);
+            f.validator = Qt.createQmlObject('import Atlas.Ui; AtlasUrlValidator {}', root);
+            f.invalidText = "Not a path";
+            compare(f.invalidText, "Not a path");
+            const tf = _textField(f);
+            verify(tf !== null);
+            verify(!tf.hasError, "nothing shows before the user has typed");
+            tf.forceActiveFocus();
+            // Not "x": the fixup makes a bare host https://x, which is valid.
+            // Not "http:" either: only https is allowed, so the colon is refused.
+            for (const k of "https:")
+                keyClick(k);
+            compare(tf.text, "https:");
+            keyClick(Qt.Key_Return);
+            tryVerify(() => tf.hasError, 2000, "invalidText shows for an invalid path");
+        }
+
+        function test_file_and_folder_field_say_a_dialog_that_does_not_open() {
+            for (const comp of [fileFieldComp, folderFieldComp]) {
+                const f = createTemporaryObject(comp, root, {_dialogOverride: neverDialog});
+                const tf = _textField(f);
+                verify(tf !== null);
+                verify(tf.errorText === "");
+                _browseButton(f).clicked();
+                tryVerify(() => tf.errorText === "The dialog could not be opened.", 3000);
+                // A typed path clears it.
+                tf.forceActiveFocus();
+                keyClick("a");
+                tryCompare(tf, "errorText", "");
+            }
+        }
+
+        function test_file_and_folder_field_dialog_that_opens_and_closes_is_no_error() {
+            for (const comp of [fileFieldComp, folderFieldComp]) {
+                const f = createTemporaryObject(comp, root, {_dialogOverride: briefDialog});
+                const tf = _textField(f);
+                _browseButton(f).clicked();
+                wait(1300);
+                compare(tf.errorText, "", "a dialog that was shown and cancelled is not an error");
+            }
+        }
+
+        function test_file_and_folder_field_dialog_that_opens_late_clears_the_error() {
+            for (const comp of [fileFieldComp, folderFieldComp]) {
+                const f = createTemporaryObject(comp, root, {_dialogOverride: slowDialog});
+                const tf = _textField(f);
+                _browseButton(f).clicked();
+                tryVerify(() => tf.errorText === "The dialog could not be opened.", 3000);
+                tryCompare(tf, "errorText", "", 3000, "the error goes once the dialog shows");
+            }
+        }
+
+        function test_spin_box_validator_refuses_letters() {
+            const s = createTemporaryObject(spinComp, root);
+            s.contentItem.forceActiveFocus();
+            s.contentItem.selectAll();
+            keyClick("x");
+            verify(s.contentItem.text.indexOf("x") < 0, "a letter is refused");
+        }
+
+        function test_spin_box_number_typed_over_a_selection_commits_with_a_prefix() {
+            const s = createTemporaryObject(spinComp, root, {suffix: ""});
+            s.contentItem.forceActiveFocus();
+            s.contentItem.selectAll();
+            keyClick("4");
+            keyClick("2");
+            compare(s.contentItem.text, "42", "digits typed over the selection are accepted without the prefix");
+            keyClick(Qt.Key_Return);
+            tryCompare(s, "value", 42);
+        }
+
+        function test_spin_box_number_typed_over_a_selection_commits_with_a_suffix() {
+            const s = createTemporaryObject(spinComp, root, {prefix: ""});
+            s.contentItem.forceActiveFocus();
+            s.contentItem.selectAll();
+            keyClick("7");
+            keyClick(Qt.Key_Return);
+            tryCompare(s, "value", 7);
+        }
+
+        function test_spin_box_pattern_takes_prefix_suffix_and_arabic_numbers() {
+            const s = createTemporaryObject(spinComp, root);
+            verify(s._pattern.test("$ 12 GB"), "prefix and suffix");
+            verify(s._pattern.test("12"), "neither");
+            verify(s._pattern.test("$ 12"), "prefix only");
+            verify(s._pattern.test("12 GB"), "suffix only");
+            verify(!s._pattern.test("1x2"), "a letter");
+            // Arabic digits, decimal and group separators, and a direction mark
+            // round the sign. (No ar_EG commit test: whether Number.fromLocaleString
+            // reads these depends on the Qt build's locale data, so only the
+            // pattern is checked here.)
+            verify(s._pattern.test("\u200f-\u0661\u066c\u0662\u0663\u0664\u066b\u0665"));
+        }
+
+        function test_combo_box_filters_ten_thousand_rows() {
+            const rows = [];
+            for (let i = 0; i < 10000; ++i) {
+                rows.push("Item " + i);
+            }
+            const c = createTemporaryObject(comboComp, root, {model: rows, filterable: true});
+            c.popup.open();
+            tryVerify(() => c.popup.visible);
+            const list = part(c.popup.contentItem, "choices");
+            compare(list.count, 10000);
+            verify(list.contentItem.children.length < 200, "only the visible rows are built, not 10000");
+            part(c.popup.contentItem, "filterField").text = "99";
+            const expected = rows.filter(r => r.toLowerCase().indexOf("99") >= 0).length;
+            tryCompare(list, "count", expected);
+            verify(expected > 0 && expected < 10000);
+            c.popup.close();
+        }
+
+        function test_font_picker_pixel_font_shows_no_minus_one_pt() {
+            const f = createTemporaryObject(pickerComp, root);
+            f.font.pixelSize = 14;
+            // QML reads it back in points, never -1 (pixels * 72 / 96).
+            compare(f.font.pointSize, 10.5);
+            const texts = [];
+            for (const t of walk(f)) {
+                if (typeof t.text === "string") {
+                    texts.push(t.text);
+                }
+            }
+            verify(texts.every(t => t.indexOf("-1") < 0), "no -1 anywhere: " + texts.join("|"));
+            verify(f.Accessible.description.indexOf("-1") < 0);
+        }
+
+        function test_font_picker_scan_is_shared() {
+            const a = createTemporaryObject(pickerComp, root, {fixedOnly: true});
+            // The scan runs only while the list is open.
+            mouseClick(a);
+            tryVerify(() => a._scanned > 0, 5000);
+            keyClick(Qt.Key_Escape);
+            const b = createTemporaryObject(pickerComp, root, {fixedOnly: true});
+            verify(b._scanned >= a._scanned, "a second picker starts where the first got to");
+        }
+
+        function test_color_field_label_for_alpha_999() {
+            const f = createTemporaryObject(colorField, root, {showAlpha: true, color: Qt.rgba(1, 0, 0, 0.999)});
+            compare(f._label, "#ff0000");
+        }
+    }
 }

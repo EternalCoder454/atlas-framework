@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Templates as T
+import "fontfamilies.js" as Families
 import org.kde.kirigami as Kirigami
 
 // A font chooser: a field like AtlasComboBox with the family drawn in its own face and the size.
@@ -58,6 +59,9 @@ T.AbstractButton {
 
     // The field never draws the picker's own font at the picked size: it uses
     // the application font for everything but the family name.
+    // How far the shared scan for monospace families has got (for the tests).
+    readonly property int _scanned: internals.scanned
+
     readonly property font _nameFont: Qt.font({
         family: control.font.family,
         pointSize: AtlasStyle.fontSizeBody
@@ -67,10 +71,11 @@ T.AbstractButton {
         id: internals
 
         readonly property real fieldHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(sizeMetrics.height) + AtlasStyle.spacing)
-        readonly property var all: Qt.fontFamilies()
+        // Read once for the process, and the monospace scan shared (fontfamilies.js).
+        readonly property var all: Families.all()
         // Families found to be monospace, and how far the scan has got.
-        property var fixed: []
-        property int scanned: 0
+        property var fixed: Families.fixedList()
+        property int scanned: Families.scanned()
         readonly property bool scanning: control.fixedOnly && scanned < all.length
         property string search: ""
         // The row the keyboard is on.
@@ -88,15 +93,18 @@ T.AbstractButton {
         }
         // Looks at a few families per turn of the event loop so the window stays alive.
         function scanSome(): void {
-            const end = Math.min(all.length, scanned + 40);
-            const found = fixed.slice();
-            for (let i = scanned; i < end; ++i) {
+            // Another picker may have scanned since: carry on from the shared place.
+            const from = Families.scanned();
+            const end = Math.min(all.length, from + 40);
+            const found = [];
+            for (let i = from; i < end; ++i) {
                 if (isFixed(all[i])) {
                     found.push(all[i]);
                 }
             }
-            scanned = end;
-            fixed = found;
+            Families.advance(from, end, found);
+            scanned = Families.scanned();
+            fixed = Families.fixedList();
         }
         function choose(index: int): void {
             if (index < 0 || index >= shown.length) {
@@ -124,7 +132,9 @@ T.AbstractButton {
         font.pointSize: 12
     }
     Timer {
-        interval: 0
+        // Not 0: a repeating Timer of 0 ms never fires (it runs on the
+        // animation clock), and the scan would never get past the start.
+        interval: 16
         repeat: true
         running: internals.scanning && popup.visible
         onTriggered: internals.scanSome()
@@ -147,7 +157,7 @@ T.AbstractButton {
     Accessible.role: Accessible.Button
     //: Spoken name of a font chooser that has no name of its own
     Accessible.name: qsTr("Font")
-    Accessible.description: qsTr("%1, %2 pt").arg(control.font.family).arg(Math.round(control.font.pointSize * 10) / 10)
+    Accessible.description: control.font.pointSize > 0 ? qsTr("%1, %2 pt").arg(control.font.family).arg(Math.round(control.font.pointSize * 10) / 10) : control.font.family
 
     onClicked: popup.opened ? popup.close() : popup.open()
     Keys.onReturnPressed: event => {
@@ -172,7 +182,8 @@ T.AbstractButton {
             textFormat: Text.PlainText
         }
         Text {
-            text: qsTr("%1 pt").arg(Math.round(control.font.pointSize * 10) / 10)
+            // QML gives a font set in pixels its size in points (pixels * 72 / 96).
+            text: control.font.pointSize > 0 ? qsTr("%1 pt").arg(Math.round(control.font.pointSize * 10) / 10) : ""
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody
             color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
@@ -208,12 +219,21 @@ T.AbstractButton {
             searchField.forceActiveFocus(Qt.PopupFocusReason);
         }
         property bool _hadFocus: false
+        // True when item is the root or a descendant (Item.contains takes a point).
+        function _holds(root: Item, item: Item): bool {
+            for (let i = item; i; i = i.parent) {
+                if (i === root) {
+                    return true;
+                }
+            }
+            return false;
+        }
         onAboutToHide: _hadFocus = popup.contentItem.activeFocus
         onClosed: {
             searchField.clear();
             internals.search = "";
             const item = control.Window.activeFocusItem;
-            if (popup._hadFocus && (!item || popup.contentItem.contains(item))) {
+            if (popup._hadFocus && (!item || popup._holds(popup.contentItem, item))) {
                 control.forceActiveFocus(Qt.PopupFocusReason);
             }
             popup._hadFocus = false;

@@ -35,6 +35,10 @@ FocusScope {
     property alias errorText: field.errorText
     property alias readOnly: field.readOnly
     readonly property alias _field: field
+    // The text with the part the user typed in bold (for the tests).
+    function _mark(text: string): string {
+        return internals.mark(text);
+    }
     // True while the suggestion list is open.
     readonly property bool popupOpen: popup.visible
 
@@ -135,11 +139,33 @@ FocusScope {
         // The text with the matching part in bold, as rich text.
         function mark(s: string): string {
             const n = needle();
-            const at = n.length > 0 ? s.toLowerCase().indexOf(n) : -1;
+            if (n.length === 0) {
+                return esc(s);
+            }
+            // toLowerCase can change the length (an "I" with a dot becomes two
+            // characters), so the offsets are mapped back to s.
+            const map = [];
+            let lo = "";
+            for (let i = 0; i < s.length;) {
+                const ch = String.fromCodePoint(s.codePointAt(i));
+                const l = ch.toLowerCase();
+                for (let k = 0; k < l.length; ++k) {
+                    map.push(i);
+                }
+                lo += l;
+                i += ch.length;
+            }
+            const at = lo.indexOf(n);
             if (at < 0) {
                 return esc(s);
             }
-            return esc(s.slice(0, at)) + "<b>" + esc(s.slice(at, at + n.length)) + "</b>" + esc(s.slice(at + n.length));
+            let e = at + n.length;
+            while (e < map.length && map[e] === map[e - 1]) {
+                ++e;
+            }
+            const from = map[at];
+            const to = e < map.length ? map[e] : s.length;
+            return esc(s.slice(0, from)) + "<b>" + esc(s.slice(from, to)) + "</b>" + esc(s.slice(to));
         }
         // Applies a pending (debounced) filter now, so a fast Return or Tab acts
         // on what is typed, not on the list for the text before.
@@ -180,6 +206,9 @@ FocusScope {
         function onRowsRemoved() {
             internals.stale = true;
         }
+        function onRowsMoved() {
+            internals.stale = true;
+        }
         function onDataChanged() {
             internals.stale = true;
         }
@@ -203,8 +232,19 @@ FocusScope {
             internals.forceAll = false;
             debounce.restart();
         }
+        // The clear button, or the app, emptied the field: no list for the old text.
+        onTextChanged: {
+            if (text.length === 0) {
+                debounce.stop();
+                internals.forceAll = false;
+                internals.matches = [];
+                internals.current = -1;
+                popup.close();
+            }
+        }
         onActiveFocusChanged: {
             if (!activeFocus) {
+                internals.forceAll = false;
                 debounce.stop();
                 popup.close();
             }
@@ -272,6 +312,8 @@ FocusScope {
         focus: false
         modal: false
         closePolicy: T.Popup.CloseOnPressOutsideParent
+        // Down's "show everything" ends with the list.
+        onClosed: internals.forceAll = false
 
         contentItem: ListView {
             id: list

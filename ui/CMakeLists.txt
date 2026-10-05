@@ -109,6 +109,7 @@ qt_add_qml_module(atlasui
         AtlasFolderField.qml
         AtlasAutocompleteField.qml
         AtlasFontPicker.qml
+        fontfamilies.js
         AtlasDropZone.qml
         AtlasOnboarding.qml
         AtlasPasswordStrength.qml

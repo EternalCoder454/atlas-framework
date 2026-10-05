@@ -25,7 +25,8 @@ SecondaryButton {
             control.Accessible.announce(menu.visible ? qsTr("Expanded") : qsTr("Collapsed"));
         }
     }
-    onClicked: menu.popup(control, 0, control.height + 4)
+    // The menu opens under the end the label starts from: mirrored, flush right.
+    onClicked: menu.popup(control, control.mirrored ? control.width - menu.implicitWidth : 0, control.height + 4)
 
     Kirigami.Icon {
         x: control.mirrored ? AtlasStyle.spacingSmall + 2 : parent.width - width - AtlasStyle.spacingSmall - 2

@@ -431,30 +431,42 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 
 #### Fields and buttons
 
-- [ ] High: AtlasColorField:194-200, AtlasFontPicker:189, AtlasDatePicker:183
+- [x] High: AtlasColorField:194-200, AtlasFontPicker:189, AtlasDatePicker:183
   call `Item.contains(item)` (it takes a point): a TypeError on close, and the
-  focus doesn't return to the field.
-- [ ] Return/Enter call `clicked()` not `click()` in AtlasButton, TextButton,
+  focus doesn't return to the field. Fixed: a descendant test walks the parents
+  (tst: `FieldsAndButtons` in tests/fields/tst_fields.qml).
+- [x] Return/Enter call `clicked()` not `click()` in AtlasButton, TextButton,
   AtlasChip and AtlasInstallButton: an `action` isn't triggered and a
-  checkable button doesn't toggle.
-- [ ] AtlasSplitButton: no Return/Enter on its parts, though the header says
-  so (verify).
-- [ ] Internal assignments break app bindings after the first edit: AtlasRating,
+  checkable button doesn't toggle. Fixed in AtlasButton, TextButton and
+  AtlasChip (which had no Return handler: it now has one); AtlasInstallButton
+  is left for the Store branch (w4-store), which reworks it.
+- [x] AtlasSplitButton: no Return/Enter on its parts, though the header says
+  so (verify). Fixed: each part now has Return and Enter handlers.
+- [x] Internal assignments break app bindings after the first edit: AtlasRating,
   AtlasSegmentedControl, AtlasCalendar, AtlasComboBox (filterable),
   AtlasColorField, AtlasDatePicker, AtlasFontPicker, AtlasFileField,
   AtlasFolderField; also FindBar's three toggles, AtlasSidebar's filter
   (`visible`), InfoBanner (B1 above). One rule for all.
-- [ ] AtlasChipGroup: the roving Tab stop isn't moved when its chip is hidden
+  Not a bug any more: every one of them already holds the edit with a Binding
+  (RestoreBinding) and releases it with `Qt.callLater(_release)`; the tests
+  are tests/input/tst_hold_edits.qml and tests/fields/tst_edit.qml.
+- [x] AtlasChipGroup: the roving Tab stop isn't moved when its chip is hidden
   or disabled, so the group can't be reached.
-- [ ] AtlasAutocompleteField: the clear button leaves the popup open with
+- [x] AtlasAutocompleteField: the clear button leaves the popup open with
   stale suggestions; `mark()` offsets after toLowerCase; rowsMoved; forceAll
-  stays on.
-- [ ] AtlasInstallButton: NaN progress shows "NaN%".
-- [ ] AtlasDropZone: a Browse click may emit `browseRequested` twice (verify);
-  glob `?`/`*` don't match a newline.
-- [ ] AtlasComboBox: filtering hides delegates instead of filtering the model
+  stays on. Fixed.
+- [ ] AtlasInstallButton: NaN progress shows "NaN%". Left for the Store
+  branch (w4-store), which reworks AtlasInstallButton.
+- [x] AtlasDropZone: a Browse click may emit `browseRequested` twice (verify);
+  glob `?`/`*` don't match a newline. Fixed the glob; the double Browse emit
+  is not a bug: the button accepts its own press, so the zone's tap handler
+  never sees it (a test checks one emit).
+- [x] AtlasComboBox: filtering hides delegates instead of filtering the model
   (10k rows are all built); null entries or a missing textRole throw.
-- [ ] AtlasSpinBox has no validator; SearchField's `query` lags on Return and
+  Fixed: a filterable list now takes the list of matching indexes as its
+  model, so only the visible rows are built; null entries and a missing
+  textRole are fixed too.
+- [x] AtlasSpinBox has no validator; SearchField's `query` lags on Return and
   its clear button works on a read-only field; AtlasShortcutField can't record
   Ctrl+Delete, Shift+Delete, Ctrl+Escape; AtlasSegmentedControl with a
   ListModel or number, and a click doesn't focus it; AtlasFontPicker reads the
@@ -464,6 +476,14 @@ first. Fix in batches by file; every fix gets a test that fails before it.
   AtlasSplitButton and MenuButton don't flip in RTL; AtlasSwitch's indicator in
   a wide RTL switch; AtlasRating's count text replace; AtlasFileField's
   folder symbol, silent dialog failure, no validator hook. (Low)
+  Done: SearchField, AtlasShortcutField keys, AtlasSegmentedControl,
+  AtlasFontPicker (-1 pt, families read once and the scan shared), AtlasColorField
+  (alpha 0.999, one swatch), AtlasUrlValidator ("example.com" gets https://),
+  AtlasChip and AtlasButton `maximumWidth` with elide, the RTL menu of
+  AtlasSplitButton and MenuButton, AtlasSwitch's indicator in RTL,
+  AtlasFileField and AtlasFolderField (symbol, a dialog that cannot open says
+  so, `validator` and `invalidText`), AtlasSpinBox's validator (only the number
+  between prefix and suffix). Not a bug: AtlasRating's count replace.
 
 #### Lists, tables and data
 

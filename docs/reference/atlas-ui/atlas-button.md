@@ -29,6 +29,7 @@ States share one layer for every variant: hover and press lay a grey overlay ove
 |---|---|---|---|
 | `accent` | `color` (read-only) | `AtlasStyle.accent` | The accent colour, for custom content. |
 | `busy` | `bool` | `false` | Something is in progress: shows a spinner and takes no presses. |
+| `maximumWidth` | `real` | `0` | The widest the button asks for; a longer text is elided. 0 means no limit. Since 1.5.0. |
 | `prominent` | `bool` | `false` | Same as `variant: AtlasButton.Prominent`. Ignored when `variant` is not Default. |
 | `symbol` | `int` (a `Symbols.<Name>` value, see [Symbols](symbols.md)) | `0` | A Material Symbol drawn instead of `icon.name`; 0 for none. |
 | `textTint` | `color` (read-only) | the theme's text colour | The normal text colour, for custom content. |

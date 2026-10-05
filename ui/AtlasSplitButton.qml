@@ -41,7 +41,8 @@ Item {
     implicitHeight: AtlasStyle.controlHeight
 
     function openMenu() {
-        menu.popup(arrowPart, arrowPart.width - menu.implicitWidth, arrowPart.height + 4);
+        // The menu ends at the arrow's outer edge: its right edge, or its left when mirrored.
+        menu.popup(arrowPart, control.mirrored ? 0 : arrowPart.width - menu.implicitWidth, arrowPart.height + 4);
     }
 
     // One half: a small rounded rectangle (radiusSmall) whose inner end is squared off to meet the other half.
@@ -55,6 +56,17 @@ Item {
 
         hoverEnabled: true
         focusPolicy: Qt.StrongFocus
+        // Enter presses the focused part, like Space.
+        Keys.onReturnPressed: event => {
+            if (enabled && !event.isAutoRepeat) {
+                part.click();
+            }
+        }
+        Keys.onEnterPressed: event => {
+            if (enabled && !event.isAutoRepeat) {
+                part.click();
+            }
+        }
         scale: down && enabled ? 0.97 : 1
         Behavior on scale {
             NumberAnimation {
@@ -117,6 +129,7 @@ Item {
         Part {
             id: mainPart
             owner: control
+            objectName: "mainPart"
             leading: true
             height: parent.height
             enabled: control.enabled && (!control.action || control.action.enabled)

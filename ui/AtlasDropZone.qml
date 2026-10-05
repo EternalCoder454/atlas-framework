@@ -50,6 +50,11 @@ Item {
     signal dropped(list<url> urls)
     signal browseRequested
 
+    // Whether a URL would be accepted (for the tests).
+    function _accepts(url: url): bool {
+        return priv.acceptUrl(url);
+    }
+
     // Test hooks: force the drag states for the gallery's pictures.
     property bool _forceHover: false
     property bool _forceReject: false
@@ -102,7 +107,8 @@ Item {
 
         // A glob such as "*.png" as a case-insensitive whole-name test.
         function globToRegExp(glob: string): var {
-            const escaped = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".");
+            // [\s\S], not ".": a file name may hold a newline.
+            const escaped = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/[*?]/g, c => c === "*" ? "[\\s\\S]*" : "[\\s\\S]");
             return new RegExp("^" + escaped + "$", "i");
         }
 
@@ -200,6 +206,8 @@ Item {
     }
 
     TapHandler {
+        // The Browse button accepts its own press, so a click on it never reaches
+        // this handler: browseRequested() is emitted once.
         onTapped: {
             priv.byMouse = true;
             control.forceActiveFocus(Qt.MouseFocusReason);
@@ -244,6 +252,8 @@ Item {
             Accessible.ignored: true
         }
         SecondaryButton {
+            id: browseButton
+            objectName: "browseButton"
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: AtlasStyle.spacingSmall
             visible: control.browseText.length > 0
