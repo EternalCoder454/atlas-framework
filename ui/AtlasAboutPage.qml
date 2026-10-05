@@ -26,10 +26,43 @@ AtlasPage {
     // One or two sentences under the version. Hidden when empty.
     property string description
     property string license: "MIT"
+    // See docs/reference/atlas-ui/atlas-about-page.md.
+    property bool showSystemRows: true
+    property var links: []
     // Sections an app adds after the built-in ones.
     default property alias extraContent: extra.data
 
     title: qsTr("About")
+
+    // `links` as shown: entries with a title and a URL of an allowed scheme.
+    // App data decides the URL, so any other scheme (file:, a custom one) is
+    // skipped with a warning and never reaches the desktop.
+    readonly property var _links: {
+        const out = [];
+        if (!Array.isArray(page.links)) {
+            return out;
+        }
+        for (const entry of page.links) {
+            const title = typeof entry?.title === "string" ? entry.title : "";
+            // A `url` value (Qt.resolvedUrl) is as good as a string.
+            const raw = entry?.url;
+            const url = raw === null || raw === undefined ? "" : String(raw).trim();
+            if (title.length === 0) {
+                continue;
+            }
+            if (!/^(https?|mailto):/i.test(url)) {
+                console.warn("AtlasAboutPage: link \"" + title + "\" skipped, its URL is not http, https or mailto");
+                continue;
+            }
+            out.push({
+                "title": title,
+                "url": url
+            });
+        }
+        return out;
+    }
+    // True only while one valid link remains: if none does, the built-in rows stay.
+    readonly property bool _customLinks: _links.length > 0
 
     // Plain text for a bug report: app, versions, OS and graphics platform.
     function systemInfo(): string {
@@ -111,11 +144,12 @@ AtlasPage {
         SectionRow {
             title: qsTr("Operating system")
             value: AtlasApp.osPrettyName
-            visible: AtlasApp.osPrettyName.length > 0
+            visible: page.showSystemRows && AtlasApp.osPrettyName.length > 0
         }
         SectionRow {
             title: qsTr("Qt")
             value: AtlasApp.qtVersion
+            visible: page.showSystemRows
         }
         SectionRow {
             //: The software licence of the app, as in "MIT License" (not a driving licence)
@@ -127,18 +161,27 @@ AtlasPage {
 
     Section {
         title: qsTr("Links")
-        visible: AtlasApp.sourceUrl.length > 0
+        visible: page._customLinks || AtlasApp.sourceUrl.length > 0
         SectionRow {
             title: qsTr("Source code")
             chevron: true
-            visible: AtlasApp.sourceUrl.length > 0
+            visible: !page._customLinks && AtlasApp.sourceUrl.length > 0
             onClicked: Qt.openUrlExternally(AtlasApp.sourceUrl)
         }
         SectionRow {
             title: qsTr("Report a problem")
             chevron: true
-            visible: AtlasApp.issuesUrl.length > 0
+            visible: !page._customLinks && AtlasApp.issuesUrl.length > 0
             onClicked: Qt.openUrlExternally(AtlasApp.issuesUrl)
+        }
+        Repeater {
+            model: page._links
+            delegate: SectionRow {
+                required property var modelData
+                title: modelData.title
+                chevron: true
+                onClicked: Qt.openUrlExternally(modelData.url)
+            }
         }
     }
 

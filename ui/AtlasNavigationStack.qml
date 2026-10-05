@@ -30,6 +30,17 @@ Item {
 
     signal wentBack
 
+    // False until the first page is in, so only later changes are announced.
+    property bool _ready: false
+    Component.onCompleted: control._ready = true
+    // Tells screen readers which page came up; a page without a title says nothing.
+    function _announcePage(page: var): void {
+        const t = page ? page["title"] : undefined;
+        if (t !== undefined && t !== null && String(t).length > 0) {
+            control.Accessible.announce(String(t));
+        }
+    }
+
     implicitWidth: Kirigami.Units.gridUnit * 24
     implicitHeight: Kirigami.Units.gridUnit * 16
 
@@ -123,6 +134,9 @@ Item {
             // Tell an AtlasPage that the header shows its title.
             onCurrentItemChanged: {
                 const page = stack.currentItem;
+                if (control._ready) {
+                    control._announcePage(page);
+                }
                 if (page && "_titleInHeader" in page) {
                     page._titleInHeader = Qt.binding(() => control.showHeader);
                 }

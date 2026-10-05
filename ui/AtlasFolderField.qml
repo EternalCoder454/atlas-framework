@@ -35,6 +35,32 @@ Item {
 
     signal edited
 
+    // The user's path, held on `path` for one turn so an app binding survives it.
+    property string _edit
+    property bool _editing: false
+    readonly property Binding _hold: Binding {
+        target: control
+        property: "path"
+        value: control._edit
+        when: control._editing
+        restoreMode: Binding.RestoreBinding
+    }
+    // The text field follows `path` even after the user typed in it.
+    readonly property Binding _follow: Binding {
+        target: field
+        property: "text"
+        value: control.path
+    }
+    function _release(): void {
+        control._editing = false;
+    }
+    function _userSet(p: string): void {
+        control._edit = p;
+        control._editing = true;
+        control.edited();
+        Qt.callLater(control._release);
+    }
+
     QtObject {
         id: internals
 
@@ -65,8 +91,7 @@ Item {
         function chosen(u: url): void {
             const p = fromUrl(u);
             if (p.length > 0 && p !== control.path) {
-                control.path = p;
-                control.edited();
+                control._userSet(p);
             }
         }
         function browse(): void {
@@ -90,13 +115,11 @@ Item {
         AtlasTextField {
             id: field
             Layout.fillWidth: true
-            text: control.path
             placeholderText: control.placeholderText
             readOnly: !control.editable
             Accessible.name: control.placeholderText.length > 0 ? control.placeholderText : qsTr("Folder path")
             onTextEdited: {
-                control.path = text;
-                control.edited();
+                control._userSet(text);
             }
         }
         SecondaryButton {

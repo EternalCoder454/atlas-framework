@@ -18,6 +18,7 @@ Item {
     AtlasPage {
         anchors.fill: parent
         title: "Settings"
+        subtitle: "Choose how the app looks and behaves."
         headerTrailing: [
             SecondaryButton { text: "Reset" }
         ]

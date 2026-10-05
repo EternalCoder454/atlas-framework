@@ -27,10 +27,13 @@ Item {
     property bool wrap: false
     property bool showCopy: false
     property bool lineNumbers: false
+    // See docs/reference/atlas-ui/atlas-code-view.md.
+    property bool inset: false
 
     // True once the mouse pressed in the view: the focus ring is for the keyboard.
     property bool _byMouse: false
     readonly property real _pad: control.framed ? AtlasStyle.spacingLarge : 0
+    readonly property real _padX: control.framed || control.inset ? AtlasStyle.spacingLarge : 0
     // One number per logical line; a wrapped line's other rows stay blank.
     readonly property string _numbers: {
         if (!control.lineNumbers) {
@@ -81,8 +84,10 @@ Item {
     Flickable {
         id: flick
         anchors.fill: parent
-        anchors.margins: control._pad
-        anchors.rightMargin: control._pad + (control.showCopy ? copyButton.width + AtlasStyle.spacingSmall : 0)
+        anchors.topMargin: control._pad
+        anchors.bottomMargin: control._pad
+        anchors.leftMargin: control._padX
+        anchors.rightMargin: control._padX + (control.showCopy ? copyButton.width + AtlasStyle.spacingSmall : 0)
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         contentWidth: content.width

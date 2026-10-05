@@ -344,6 +344,17 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
 - [ ] 37 Crates: cxx-qt 0.10, the task helper, settings `schema_version`
   migrations and directory watching. Crash minidumps wait for the crash.rs
   work in another session.
+- [ ] 38 A virtualized text view (Notepad, 2026-10-05; also Monitor's and
+  the Updater's logs, Notes' source view, AtlasCodeView). A C++ QQuickItem:
+  piece table and line index, only visible lines laid out (QTextLayout),
+  own caret, selection, input method and undo, KSyntaxHighlighting per line
+  in the background, word wrap as a mode. Read-only first (AtlasCodeView
+  moves onto it), then editing. Acceptance numbers from Notepad's 1–10 MB
+  benchmarks against Notepad++. Design page before code. Requirements:
+  docs/textview-1.5.md.
+- [ ] 39 One software-rendering flag in AtlasStyle (the software adaptation,
+  or llvmpipe by GL_RENDERER) for the controls and apps; AtlasEdgeGlow static
+  or throttled under it.
 - Waits for Fedora's Qt 6.12 (Fedora 44 and 45 ship 6.11.2):
   `motionPreference`, QML hot reload, ToolTip `policy`, MenuItem shortcuts.
 

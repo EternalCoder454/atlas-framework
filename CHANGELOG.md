@@ -46,6 +46,57 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   6 px in (4 before) and each corner is an L running 16 px along both edges;
   along the top edge the corners stop where the header's buttons begin. A
   scrollbar at the window's right edge loses 6 px to the handle (4 before).
+- Fix: a user's edit no longer ends an app's binding on the edited property
+  of `AtlasRating` (`value`), `AtlasSegmentedControl` (`currentIndex`),
+  `AtlasCalendar` (`selectedDate`, `month`, `year`), `AtlasDatePicker`
+  (`selectedDate`), `AtlasColorField` (`color`) and `AtlasFontPicker`
+  (`font.family`, `font.pointSize`). If the app stores the edit in the edit
+  signal's handler, the binding follows the model; if it ignores it, the
+  property returns to the model's value one event-loop turn later. A literal
+  value or no binding keeps the edit, as before.
+- Fix: the same holds for `AtlasComboBox.currentIndex`, `AtlasFileField` and
+  `AtlasFolderField` `path`, and FindBar's `findText`, `replaceText`,
+  `matchCase`, `wholeWords` and `regularExpression` (their `onXChanged`
+  handlers still fire on every edit).
+- Fix: `InfoBanner`'s close button no longer writes `shown`, so an app's
+  `shown: x` binding keeps working; new read-only `dismissed`. A dismissed
+  banner comes back on a new `text` or `type`, or when the app writes
+  `shown = true`. This applies to every closable banner: one whose text
+  changes often (a count, progress) should not be closable.
+- Added: `AtlasTimePicker.minuteArrowStep`, `minimumHours`,
+  `minimumMinutes` and `adjusted()`: arrows, the wheel and screen-reader
+  steps move by the arrow step and stop at the minimum; an earlier time is
+  raised to it.
+- Added: `AtlasCopyButton.label` and `copiedLabel`, a button with text.
+- Added: `AtlasFormat.bytes` and `bytesPerSecond` take `system` ("iec", the
+  default, or "si"); `date()` has the styles `longAtTime`, `atTimeSentence`
+  and `relativeSentence`. A size that rounds up to the next unit is shown in
+  it ("1.0 MB", not "1000.0 kB").
+- Added: `AtlasAboutPage.showSystemRows` (hide the OS and Qt rows) and
+  `links`, rows that replace Source code and Report a problem (https, http
+  and mailto only; when no entry is valid the built-in rows stay).
+- Added: `AtlasDetailGrid.title`, `footer` and `framed` (a heading, a note
+  and a Section-style card). The grid builds only what each cell needs: about
+  half the time and a third of the memory per grid. Fix: a model given as a
+  C++ list (`QVariantList`) is shown; it was empty.
+- Added: `AtlasBreadcrumb.hiddenText` (the "Hidden folders" text) and
+  `AtlasCodeView.inset` (side room for an unframed view).
+- Fix: `AtlasSidebar.filterText` follows the same edit rule: text typed in
+  the built-in field no longer ends an app's binding.
+- Added: `AtlasSidebar.footer` (entries pinned under the scrolling list, such
+  as Settings and About) and `footerSeparator`; `SidebarGroup.symbol`,
+  `badge` and `badgeText`.
+- Added: `AtlasPage.subtitle` (muted lines under the title, read as the
+  page's description), `busy` and `busyText` (a spinner row under the title,
+  announced once the text settles); `AtlasAboutPage` has them too.
+- Added: `AtlasDialog.scrollToTop()`; a dialog also scrolls to the top each
+  time it opens.
+- Added: `AtlasWindow.toast()` (a queue of toasts, one at a time, announced)
+  and `confirm()` (a ConfirmDialog whose answer comes once through `done`);
+  `compactBreakpoint` and `wideBreakpoint` set where `widthClass` changes.
+- Added: `AtlasNavigationStack` announces the new page's title to screen
+  readers on push, pop and replace.
+- Docs: `TextButton` is not an `AtlasButton` preset and has no `variant`.
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call
   (60 s by default) and an overall deadline) returning `ListOutcome`
@@ -82,6 +133,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `QtQuick.Controls.Basic` (or another style), hide imports behind comments,
   or have no QML files (`--allow-empty` for those); `check-app-names.sh`
   fails on an empty app.
+- Tools: `dev-check.sh` takes `ATLAS_DEV_JOBS` (fewer build and test jobs,
+  for several checkouts at once) and passes `ATLAS_UPDATE_GOLDENS` through;
+  an update run rewrites only the goldens that fail, not every picture.
 - Packaging: `build-rpm.sh` packages the committed tree only (git archive of
   HEAD) and refuses a dirty one; the spec builds and ships the translations.
 - Template: drill-down pages use `AtlasNavigationStack`; `main.cpp`

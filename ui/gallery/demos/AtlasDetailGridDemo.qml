@@ -11,7 +11,7 @@ Item {
     property bool animate: true
 
     implicitWidth: 520
-    implicitHeight: 430
+    implicitHeight: 640
     width: implicitWidth
     height: implicitHeight
 
@@ -54,6 +54,13 @@ Item {
         AtlasDetailGrid {
             Layout.preferredWidth: 220
             model: root.rows.slice(0, 2)
+        }
+        AtlasDetailGrid {
+            Layout.fillWidth: true
+            title: "Package"
+            footer: "Checked against the repository when it was installed."
+            framed: true
+            model: root.rows
         }
     }
 }

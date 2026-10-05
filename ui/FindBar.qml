@@ -15,8 +15,8 @@ import org.kde.kirigami as Kirigami
 Item {
     id: control
 
-    property alias findText: findField.text
-    property alias replaceText: replaceField.text
+    property string findText
+    property string replaceText
     property bool replaceVisible: false
     property bool matchCase: false
     property bool wholeWords: false
@@ -31,6 +31,75 @@ Item {
     signal replaceOne
     signal replaceAll
     signal closed
+
+    // A user edit is held on the public property for one turn, so an app
+    // binding such as `matchCase: model.matchCase` survives it.
+    property string _findEdit
+    property bool _findEditing: false
+    property string _replaceEdit
+    property bool _replaceEditing: false
+    property bool _caseEdit: false
+    property bool _caseEditing: false
+    property bool _wordsEdit: false
+    property bool _wordsEditing: false
+    property bool _regexEdit: false
+    property bool _regexEditing: false
+    readonly property list<Binding> _holds: [
+        Binding {
+            target: control
+            property: "findText"
+            value: control._findEdit
+            when: control._findEditing
+            restoreMode: Binding.RestoreBinding
+        },
+        Binding {
+            target: control
+            property: "replaceText"
+            value: control._replaceEdit
+            when: control._replaceEditing
+            restoreMode: Binding.RestoreBinding
+        },
+        Binding {
+            target: control
+            property: "matchCase"
+            value: control._caseEdit
+            when: control._caseEditing
+            restoreMode: Binding.RestoreBinding
+        },
+        Binding {
+            target: control
+            property: "wholeWords"
+            value: control._wordsEdit
+            when: control._wordsEditing
+            restoreMode: Binding.RestoreBinding
+        },
+        Binding {
+            target: control
+            property: "regularExpression"
+            value: control._regexEdit
+            when: control._regexEditing
+            restoreMode: Binding.RestoreBinding
+        },
+        // The fields and toggles follow the properties, also after the user
+        // edited them and the app refused.
+        Binding {
+            target: findField
+            property: "text"
+            value: control.findText
+        },
+        Binding {
+            target: replaceField
+            property: "text"
+            value: control.replaceText
+        }
+    ]
+    function _release(): void {
+        control._findEditing = false;
+        control._replaceEditing = false;
+        control._caseEditing = false;
+        control._wordsEditing = false;
+        control._regexEditing = false;
+    }
 
     function open(withReplace) {
         if (withReplace) {
@@ -174,6 +243,11 @@ Item {
                     Layout.minimumWidth: Kirigami.Units.gridUnit * 6
                     icon: "search"
                     placeholderText: qsTr("Find")
+                    onTextEdited: {
+                        control._findEdit = text;
+                        control._findEditing = true;
+                        Qt.callLater(control._release);
+                    }
                     Keys.onReturnPressed: event => (event.modifiers & Qt.ShiftModifier) ? control.findPrevious() : control.findNext()
                     Keys.onEnterPressed: event => (event.modifiers & Qt.ShiftModifier) ? control.findPrevious() : control.findNext()
                     Keys.onEscapePressed: control.close()
@@ -211,7 +285,11 @@ Item {
                     text: qsTr("Match Case")
                     checkable: true
                     checked: control.matchCase
-                    onToggled: control.matchCase = checked
+                    onToggled: {
+                        control._caseEdit = checked;
+                        control._caseEditing = true;
+                        Qt.callLater(control._release);
+                    }
                     TypeMark {
                         text: "Aa"
                         on: parent.checked
@@ -221,7 +299,11 @@ Item {
                     text: qsTr("Whole Word")
                     checkable: true
                     checked: control.wholeWords
-                    onToggled: control.wholeWords = checked
+                    onToggled: {
+                        control._wordsEdit = checked;
+                        control._wordsEditing = true;
+                        Qt.callLater(control._release);
+                    }
                     TypeMark {
                         text: "ab"
                         font.underline: true
@@ -232,7 +314,11 @@ Item {
                     text: qsTr("Regular Expression")
                     checkable: true
                     checked: control.regularExpression
-                    onToggled: control.regularExpression = checked
+                    onToggled: {
+                        control._regexEdit = checked;
+                        control._regexEditing = true;
+                        Qt.callLater(control._release);
+                    }
                     TypeMark {
                         text: ".*"
                         on: parent.checked
@@ -261,6 +347,11 @@ Item {
                     Layout.minimumWidth: Kirigami.Units.gridUnit * 6
                     icon: "edit-find-replace"
                     placeholderText: qsTr("Replace")
+                    onTextEdited: {
+                        control._replaceEdit = text;
+                        control._replaceEditing = true;
+                        Qt.callLater(control._release);
+                    }
                     Keys.onReturnPressed: control.replaceOne()
                     Keys.onEnterPressed: control.replaceOne()
                     Keys.onEscapePressed: control.close()

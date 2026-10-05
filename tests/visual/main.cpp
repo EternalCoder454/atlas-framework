@@ -8,7 +8,7 @@
 //   ATLAS_OUT_DIR       where actual and diff images of a failure go
 //   ATLAS_VARIANT       light, dark, accent, opaque, contrast,
 //                       rtl, compact or text200
-//   ATLAS_UPDATE_GOLDENS=1 rewrites the goldens instead of comparing
+//   ATLAS_UPDATE_GOLDENS=1 rewrites the goldens that fail instead of failing
 #include "../demolist.h"
 
 #include <QtQuickTest/quicktest.h>
@@ -75,13 +75,25 @@ public:
         const QString actualPath = outBase + QStringLiteral(".actual.png");
         const QString diffPath = outBase + QStringLiteral(".diff.png");
 
-        if (qEnvironmentVariableIntValue("ATLAS_UPDATE_GOLDENS") == 1) {
+        QString failure = compare(actual, name, goldenPath, actualPath, diffPath);
+        // Updating rewrites only the goldens that fail: one that still matches
+        // within the tolerance keeps its file, so an update run's diff holds
+        // only the pictures that really changed.
+        if (!failure.isEmpty() && updating()) {
             if (!savePng(actual, goldenPath)) {
                 return QStringLiteral("%1: could not write %2").arg(name, goldenPath);
             }
+            QFile::remove(actualPath);
+            QFile::remove(diffPath);
             return {};
         }
+        return failure;
+    }
 
+private:
+    static QString compare(const QImage &actual, const QString &name, const QString &goldenPath, const QString &actualPath,
+                           const QString &diffPath)
+    {
         QImage golden(goldenPath);
         if (golden.isNull()) {
             savePng(actual, actualPath);
@@ -136,7 +148,6 @@ public:
             .arg(actualPath, diffPath, goldenPath);
     }
 
-private:
     static QImage grab(QObject *target)
     {
         if (auto *window = qobject_cast<QQuickWindow *>(target)) {

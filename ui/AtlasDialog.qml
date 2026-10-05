@@ -57,6 +57,17 @@ T.Dialog {
     height: Math.min(implicitHeight, parent ? parent.height - control._margin : implicitHeight)
     spacing: AtlasStyle.spacingLarge
 
+    // Moves the body to its top, with no animation. Focus does not move.
+    function scrollToTop(): void {
+        if (!scroller) {
+            return;
+        }
+        scroller.cancelFlick();
+        scroller.contentY = scroller.originY;
+    }
+    // A reopened dialog does not keep the last scroll.
+    onAboutToShow: control.scrollToTop()
+
     // True when item is in the body (the content item), not the header or the footer.
     function _inside(item: Item): bool {
         for (let i = item; i; i = i.parent) {

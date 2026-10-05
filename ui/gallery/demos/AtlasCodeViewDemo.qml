@@ -45,5 +45,13 @@ Item {
             wrap: true
             text: "A long line of plain text that wraps at the width of the view instead of scrolling sideways, <b>not bold</b>."
         }
+        Caption { text: "Unframed, inset" }
+        AtlasCodeView {
+            Layout.fillWidth: true
+            framed: false
+            inset: true
+            wrap: true
+            text: "Room at both edges, as a SectionRow's text has."
+        }
     }
 }

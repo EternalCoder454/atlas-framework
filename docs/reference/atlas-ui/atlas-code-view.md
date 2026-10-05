@@ -26,6 +26,7 @@ Screen readers get the text field, named "Code". Set `Accessible.name` on the vi
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `framed` | `bool` | `true` | Draws a card around the text. |
+| `inset` | `bool` | `false` | Gives an unframed view the same leading and trailing room as the text of a `SectionRow`. A framed view already has it, so `inset` changes nothing there. It applies to both sides, also in right-to-left. |
 | `lineNumbers` | `bool` | `false` | Adds a line-number column. |
 | `maximumHeight` | `real` | `Infinity` | Taller text scrolls. `Infinity` is as tall as the text. |
 | `showCopy` | `bool` | `false` | Adds a copy button in the top trailing corner. |

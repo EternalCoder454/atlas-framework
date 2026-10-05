@@ -4,7 +4,7 @@ import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import Atlas.Ui
 
-// AtlasCopyButton beside the text it copies, and disabled. Tests set
+// AtlasCopyButton beside the text it copies, with a label (text mode), and disabled. Tests set
 // `animate` to false.
 Item {
     id: root
@@ -30,6 +30,18 @@ Item {
             }
             AtlasCopyButton {
                 text: "flatpak install flathub org.example.App"
+            }
+        }
+        RowLayout {
+            spacing: Kirigami.Units.smallSpacing
+            QQC2.Label {
+                Layout.fillWidth: true
+                text: "Details with a label"
+                elide: Text.ElideRight
+            }
+            AtlasCopyButton {
+                text: "version 1.5.0, build 42"
+                label: qsTr("Copy Details")
             }
         }
         RowLayout {

@@ -34,5 +34,14 @@ Item {
             expanded: false
             SidebarItem { Layout.fillWidth: true; text: "Hidden"; sub: true }
         }
+        SidebarGroup {
+            Layout.fillWidth: true
+            text: "Network"
+            symbol: Symbols.codepoint("home")
+            badge: "dialog-warning"
+            badgeText: "1 problem"
+            expanded: false
+            SidebarItem { Layout.fillWidth: true; text: "eth0"; sub: true }
+        }
     }
 }

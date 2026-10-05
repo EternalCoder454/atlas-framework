@@ -42,7 +42,9 @@ AtlasSidebar {
 | `currentIndex` | `int` | `-1` | The selected entry. It counts the `SidebarItem`s in order (sub-entries included, group headers not); `-1` means none. |
 | `delegate` | `Component` | `null` | The delegate for `model`; its root is a `SidebarItem` or `SidebarGroup`. |
 | `dropEnabled` | `bool` | `false` | Highlights the entry a drag hovers over and emits `dropped`. |
-| `filterText` | `string` | `""` | Shows only entries whose title contains this text, case-insensitively. |
+| `filterText` | `string` | `""` | Shows only entries whose title contains this text, case-insensitively. It applies to the list, never to the `footer`. Text typed in the built-in field is held for one turn of the event loop and then the app's binding is restored: `filterText: model.q` follows the model when the app takes the edit, springs back when it refuses it, and a literal or no binding keeps what was typed. A change the app makes (or a refused edit) is shown in the field. |
+| `footer` | `list<QtObject>` (read-only) | — | `SidebarItem` and `SidebarGroup` entries pinned under the scrolling list (Settings, About). They do not scroll, take their natural height up to half the sidebar (then scroll inside their own region), and share `compact`, `density`, the compact tooltip, `badge`, `contextMenuRequested` and `dropped` with the list. `currentIndex` counts the list's items first, then the footer's, so existing indexes do not move. At most one entry is selected across both; the highlight fades between the regions (at once under reduced motion). Tab goes list, then footer. Since 1.5.0. |
+| `footerSeparator` | `bool` | `true` | A hairline above the footer. Since 1.5.0. |
 | `model` | `var` | `null` | A model of entries, with `delegate`. |
 | `padding` | `int` | `AtlasStyle.spacingSmall` | The inner margin round the entries. |
 | `placeholderSymbol` | `int` (a `Symbols.<Name>` value) | `0` | The symbol shown above `placeholderText` when nothing is visible. See [Symbols](symbols.md). |

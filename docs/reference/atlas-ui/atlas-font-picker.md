@@ -31,6 +31,9 @@ Name it with `Accessible.name` (what the font is for). The family and size are s
 |---|---|---|---|
 | `fixedOnly` | `bool` | `false` | Lists only monospace families. |
 
+> [!NOTE]
+> A family or size the user chooses does not end a binding on `font.family` or `font.pointSize`. If `onEdited` stores it, the binding follows the model; if the app ignores it, the property returns to the model's one turn of the event loop later. A handler reads `font.family` or `font.pointSize` and sees the new value at once; a literal value or no binding keeps the user's edit.
+
 ## Signals
 
 | Name | Description |

@@ -8,16 +8,51 @@ import org.kde.kirigami as Kirigami
 // a search field); the title elides before them. `maxContentWidth` (default 38
 // grid units) is the widest the content grows. Inside an AtlasNavigationStack
 // whose header shows, the header carries the title and the page doesn't
-// repeat it.
+// repeat it. See docs/reference/atlas-ui/atlas-page.md.
 Item {
     id: root
 
     property string title
+    property string subtitle
+    // A spinner and `busyText` above the content, under the title row.
+    property bool busy: false
+    property string busyText
     default property alias content: col.data
     property real maxContentWidth: Kirigami.Units.gridUnit * 38
     property alias headerTrailing: headerRow.data
     // Set by AtlasNavigationStack while its header shows this page's title.
     property bool _titleInHeader: false
+
+    Accessible.description: root.subtitle
+
+    // False until one turn after creation: initial values are not announced
+    // one by one. The first announcement comes late, so it does not talk over
+    // the navigation stack's announcement of the page's title.
+    property bool _ready: false
+    // Test hook: replaces Accessible.announce().
+    property var _announceHook: null
+    onBusyChanged: root._announceBusy()
+    onBusyTextChanged: root._announceBusy()
+    Component.onCompleted: Qt.callLater(root._start)
+    function _start(): void {
+        root._ready = true;
+        root._speak();
+    }
+    // Coalesced: only the text that has settled for a turn is announced.
+    function _announceBusy(): void {
+        if (root._ready) {
+            Qt.callLater(root._speak);
+        }
+    }
+    function _speak(): void {
+        if (root.busy && root.busyText.length > 0) {
+            if (root._announceHook) {
+                root._announceHook(root.busyText);
+            } else {
+                root.Accessible.announce(root.busyText);
+            }
+        }
+    }
 
     QQC2.ScrollView {
         id: scroll
@@ -85,6 +120,65 @@ Item {
                         spacing: AtlasStyle.spacingSmall
                         visible: children.length > 0
                         Layout.alignment: Qt.AlignVCenter
+                    }
+                }
+
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    // Closer to the title than the page's own spacing.
+                    Layout.topMargin: -Kirigami.Units.gridUnit * 0.6
+                    visible: root.subtitle.length > 0
+                    text: root.subtitle
+                    color: AtlasStyle.textMuted
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 3
+                    elide: Text.ElideRight
+                    textFormat: Text.PlainText
+                    horizontalAlignment: Text.AlignLeft
+                }
+
+                // The busy row: slides in and out, and takes no room when idle.
+                Item {
+                    id: busyRow
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.busy ? busyContent.implicitHeight : 0
+                    Layout.minimumHeight: root.busy ? busyContent.implicitHeight : 0
+                    // Layouts give no size to a hidden item, so it stays shown while it shrinks.
+                    visible: root.busy || Layout.preferredHeight > 0
+                    clip: true
+                    opacity: root.busy ? 1 : 0
+                    Behavior on Layout.preferredHeight {
+                        NumberAnimation {
+                            duration: AtlasStyle.duration
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: AtlasStyle.duration
+                        }
+                    }
+                    RowLayout {
+                        id: busyContent
+                        width: parent.width
+                        spacing: AtlasStyle.spacingLarge
+                        AtlasSpinner {
+                            running: root.busy
+                            animated: !AtlasStyle.reducedMotion
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                            Accessible.role: Accessible.Indicator
+                            Accessible.name: root.busyText
+                        }
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            text: root.busyText
+                            color: AtlasStyle.textMuted
+                            wrapMode: Text.Wrap
+                            textFormat: Text.PlainText
+                            // The spinner carries the name; reading both says it twice.
+                            Accessible.ignored: true
+                        }
                     }
                 }
             }

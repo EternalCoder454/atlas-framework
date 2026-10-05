@@ -24,6 +24,9 @@ ColumnLayout {
     property alias text: header.text
     property string iconName
     property alias value: header.value
+    property alias symbol: header.symbol
+    property alias badge: header.badge
+    property alias badgeText: header.badgeText
     property alias compact: header.compact
     property alias tintIcon: header.tintIcon
     property bool expanded: true

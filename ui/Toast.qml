@@ -21,6 +21,9 @@ Item {
     // The action button was clicked; the toast has already hidden itself.
     signal actionTriggered
 
+    // True from show() until the toast has timed out or been hidden; for AtlasWindow's queue.
+    readonly property bool _showing: timer.showing
+
     function show(message) {
         control.actionText = "";
         priv.display(message);
