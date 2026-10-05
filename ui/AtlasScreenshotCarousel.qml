@@ -455,7 +455,8 @@ T.Control {
         // currentIndex, so what it may load is what the carousel may load.
         QQC2.Popup {
             id: viewer
-            parent: QQC2.Overlay.overlay ?? control.Window.contentItem
+            // The window's overlay (null only before there is a window).
+            parent: QQC2.Overlay.overlay
             x: 0
             y: 0
             width: parent ? parent.width : 0
