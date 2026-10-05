@@ -39,7 +39,7 @@ The read-only system preferences each have a change signal, so a binding on them
 | `highContrast` | `bool` (read-only) | `false` | The system asks for high contrast (`QStyleHints` accessibility, Qt 6.10+). |
 | `monoFamily` | `string` (read-only) | — | `"JetBrains Mono"` when installed, else the system fixed font. Constant, but computed on each read. Since 1.4.0. |
 | `reducedMotion` | `bool` (read-only) | `false` | `true` when Plasma's `AnimationDurationFactor` in kdeglobals `[KDE]` is 0 (animations off), or the environment has `ATLAS_REDUCED_MOTION=1`. A missing kdeglobals means `false`. |
-| `textScale` | `real` (read-only) | `1.0` | The application font's point size over 10 (Plasma's default). 1.0 is the default size, 1.2 is 20% larger. |
+| `textScale` | `real` (read-only) | `1.0` | The application font's point size over 10 (Plasma's default). 1.0 is the default size, 1.2 is 20% larger. Kept between 0.5 and 4. |
 | `transparency` | `bool` | `true` | The shared "Transparency and blur" setting. Writable; the change is saved to `atlasrc` and reaches every open Atlas app. |
 
 ## Methods

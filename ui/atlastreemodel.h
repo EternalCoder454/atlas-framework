@@ -24,6 +24,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 class AtlasTreeModel : public QAbstractItemModel
@@ -73,4 +74,6 @@ private:
 
     QVariantList m_items;
     Node m_root;
+    // Every live node, so an index is checked before its pointer is followed.
+    std::unordered_set<const Node *> m_nodes;
 };

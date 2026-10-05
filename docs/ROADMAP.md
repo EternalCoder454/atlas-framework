@@ -188,6 +188,13 @@ Every new member gets its line on its docs/reference page in the same commit
   (Monitor)
 - [x] ConfirmDialog: `destructive` drew the accept button violet since the
   1.4.0 restyle; it uses the Destructive look again (fixed on main, 7dc2806).
+- [x] AtlasTreeModel: `node()` checks the index (this model, column 0, a live
+  node) before following `internalPointer`; foreign and stale indexes answer
+  empty. The reference page says "small trees".
+- [x] AtlasShortcuts::toSequence: numbers are range-checked (NaN, infinity and
+  values outside int are no key); `conflicts()` was already a pure getter
+  (cached by `recompute()`), now covered by a test.
+- [x] Appearance.textScale: kept between 0.5 and 4; non-finite is the default.
 
 ### A1: new API the apps asked for (sketch in docs/api-1.5.0.md first)
 
@@ -223,13 +230,10 @@ Every new member gets its line on its docs/reference page in the same commit
 Non-blocking findings (Medium and Low) filed while shipping 1.4.0.
 
 #### S gate (C++ and file/drop QML)
-- AtlasTreeModel: node() trusts internalPointer; add checkIndex()/model()==this. Document "small trees" (no node cap, items kept twice).
 - AtlasDropZone: compile nameFilters once per change, cap URLs examined (~10k), collapse repeated `*` (backtracking); say in docs that folders named *.png pass.
 - AtlasFileField/AtlasFolderField toUrl/fromUrl: reject control chars and lone surrogates; require file:/// in fromUrl; show an error when decode fails.
 - AtlasPathValidator.mustExist: stat on every keystroke can hang on a stale NFS/FUSE mount; check on commit or debounce; docs: not a containment check.
 - AtlasUrlValidator: consider rejecting userinfo (https://good@evil); docs: apps must check acceptableInput.
-- AtlasShortcuts::toSequence: range-check StandardKey ints, isfinite on doubles; conflicts() recomputes and emits from the getter.
-- Appearance.textScale: clamp to 0.5..4.
 
 #### Earlier
 - AtlasSearchResults is allow-listed in tests/state.

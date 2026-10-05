@@ -195,6 +195,16 @@ target_link_libraries(atlas-shortcuts-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qm
 add_test(NAME shortcuts COMMAND atlas-shortcuts-tests)
 set_tests_properties(shortcuts PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+# Hostile input to the C++ types (tests/hardening): AtlasTreeModel with
+# foreign and stale indexes, the text scale bounds.
+add_executable(atlas-hardening-tests hardening/tst_hardening.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlastreemodel.h ${PROJECT_SOURCE_DIR}/ui/atlastreemodel.cpp
+    ${PROJECT_SOURCE_DIR}/ui/textscale.h)
+target_include_directories(atlas-hardening-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-hardening-tests PRIVATE Qt6::Test Qt6::Qml)
+add_test(NAME hardening COMMAND atlas-hardening-tests)
+set_tests_properties(hardening PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 # The Atlas validators (ui/atlasvalidators.cpp, compiled into the test):
 # acceptable, intermediate and invalid input of each, hostile input included.
 add_executable(atlas-validators-tests validators/tst_validators.cpp
