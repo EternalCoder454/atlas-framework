@@ -22,7 +22,7 @@ AtlasOS's window decoration draws minimise, maximise and close as rounded square
 
 ## 3. One blur switch for every app
 
-The window is [AtlasWindow](atlas-window.md). With "Transparency effects" on and a compositor that blurs, its background is the theme's background, partly see-through over the blurred desktop. With it off, the window is opaque. The switch is `Transparency` under `[Appearance]` in `~/.config/atlasrc` (default on), read and written through the [Appearance](appearance.md) singleton. A change in one app, or in the file, reaches every open Atlas app at once. [AtlasTransparencySwitch](atlas-transparency-switch.md) is a ready-made settings row for it. See [Style and theming](style-and-theming.md).
+The window is [AtlasWindow](atlas-window.md). With "Transparency and blur" on and a compositor that blurs, its background is `AtlasStyle.base`, partly see-through over the blurred desktop. With it off, the window is opaque. The switch is `Transparency` under `[Appearance]` in `~/.config/atlasrc` (default on), read and written through the [Appearance](appearance.md) singleton. A change in one app, or in the file, reaches every open Atlas app at once. [AtlasTransparencySwitch](atlas-transparency-switch.md) is a ready-made settings row for it. See [Style and theming](style-and-theming.md).
 
 ## 4. The logo plus a check mark when up to date
 
@@ -45,7 +45,7 @@ No `QQC2.Button`, `QQC2.ToolButton`, `QQC2.Switch` or buttons made from `Kirigam
 ## 7. Everyone can use it
 
 - Every control has an accessible role and name, so screen readers can read it.
-- Every control that acts takes keyboard focus and shows [AtlasFocusRing](atlas-focus-ring.md) when the focus came from the keyboard.
+- Every control that acts takes keyboard focus and shows [AtlasFocusRing](atlas-focus-ring.md) when the focus came from the keyboard. The exceptions are small chrome buttons that are reached another way (a shortcut, a menu or the key that clears a field): [ToolbarButton](toolbar-button.md), [StatusBarItem](status-bar-item.md), [AtlasWindowButtons](atlas-window-buttons.md), a tab's close button and a search field's clear button.
 - Nothing animates while hidden, and nothing animates when Plasma's animation speed is "Instant" (the `AtlasStyle` durations are 0 then). See [Motion](motion.md).
 - Text a user reads is in `qsTr()`.
 
@@ -67,8 +67,8 @@ Every control behaves the same way in each state, and the framework's tests chec
 | Read only | The value is shown normally (not dimmed) and cannot be edited. The control keeps focus, selection and copy. |
 | Error | The error colour (`AtlasStyle.error`) on the border or text, and a message beside the field. The message is announced to screen readers, not only coloured. |
 | Busy | A spinner replaces the value or chevron. The control stays enabled but does not act again until the work ends, and says it is busy to screen readers. |
-| Hover | A grey tint of the text colour (never the accent), only for a control that acts, never for a disabled or busy one. A clickable row or button shows a hand cursor. |
+| Hover | A grey tint of the text colour (never the accent), only for a control that acts, never for a disabled or busy one. Buttons keep the arrow cursor; a clickable row or card, a link and a table header show a hand cursor. |
 | Pressed | A stronger tint than hover, gone on release or when the pointer leaves. |
-| Focus | [AtlasFocusRing](atlas-focus-ring.md), only for keyboard focus, never after a click. |
+| Focus | [AtlasFocusRing](atlas-focus-ring.md), only for keyboard focus, never after a click. Rows (SidebarItem, StepItem, a Section header, DataTable cells) draw a 2 px outline in the `focus` colour instead. |
 
 A control that holds other controls (a `SectionRow` with `trailing` items) shows its own ring only while it has focus itself, not while an item inside it does.

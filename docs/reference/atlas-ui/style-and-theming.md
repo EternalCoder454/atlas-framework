@@ -61,8 +61,8 @@ Atlas.Ui follows the system colour scheme live. `Appearance.colorScheme` and `Ap
 | `spacingLarge`, `spacingXLarge`, `spacingXXLarge` | 12, 16, 24 |
 | `radiusSmall` | 4: buttons, text and search fields, combo boxes, spin boxes, pickers, tabs, sidebar items, menu items and list selections. A button goes to 6 while pressed. |
 | `radius` | 6: cards, Sections, popovers, tooltips, menus and code views |
-| `radiusLarge` | 8: dialogs, the command palette, drop zones, the segmented control's track, and an unchecked checkable chip |
-| `radiusPill` | 1000, fully round: switch tracks, progress and usage bars, the floating toolbar, toasts and a checked chip. Badges use half their height. |
+| `radiusLarge` | 8: dialogs, the command palette, drop zones, the segmented control's track, the find bar, and an unchecked checkable chip |
+| `radiusPill` | 1000, fully round: switch tracks, progress and usage bars, the floating toolbar, toasts, the find bar's fields and a checked chip. Badges use half their height. |
 | `controlHeight` | 28 px, or 24 px when compact. A control grows when its text needs more. |
 
 ## Fonts and sizes
@@ -79,7 +79,7 @@ Component.onCompleted: AtlasStyle.density = AtlasStyle.Compact
 
 ## Blur with a solid fallback
 
-The window is blurred only when `Appearance.effective` is true: the user's "Transparency effects" switch is on and the compositor offers blur. Software rendering, many virtual machines and a disabled KWin blur effect do not. `floatingBackground` and `chromeBackground` already do the right thing in both cases, translucent over the blur and solid without it. Use them for chrome, and never set a window's opacity yourself.
+The window is blurred only when `Appearance.effective` is true: the user's "Transparency and blur" switch is on and the compositor offers blur. Software rendering, many virtual machines and a disabled KWin blur effect do not. `floatingBackground` and `chromeBackground` already do the right thing in both cases, translucent over the blur and solid without it. Use them for chrome, and never set a window's opacity yourself.
 
 ```qml
 Rectangle {

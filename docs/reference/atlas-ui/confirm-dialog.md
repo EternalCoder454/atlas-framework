@@ -29,7 +29,7 @@ ConfirmDialog {
 | `body` | `list<Item>` (read-only) | — | The default property: items shown under `text`. |
 | `closeOnAccept` | `bool` | `true` | Closes the dialog after `accepted()` or `alternative()`. |
 | `defaultButton` | `string` | `"accept"` | `"accept"`, `"reject"` or `"alternative"`: the button that is drawn filled, starts with the focus and that Return and Enter activate from anywhere in the dialog. A name that names no shown button falls back to accept. |
-| `destructive` | `bool` | `false` | Draws the accept button in the error colour (for deleting, resetting). |
+| `destructive` | `bool` | `false` | Gives the accept button the `Destructive` look of [AtlasButton](atlas-button.md) (error text and border on a faint error fill) in place of the filled one, for deleting or resetting. |
 | `focusReject` | `bool` | `false` | Starts the focus on Cancel. Use it for destructive dialogs; informational ones start on the main button. |
 | `rejectText` | `string` | `qsTr("Cancel")` | The text of the cancelling button. |
 | `showReject` | `bool` | `true` | Shows the cancelling button. |

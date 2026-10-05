@@ -9,8 +9,9 @@ import org.kde.kirigami as Kirigami
 // `alternativeText` ("Don't Save") adds a third at the leading edge, which
 // emits `alternative()`. `defaultButton` ("accept", "reject" or "alternative")
 // is the one that starts with the focus, that Return and Enter activate from
-// anywhere in the dialog, and that is drawn filled. `destructive` draws the
-// accept button in the error colour. The text and the body are as wide as the
+// anywhere in the dialog, and that is drawn filled. `destructive` gives the
+// accept button the Destructive look (error text and border on a faint error
+// fill) in place of the filled one. The text and the body are as wide as the
 // card and wrap; when they are taller than the window they scroll.
 //
 //   ConfirmDialog {
@@ -190,9 +191,7 @@ QQC2.Popup {
             }
             AtlasButton {
                 id: acceptButton
-                // The error colour replaces the accent for this button only.
-                Kirigami.Theme.highlightColor: dialog.destructive ? titleLabel.Kirigami.Theme.negativeTextColor : AtlasStyle.accent
-                prominent: internals.defaultName === "accept" || dialog.destructive
+                variant: dialog.destructive ? AtlasButton.Destructive : (internals.defaultName === "accept" ? AtlasButton.Prominent : AtlasButton.Default)
                 text: dialog.acceptText
                 onClicked: {
                     dialog.accepted();
