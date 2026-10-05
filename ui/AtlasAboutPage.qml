@@ -49,12 +49,6 @@ AtlasPage {
         return lines.join("\n");
     }
 
-    TextEdit {
-        id: clipboardHelper
-        parent: page
-        visible: false
-        textFormat: TextEdit.PlainText
-    }
     Toast {
         id: copiedToast
         parent: page
@@ -101,10 +95,7 @@ AtlasPage {
             symbol: Symbols.ContentCopy
             text: qsTr("Copy system info")
             onClicked: {
-                clipboardHelper.text = page.systemInfo();
-                clipboardHelper.selectAll();
-                clipboardHelper.copy();
-                clipboardHelper.text = "";
+                AtlasClipboard.setText(page.systemInfo());
                 copiedToast.show(qsTr("Copied"));
             }
         }

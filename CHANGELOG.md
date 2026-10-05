@@ -11,6 +11,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Atlas.Ui: AtlasTreeView, a tree on Qt Quick's TreeView in the Atlas list
   look (single or multi selection, keyboard, type-ahead, RTL), and
   AtlasTreeModel, a tree model built from nested JS objects.
+- Atlas.Ui: AtlasClipboard (text, rich text and image on the system clipboard
+  from QML), AtlasCodeView (read-only monospace text with copy button, line
+  numbers and a height cap), AtlasCopyButton and AtlasCommandPalette (a
+  Ctrl+K search over the app's AtlasActions).
 - Atlas.Ui: AtlasUrlValidator, AtlasEmailValidator, AtlasPathValidator and
   AtlasNumberValidator, validators for an AtlasTextField; AtlasDoubleSpinBox
   (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,

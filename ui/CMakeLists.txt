@@ -110,6 +110,9 @@ qt_add_qml_module(atlasui
         AtlasCard.qml
         AtlasExpandableSection.qml
         AtlasTreeView.qml
+        AtlasCodeView.qml
+        AtlasCopyButton.qml
+        AtlasCommandPalette.qml
     SOURCES
         livechart.h livechart.cpp
         repaintarea.h repaintarea.cpp
@@ -119,6 +122,7 @@ qt_add_qml_module(atlasui
         atlasvalidators.h atlasvalidators.cpp
         atlastreemodel.h atlastreemodel.cpp
         atlasapp.h atlasapp.cpp
+        atlasclipboard.h atlasclipboard.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         translations.cpp atlasuiplugin.cpp
 )
