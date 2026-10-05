@@ -44,9 +44,9 @@ animation speed.
 ### F0: bugs and AtlasPasswordField
 
 - [x] AtlasPasswordField (9bd6564 and its review fixes)
-- [ ] Section's fold header toggles on Return and Enter, not only Space
-- [ ] LiveChart.setValues/setValues2 skip the repaint when nothing changed
-- [ ] AtlasSwitch reports the Switch accessible role
+- [x] Section's fold header toggles on Return and Enter, not only Space
+- [x] LiveChart.setValues/setValues2 skip the repaint when nothing changed
+- [x] AtlasSwitch reports the Switch accessible role
 
 ### F1: foundations
 
