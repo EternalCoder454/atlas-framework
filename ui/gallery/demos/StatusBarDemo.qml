@@ -21,6 +21,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         StatusBarItem { text: "Ln 3, Col 14" }
         StatusBarItem { text: "42 characters" }
+        StatusBarItem { symbol: Symbols.codepoint("lock"); text: "Saved" }
         Item { Layout.fillWidth: true }
         StatusBarItem { text: "100%"; clickable: true }
         StatusBarItem { text: "UTF-8" }

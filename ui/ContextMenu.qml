@@ -12,11 +12,16 @@ import org.kde.kirigami as Kirigami
 //       ContextMenuSeparator {}
 //       ContextMenuItem { text: qsTr("End Task"); destructive: true }
 //   }
+//
+// A menu taller than the window (less its margins) is cut to fit and scrolls;
+// the arrow keys keep the current row in view. Radio rows: see ContextMenuItem.
 T.Menu {
     id: control
 
     implicitWidth: Math.max(Kirigami.Units.gridUnit * 11, contentItem.implicitWidth + leftPadding + rightPadding)
-    implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
+    // The window's height less the margins bounds the menu; it scrolls past that.
+    readonly property real maxHeight: list.windowHeight - topMargin - bottomMargin
+    implicitHeight: Math.min(contentItem.implicitHeight + topPadding + bottomPadding, Math.max(maxHeight, 0))
     padding: Kirigami.Units.smallSpacing
     margins: Kirigami.Units.smallSpacing
     overlap: 1
@@ -26,6 +31,8 @@ T.Menu {
     delegate: ContextMenuItem {}
 
     contentItem: ListView {
+        id: list
+        readonly property real windowHeight: Window.window ? Window.window.height : Number.POSITIVE_INFINITY
         implicitWidth: {
             let w = 0;
             for (let i = 0; i < count; ++i) {
@@ -38,8 +45,10 @@ T.Menu {
         }
         implicitHeight: contentHeight
         model: control.contentModel
-        interactive: Window.window ? contentHeight + control.topPadding + control.bottomPadding > Window.window.height : false
+        interactive: contentHeight > height
         clip: interactive
+        boundsBehavior: Flickable.StopAtBounds
+        onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
         currentIndex: control.currentIndex
         keyNavigationEnabled: true
         keyNavigationWraps: true

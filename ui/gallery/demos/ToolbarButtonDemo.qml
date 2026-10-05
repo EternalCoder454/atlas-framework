@@ -10,17 +10,29 @@ Item {
 
     property bool animate: true
 
-    implicitWidth: 300
-    implicitHeight: 70
+    implicitWidth: 400
+    implicitHeight: 120
     width: implicitWidth
     height: implicitHeight
 
-    RowLayout {
+    ColumnLayout {
         anchors.centerIn: parent
-        spacing: 6
-        ToolbarButton { icon.name: "format-text-bold"; text: "Bold"; shortcutText: "Ctrl+B" }
-        ToolbarButton { icon.name: "format-text-italic"; text: "Italic"; checkable: true; checked: true }
-        ToolbarButton { icon.name: "format-text-underline"; text: "Underline"; enabled: false }
-        ToolbarButton { icon.name: "go-down"; text: "More"; iconRotation: 90 }
+        spacing: 8
+        RowLayout {
+            spacing: 6
+            ToolbarButton { icon.name: "format-text-bold"; text: "Bold"; shortcutText: "Ctrl+B" }
+            ToolbarButton { icon.name: "format-text-italic"; text: "Italic"; checkable: true; checked: true }
+            ToolbarButton { icon.name: "format-text-underline"; text: "Underline"; enabled: false }
+            ToolbarButton { icon.name: "go-down"; text: "More"; iconRotation: 90 }
+        }
+        // Symbols, unchecked and checked, and a focusable one showing its ring.
+        RowLayout {
+            spacing: 6
+            ToolbarButton { symbol: Symbols.codepoint("format_bold"); text: "Bold" }
+            ToolbarButton { symbol: Symbols.codepoint("format_italic"); text: "Italic"; checkable: true; checked: true }
+            ToolbarButton { symbol: Symbols.codepoint("format_underlined"); text: "Underline"; checkable: true }
+            ToolbarButton { symbol: Symbols.codepoint("link"); text: "Link"; enabled: false }
+            ToolbarButton { id: focusable; symbol: Symbols.codepoint("search"); text: "Find"; focusable: true; Component.onCompleted: forceActiveFocus(Qt.TabFocusReason) }
+        }
     }
 }

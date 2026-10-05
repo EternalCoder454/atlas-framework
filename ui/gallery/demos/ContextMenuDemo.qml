@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import Atlas.Ui
 
@@ -11,9 +12,13 @@ Item {
     property bool animate: true
 
     implicitWidth: 320
-    implicitHeight: 240
+    implicitHeight: 290
     width: implicitWidth
     height: implicitHeight
+
+    QQC2.ButtonGroup {
+        id: sortGroup
+    }
 
     ContextMenu {
         id: menu
@@ -22,6 +27,10 @@ Item {
         y: 20
         ContextMenuItem { text: "Details"; icon.name: "documentinfo"; shortcutText: "Alt+Return" }
         ContextMenuItem { text: "Pin"; checkable: true; checked: true }
+        ContextMenuSeparator {}
+        ContextMenuItem { text: "Name"; radio: true; checked: true; QQC2.ButtonGroup.group: sortGroup }
+        ContextMenuItem { text: "Size"; radio: true; QQC2.ButtonGroup.group: sortGroup }
+        ContextMenuItem { text: "Date"; radio: true; QQC2.ButtonGroup.group: sortGroup }
         ContextMenuSeparator {}
         ContextMenuItem { text: "End Task"; destructive: true; icon.name: "process-stop" }
         Component.onCompleted: open()

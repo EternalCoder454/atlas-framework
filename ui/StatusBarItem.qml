@@ -7,17 +7,24 @@ import org.kde.kirigami as Kirigami
 // `clickable` it gets a hover background and emits clicked(); with a `menu`
 // (a QQC2.Menu or ContextMenu) a click pops it up above the cell. The
 // StatusBar sets `leadingSeparator` to draw the thin line before the cell.
+// A `symbol` (a Material Symbol) is drawn before the text. The menu opens
+// just above the cell, from its leading edge (the trailing one when mirrored),
+// moved to stay inside the window.
 T.AbstractButton {
     id: control
 
     property bool clickable: false
     property string toolTip
+    // A Material Symbol (Symbols.<Name>) shown before the text.
+    property int symbol: 0
     // Opened above the item on a click; leave unset for none.
     property QtObject menu: null
+    // The menu, untyped: a QQC2.Menu or ContextMenu.
+    readonly property var menuObject: control.menu
     // Set by the StatusBar.
     property bool leadingSeparator: false
 
-    implicitWidth: label.implicitWidth + leftPadding + rightPadding + (leadingSeparator ? 1 : 0)
+    implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding + (leadingSeparator ? 1 : 0)
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.5)
     leftPadding: Kirigami.Units.largeSpacing
     rightPadding: leftPadding
@@ -29,7 +36,20 @@ T.AbstractButton {
 
     onClicked: {
         if (control.clickable && control.menu) {
-            control.menu.popup(control, control.mirrored ? control.width - control.menu.implicitWidth : 0, -control.menu.implicitHeight - Kirigami.Units.smallSpacing);
+            const m = control.menuObject;
+            const w = m.width > 0 ? m.width : m.implicitWidth;
+            const h = m.height > 0 ? m.height : m.implicitHeight;
+            let x = control.mirrored ? control.width - w : 0;
+            let y = -h - Kirigami.Units.smallSpacing;
+            const win = control.Window.window;
+            if (win) {
+                // Keep the menu inside the window, whichever side runs out.
+                const gap = Kirigami.Units.smallSpacing;
+                const at = control.mapToItem(null, x, y);
+                x += Math.max(gap, Math.min(at.x, win.width - w - gap)) - at.x;
+                y += Math.max(gap, Math.min(at.y, win.height - h - gap)) - at.y;
+            }
+            m.popup(control, x, y);
         }
     }
     onVisibleChanged: {
@@ -65,15 +85,41 @@ T.AbstractButton {
         }
     }
 
-    contentItem: Text {
-        id: label
-        verticalAlignment: Text.AlignVCenter
-        horizontalAlignment: Text.AlignHCenter
-        text: control.text
-        font: Kirigami.Theme.smallFont
-        textFormat: Text.PlainText
-        elide: Text.ElideRight
-        color: Kirigami.Theme.textColor
+    contentItem: Item {
+        id: content
+        // From the text's own width, not the row's: the text is shrunk to fit.
+        implicitWidth: label.implicitWidth + (control.symbol !== 0 ? content.symbolWidth + row.spacing : 0)
+        implicitHeight: Math.max(label.implicitHeight, control.symbol !== 0 ? content.symbolWidth : 0)
+        readonly property real symbolWidth: Math.round(Kirigami.Units.iconSizes.small * 1.2)
         opacity: 0.8
+        Row {
+            id: row
+            anchors.centerIn: parent
+            spacing: Kirigami.Units.smallSpacing
+            // Made only when used, so cells without one never load the fonts.
+            Loader {
+                active: control.symbol !== 0
+                visible: active
+                anchors.verticalCenter: parent.verticalCenter
+                sourceComponent: Symbol {
+                    icon: control.symbol
+                    size: Math.round(Kirigami.Units.iconSizes.small * 1.2)
+                    color: Kirigami.Theme.textColor
+                }
+            }
+            Text {
+                id: label
+                anchors.verticalCenter: parent.verticalCenter
+                // Elides when the cell is narrower than the text.
+                width: Math.min(implicitWidth, Math.max(0, content.width - (control.symbol !== 0 ? content.symbolWidth + row.spacing : 0)))
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: control.text
+                font: Kirigami.Theme.smallFont
+                textFormat: Text.PlainText
+                elide: Text.ElideRight
+                color: Kirigami.Theme.textColor
+            }
+        }
     }
 }
