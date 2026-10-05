@@ -46,6 +46,14 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   6 px in (4 before) and each corner is an L running 16 px along both edges;
   along the top edge the corners stop where the header's buttons begin. A
   scrollbar at the window's right edge loses 6 px to the handle (4 before).
+- Fix: a user's edit no longer ends an app's binding on the edited property
+  of `AtlasRating` (`value`), `AtlasSegmentedControl` (`currentIndex`),
+  `AtlasCalendar` (`selectedDate`, `month`, `year`), `AtlasDatePicker`
+  (`selectedDate`), `AtlasColorField` (`color`) and `AtlasFontPicker`
+  (`font.family`, `font.pointSize`). If the app stores the edit in the edit
+  signal's handler, the binding follows the model; if it ignores it, the
+  property returns to the model's value one event-loop turn later. A literal
+  value or no binding keeps the edit, as before.
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call
   (60 s by default) and an overall deadline) returning `ListOutcome`
@@ -82,6 +90,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `QtQuick.Controls.Basic` (or another style), hide imports behind comments,
   or have no QML files (`--allow-empty` for those); `check-app-names.sh`
   fails on an empty app.
+- Tools: `dev-check.sh` takes `ATLAS_DEV_JOBS` (fewer build and test jobs,
+  for several checkouts at once) and passes `ATLAS_UPDATE_GOLDENS` through;
+  an update run rewrites only the goldens that fail, not every picture.
 - Packaging: `build-rpm.sh` packages the committed tree only (git archive of
   HEAD) and refuses a dirty one; the spec builds and ships the translations.
 - Template: drill-down pages use `AtlasNavigationStack`; `main.cpp`

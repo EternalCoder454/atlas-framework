@@ -14,6 +14,7 @@
 # ATLAS_DEV_BUILD_DIR is the build directory on the host, an absolute path (default: one per
 # checkout under ~/.cache/atlas-framework-dev, so worktrees don't share one).
 # ATLAS_DEV_JOBS caps the build and test jobs (default: every CPU), for several runs at once.
+# ATLAS_UPDATE_GOLDENS=1 rewrites the goldens that fail (look at each changed PNG before committing).
 # ATLAS_DEV_IMAGE is the container (default localhost/atlas-framework-dev:44,
 # built from packaging/Containerfile.dev).
 set -euo pipefail
@@ -103,7 +104,7 @@ rc=0
 podman run --rm --init --name "atlas-dev-check-$key-$$" --security-opt label=disable \
     -v "$root:/src:$mode" -v "$build:/b" "${gitmount[@]}" -w /src \
     -e PYTHONDONTWRITEBYTECODE=1 -e ATLAS_DEMO_FILTER="$filter" -e TRANSLATIONS="$translations" \
-    -e JOBS="$jobs" -e CMAKE_BUILD_PARALLEL_LEVEL="$jobs" \
+    -e JOBS="$jobs" -e CMAKE_BUILD_PARALLEL_LEVEL="$jobs" -e ATLAS_UPDATE_GOLDENS="${ATLAS_UPDATE_GOLDENS:-}" \
     "$image" bash -euo pipefail -c '
 step() { printf "\n== %s\n" "$1"; }
 [ -f /b/build/build.ninja ] || cmake -S /src -B /b/build -G Ninja -DATLAS_UI_TESTS=ON >/dev/null

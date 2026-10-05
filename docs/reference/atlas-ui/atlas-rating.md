@@ -30,6 +30,9 @@ AtlasRating {
 | `starSize` | `real` | a small-medium icon size | The size of a star. |
 | `value` | `real` | `0` | The rating, 0 to 5. Held to that range and rounded to halves. |
 
+> [!NOTE]
+> A user's edit does not end a binding on `value`. `value: review.stars` stays bound: if `onEdited` stores the edit, it follows the model; if the app ignores the edit, `value` returns to the model's one turn of the event loop later. A handler or `onXChanged` that reads it sees the new value at once. A literal value or no binding keeps the user's edit.
+
 ## Signals
 
 | Name | Description |
