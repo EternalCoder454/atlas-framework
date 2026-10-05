@@ -50,28 +50,28 @@ animation speed.
 
 ### F1: foundations
 
-- [ ] `AtlasStyle` singleton: colours by role (accent, surface, text, success,
+- [x] `AtlasStyle` singleton: colours by role (accent, surface, text, success,
       warning, error; from Kirigami.Theme), spacing, radii (today 6, 8 and 10
       are hard-coded), font sizes, durations; controls read it
-- [ ] `Appearance` gains the system's colour scheme, high contrast, reduced
+- [x] `Appearance` gains the system's colour scheme, high contrast, reduced
       motion and text scale (one place for system preferences)
-- [ ] Global density: `AtlasStyle.density` (normal, compact) read by TabBar,
+- [x] Global density: `AtlasStyle.density` (normal, compact) read by TabBar,
       StatusBar, SectionRow and the rows of lists; one reduced-motion flag
       every animation reads
-- [ ] `AtlasLabel { textStyle: Title | Heading | Body | Caption | Mono }`
+- [x] `AtlasLabel { textStyle: Title | Heading | Body | Caption | Mono }`
       (replaces the planned AtlasHeading and AtlasCaption)
-- [ ] `AtlasAction` on Qt's `Action`: text, symbol, shortcut, enabled,
+- [x] `AtlasAction` on Qt's `Action`: text, symbol, shortcut, enabled,
       checkable, toolTip. ToolbarButton, ContextMenuItem, MenuButton,
       AtlasFloatingToolbar and AtlasCommandPalette take one; an icon-only
       button gets its tooltip from the action's text
-- [ ] Shortcut registry (collects actions' shortcuts, warns on conflicts),
+- [x] Shortcut registry (collects actions' shortcuts, warns on conflicts),
       `AtlasShortcutsDialog`, `AtlasShortcutLabel`
-- [ ] Slots: SectionRow `leading`, `trailing` (any control) and `content`;
+- [x] Slots: SectionRow `leading`, `trailing` (any control) and `content`;
       `SectionRow.busy` (replaces the planned AtlasBusyRow); AtlasPage
       `headerTrailing` and writable `maxContentWidth`
-- [ ] The state contract in DESIGN.md (enabled, readOnly, error, busy,
+- [x] The state contract in DESIGN.md (enabled, readOnly, error, busy,
       hover, pressed, focus) and a test that walks every demo for it
-- [ ] Changes to existing types: ToolbarButton `symbol`, checkable style,
+- [x] Changes to existing types: ToolbarButton `symbol`, checkable style,
       `focusable`; StatusBarItem `symbol` and its menu no longer covering
       neighbours; ConfirmDialog third button, default button, destructive
       style, body capped to the panel width; AtlasSpinBox narrower and
@@ -84,78 +84,78 @@ animation speed.
 
 ### F2: inputs
 
-- [ ] `AtlasValidators` (C++ validators): url(schemes), email, path, number;
+- [x] `AtlasValidators` (C++ validators): url(schemes), email, path, number;
       replaces the planned AtlasUrlField
-- [ ] `AtlasDoubleSpinBox` on Qt 6.11's DoubleSpinBox (decimals); with
+- [x] `AtlasDoubleSpinBox` on Qt 6.11's DoubleSpinBox (decimals); with
       `AtlasSpinBox.showButtons: false` it replaces the planned AtlasNumberField
-- [ ] `AtlasSegmentedControl`
-- [ ] `AtlasTimePicker` (minuteStep, optional day, 12/24 h from the locale)
-- [ ] `AtlasDatePicker` and `AtlasCalendar`
-- [ ] `AtlasColorField`, `AtlasFileField`, `AtlasFolderField` (the file
+- [x] `AtlasSegmentedControl`
+- [x] `AtlasTimePicker` (minuteStep, optional day, 12/24 h from the locale)
+- [x] `AtlasDatePicker` and `AtlasCalendar`
+- [x] `AtlasColorField`, `AtlasFileField`, `AtlasFolderField` (the file
       chooser portal through QtQuick.Dialogs)
-- [ ] `AtlasShortcutField` (records a key combination)
-- [ ] `AtlasSplitButton`
-- [ ] `AtlasChip`, `AtlasChipGroup`
-- [ ] `AtlasAutocompleteField`
-- [ ] `AtlasFontPicker`
+- [x] `AtlasShortcutField` (records a key combination)
+- [x] `AtlasSplitButton`
+- [x] `AtlasChip`, `AtlasChipGroup`
+- [x] `AtlasAutocompleteField`
+- [x] `AtlasFontPicker`
 
 ### F3: surfaces, layout and navigation
 
-- [ ] `AtlasSidebar`: scrolls the focused item into view
+- [x] `AtlasSidebar`: scrolls the focused item into view
       (`positionViewAtChild`), filtering, an empty placeholder, item context
       menus, drop targets, focus lands on the selected row
-- [ ] Width classes on AtlasWindow (compact, medium, wide); sidebars collapse
+- [x] Width classes on AtlasWindow (compact, medium, wide); sidebars collapse
       the same way everywhere
-- [ ] `AtlasSplitView` (remembers its sizes), `AtlasNavigationStack`
+- [x] `AtlasSplitView` (remembers its sizes), `AtlasNavigationStack`
       (push, pop, Back), `AtlasViewSwitcher` (page tabs)
-- [ ] `AtlasToolbar` (overflows into a "more" menu), `AtlasFloatingToolbar`
+- [x] `AtlasToolbar` (overflows into a "more" menu), `AtlasFloatingToolbar`
       (Notepad's ToolCapsule), `AtlasFlowLayout`
-- [ ] `AtlasPopover`, `AtlasScrollBar`, `AtlasDialog` (title, Back and Close,
+- [x] `AtlasPopover`, `AtlasScrollBar`, `AtlasDialog` (title, Back and Close,
       scrolling body, slots), `AtlasCard` (padded body, slots),
       `AtlasExpandableSection`
-- [ ] `AtlasDropZone`, an onboarding scaffold on StepItem (Back, Next, Skip)
+- [x] `AtlasDropZone`, an onboarding scaffold on StepItem (Back, Next, Skip)
 
 ### F4: lists and display
 
-- [ ] `AtlasTreeView`
-- [ ] `AtlasListView` (single and multi-select, type-ahead, context menu,
+- [x] `AtlasTreeView`
+- [x] `AtlasListView` (single and multi-select, type-ahead, context menu,
       drag to reorder)
-- [ ] DataTable: column resize, show and hide columns, multi-select, row
+- [x] DataTable: column resize, show and hide columns, multi-select, row
       context menu, sticky header
-- [ ] `AtlasStat` (value, label, unit, trend; replaces AtlasBigStat),
+- [x] `AtlasStat` (value, label, unit, trend; replaces AtlasBigStat),
       `AtlasDetailGrid`, `AtlasSparkline` (C++; NaN gaps, auto-scale with a
       minimum, no repaint when equal)
-- [ ] `AtlasAvatar`, `AtlasRating`, `AtlasBadge`
-- [ ] `AtlasCodeView` (read-only monospace, framed or not, max height,
+- [x] `AtlasAvatar`, `AtlasRating`, `AtlasBadge`
+- [x] `AtlasCodeView` (read-only monospace, framed or not, max height,
       optional copy), `AtlasCopyButton`
-- [ ] `AtlasCommandPalette` (AtlasSearchResults fed by AtlasAction)
+- [x] `AtlasCommandPalette` (AtlasSearchResults fed by AtlasAction)
 
 ### F5: services, checks and lint
 
-- [ ] `AtlasFormat`: bytes, percentages, durations, numbers and dates (long,
+- [x] `AtlasFormat`: bytes, percentages, durations, numbers and dates (long,
       short, date-time, at a time, relative); Atlas.Ui owns the strings
-- [ ] `AtlasClipboard`: text, rich text and images
-- [ ] `AtlasSettings` in QML on the existing settings file: typed values with
+- [x] `AtlasClipboard`: text, rich text and images
+- [x] `AtlasSettings` in QML on the existing settings file: typed values with
       defaults; restores window size, sidebar width and split sizes
-- [ ] Portal helpers: open a URL; notification actions from QML (the crate
+- [x] Portal helpers: open a URL; notification actions from QML (the crate
       has them); a second launch raises the running window (check what the
       single-instance name already does)
-- [ ] Visual test variants: high contrast, right-to-left, compact, 200% text
-- [ ] a11y: a tab-order test per demo
-- [ ] Deprecation rule in DESIGN.md (one more minor version, with a
+- [x] Visual test variants: high contrast, right-to-left, compact, 200% text
+- [x] a11y: a tab-order test per demo
+- [x] Deprecation rule in DESIGN.md (one more minor version, with a
       lint-app.sh warning)
-- [ ] lint-app.sh: Kirigami.PlaceholderMessage, a hand-made tinted banner,
+- [x] lint-app.sh: Kirigami.PlaceholderMessage, a hand-made tinted banner,
       QQC2.ToolTip, Kirigami.Heading (use AtlasLabel)
 
 ### F6: the Atlas look
 
-- [ ] Violet accent (buttons, selection) and pink focus rings by default; a
+- [x] Violet accent (buttons, selection) and pink focus rings by default; a
       Plasma accent colour, when chosen, wins
-- [ ] IBM Plex Sans for UI, JetBrains Mono for code (system fonts when absent)
-- [ ] Small rounding, quick and subtle motion
-- [ ] Blur on most surfaces (popups, menus, dialogs), tinted, each with a
+- [x] IBM Plex Sans for UI, JetBrains Mono for code (system fonts when absent)
+- [x] Small rounding, quick and subtle motion
+- [x] Blur on most surfaces (popups, menus, dialogs), tinted, each with a
       solid fallback; `AtlasTransparencySwitch` for the settings page
-- [ ] Merged header: `AtlasHeaderBar` (title, tools, window buttons matched
+- [x] Merged header: `AtlasHeaderBar` (title, tools, window buttons matched
       to the AtlasOS KWin decoration) on an opt-in frameless `AtlasWindow`;
       `AtlasAppMenu` exports menus to Plasma's global menu when present
 
