@@ -42,7 +42,7 @@ Rectangle {
 | `error` | `color` (read-only) | — | The colour scheme's negative text colour. |
 | `errorFill` | `color` (read-only) | — | The faint fill of an invalid field. |
 | `floatingBackground` | `color` (read-only) | — | Menus, popovers, notifications and the launcher: `surfaceRaised` at 85% over the blur, solid without it. |
-| `focus` | `color` (read-only) | — | The keyboard focus ring: magenta-violet pink (`#A62A8C` Light, `#E28BE0` Dark); the user's Plasma accent wins. |
+| `focus` | `color` (read-only) | — | The keyboard focus ring: magenta-violet (`#A62A8C` Light, `#E28BE0` Dark); the user's Plasma accent wins. |
 | `fontFamily` | `string` (read-only) | — | The application font's family: IBM Plex Sans when installed, else the system font. |
 | `fontSizeBody` | `real` (read-only) | — | The body size in points: the application font's size. |
 | `fontSizeCaption` | `real` (read-only) | — | Footers and hints: 0.92 of body. |
