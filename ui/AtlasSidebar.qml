@@ -286,7 +286,7 @@ FocusScope {
         height: 0
         focusPolicy: Qt.TabFocus
         Accessible.role: Accessible.Grouping
-        Accessible.name: qsTr("Sidebar")
+        Accessible.name: qsTr("Sidebar entries")
         onActiveFocusChanged: {
             if (!activeFocus) {
                 return;

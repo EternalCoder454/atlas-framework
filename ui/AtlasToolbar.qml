@@ -43,9 +43,9 @@ Item {
     property string accessibleName: qsTr("Toolbar")
 
     // How many actions show as buttons; the rest are in the menu.
-    readonly property int visibleCount: _fit.count
+    readonly property int visibleCount: _fitCount
     // Number of actions in the "more" menu.
-    readonly property int overflowCount: actions.length - _fit.count
+    readonly property int overflowCount: actions.length - _fitCount
     // The "more" menu, to open it from code.
     readonly property ContextMenu moreMenu: menu
 
@@ -71,22 +71,18 @@ Item {
         return i > 0 && _sectionOf(i) !== _sectionOf(i - 1);
     }
     // The count of buttons that fit, and the room they have.
-    readonly property var _fit: {
+    readonly property int _fitCount: {
         const n = root.actions.length;
         const room = root.width - _pad * 2 - (_leadingWidth > 0 ? _leadingWidth + _gap : 0) - (_trailingWidth > 0 ? _trailingWidth + _gap : 0) - _gap;
         if (_widthOf(n) <= room) {
-            return {
-                count: n
-            };
+            return n;
         }
         const more = _buttonWidth + _gap;
         let count = n;
         while (count > 0 && _widthOf(count) + more > room) {
             --count;
         }
-        return {
-            count: count
-        };
+        return count;
     }
 
     implicitWidth: _pad * 2 + (_leadingWidth > 0 ? _leadingWidth + _gap : 0) + _widthOf(actions.length) + _gap + (_trailingWidth > 0 ? _trailingWidth + _gap : 0)
@@ -99,15 +95,23 @@ Item {
     onActionsChanged: _rebuildMenu()
     Component.onCompleted: _rebuildMenu()
 
+    property bool _rebuildPending: false
     function _rebuildMenu() {
+        // Not while the menu is open (its rows would vanish under the pointer);
+        // it is rebuilt when it closes.
+        if (menu.visible) {
+            _rebuildPending = true;
+            return;
+        }
+        _rebuildPending = false;
         while (menu.count > 0) {
             const item = menu.takeItem(0);
             if (item) {
                 item.destroy();
             }
         }
-        for (let i = _fit.count; i < actions.length; ++i) {
-            if (i > _fit.count && _dividerBefore(i)) {
+        for (let i = _fitCount; i < actions.length; ++i) {
+            if (i > _fitCount && _dividerBefore(i)) {
                 menu.addItem(separatorComponent.createObject(null));
             }
             menu.addItem(itemComponent.createObject(null, {
@@ -115,7 +119,7 @@ Item {
             }));
         }
     }
-    on_FitChanged: _rebuildMenu()
+    on_FitCountChanged: _rebuildMenu()
 
     // Measures one button; never shown.
     ToolbarButton {
@@ -155,7 +159,7 @@ Item {
         Row {
             spacing: root._gap
             Repeater {
-                model: root._fit.count
+                model: root._fitCount
                 delegate: Row {
                     id: entry
                     required property int index
@@ -187,6 +191,11 @@ Item {
             onClicked: menu.popup(moreButton, 0, moreButton.height + root._gap)
             ContextMenu {
                 id: menu
+                onClosed: {
+                    if (root._rebuildPending) {
+                        root._rebuildMenu();
+                    }
+                }
             }
         }
 

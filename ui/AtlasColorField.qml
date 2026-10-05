@@ -155,7 +155,15 @@ T.AbstractButton {
             hexField.text = control.hex;
             hexField.forceActiveFocus(Qt.PopupFocusReason);
         }
-        onClosed: control.forceActiveFocus(Qt.PopupFocusReason)
+        property bool _hadFocus: false
+        onAboutToHide: _hadFocus = hexField.activeFocus || contentItem.activeFocus
+        onClosed: {
+            const item = control.Window.activeFocusItem;
+            if (popup._hadFocus && (!item || popup.contentItem.contains(item))) {
+                control.forceActiveFocus(Qt.PopupFocusReason);
+            }
+            popup._hadFocus = false;
+        }
 
         contentItem: ColumnLayout {
             spacing: Kirigami.Units.largeSpacing

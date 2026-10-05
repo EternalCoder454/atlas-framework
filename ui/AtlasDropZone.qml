@@ -163,7 +163,8 @@ Item {
         onEntered: drag => {
             priv.dragBad = drag.hasUrls && priv.acceptedUrls(drag.urls).length === 0;
             priv.dragOver = true;
-            drag.accepted = !priv.dragBad;
+            // Always accept: a rejected enter may never get its exited, which would
+            // leave the error border on. The drop itself refuses bad files.
         }
         onExited: priv.dragOver = false
         onDropped: drop => {

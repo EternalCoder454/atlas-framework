@@ -49,6 +49,11 @@ QQC2.Popup {
         // names no shown button falls back to accept.
         readonly property string defaultName: dialog.defaultButton === "reject" && dialog.showReject ? "reject" : dialog.defaultButton === "alternative" && dialog.alternativeText.length > 0 ? "alternative" : "accept"
 
+        // Return from a field in the body must not run a destructive accept (or
+        // anything on a dialog that starts on Cancel); the buttons still take
+        // Return themselves.
+        readonly property bool bodyReturnBlocked: defaultName === "accept" && (dialog.destructive || dialog.focusReject && dialog.showReject)
+
         function button(name: string): AtlasButton {
             return name === "reject" ? rejectButton : name === "alternative" ? alternativeButton : acceptButton;
         }
@@ -105,13 +110,13 @@ QQC2.Popup {
         spacing: AtlasStyle.spacingLarge
         // From a field in the body, Return reaches here; buttons take it themselves.
         Keys.onReturnPressed: event => {
-            if (!event.isAutoRepeat) {
+            if (!event.isAutoRepeat && !internals.bodyReturnBlocked) {
                 internals.activateDefault();
             }
             event.accepted = true;
         }
         Keys.onEnterPressed: event => {
-            if (!event.isAutoRepeat) {
+            if (!event.isAutoRepeat && !internals.bodyReturnBlocked) {
                 internals.activateDefault();
             }
             event.accepted = true;

@@ -23,7 +23,8 @@ import org.kde.kirigami as Kirigami
 //
 // `showDate(date)` turns to the month of a date without selecting it. `today`
 // is the date that gets the ring (default: the current day); set it only to
-// make a picture or test repeatable.
+// make a picture or test repeatable. Dates the calendar makes (and hands to
+// `activated`) are local noon of the day, so time zones and DST never move them.
 T.Control {
     id: control
 

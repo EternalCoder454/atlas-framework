@@ -147,7 +147,13 @@ Item {
                     text: priv.titleOf(step.index)
                     current: step.index === control.currentIndex
                     done: step.index < control.currentIndex
-                    onClicked: control.currentIndex = step.index
+                    // Only back to a finished step (clickable is false for later ones);
+                    // moving forward goes through next() and its canAdvance check.
+                    onClicked: {
+                        if (step.index < control.currentIndex) {
+                            control.currentIndex = step.index;
+                        }
+                    }
                 }
             }
             Item {
