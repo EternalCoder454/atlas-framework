@@ -122,7 +122,10 @@ T.AbstractButton {
                 // Decoded at about the size shown, not the file's.
                 sourceSize: Qt.size(Math.ceil(Math.max(1, frame.width) * 2), Math.ceil(Math.max(1, frame.height) * 2))
                 opacity: control.enabled ? 1 : 0.5
-                layer.enabled: visible
+                // The software renderer draws no MultiEffect (a VM without a
+                // GPU, where the installer runs): the picture is shown with
+                // square corners rather than not at all.
+                layer.enabled: visible && picture.GraphicsInfo.api !== GraphicsInfo.Software
                 layer.effect: MultiEffect {
                     maskEnabled: true
                     maskSource: mask
