@@ -365,6 +365,11 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   per-user operation lock (`atlas-flatpak.lock`, taken with the Updater's
   `atlas-updater-apps.lock` during the transition). The Store prototypes
   them first; they move here with the same names.
+  Also `overrides` for the Settings app's App Permissions page (replaces
+  Flatseal; Settings, 2026-10-05): `declared`, `layers` (each effective item
+  with its source), `set` and `reset` for a user app or all apps, atomic and
+  locked writes that keep unknown keys, values validated by flatpak's rules,
+  tested against Flatseal's list. Built here, not prototyped in Settings.
 - [ ] 41 Store controls: `AtlasScreenshotCarousel.expandable` (a full-window
   viewer), AtlasShelf (a horizontal row of cards with scroll buttons),
   AtlasInstallButton `"remove"`, `"removing"` and `"queued"`,
