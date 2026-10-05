@@ -122,8 +122,21 @@ cmake --build /b/build >/b/build.log 2>&1 || {
 }
 tail -n 1 /b/build.log
 step qmllint
-cmake --build /b/build --target all_qmllint >/b/qmllint.log 2>&1 || { tail -n 40 /b/qmllint.log; exit 1; }
-echo "ok ($(grep -c "^Warning" /b/qmllint.log || true) warnings, /b/qmllint.log)"
+cmake --build /b/build --target all_qmllint >/b/qmllint.log 2>&1 || {
+    # An Error (a duplicate id, a syntax error) stops the target: show those.
+    grep -A2 "^Error" /b/qmllint.log || tail -n 40 /b/qmllint.log
+    exit 1
+}
+# The same exact budget as CI: over it fails at the end, so the tests still run.
+lintn=$(grep -c "^Warning" /b/qmllint.log || true)
+lintmax=$(sed -n "s/^ *QMLLINT_MAX: *\([0-9]*\).*/\1/p" .github/workflows/ci.yml | head -n 1)
+lintbad=
+if [ -n "$lintmax" ] && [ "$lintn" -ne "$lintmax" ]; then
+    lintbad="qmllint has $lintn warnings, CI expects exactly $lintmax (QMLLINT_MAX in .github/workflows/ci.yml): fix the new ones, or lower the budget when there are fewer"
+    echo "$lintbad"
+else
+    echo "ok ($lintn warnings, /b/qmllint.log)"
+fi
 step tests
 rm -rf /b/build/visual-out
 [ -z "$ATLAS_DEMO_FILTER" ] || echo "demos: $ATLAS_DEMO_FILTER"
@@ -140,6 +153,10 @@ tail -n 1 /b/lint.log
 step docs
 python3 tools/test_docs.py 2>&1 | tail -n 3
 python3 tools/docs.py check
+if [ -n "$lintbad" ]; then
+    echo "$lintbad" >&2
+    exit 1
+fi
 ' || rc=$?
 if [ "$rc" -ne 0 ] && grep -qE "FAIL|Failed" "$build/ctest.log" 2>/dev/null; then
     echo "dev-check: pictures of the failed tests are in $build/build/visual-out; the log is $build/ctest.log" >&2
