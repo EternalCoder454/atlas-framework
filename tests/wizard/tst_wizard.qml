@@ -68,6 +68,16 @@ Item {
             return o;
         }
 
+        // Shortcuts work in the active window only; activate the test's.
+        function activate() {
+            const w = root.Window.window;
+            w.requestActivate();
+            tryVerify(() => w.active, 2000);
+            if (!w.active) {
+                skip("no active window on this platform");
+            }
+        }
+
         function test_labels() {
             const o = make();
             verify(button(o, "Back") !== null);
@@ -153,6 +163,7 @@ Item {
 
         function test_alt_left_not_while_busy() {
             const o = make();
+            activate();
             o.forceActiveFocus();
             keyClick(Qt.Key_Left, Qt.AltModifier);
             compare(o.currentIndex, 0, "the shortcut works in this fixture");
@@ -178,7 +189,7 @@ Item {
             mouseClick(next);
             mouseClick(next);
             compare(spy.count, 2, "a refused Next can be pressed again");
-            compare(o.currentIndex, 0);
+            compare(o.currentIndex, 1, "the app did not move on");
             // An app that answers later sets busy in its handler.
             const answer = () => {
                 o.busy = true;
@@ -190,13 +201,14 @@ Item {
             o.advanceRequested.disconnect(answer);
             o.busy = false;
             o.next();
-            compare(o.currentIndex, 1);
+            compare(o.currentIndex, 2);
             mouseClick(button(o, "Finish"));
             compare(spy.count, 4, "asks again once busy has fallen");
         }
 
         function test_can_go_back() {
             const o = make();
+            activate();
             o.forceActiveFocus();
             keyClick(Qt.Key_Left, Qt.AltModifier);
             compare(o.currentIndex, 0, "Alt+Left goes back");

@@ -303,10 +303,10 @@ QQC2.ApplicationWindow {
             if (root.visibility !== Window.FullScreen && root.visibility !== Window.Minimized) {
                 root._kioskApplied = true;
                 root.visibility = Window.FullScreen;
-            } else if (root.visibility === Window.FullScreen) {
-                root._kioskApplied = true;
             }
-        } else if (root._kioskApplied) {
+        } else if (root._kioskApplied && root.visibility !== Window.Minimized) {
+            // A minimized window is left until it comes back (Qt would restore
+            // it to full screen).
             root._kioskApplied = false;
             if (root.visibility === Window.FullScreen) {
                 root.visibility = root.stateKey.length > 0 && root._state.value("Maximized", false) ? Window.Maximized : Window.Windowed;
@@ -469,7 +469,8 @@ QQC2.ApplicationWindow {
         }
     }
     function _saveState() {
-        if (!root._stateReady || root.stateKey.length === 0 || !root._shown) {
+        // Kiosk's full screen, and the resize leaving it, are not the user's.
+        if (!root._stateReady || root.stateKey.length === 0 || !root._shown || root.kiosk || root._kioskApplied) {
             return;
         }
         if (root.visibility === Window.Windowed) {
@@ -485,8 +486,9 @@ QQC2.ApplicationWindow {
     onHeightChanged: _saveState()
     onVisibilityChanged: {
         _saveState();
-        // KWin's F11, a Restore from a menu: kiosk puts it back.
-        if (root.kiosk) {
+        // KWin's F11, a Restore from a menu: kiosk puts it back. Each change
+        // is checked once a turn later, so a compositor bouncing it cannot spin.
+        if (root.kiosk || root._kioskApplied) {
             root._applyKiosk();
         }
     }
