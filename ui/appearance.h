@@ -15,15 +15,16 @@
 //   darkMode       colorScheme is Dark; when it is Unknown, whether the
 //                  palette's window colour is dark.
 //   highContrast   the system asks for high contrast (QStyleHints
-//                  accessibility, Qt 6.10+).
+//                  accessibility, Qt 6.10+, or the portal's `contrast`).
 //   reducedMotion  Plasma's AnimationDurationFactor in kdeglobals [KDE] is 0
 //                  (animations off), or the environment has
-//                  ATLAS_REDUCED_MOTION=1. Missing kdeglobals means false.
+//                  ATLAS_REDUCED_MOTION=1, or the portal's `reduced-motion`
+//                  (since 1.5.0). Missing kdeglobals means false.
 //   softwareRendering  rendering is in software: the Qt Quick software
-//                  adaptation, or the RHI on a software rasterizer (GL_RENDERER
-//                  or the Vulkan device named llvmpipe, softpipe, SwiftShader
-//                  or lavapipe). Known once the first window's scene graph is
-//                  up, so it changes at most once, false to true.
+//                  adaptation, or OpenGL or Vulkan on a software rasterizer
+//                  (GL_RENDERER or the Vulkan device named llvmpipe, softpipe,
+//                  SwiftShader or lavapipe). Known once the first frame is
+//                  drawn, so it changes at most once, false to true.
 //                  ATLAS_SOFTWARE_RENDERING=1 or =0 forces it (anything else
 //                  is logged and ignored).
 //   textScale      the application font's point size over 10 (Plasma's
@@ -39,6 +40,8 @@
 //                  family. It is also the application font's family.
 //   monoFamily     "JetBrains Mono" when installed, else the system fixed font.
 #pragma once
+
+#include "portalappearance.h"
 
 #include <KConfigWatcher>
 #include <KSharedConfig>
@@ -122,8 +125,9 @@ private:
     void readSystem();
     void readMotion();
     void watchWindow(QQuickWindow *window);
-    void detectRendering(QQuickWindow *window);
+    void applyRendering(bool software);
 
+    QPointer<PortalAppearance> m_portal;
     KSharedConfig::Ptr m_globals;
     KConfigWatcher::Ptr m_globalsWatcher;
     int m_colorScheme = UnknownScheme;

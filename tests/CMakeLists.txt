@@ -208,9 +208,10 @@ set_tests_properties(hardening PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFOR
 # Appearance.textScale through the clamp (ui/appearance.cpp, compiled in).
 add_executable(atlas-appearance-tests hardening/tst_appearance.cpp
     ${PROJECT_SOURCE_DIR}/ui/appearance.h ${PROJECT_SOURCE_DIR}/ui/appearance.cpp
+    ${PROJECT_SOURCE_DIR}/ui/portalappearance.h ${PROJECT_SOURCE_DIR}/ui/portalappearance.cpp
     ${PROJECT_SOURCE_DIR}/ui/textscale.h)
 target_include_directories(atlas-appearance-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
-target_link_libraries(atlas-appearance-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::DBus Qt6::GuiPrivate
+target_link_libraries(atlas-appearance-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::DBus
     KF6::WindowSystem KF6::ConfigCore)
 add_test(NAME appearance COMMAND atlas-appearance-tests)
 # Its own config dir and no session bus: the user's kdeglobals and portal
@@ -251,6 +252,26 @@ target_include_directories(atlas-sparkline-tests PRIVATE ${PROJECT_SOURCE_DIR}/u
 target_link_libraries(atlas-sparkline-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
 add_test(NAME sparkline COMMAND atlas-sparkline-tests)
 set_tests_properties(sparkline PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+# AtlasGlobalShortcut, the portal's appearance settings and their users
+# (ui/atlasglobalshortcut.cpp, portalappearance.cpp, appearance.cpp and
+# accessibilitystate.cpp, compiled into the test) against a fake portal on a
+# private bus the test starts itself (tests/platform).
+add_executable(atlas-platform-tests platform/tst_platform.cpp
+    ${PROJECT_SOURCE_DIR}/ui/accessibilitystate.h ${PROJECT_SOURCE_DIR}/ui/accessibilitystate.cpp
+    ${PROJECT_SOURCE_DIR}/ui/appearance.h ${PROJECT_SOURCE_DIR}/ui/appearance.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlasglobalshortcut.h ${PROJECT_SOURCE_DIR}/ui/atlasglobalshortcut.cpp
+    ${PROJECT_SOURCE_DIR}/ui/portalappearance.h ${PROJECT_SOURCE_DIR}/ui/portalappearance.cpp
+    ${PROJECT_SOURCE_DIR}/ui/textscale.h)
+target_include_directories(atlas-platform-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-platform-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::DBus
+    KF6::WindowSystem KF6::ConfigCore)
+add_test(NAME platform COMMAND atlas-platform-tests)
+# A skip (no private bus, or not the private one) is a failure here: the test
+# must really run. The container has dbus-daemon.
+set_tests_properties(platform PROPERTIES FAIL_REGULAR_EXPRESSION "SKIP   :")
+# Its own config dir; the bus is the test's private one (see the file).
+set_tests_properties(platform PROPERTIES TIMEOUT 120 ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;DBUS_SESSION_BUS_ADDRESS=disabled:;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/platform-config")
 # lint-app.sh's replacement and deprecation rules (tests/lint/run.sh).
 add_test(NAME lint COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/lint/run.sh)
 set_tests_properties(lint PROPERTIES TIMEOUT 60)
@@ -280,3 +301,11 @@ add_test(NAME window
 set_tests_properties(window PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-window-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/window-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
+# No test may reach a real desktop portal: Appearance and AccessibilityState
+# read the portal's settings from the session bus, so every test runs with the
+# bus disabled (the platform test starts a private one of its own and says so).
+get_property(_atlas_all_tests DIRECTORY PROPERTY TESTS)
+foreach(_t IN LISTS _atlas_all_tests)
+    set_property(TEST ${_t} APPEND PROPERTY ENVIRONMENT_MODIFICATION "DBUS_SESSION_BUS_ADDRESS=set:disabled:")
+endforeach()

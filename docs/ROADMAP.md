@@ -309,10 +309,10 @@ In 1.5.0 (robustness, performance and accessibility; no large new API):
   import order, and `SearchField` (6.10) is ambiguous: DESIGN.md says to
   import it `as QQC2`, and lint-app warns on an unaliased import next to
   Atlas.Ui.
-- [ ] `Accessible.announce()` (6.8) for Toast, a field's error text and
-  AtlasNavigationStack page changes; check with Orca.
-- [ ] High contrast follows `QStyleHints.accessibility.contrastPreference`
-  (6.10) as well as Kirigami; KDE's portal has no contrast key.
+- [x] `Accessible.announce()` (6.8) for Toast, a field's error text and
+  AtlasNavigationStack page changes. Not yet checked with Orca.
+- [x] High contrast follows `QStyleHints.accessibility.contrastPreference`
+  (6.10) as well as Kirigami, and the portal's `contrast` where a portal has it.
 - [ ] Dialogs and popups have a transient parent (xdg-dialog-v1 needs it on
   KWin) and windows set their icon (xdg-toplevel-icon-v1).
 - [ ] At 1.25x and 1.5x (PassThrough rounding), 1 px separators and borders
@@ -334,12 +334,12 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
 - [ ] 29 AtlasStatus and `status` on AtlasListView, DataTable, AtlasTreeView
   and AtlasPage.
 - [ ] 30 AtlasSplitView `collapsible` (one pane at a time when narrow).
-- [ ] 31 AtlasWindow `toast()` and `confirm()`.
-- [ ] 32 AtlasGlobalShortcut (GlobalShortcuts portal).
+- [x] 31 AtlasWindow `toast()` and `confirm()`.
+- [x] 32 AtlasGlobalShortcut (GlobalShortcuts portal).
 - [ ] 33 Token-only lint in lint-app.sh.
 - [ ] 34 atlas-preview: an app's pages through the golden matrix.
 - [ ] 35 Popups as windows where supported; RectangularShadow.
-- [ ] 36 Platform contrast, reduced motion and accent (QStyleHints and the
+- [x] 36 Platform contrast, reduced motion and accent (QStyleHints and the
   portal); `Accessible.announce()` where the A2 list above says.
 - [ ] 37 Crates: cxx-qt 0.10, the task helper, settings `schema_version`
   migrations and directory watching. Crash minidumps wait for the crash.rs
@@ -356,6 +356,20 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
 - [ ] 39 One software-rendering flag in AtlasStyle (the software adaptation,
   or llvmpipe by GL_RENDERER) for the controls and apps; AtlasEdgeGlow static
   or throttled under it.
+- [ ] 40 atlas-framework-flatpak for the Store, Settings and the Updater
+  (AtlasOS Store, 2026-10-05; pending the Store's scope): `list_installed`,
+  `plan_install` and `install`, `uninstall` (data kept unless asked),
+  `list_unused` and `uninstall_unused`, `permissions()` with risk levels and
+  one plain wording, `remote_ref_info`, flatpakref and flatpakrepo parsing
+  (untrusted input) and `add_remote`, `update_appstream`, and a shared
+  per-user operation lock (`atlas-flatpak.lock`, taken with the Updater's
+  `atlas-updater-apps.lock` during the transition). The Store prototypes
+  them first; they move here with the same names.
+- [ ] 41 Store controls: `AtlasScreenshotCarousel.expandable` (a full-window
+  viewer), AtlasShelf (a horizontal row of cards with scroll buttons),
+  AtlasInstallButton `"remove"`, `"removing"` and `"queued"`,
+  `AtlasAppCard.verified` and `compact`. Permission rows are SectionRow with
+  a leading symbol and an AtlasBadge, no new type.
 - Waits for Fedora's Qt 6.12 (Fedora 44 and 45 ship 6.11.2):
   `motionPreference`, QML hot reload, ToolTip `policy`, MenuItem shortcuts.
 

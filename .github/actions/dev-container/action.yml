@@ -4,7 +4,10 @@ description: >
   the GitHub Actions cache), for the jobs that build and test in it.
 inputs:
   write-cache:
-    description: "'true' to write the layer cache; one job per run writes it, the others only read."
+    description: >
+      'true' for the one job per run that may write the layer cache (three at
+      once race). It still writes only on a push to main: tags and pull requests
+      only read, so they cannot fill or poison the cache main uses.
     default: 'false'
 runs:
   using: composite
@@ -19,4 +22,5 @@ runs:
         load: true
         tags: atlas-framework-dev:ci
         cache-from: type=gha
-        cache-to: ${{ inputs.write-cache == 'true' && 'type=gha,mode=max' || '' }}
+        # ignore-error: a failed export (quota, an outage) must not fail the build.
+        cache-to: ${{ inputs.write-cache == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && 'type=gha,mode=max,ignore-error=true' || '' }}

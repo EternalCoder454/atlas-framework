@@ -103,13 +103,52 @@ the sketch is deleted from here.
   holds a tree root. It has:
   - `length` and `lineCount`;
   - `text(start, end)`;
-  - `utf8Chunks()`, which visits the pieces in order without copying, for
-    Rust's save and search;
-  - `revision`, which increments on every edit, so Rust can tell whether a
-    search result is stale.
-- The C++ header `atlas/textsnapshot.h` exposes the chunk visitor to C and
-  cxx-qt. That header is a contract once it ships (see "Compatibility" in
-  DESIGN.md).
+  - a chunk visitor (C++ only), which walks the pieces in order without
+    copying. Each chunk comes with its starting byte offset and its starting
+    UTF-16 offset, so a search over bytes maps its hits without rescanning.
+  - `utf16AtByte(offset)` and `byteAtUtf16(position)`, both O(log n);
+  - `revision`, which increments on every edit, so a search result can be
+    checked for staleness.
+- A snapshot is a cheap value, a shared pointer to the root. Holding one keeps
+  that version's pieces alive and nothing else.
+
+## The C++ API
+
+Notepad drives the view from C++, with its Document, CodeEditor, LineTools and
+SpellCheck classes, so the view needs a C++ API as well as QML properties. It
+is header-only and versioned, the way Qt's plugin interfaces are. There are no
+exported symbols to link against and no soname to manage.
+
+- **The package.** `atlas-ui-devel` installs `atlas/textview.h` and
+  `atlas/textsnapshot.h` under `/usr/include/atlas-ui/` with a pkg-config file.
+  There is no library. The RPM spec, CMake's install and the
+  `packaging/` checks gain it.
+- **`AtlasTextViewInterface`**
+  - It is a pure-virtual class, declared with
+    `Q_DECLARE_INTERFACE(AtlasTextViewInterface,
+    "net.eterneon.Atlas.TextView/1")`. The item implements it, and an app gets
+    it with `qobject_cast<AtlasTextViewInterface *>(item)`.
+  - It holds everything the QML API has, plus `snapshot()`, `replace()` and the
+    edit grouping, called directly with no QMetaObject in between.
+- **`AtlasTextSnapshot`**
+  - It is a small handle: a header-only value class holding a ref-counted
+    pointer to `AtlasTextSnapshotInterface`, an abstract class implemented in
+    the plugin. Its inline methods only forward to that interface's virtuals.
+    No tree walking, and none of the node layout, is compiled into an app, so
+    the piece tree stays private and can change freely.
+  - The visitor takes a callback (`std::function` or a template), so the app's
+    C++ can hand the chunk pointers to its Rust.
+- **Versioning.** A published interface never changes. A new release that
+  needs more adds `AtlasTextViewInterface2` (IID `/2`), which derives from
+  `/1`, and the item implements both. An app built against `/1` keeps working.
+  This is the same rule as the rest of the contract (see "Compatibility" in
+  DESIGN.md); `tools/check-api.sh` gains a check that a published header's
+  interfaces are unchanged.
+- **Highlighters (step 3).** `AtlasTextHighlighterInterface` lets an app plug
+  in its own highlighter, like Notepad's MarkdownHighlighter. It takes the
+  state at the start of a line and the line's text, and returns format runs
+  and the end state. KSyntaxHighlighting stays the built-in one behind the
+  same interface.
 
 ## Layout and painting
 
@@ -135,6 +174,14 @@ the sketch is deleted from here.
   - The 10 MB single-line case therefore lays out only a few kB.
   - Bidi across a segment boundary is approximate. This only affects lines
     over 4 kB, and is written down as a limit.
+  - Any font works, proportional ones included. When a measured width
+    replaces an estimate, the horizontal scroll stays anchored to the caret's
+    segment (or the first visible segment), so the view never jumps.
+- **Control characters and binary files.** NUL and the other C0 and C1
+  controls are drawn as visible glyphs (the Control Pictures block, U+2400 on,
+  in the muted colour), as QTextLayout does today. They are ordinary
+  characters in the buffer, and only LF and CR break lines, so the line index
+  is unaffected.
 - **Painting**
   - One `QSGTextNode` per visible line, made with `QQuickWindow::createTextNode()`
     (public since Qt 6.7).
@@ -189,7 +236,11 @@ the sketch is deleted from here.
 
 ## Input
 
-- **Keys.** The keys come from QKeySequence::StandardKey, plus smart Home.
+- **Keys.** Every key arrives through `keyPressEvent`, so an event filter an
+  app installs on the item sees it first and can take it. Notepad's
+  auto-indent on Enter, Tab and Backtab indent, and bracket handling keep
+  working that way. The keys come from QKeySequence::StandardKey, plus smart
+  Home.
   Word moves use QTextBoundaryFinder on the line, and visual movement in bidi
   text uses `QTextLayout::leftCursorPosition` and `rightCursorPosition`.
 - **The input method**
@@ -217,7 +268,8 @@ the sketch is deleted from here.
 - `setDecorations(layer, ranges, style)` replaces one named layer.
   - The ranges are an array of `[start, end]`.
   - The style is one of Match, CurrentMatch, Bracket, CurrentLine, Error,
-    Warning or Info.
+    Warning, Info or Spelling. Spelling is a wavy underline in the error
+    colour, drawn as geometry, so it shows on the software backend too.
   - Layers are kept in an interval tree, so only the ranges inside visible
     lines are looked at.
 - Positions in a layer shift with edits, as markers do. A range whose text is
@@ -287,8 +339,9 @@ Signals:
      drop, the primary selection, and line-ending conversion.
    - Keyboard and IME tests, using QTest key events and `QInputMethodEvent`.
 3. **The nice-to-haves from textview-1.5.md**
-   - Shown whitespace and line ends, indent guides, folding, column selection,
-     multiple carets, then the minimap.
+   - In Notepad's order: column selection and multiple carets, then shown
+     whitespace and line ends with indent guides, then folding, then the
+     minimap, then the highlighter interface.
    - Each lands only once 1 and 2 meet every acceptance number.
 
 ## Measuring
@@ -302,17 +355,23 @@ Signals:
 - **Acceptance.** The numbers are textview-1.5.md's acceptance list, on the
   same setup: software backend, 1x, P-cores, and the median of 3 runs.
 
-## Open questions for Notepad
+## Notepad's answers (2026-10-05)
 
-1. How does Notepad's Rust reach a QML item today? Through a cxx-qt bridge
-   object, through C++ glue, or does it call `snapshot()` from QML? This
-   decides whether `atlas/textsnapshot.h` is needed in step 1.
-2. Do UTF-16 positions and 0-based lines suit the Rust side? Converting there
-   needs the line's text; `lineColumn` and `positionOfLine` exist for that.
-3. Does the Formatted (Markdown) view need the whole text as a QString on each
-   switch, or is `snapshot().text()` on demand enough?
-4. Does Rust always deliver UTF-8? Can it also hand over a file's original
-   bytes and encoding, so save writes back exactly what wasn't edited? With the
-   design as it stands, Rust re-encodes on save.
-5. What order do the nice-to-haves come in? The proposal is whitespace and
-   line ends, then folding, then the minimap.
+1. Notepad's Rust is a plain C ABI, called from C++ glue (Document,
+   CodeEditor, LineTools, SpellCheck). That is why the C++ API above exists. A
+   C header for Rust isn't needed: Notepad's C++ hands chunk pointers to Rust
+   itself.
+2. UTF-16 positions and 0-based lines suit it. The 1-based numbers are only in
+   Notepad's UI.
+3. `snapshot().text()` on demand is enough for the Formatted view. Markdown
+   tabs stay on TextEdit at first; plain and code files move.
+4. Rust will stream valid UTF-8. Save re-encodes from the chunks, so original
+   bytes needn't be kept. Notepad normalizes line endings to LF itself and
+   applies the file's ending on save, so the item must work with LF-only text
+   and nothing else from its line-ending support. It does: `lineEnding` is
+   then LF, and nothing is converted.
+5. The nice-to-haves go in the order listed under step 3.
+
+Notepad's gaps are covered above: the keys through `keyPressEvent`, the chunk
+offsets and offset maps, the Spelling style, the highlighter interface,
+proportional fonts, and visible control characters.

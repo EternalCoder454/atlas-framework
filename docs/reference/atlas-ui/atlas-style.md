@@ -51,7 +51,7 @@ Rectangle {
 | `fontSizeTitle` | `real` (read-only) | — | Page titles: 1.6 of body. |
 | `fontSizeWindowTitle` | `real` (read-only) | — | A header bar's title: the body size. |
 | `fontWeightWindowTitle` | `int` (read-only) | — | The weight of a window title: `Font.DemiBold`. |
-| `highContrast` | `bool` (read-only) | — | Passes `Appearance.highContrast` through. |
+| `highContrast` | `bool` (read-only) | — | Passes `Appearance.highContrast` through: Qt's contrast preference or the desktop portal's `contrast`. |
 | `hover` | `color` (read-only) | — | A grey overlay for hover, never the accent, so hover never looks like selection. |
 | `monoFamily` | `string` (read-only) | — | The fixed-width family: JetBrains Mono when installed, else the system fixed font. Set `font.family: AtlasStyle.monoFamily` on code. |
 | `pressed` | `color` (read-only) | — | A grey overlay for a pressed control. |
@@ -59,7 +59,7 @@ Rectangle {
 | `radiusLarge` | `real` (read-only) | — | 8: dialogs, the command palette, drop zones and the segmented control's track. |
 | `radiusPill` | `real` (read-only) | — | 1000: fully round shapes at any height: switch tracks, the radio button, progress and usage bars, toasts, and a chip that is checked or not checkable. |
 | `radiusSmall` | `real` (read-only) | — | 4: controls (buttons, fields, combo boxes, menu items, sidebar and list selections). |
-| `softwareRendering` | `bool` (read-only) | `false` | `true` when rendering is in software: the Qt Quick software adaptation, or the RHI on a software rasterizer (`GL_RENDERER` or the Vulkan device is llvmpipe, softpipe, SwiftShader or lavapipe). Known once the first window's scene graph is up, so it changes at most once, from `false` to `true`. `ATLAS_SOFTWARE_RENDERING=1` or `0` forces it (any other value is logged and ignored). Atlas controls go static or slow under it (the edge glow, shimmers, the skeleton sweep) or step at 20 frames a second or fewer where motion carries meaning (spinners, indeterminate bars). An animated or shader effect of your own should check it. Since 1.5.0. |
+| `softwareRendering` | `bool` (read-only) | `false` | `true` when rendering is in software: the Qt Quick software adaptation, or OpenGL or Vulkan on a software rasterizer (`GL_RENDERER` or the Vulkan device is llvmpipe, softpipe, SwiftShader or lavapipe). Known once the first frame is drawn, so it changes at most once, from `false` to `true`. `ATLAS_SOFTWARE_RENDERING=1` or `0` forces it (any other value is logged and ignored). Atlas controls go static or slow under it (the edge glow, shimmers, the skeleton sweep) or step at 20 frames a second or fewer where motion carries meaning (spinners, indeterminate bars). An animated or shader effect of your own should check it. Since 1.5.0. |
 | `reducedMotion` | `bool` (read-only) | — | Follows `Appearance.reducedMotion` (Plasma's animation speed set to instant, or `ATLAS_REDUCED_MOTION=1`). An animation with no duration, such as a spinner, checks this. |
 | `rowHeight` | `real` (read-only) | — | The height of a list or `SectionRow` row: 2.5 grid units, or 75% of that when compact. |
 | `sakura` | `color` (read-only) | — | The second end of the signature gradient, which runs from `accent` to sakura. Only for the edge glow, an active progress shimmer and "update ready": never on buttons, selection or text. |

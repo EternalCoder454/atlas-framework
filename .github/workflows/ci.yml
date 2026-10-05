@@ -12,22 +12,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Atlas.Ui, the crates and the performance check run as three jobs at once,
-  # each in the dev container with its own build cache, so a push is checked
-  # in about the time of the slowest one instead of the sum.
+  # Atlas.Ui, the crates, the performance check and the RPM build run as
+  # parallel jobs, each in its own container with its own build cache, so a
+  # push is checked in about the time of the slowest one instead of the sum.
   ui:
     # Atlas.Ui, the gallery and the tests: build, qmllint, visual, a11y and
     # state tests, and the API snapshot.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      # qmllint warnings allowed; lower it when warnings are fixed, never raise it.
+      # qmllint warnings, exactly: fewer fails too, so the budget is lowered
+      # with every fix and never raised.
       QMLLINT_MAX: 119
       # Every step below runs in the dev container, with the checkout at /src.
+      # no-new-privileges, but not --cap-drop=all: root in the container needs
+      # DAC_OVERRIDE to write the checkout, which the runner user owns.
       # git runs as root on a checkout the runner user owns: safe.directory lets it.
-      RUN: docker run --rm -v ${{ github.workspace }}:/src -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
+      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Tags: check-api.sh reads the last v* tag.
           fetch-depth: 0
@@ -36,11 +39,12 @@ jobs:
       - uses: ./.github/actions/dev-container
         with:
           # One writer for the shared layer cache: three at once race.
+          # (The action writes it only on a push to main.)
           write-cache: 'true'
 
       - name: Restore the compiler cache
         id: cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
           # A new entry per commit; the newest one of any commit seeds the next run.
@@ -51,13 +55,20 @@ jobs:
         run: $RUN bash -c 'cmake -S . -B build -G Ninja -DATLAS_UI_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build && ccache --show-stats'
 
       - name: qmllint
-        # Warnings don't fail qmllint itself; more than the budget fails here.
+        # Warnings don't fail qmllint itself; any count but the budget fails here.
         run: |
           $RUN bash -o pipefail -c 'cmake --build build --target all_qmllint 2>&1 | tee build/qmllint.log'
           n=$(grep -c '^Warning' build/qmllint.log || true)
-          echo "qmllint: $n warnings (budget $QMLLINT_MAX)"
+          # The count depends on the Qt in the image: print it beside the number.
+          qt=$($RUN qmake6 -query QT_VERSION || echo unknown)
+          echo "qmllint: $n warnings (budget $QMLLINT_MAX), Qt $qt"
           if [ "$n" -gt "$QMLLINT_MAX" ]; then
             echo "::error::qmllint has $n warnings, over the budget of $QMLLINT_MAX: fix the new ones (grep -A2 '^Warning' build/qmllint.log)"
+            exit 1
+          fi
+          # Also catches a qmllint format change that makes grep count 0.
+          if [ "$n" -lt "$QMLLINT_MAX" ]; then
+            echo "::error::qmllint has $n warnings, fewer than $QMLLINT_MAX: lower QMLLINT_MAX to $n"
             exit 1
           fi
 
@@ -66,7 +77,7 @@ jobs:
 
       - name: Upload the actual and diff pictures of a failed visual test
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: visual-test-output
           path: build/visual-out
@@ -75,15 +86,22 @@ jobs:
       - name: API check
         run: $RUN tools/check-api.sh build
 
-      # The container writes as root: hand the cache back to the runner user,
-      # or saving it fails on files tar cannot read.
+      # Caches are written only by a green push to main: a pull request or a
+      # failed run would fill the repository's cache quota with output nobody
+      # reuses. The container writes as root: hand the cache back to the runner
+      # user, or saving it fails on files tar cannot read (mkdir first: a job
+      # that failed before the container ran has no directory).
       - name: Own the compiler cache
-        if: ${{ !cancelled() && github.event_name == 'push' }}
-        run: sudo chown -R "$(id -u):$(id -g)" .ccache
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
+        run: |
+          [ -n "$(ls -A .ccache 2>/dev/null)" ] || echo "::warning::.ccache is empty or missing: nothing useful is cached"
+          mkdir -p .ccache
+          sudo chown -R "$(id -u):$(id -g)" .ccache
+          du -sh .ccache
 
       - name: Save the compiler cache
-        if: ${{ !cancelled() && github.event_name == 'push' && steps.cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
           key: ${{ steps.cache.outputs.cache-primary-key }}
@@ -93,9 +111,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      RUN: docker run --rm -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -w /src -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
+      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -w /src -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Tags and history: cargo-semver-checks builds the last release as its baseline.
           fetch-depth: 0
@@ -105,15 +123,17 @@ jobs:
 
       - name: Restore the cargo cache
         id: cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # The downloaded crates, and the compiled dependencies (cargo rebuilds
           # the workspace's own crates, whose sources the checkout made newer).
           path: |
             .cargo-registry
             target
-          key: cargo-crates-${{ hashFiles('packaging/Containerfile.dev', '**/Cargo.lock') }}-${{ github.sha }}
-          restore-keys: cargo-crates-${{ hashFiles('packaging/Containerfile.dev', '**/Cargo.lock') }}-
+          key: cargo-crates-${{ hashFiles('packaging/Containerfile.dev') }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          # Only the container in the prefix: a dependency bump starts from the
+          # previous cache and rebuilds just what changed.
+          restore-keys: cargo-crates-${{ hashFiles('packaging/Containerfile.dev') }}-
 
       - name: Rust tests
         run: $RUN cargo test --locked --workspace --all-features
@@ -147,15 +167,25 @@ jobs:
 
       - name: cargo semver-checks
         if: steps.baseline.outputs.root != ''
-        run: docker run --rm -v "${{ github.workspace }}:/src" -v "${{ github.workspace }}/.cargo-registry:/opt/cargo/registry" -v "${{ steps.baseline.outputs.root }}:/baseline:ro" -w /src -e CARGO_TARGET_DIR=/src/target/semver -e QMAKE=/usr/bin/qmake6 atlas-framework-dev:ci cargo semver-checks --workspace --baseline-root /baseline
+        run: docker run --rm --security-opt no-new-privileges -v "${{ github.workspace }}:/src" -v "${{ github.workspace }}/.cargo-registry:/opt/cargo/registry" -v "${{ steps.baseline.outputs.root }}:/baseline:ro" -w /src -e CARGO_TARGET_DIR=/src/target/semver -e QMAKE=/usr/bin/qmake6 atlas-framework-dev:ci cargo semver-checks --workspace --baseline-root /baseline
 
-      - name: Own the cargo cache
-        if: ${{ !cancelled() && github.event_name == 'push' }}
-        run: sudo chown -R "$(id -u):$(id -g)" .cargo-registry target
+      # Written only by a green push to main (see the compiler cache in `ui`).
+      - name: Own and trim the cargo cache
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
+        run: |
+          for d in .cargo-registry target; do
+            [ -n "$(ls -A "$d" 2>/dev/null)" ] || echo "::warning::$d is empty or missing: nothing useful is cached"
+          done
+          mkdir -p .cargo-registry target
+          sudo chown -R "$(id -u):$(id -g)" .cargo-registry target
+          # Incremental state and the semver baseline's build are large and
+          # rebuilt faster than they are restored.
+          rm -rf target/debug/incremental target/semver target/doc target/package
+          du -sh .cargo-registry target
 
       - name: Save the cargo cache
-        if: ${{ !cancelled() && github.event_name == 'push' && steps.cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             .cargo-registry
@@ -168,9 +198,16 @@ jobs:
     timeout-minutes: 45
     env:
       # Startup time on a shared runner is noisy: over budget it only warns.
-      RUN: docker run --rm -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e QMAKE=/usr/bin/qmake6 -e ATLAS_PERF_TEMPLATE_BUILD=/src/.perf-template -e PERF_WARN_ONLY=startup_ms atlas-framework-dev:ci
+      # The template's CMake tree is built fresh every run, at a fixed path in
+      # the container (ATLAS_PERF_TEMPLATE_BUILD), because qmlcachegen compiles
+      # the template's QML against the installed Atlas.Ui, which Ninja does not
+      # track: a restored tree would pass against stale compiled QML. Only
+      # Corrosion's cargo directory is kept: it ignores CARGO_TARGET_DIR and
+      # always builds in <cmake tree>/cargo, so the host's .perf-target is
+      # mounted there. The fixed path keeps cargo's fingerprints valid.
+      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -v ${{ github.workspace }}/.perf-target:/tmp/perf-template/cargo -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e QMAKE=/usr/bin/qmake6 -e ATLAS_PERF_TEMPLATE_BUILD=/tmp/perf-template -e PERF_WARN_ONLY=startup_ms atlas-framework-dev:ci
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -178,18 +215,21 @@ jobs:
 
       - name: Restore the build caches
         id: cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          # Atlas.Ui's objects, and the template's build tree with its cargo target.
+          # Atlas.Ui's objects, the downloaded crates and the template's cargo directory.
           path: |
             .ccache
             .cargo-registry
-            .perf-template
-          key: perf-${{ hashFiles('packaging/Containerfile.dev', 'template/Cargo.lock') }}-${{ github.sha }}
-          restore-keys: perf-${{ hashFiles('packaging/Containerfile.dev', 'template/Cargo.lock') }}-
+            .perf-target
+          key: perf-${{ hashFiles('packaging/Containerfile.dev') }}-${{ hashFiles('template/Cargo.lock') }}-${{ github.sha }}
+          # Only the container in the prefix: a dependency bump starts from the previous cache.
+          restore-keys: perf-${{ hashFiles('packaging/Containerfile.dev') }}-
 
       - name: Build Atlas.Ui
-        run: $RUN bash -c 'cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build'
+        run: |
+          mkdir -p .perf-target
+          $RUN bash -c 'cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build'
 
       - name: Performance
         run: $RUN bash -c 'perf/measure.sh build'
@@ -197,31 +237,75 @@ jobs:
       - name: Show the performance numbers
         if: always()
         run: |
+          # Through jq, which escapes every string: nothing in the file can
+          # close the code fence and inject markdown into the summary.
           if [ -f perf/out.json ]; then
-            { echo '### Performance (template app, headless)'; echo '```json'; cat perf/out.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            if pretty=$(jq . perf/out.json); then
+              { echo '### Performance (template app, headless)'; echo '```json'; printf '%s\n' "$pretty"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::perf/out.json is not valid JSON"
+            fi
           fi
 
       - name: Upload the performance numbers
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: perf-out
           path: perf/out.json
           if-no-files-found: ignore
 
-      - name: Own the build caches
-        if: ${{ !cancelled() && github.event_name == 'push' }}
-        run: sudo chown -R "$(id -u):$(id -g)" .ccache .cargo-registry .perf-template
+      # Written only by a green push to main (see the compiler cache in `ui`).
+      - name: Own and trim the build caches
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
+        run: |
+          for d in .ccache .cargo-registry .perf-target; do
+            [ -n "$(ls -A "$d" 2>/dev/null)" ] || echo "::warning::$d is empty or missing: nothing useful is cached"
+          done
+          mkdir -p .ccache .cargo-registry .perf-target
+          sudo chown -R "$(id -u):$(id -g)" .ccache .cargo-registry .perf-target
+          find .perf-target -type d -name incremental -prune -exec rm -rf {} +
+          du -sh .ccache .cargo-registry .perf-target
 
       - name: Save the build caches
-        if: ${{ !cancelled() && github.event_name == 'push' && steps.cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             .ccache
             .cargo-registry
-            .perf-template
+            .perf-target
           key: ${{ steps.cache.outputs.cache-primary-key }}
+
+  rpm:
+    # The RPMs, built the way packaging/build-rpm.sh does for a release, in a
+    # plain fedora:44 container; the spec's %check runs there too. Independent
+    # of the other jobs.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # build-rpm.sh packages HEAD with git archive: no history needed.
+          persist-credentials: false
+
+      - name: Build the RPMs
+        # label=disable: the bind mount carries no SELinux label. Root in the
+        # container keeps its default capabilities (it writes the runner's
+        # checkout and runs dnf), without gaining new privileges.
+        run: |
+          mkdir -p "$RUNNER_TEMP/rpms"
+          docker run --rm --security-opt label=disable --security-opt no-new-privileges \
+            -v "$GITHUB_WORKSPACE:/src" -v "$RUNNER_TEMP/rpms:/out" -w /src \
+            registry.fedoraproject.org/fedora:44 /src/packaging/build-rpm.sh /out
+
+      - name: Upload the RPMs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rpms
+          path: ${{ runner.temp }}/rpms/*.rpm
+          if-no-files-found: error
+          retention-days: 7
 
   apps:
     # The Atlas apps against this Atlas.Ui: a type named like one of an app's own
@@ -230,24 +314,44 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Clone the apps
         run: |
           mkdir -p "$RUNNER_TEMP/apps"
-          while read -r app; do
-            [ -z "$app" ] && continue
-            git clone --depth 1 "https://github.com/EternalCoder454/$app" "$RUNNER_TEMP/apps/$app"
-          done < tools/apps.txt
+          # As in release.yml: a repository with no commits yet (a new app) is
+          # left out with a notice; one that can't be reached fails.
+          for app in $(grep -vE '^[[:space:]]*(#|$)' tools/apps.txt); do
+            if ! [[ $app =~ ^[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then
+              echo "::error::tools/apps.txt has a name that is not a repository name: $app"; exit 1
+            fi
+            url="https://github.com/EternalCoder454/$app.git"
+            rc=0
+            GIT_TERMINAL_PROMPT=0 timeout 60 git ls-remote --exit-code "$url" HEAD >/dev/null || rc=$?
+            case $rc in
+              0) GIT_TERMINAL_PROMPT=0 git clone --depth 1 "$url" "$RUNNER_TEMP/apps/$app" ;;
+              2) echo "::notice::$app has no commits yet: not checked" ;;
+              *) echo "::error::could not reach EternalCoder454/$app (git ls-remote exit $rc)"; exit 1 ;;
+            esac
+          done
+          if [ -z "$(ls -A "$RUNNER_TEMP/apps")" ]; then
+            echo "::error::no app could be checked: is tools/apps.txt right?"; exit 1
+          fi
 
       - name: Design rule 6 findings (informational)
         # Exit 1 is findings, which belong to the apps; anything else (a
-        # missing app, a broken script) fails.
+        # missing app, a broken script) fails. So does an app with no QML
+        # files (a bad clone), which lint-app.sh also reports as exit 1.
         run: |
           rc=0
-          tools/lint-app.sh "$RUNNER_TEMP"/apps/* || rc=$?
+          tools/lint-app.sh "$RUNNER_TEMP"/apps/* >"$RUNNER_TEMP/lint-app.log" 2>&1 || rc=$?
+          cat "$RUNNER_TEMP/lint-app.log"
+          if grep -q '^lint-app: no QML files' "$RUNNER_TEMP/lint-app.log"; then
+            echo "::error::an app has no QML files: is the clone empty or the app list wrong?"
+            exit 1
+          fi
           if [ "$rc" = 1 ]; then
             echo "::notice::Rule 6 errors above belong to those apps; they do not fail this check"
           elif [ "$rc" != 0 ]; then
@@ -263,7 +367,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -297,7 +401,7 @@ jobs:
       # main-tip guard below skips stale commits.
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Tags: index.json says whether this commit is the release.
           fetch-depth: 0

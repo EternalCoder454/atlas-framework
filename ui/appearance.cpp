@@ -1,4 +1,6 @@
 #include "appearance.h"
+
+#include "portalappearance.h"
 #include "textscale.h"
 
 #include <KConfigGroup>
@@ -8,11 +10,20 @@
 #include <QEvent>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
+#include <QPointer>
+#include <QSGRendererInterface>
+#include <QtGui/qtguiglobal.h>
+#if QT_CONFIG(vulkan)
+#include <QVulkanFunctions>
+#include <QVulkanInstance>
+#endif
 #include <QLoggingCategory>
 #include <QPalette>
 #include <QStyleHints>
 #include <QtGlobal>
-#include <rhi/qrhi.h>
+#include <memory>
 
 namespace
 {
@@ -86,6 +97,14 @@ Appearance::Appearance(QObject *parent)
             readMotion();
         }
     });
+    // The portal's contrast and reduced-motion join Qt's and Plasma's.
+    m_portal = PortalAppearance::shared();
+    if (m_portal) {
+        connect(m_portal, &PortalAppearance::changed, this, [this] {
+            readSystem();
+            readMotion();
+        });
+    }
     readSystem();
     readMotion();
 
@@ -170,14 +189,13 @@ bool Appearance::isSoftwareRasterizer(const QString &deviceName)
     return false;
 }
 
-// Rendering mode is known once a window's scene graph is initialised.
+// The rendering mode is known on the first frame: the GL renderer string is
+// only readable on the render thread, with the context current. So the first
+// beforeRendering reads everything it needs into plain values and queues them
+// to this thread; nothing of this object is touched over there.
 void Appearance::watchWindow(QQuickWindow *window)
 {
     if (m_renderingKnown) {
-        return;
-    }
-    if (window->isSceneGraphInitialized()) {
-        detectRendering(window);
         return;
     }
     // Show comes again on every show: connect once per window.
@@ -185,30 +203,51 @@ void Appearance::watchWindow(QQuickWindow *window)
         return;
     }
     window->setProperty("_atlasRenderingWatched", true);
-    // sceneGraphInitialized comes on the render thread: queue it to this one.
-    connect(window, &QQuickWindow::sceneGraphInitialized, this, [this, w = QPointer<QQuickWindow>(window)] {
-        if (w) {
-            detectRendering(w);
+    auto connection = std::make_shared<QMetaObject::Connection>();
+    QPointer<Appearance> self(this);
+    *connection = connect(window, &QQuickWindow::beforeRendering, window, [self, window, connection] {
+        QObject::disconnect(*connection); // once
+        bool software = window->sceneGraphBackend() == QLatin1String("software");
+        QString device;
+        if (QSGRendererInterface *ri = window->rendererInterface()) {
+            software = software || ri->graphicsApi() == QSGRendererInterface::Software;
+            if (ri->graphicsApi() == QSGRendererInterface::OpenGL) {
+                if (QOpenGLContext *context = QOpenGLContext::currentContext()) {
+                    if (const GLubyte *renderer = context->functions()->glGetString(GL_RENDERER)) {
+                        device = QString::fromLatin1(reinterpret_cast<const char *>(renderer));
+                    }
+                }
+            }
+#if QT_CONFIG(vulkan)
+            else if (ri->graphicsApi() == QSGRendererInterface::Vulkan && window->vulkanInstance()) {
+                const void *resource = ri->getResource(window, QSGRendererInterface::PhysicalDeviceResource);
+                QVulkanFunctions *functions = window->vulkanInstance()->functions();
+                if (resource && functions) {
+                    VkPhysicalDeviceProperties properties = {};
+                    functions->vkGetPhysicalDeviceProperties(*static_cast<const VkPhysicalDevice *>(resource), &properties);
+                    device = QString::fromUtf8(properties.deviceName);
+                }
+            }
+#endif
         }
-    }, Qt::ConnectionType(Qt::QueuedConnection));
+        software = software || isSoftwareRasterizer(device);
+        if (self) {
+            QMetaObject::invokeMethod(self.data(), [self, software] {
+                if (self) {
+                    self->applyRendering(software);
+                }
+            }, Qt::QueuedConnection);
+        }
+    }, Qt::DirectConnection);
 }
 
-void Appearance::detectRendering(QQuickWindow *window)
+// GUI thread only.
+void Appearance::applyRendering(bool software)
 {
     if (m_renderingKnown) {
         return;
     }
-    QSGRendererInterface *ri = window->rendererInterface();
-    if (!ri) {
-        return; // not up yet: a later window or signal tries again
-    }
     m_renderingKnown = true;
-    bool software = window->sceneGraphBackend() == QLatin1String("software") || ri->graphicsApi() == QSGRendererInterface::Software;
-    if (!software) {
-        if (auto *rhi = static_cast<QRhi *>(ri->getResource(window, QSGRendererInterface::RhiResource))) {
-            software = isSoftwareRasterizer(QString::fromUtf8(rhi->driverInfo().deviceName));
-        }
-    }
     if (software != m_softwareRendering) {
         m_softwareRendering = software;
         Q_EMIT softwareRenderingChanged();
@@ -230,7 +269,7 @@ void Appearance::readSystem()
         mine = DarkScheme;
     }
     const bool dark = mine == DarkScheme || (mine == UnknownScheme && qGuiApp->palette().color(QPalette::Window).lightnessF() < 0.5);
-    const bool contrast = hints->accessibility()->contrastPreference() == Qt::ContrastPreference::HighContrast;
+    const bool contrast = hints->accessibility()->contrastPreference() == Qt::ContrastPreference::HighContrast || (m_portal && m_portal->highContrast());
     qreal scale = qGuiApp->font().pointSizeF() / kDefaultPointSize;
     // A pixel-sized font has no point size (-1): that and NaN are the default;
     // anything else is held between 0.5 and 4.
@@ -264,6 +303,7 @@ void Appearance::readMotion()
         const double factor = raw.toDouble(&ok);
         reduced = ok && factor == 0.0;
     }
+    reduced = reduced || (m_portal && m_portal->reducedMotion());
     if (reduced != m_reducedMotion) {
         m_reducedMotion = reduced;
         Q_EMIT reducedMotionChanged();
