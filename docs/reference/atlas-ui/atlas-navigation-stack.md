@@ -9,6 +9,8 @@ Pages pushed one over another, with a header row holding a Back button (disabled
 
 A page is any `Item`, or a `Component` or URL of one. Its `title` property (a string, if it has one) shows in the header. An [AtlasPage](atlas-page.md) then hides its own title row while the header shows (its `headerTrailing` items stay), so the title appears once; with `showHeader: false` the page shows its own title again.
 
+A page change (push, pop or replace) announces the new page's title to screen readers (since 1.5.0); the first page is not announced, and a page without a title announces nothing.
+
 ## Example
 
 ```qml

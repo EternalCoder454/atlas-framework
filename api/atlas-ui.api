@@ -22,6 +22,8 @@ Appearance.type
 AtlasAboutPage.base QQuickItem
 AtlasAboutPage.method ensureVisible(QVariant item): QVariant
 AtlasAboutPage.method systemInfo(): QString
+AtlasAboutPage.property busy: bool
+AtlasAboutPage.property busyText: QString
 AtlasAboutPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasAboutPage.property description: QString
 AtlasAboutPage.property extraContent: QQmlListProperty<QObject> [readonly]
@@ -30,6 +32,7 @@ AtlasAboutPage.property license: QString
 AtlasAboutPage.property links: QVariant
 AtlasAboutPage.property maxContentWidth: double
 AtlasAboutPage.property showSystemRows: bool
+AtlasAboutPage.property subtitle: QString
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
 AtlasAction.base QQuickAction
@@ -214,6 +217,7 @@ AtlasDetailGrid.property model: QVariant
 AtlasDetailGrid.property title: QString
 AtlasDetailGrid.type
 AtlasDialog.base QPlatformDialogHelper
+AtlasDialog.method scrollToTop(): QVariant
 AtlasDialog.property content: QQmlListProperty<QObject> [readonly]
 AtlasDialog.property footerContent: QQmlListProperty<QObject> [readonly]
 AtlasDialog.property headerTrailing: QQmlListProperty<QObject> [readonly]
@@ -423,9 +427,12 @@ AtlasOnboarding.signal skipped(int index)
 AtlasOnboarding.type
 AtlasPage.base QQuickItem
 AtlasPage.method ensureVisible(QVariant item): QVariant
+AtlasPage.property busy: bool
+AtlasPage.property busyText: QString
 AtlasPage.property content: QQmlListProperty<QObject> [readonly]
 AtlasPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
 AtlasPage.property maxContentWidth: double
+AtlasPage.property subtitle: QString
 AtlasPage.property title: QString
 AtlasPage.type
 AtlasPasswordField.base QQuickTextField
@@ -551,6 +558,8 @@ AtlasSidebar.property currentIndex: int
 AtlasSidebar.property delegate: QQmlComponent*
 AtlasSidebar.property dropEnabled: bool
 AtlasSidebar.property filterText: QString
+AtlasSidebar.property footer: QQmlListProperty<QObject> [readonly]
+AtlasSidebar.property footerSeparator: bool
 AtlasSidebar.property model: QVariant
 AtlasSidebar.property padding: int
 AtlasSidebar.property placeholderSymbol: int
@@ -790,15 +799,19 @@ AtlasWindow.base QQuickApplicationWindow
 AtlasWindow.enum WidthClass: Compact = 0
 AtlasWindow.enum WidthClass: Medium = 1
 AtlasWindow.enum WidthClass: Wide = 2
+AtlasWindow.method confirm(QVariant options, QVariant done): QVariant
 AtlasWindow.method sidebarColor(QColor base): QColor
 AtlasWindow.method syncBlur(): QVariant
 AtlasWindow.method tinted(QColor base, double factor): QColor
+AtlasWindow.method toast(QVariant text, QVariant options): QVariant
 AtlasWindow.property blurAlpha: double
 AtlasWindow.property blurred: bool [readonly]
+AtlasWindow.property compactBreakpoint: double
 AtlasWindow.property frameless: bool [readonly]
 AtlasWindow.property sidebarCollapsed: bool [readonly]
 AtlasWindow.property sidebarFactor: double
 AtlasWindow.property stateKey: QString
+AtlasWindow.property wideBreakpoint: double
 AtlasWindow.property widthClass: int [readonly]
 AtlasWindow.type
 AtlasWindowButtons.base QQuickRow
@@ -1048,11 +1061,14 @@ SectionRow.signal clicked()
 SectionRow.signal switchToggled(bool checked)
 SectionRow.type
 SidebarGroup.base QQuickColumnLayout
+SidebarGroup.property badge: QString
+SidebarGroup.property badgeText: QString
 SidebarGroup.property compact: bool
 SidebarGroup.property expanded: bool
 SidebarGroup.property holdsSelection: bool [readonly]
 SidebarGroup.property iconName: QString
 SidebarGroup.property items: QQmlListProperty<QObject> [readonly]
+SidebarGroup.property symbol: int
 SidebarGroup.property text: QString
 SidebarGroup.property tintIcon: bool
 SidebarGroup.property value: QString

@@ -297,13 +297,13 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasDialog</name>
     <message>
-        <location filename="../AtlasDialog.qml" line="127"/>
+        <location filename="../AtlasDialog.qml" line="138"/>
         <source>Back</source>
         <extracomment>Name of the Back button in a dialog&apos;s title row</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasDialog.qml" line="151"/>
+        <location filename="../AtlasDialog.qml" line="162"/>
         <source>Close</source>
         <extracomment>Name of the Close button in a dialog&apos;s title row</extracomment>
         <translation type="unfinished"></translation>
@@ -659,8 +659,8 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasNavigationStack</name>
     <message>
-        <location filename="../AtlasNavigationStack.qml" line="91"/>
-        <location filename="../AtlasNavigationStack.qml" line="100"/>
+        <location filename="../AtlasNavigationStack.qml" line="102"/>
+        <location filename="../AtlasNavigationStack.qml" line="111"/>
         <source>Back</source>
         <translation type="unfinished"></translation>
     </message>
@@ -907,12 +907,12 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasSidebar</name>
     <message>
-        <location filename="../AtlasSidebar.qml" line="67"/>
+        <location filename="../AtlasSidebar.qml" line="89"/>
         <source>Sidebar</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasSidebar.qml" line="392"/>
+        <location filename="../AtlasSidebar.qml" line="460"/>
         <source>Sidebar entries</source>
         <translation type="unfinished"></translation>
     </message>

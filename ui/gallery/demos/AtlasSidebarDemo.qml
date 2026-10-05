@@ -31,7 +31,10 @@ Item {
                 SidebarItem { Layout.fillWidth: true; text: "sda"; sub: true }
                 SidebarItem { Layout.fillWidth: true; text: "sdb"; sub: true }
             }
-            SidebarItem { Layout.fillWidth: true; text: "Settings"; symbol: Symbols.codepoint("settings") }
+            footer: [
+                SidebarItem { Layout.fillWidth: true; text: "Settings"; symbol: Symbols.codepoint("settings") },
+                SidebarItem { Layout.fillWidth: true; text: "About"; symbol: Symbols.codepoint("info") }
+            ]
         }
 
         AtlasSidebar {

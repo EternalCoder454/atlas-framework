@@ -81,6 +81,21 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   C++ list (`QVariantList`) is shown; it was empty.
 - Added: `AtlasBreadcrumb.hiddenText` (the "Hidden folders" text) and
   `AtlasCodeView.inset` (side room for an unframed view).
+- Fix: `AtlasSidebar.filterText` follows the same edit rule: text typed in
+  the built-in field no longer ends an app's binding.
+- Added: `AtlasSidebar.footer` (entries pinned under the scrolling list, such
+  as Settings and About) and `footerSeparator`; `SidebarGroup.symbol`,
+  `badge` and `badgeText`.
+- Added: `AtlasPage.subtitle` (muted lines under the title, read as the
+  page's description), `busy` and `busyText` (a spinner row under the title,
+  announced once the text settles); `AtlasAboutPage` has them too.
+- Added: `AtlasDialog.scrollToTop()`; a dialog also scrolls to the top each
+  time it opens.
+- Added: `AtlasWindow.toast()` (a queue of toasts, one at a time, announced)
+  and `confirm()` (a ConfirmDialog whose answer comes once through `done`);
+  `compactBreakpoint` and `wideBreakpoint` set where `widthClass` changes.
+- Added: `AtlasNavigationStack` announces the new page's title to screen
+  readers on push, pop and replace.
 - Docs: `TextButton` is not an `AtlasButton` preset and has no `variant`.
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call

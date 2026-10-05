@@ -44,3 +44,9 @@ Escape closes the dialog, and so does a press outside it.
 | Name | Description |
 |---|---|
 | `backRequested()` | The Back button was used. The dialog does not close itself. |
+
+## Methods
+
+| Signature | Description |
+|---|---|
+| `scrollToTop()` | Moves the body to its top, with no animation. Focus does not move. The dialog also does this each time it opens, so a reopened dialog does not keep the last scroll. Since 1.5.0. |
