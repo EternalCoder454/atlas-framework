@@ -267,7 +267,8 @@ Item {
 
         function test_native_refresh_does_not_leak_objects() {
             const inner = Qt.createQmlObject('import QtQuick; ListModel { ListElement { n: "i1" } ListElement { n: "i2" } }', root);
-            const spec = () => [{ title: "File", actions: [{ id: "o", title: "Outer", model: files, textRole: "path", lead: [{ id: "i", title: "Inner", model: inner, textRole: "n" }], trail: [{ title: "Trail", actions: [saveA] }] }] }];
+            const spec = () => [{ title: "File", actions: [{ id: "o", title: "Outer", model: files, textRole: "path", lead: [{ id: "i", title: "Inner", model: inner, textRole: "n" }], trail: [{ title: "Trail", actions: [saveA] }] }] },
+                { title: "Edit", actions: [{ id: "p", title: "Other", model: files, textRole: "path" }] }];
             const m = createTemporaryObject(menuComp, root, {
                 _forceNative: true,
                 menus: spec()
@@ -404,6 +405,32 @@ Item {
             tryVerify(() => m._menu.visible);
             compare(m._menu.menuAt(0).title, "Edit");
             m._menu.close();
+        }
+
+        function test_action_rows_follow_the_action_and_other_objects_are_copied() {
+            const act = Qt.createQmlObject('import Atlas.Ui; AtlasAction { text: "Live"; checkable: true }', root);
+            const plainObj = Qt.createQmlObject('import QtQml; QtObject { property string name: "Plain" }', root);
+            const m = createTemporaryObject(menuComp, root, {
+                _forceNative: true,
+                menus: [{ title: "File", actions: [
+                    { id: "a", title: "A", model: [act], textRole: "text" },
+                    { id: "b", title: "B", model: [plainObj], textRole: "name" }] }]
+            });
+            const file = m._nativeBar.menus[0];
+            const live = file.items[0].subMenu.items[0];
+            compare(live.text, "Live");
+            act.text = "Renamed";
+            compare(live.text, "Renamed");
+            act.enabled = false;
+            verify(!live.enabled);
+            act.checked = true;
+            verify(live.checked);
+            const copy = file.items[1].subMenu.items[0];
+            compare(copy.text, "Plain");
+            let got = null;
+            m.modelActivated.connect((id, data) => got = data);
+            copy.triggered();
+            compare(got.name, "Plain");
         }
     }
 }

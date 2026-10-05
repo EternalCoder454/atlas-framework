@@ -90,9 +90,10 @@ Item {
     // The rows of a model, read once: a throwaway Instantiator gives modelData
     // for any kind of model (a list of strings, a ListModel, a C++ model).
     function _plain(md, always): var {
-        // A QObject row (an Action) outlives the reader and stays live; a
-        // ListModel row is a view of the model, so it is always copied.
-        if (always !== true && md !== null && typeof md === "object" && typeof md.destroy === "function") {
+        // An Action row outlives the reader and stays live. Any other QObject
+        // may be owned by the reader's delegate, and a ListModel row is a view
+        // of the model: those are copied.
+        if (always !== true && md !== null && typeof md === "object" && typeof md.trigger === "function") {
             return md;
         }
         // What the model hands out is live or dies with the reader: keep a plain copy.
@@ -230,10 +231,24 @@ Item {
             kit.add(sub, kit.row("", String(e.emptyText), undefined, -1, false));
         }
         for (let i = 0; i < rows.length; ++i) {
-            kit.add(sub, kit.row(String(e.id ?? ""), _rowText(rows[i], e.textRole), rows[i], i, true));
+            const item = kit.row(String(e.id ?? ""), _rowText(rows[i], e.textRole), rows[i], i, true);
+            _follow(item, rows[i], e.textRole);
+            kit.add(sub, item);
         }
         _fill(kit, sub, e.trail, depth);
         return rows.length;
+    }
+    // A row that is an Action follows it: text, enabled and checked.
+    function _follow(item, md, textRole): void {
+        if (!item || md === null || md === undefined || typeof md !== "object" || typeof md.trigger !== "function") {
+            return;
+        }
+        item.text = Qt.binding(() => root._rowText(md, textRole));
+        item.enabled = Qt.binding(() => md.enabled !== false);
+        if (md.checkable !== undefined) {
+            item.checkable = Qt.binding(() => md.checkable === true);
+            item.checked = Qt.binding(() => md.checked === true);
+        }
     }
     function _tooDeep(): void {
         if (!_warned) {
@@ -417,7 +432,7 @@ Item {
                 Platform.MenuItem {
                     id: it
                     Component.onCompleted: root._alive++
-                    Component.onDestruction: root._alive--
+                    Component.onDestruction: if (root) root._alive--
                     property var act
                     property var sc
                     text: act ? act.text : ""
@@ -435,7 +450,7 @@ Item {
                 Platform.MenuItem {
                     id: nr
                     Component.onCompleted: root._alive++
-                    Component.onDestruction: root._alive--
+                    Component.onDestruction: if (root) root._alive--
                     property string rowId
                     property var rowData
                     property int rowIndex: -1
@@ -447,7 +462,7 @@ Item {
                 Platform.MenuItem {
                     id: nc
                     Component.onCompleted: root._alive++
-                    Component.onDestruction: root._alive--
+                    Component.onDestruction: if (root) root._alive--
                     property var fn
                     onTriggered: nc.fn()
                 }
@@ -456,14 +471,14 @@ Item {
                 id: nSep
                 Platform.MenuSeparator {
                     Component.onCompleted: root._alive++
-                    Component.onDestruction: root._alive--
+                    Component.onDestruction: if (root) root._alive--
                 }
             }
             Component {
                 id: nMenu
                 Platform.Menu {
                     Component.onCompleted: root._alive++
-                    Component.onDestruction: root._alive--
+                    Component.onDestruction: if (root) root._alive--
                 }
             }
             function _track(o) {

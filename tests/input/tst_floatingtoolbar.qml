@@ -171,7 +171,6 @@ Item {
         }
 
         function test_escape_passes_on_when_the_target_already_has_the_focus() {
-            const first = null;
             const b = createTemporaryObject(barComp, root, {
                 focusable: true
             });
