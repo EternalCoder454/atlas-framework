@@ -1,5 +1,7 @@
 #include "textbuffer.h"
 
+#include <QChar>
+#include <QThread>
 #include <QThreadPool>
 
 #include <algorithm>
@@ -13,9 +15,32 @@ namespace {
 
 // Chunks smaller than this are checked on the calling thread: a task costs more.
 constexpr qsizetype InlineLimit = 32 * 1024;
+// A larger chunk is cut into ranges of about this size, one task each.
+constexpr qsizetype TaskRange = 1024 * 1024;
+// Small chunks are gathered until they make a piece of at least this size.
+constexpr qsizetype PendingTarget = 64 * 1024;
+// In a range with invalid bytes, a valid run this long stays a reference into
+// the chunk; shorter ones are copied next to the replacement characters.
+constexpr qsizetype KeepRun = 4096;
 // The size of an add-buffer block. Larger insertions get a block of their own.
 constexpr qsizetype AddBlockSize = 64 * 1024;
 const char Replacement[] = "\xEF\xBF\xBD";
+
+std::atomic<TaskHook> g_taskHook{nullptr};
+
+// A few threads of our own: loading must not starve (or wait on) the global
+// pool that the application's other work uses. At least two, so that a range
+// that is slow does not hold up the ones behind it on a one-core machine.
+QThreadPool *loadPool()
+{
+    static QThreadPool pool;
+    static const bool configured = [] {
+        pool.setMaxThreadCount(std::max(2, std::min(4, QThread::idealThreadCount())));
+        return true;
+    }();
+    Q_UNUSED(configured);
+    return &pool;
+}
 
 std::shared_ptr<const Block> wrapBytes(QByteArray bytes)
 {
@@ -25,14 +50,69 @@ std::shared_ptr<const Block> wrapBytes(QByteArray bytes)
     return b;
 }
 
+// The UTF-8 of `s`, where a lone surrogate becomes U+FFFD (written out here,
+// not left to QString::toUtf8).
+QByteArray utf8Of(const QString &s)
+{
+    const qsizetype n = s.size();
+    const QChar *d = s.constData();
+    auto loneAt = [&](qsizetype i) {
+        const char16_t c = d[i].unicode();
+        if (QChar::isHighSurrogate(c))
+            return !(i + 1 < n && QChar::isLowSurrogate(d[i + 1].unicode()));
+        return QChar::isLowSurrogate(c);
+    };
+    qsizetype first = -1;
+    for (qsizetype i = 0; i < n; ++i) {
+        if (QChar::isHighSurrogate(d[i].unicode()) && !loneAt(i)) {
+            ++i; // a whole pair
+        } else if (loneAt(i)) {
+            first = i;
+            break;
+        }
+    }
+    if (first < 0)
+        return s.toUtf8();
+    QString fixed = s;
+    QChar *w = fixed.data();
+    for (qsizetype i = first; i < n; ++i) {
+        if (QChar::isHighSurrogate(w[i].unicode()) && i + 1 < n && QChar::isLowSurrogate(w[i + 1].unicode()))
+            ++i;
+        else if (QChar::isHighSurrogate(w[i].unicode()) || QChar::isLowSurrogate(w[i].unicode()))
+            w[i] = QChar(char16_t(0xFFFD));
+    }
+    return fixed.toUtf8();
+}
+
 // Checks [from, to) of `block` and cuts it into pieces. Invalid sequences
-// (including one cut off by `to`) are replaced, which copies the range.
+// (including one cut off by `to`) become U+FFFD. Long valid runs stay
+// references into `block`; only the short stretches around the bad bytes are
+// copied.
 JobResult processRange(const std::shared_ptr<const Block> &block, qsizetype from, qsizetype to)
 {
     JobResult res;
     const char *p = block->ptr;
-    qsizetype i = from, copied = from;
+    qsizetype i = from, runStart = from;
     QByteArray out;
+    auto flushOut = [&] {
+        if (out.isEmpty())
+            return;
+        const auto b = wrapBytes(std::move(out));
+        out = QByteArray();
+        appendPieces(b, 0, b->bytes.size(), res.pieces);
+    };
+    // [runStart, end) is valid text.
+    auto endRun = [&](qsizetype end) {
+        const qsizetype len = end - runStart;
+        if (len <= 0)
+            return;
+        if (len >= KeepRun) {
+            flushOut();
+            appendPieces(block, runStart, len, res.pieces);
+        } else {
+            out.append(p + runStart, len);
+        }
+    };
     while (i < to) {
         // Eight ASCII bytes at a time.
         while (i + 8 <= to) {
@@ -53,21 +133,17 @@ JobResult processRange(const std::shared_ptr<const Block> &block, qsizetype from
             i += r.len;
             continue;
         }
-        if (!res.invalid) {
-            res.invalid = true;
-            out.reserve(to - from + 16);
-        }
-        out.append(p + copied, i - copied);
+        res.invalid = true;
+        endRun(i);
         out.append(Replacement, 3);
         i += std::max(1, r.len);
-        copied = i;
+        runStart = i;
     }
-    if (res.invalid) {
-        out.append(p + copied, to - copied);
-        const auto b = wrapBytes(std::move(out));
-        appendPieces(b, 0, b->bytes.size(), res.pieces);
-    } else {
+    if (!res.invalid) {
         appendPieces(block, from, to - from, res.pieces);
+    } else {
+        endRun(to);
+        flushOut();
     }
     return res;
 }
@@ -77,7 +153,52 @@ JobResult processRange(const std::shared_ptr<const Block> &block, qsizetype from
 struct LoadState {
     std::atomic<qint64> bytesIn{0};
     std::atomic<qint64> bytesDone{0};
+    std::atomic<bool> cancelled{false};
 };
+
+namespace {
+
+// One load task. `block` is released as soon as the task returns, cancelled or
+// not.
+void runTask(const std::shared_ptr<LoadState> &state, const std::shared_ptr<LoadNotifier> &notifier,
+             const std::shared_ptr<std::promise<JobResult>> &promise, const std::shared_ptr<const Block> &block,
+             qsizetype from, qsizetype to)
+{
+    if (state->cancelled.load(std::memory_order_acquire))
+        return;
+    JobResult r;
+    try {
+        if (const TaskHook hook = g_taskHook.load(std::memory_order_acquire))
+            hook(block->ptr + from, to - from);
+        r = processRange(block, from, to);
+    } catch (...) {
+        r = JobResult();
+        r.failed = true;
+    }
+    if (state->cancelled.load(std::memory_order_acquire))
+        return; // r goes out of scope here: the chunk is released at once
+    state->bytesDone += to - from;
+    try {
+        promise->set_value(std::move(r));
+    } catch (...) {
+        return;
+    }
+    // The callback runs under the mutex: the buffer's destructor waits for it.
+    try {
+        QMutexLocker lock(&notifier->mutex);
+        if (notifier->fn && !state->cancelled.load(std::memory_order_acquire))
+            notifier->fn();
+    } catch (...) {
+        // a callback must not throw; nothing may escape a pool task
+    }
+}
+
+} // namespace
+
+void setTaskHookForTests(TaskHook hook)
+{
+    g_taskHook.store(hook, std::memory_order_release);
+}
 
 SeqResult checkUtf8Sequence(const uchar *p, qsizetype avail)
 {
@@ -117,9 +238,16 @@ SeqResult checkUtf8Sequence(const uchar *p, qsizetype avail)
     return {SeqKind::Valid, need};
 }
 
-TextBuffer::TextBuffer() : m_state(std::make_shared<LoadState>()), m_notifier(std::make_shared<Notifier>()) {}
 
-TextBuffer::~TextBuffer() = default;
+TextBuffer::TextBuffer() : m_state(std::make_shared<LoadState>()), m_notifier(std::make_shared<LoadNotifier>()) {}
+
+TextBuffer::~TextBuffer()
+{
+    m_state->cancelled.store(true, std::memory_order_release);
+    // Waits for a callback in progress; none starts after this.
+    QMutexLocker lock(&m_notifier->mutex);
+    m_notifier->fn = nullptr;
+}
 
 void TextBuffer::setLoadNotify(std::function<void()> notify)
 {
@@ -129,6 +257,7 @@ void TextBuffer::setLoadNotify(std::function<void()> notify)
 
 void TextBuffer::beginLoad()
 {
+    m_state->cancelled.store(true, std::memory_order_release); // the old tasks stop
     m_slots.clear(); // results of an unfinished load are dropped
     m_state = std::make_shared<LoadState>();
     m_tree = TextTree();
@@ -138,6 +267,7 @@ void TextBuffer::beginLoad()
     m_hadInvalid = false;
     m_loadFailed = false;
     m_carry.clear();
+    m_pending.clear();
 }
 
 void TextBuffer::pushImmediate(std::vector<Piece> pieces)
@@ -151,6 +281,39 @@ void TextBuffer::pushImmediate(std::vector<Piece> pieces)
     m_slots.push_back(std::move(s));
 }
 
+void TextBuffer::flushPending()
+{
+    if (m_pending.isEmpty())
+        return;
+    const auto block = wrapBytes(std::move(m_pending));
+    m_pending = QByteArray();
+    JobResult r = processRange(block, 0, block->bytes.size());
+    if (r.invalid)
+        m_hadInvalid = true;
+    pushImmediate(std::move(r.pieces));
+}
+
+void TextBuffer::submitRange(const std::shared_ptr<const Block> &block, qsizetype from, qsizetype to)
+{
+    auto promise = std::make_shared<std::promise<JobResult>>();
+    Slot s;
+    s.result = promise->get_future();
+    m_slots.push_back(std::move(s));
+    loadPool()->start([state = m_state, notifier = m_notifier, promise, block, from, to]() {
+        runTask(state, notifier, promise, block, from, to);
+    });
+}
+
+void TextBuffer::failLoad()
+{
+    m_loadFailed = true;
+    m_state->cancelled.store(true, std::memory_order_release);
+    m_slots.clear();
+    m_pending.clear();
+    m_carry.clear();
+    m_inputDone = true; // later chunks are ignored: the text stays a clean prefix
+}
+
 void TextBuffer::appendData(const char *data, qsizetype size)
 {
     if (data && size > 0)
@@ -161,11 +324,21 @@ void TextBuffer::appendData(const QByteArray &chunk)
 {
     if (!m_loading || m_inputDone || chunk.isEmpty())
         return;
+    try {
+        appendImpl(chunk);
+    } catch (...) {
+        failLoad();
+    }
+}
+
+void TextBuffer::appendImpl(const QByteArray &chunk)
+{
     const qsizetype n = chunk.size();
     m_state->bytesIn += n;
     qsizetype from = 0;
 
-    // A character left over from the last chunk: finish it, or replace it.
+    // A character left over from the last chunk: finish it, or replace it. Its
+    // bytes join the pending run, so the order of the text is kept.
     if (!m_carry.isEmpty()) {
         QByteArray tmp = m_carry;
         tmp.append(chunk.constData(), std::min<qsizetype>(3, n));
@@ -176,14 +349,12 @@ void TextBuffer::appendData(const QByteArray &chunk)
             return;
         }
         const qsizetype used = std::max<qsizetype>(0, r.len - m_carry.size());
-        std::vector<Piece> v;
         if (r.kind == SeqKind::Valid) {
-            appendPieces(wrapBytes(tmp.left(r.len)), 0, r.len, v);
+            m_pending.append(tmp.constData(), r.len);
         } else {
-            appendPieces(wrapBytes(QByteArray(Replacement, 3)), 0, 3, v);
+            m_pending.append(Replacement, 3);
             m_hadInvalid = true;
         }
-        pushImmediate(std::move(v));
         m_carry.clear();
         from = used;
         m_state->bytesDone += used;
@@ -205,49 +376,45 @@ void TextBuffer::appendData(const QByteArray &chunk)
         }
         break;
     }
-    if (to <= from)
-        return;
-
-    const auto block = wrapBytes(chunk);
-    if (to - from < InlineLimit) {
-        JobResult r = processRange(block, from, to);
-        m_state->bytesDone += to - from;
-        if (r.invalid)
-            m_hadInvalid = true;
-        pushImmediate(std::move(r.pieces));
+    if (to <= from) {
+        if (m_pending.size() >= PendingTarget)
+            flushPending();
         return;
     }
-    auto promise = std::make_shared<std::promise<JobResult>>();
-    Slot s;
-    s.result = promise->get_future();
-    m_slots.push_back(std::move(s));
-    auto state = m_state;
-    auto notifier = m_notifier;
-    QThreadPool::globalInstance()->start([=]() {
-        JobResult r;
-        try {
-            r = processRange(block, from, to);
-        } catch (...) {
-            r = JobResult();
-            r.failed = true;
+
+    if (to - from < InlineLimit) {
+        m_pending.append(chunk.constData() + from, to - from);
+        m_state->bytesDone += to - from;
+        if (m_pending.size() >= PendingTarget)
+            flushPending();
+        return;
+    }
+
+    // A large chunk: what is pending comes first, then one task a range.
+    flushPending();
+    const auto block = wrapBytes(chunk);
+    const char *base = chunk.constData();
+    for (qsizetype pos = from; pos < to;) {
+        qsizetype end = to;
+        if (pos + TaskRange < to) {
+            // Cut at a character start; a run of stray continuation bytes (no
+            // valid character has more than three) is cut where it falls.
+            end = pos + TaskRange;
+            qsizetype t = end;
+            for (int k = 0; k < 3 && t > pos && (uchar(base[t]) & 0xC0) == 0x80; ++k)
+                --t;
+            if ((uchar(base[t]) & 0xC0) != 0x80)
+                end = t;
         }
-        state->bytesDone += to - from;
-        promise->set_value(std::move(r));
-        std::function<void()> fn;
-        {
-            QMutexLocker lock(&notifier->mutex);
-            fn = notifier->fn;
-        }
-        if (fn)
-            fn();
-    });
+        submitRange(block, pos, end);
+        pos = end;
+    }
 }
 
-bool TextBuffer::pollLoad()
+bool TextBuffer::takeReady()
 {
-    if (!m_loading)
-        return true;
     std::vector<Piece> batch;
+    bool failed = false;
     while (!m_slots.empty() && m_slots.front().result.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         JobResult r;
         try {
@@ -256,8 +423,10 @@ bool TextBuffer::pollLoad()
             r.failed = true;
         }
         m_slots.pop_front();
-        if (r.failed)
-            m_loadFailed = true;
+        if (r.failed) {
+            failed = true;
+            break; // nothing after the hole is taken
+        }
         if (r.invalid)
             m_hadInvalid = true;
         batch.insert(batch.end(), std::make_move_iterator(r.pieces.begin()), std::make_move_iterator(r.pieces.end()));
@@ -266,6 +435,15 @@ bool TextBuffer::pollLoad()
         m_tree = m_tree.withInserted(m_tree.length(), std::move(batch));
         ++m_revision;
     }
+    return failed;
+}
+
+bool TextBuffer::pollLoad()
+{
+    if (!m_loading)
+        return true;
+    if (takeReady())
+        failLoad();
     if (m_inputDone && m_slots.empty()) {
         m_loading = false;
         return true;
@@ -278,14 +456,17 @@ bool TextBuffer::endLoad(bool wait)
     if (!m_loading)
         return true;
     if (!m_inputDone) {
-        if (!m_carry.isEmpty()) {
-            std::vector<Piece> v;
-            appendPieces(wrapBytes(QByteArray(Replacement, 3)), 0, 3, v);
-            pushImmediate(std::move(v));
-            m_hadInvalid = true;
-            m_carry.clear();
+        try {
+            if (!m_carry.isEmpty()) {
+                m_pending.append(Replacement, 3);
+                m_hadInvalid = true;
+                m_carry.clear();
+            }
+            flushPending();
+            m_inputDone = true;
+        } catch (...) {
+            failLoad();
         }
-        m_inputDone = true;
     }
     if (wait) {
         for (Slot &s : m_slots) {
@@ -294,6 +475,48 @@ bool TextBuffer::endLoad(bool wait)
         }
     }
     return pollLoad();
+}
+
+void TextBuffer::cancelLoad()
+{
+    if (!m_loading)
+        return;
+    m_state->cancelled.store(true, std::memory_order_release);
+    m_slots.clear();
+    m_pending.clear();
+    m_carry.clear();
+    m_tree = TextTree();
+    ++m_revision;
+    m_loading = false;
+    m_inputDone = true;
+    m_hadInvalid = false;
+    m_loadFailed = false;
+}
+
+void TextBuffer::abortLoad(bool failed)
+{
+    if (!m_loading)
+        return;
+    m_state->cancelled.store(true, std::memory_order_release);
+    bool bad = takeReady();
+    // The pending run is the newest text: it joins only if nothing before it
+    // is missing.
+    if (!bad && m_slots.empty()) {
+        try {
+            if (!m_inputDone)
+                flushPending();
+            bad = takeReady();
+        } catch (...) {
+            bad = true;
+        }
+    }
+    m_slots.clear();
+    m_pending.clear();
+    m_carry.clear();
+    m_inputDone = true;
+    m_loading = false;
+    if (failed || bad)
+        m_loadFailed = true;
 }
 
 double TextBuffer::loadProgress() const
@@ -309,7 +532,7 @@ double TextBuffer::loadProgress() const
 void TextBuffer::setText(const QString &text)
 {
     beginLoad();
-    appendData(text.toUtf8());
+    appendData(utf8Of(text));
     endLoad(true);
 }
 
@@ -365,7 +588,7 @@ TextBuffer::Change TextBuffer::insert(qsizetype position, const QString &text)
         c.position = position;
         return c;
     }
-    return applyInsert(position, addPieces(text.toUtf8()));
+    return applyInsert(position, addPieces(utf8Of(text)));
 }
 
 TextBuffer::Change TextBuffer::insertPieces(qsizetype position, std::vector<Piece> pieces)
@@ -400,7 +623,7 @@ TextBuffer::Change TextBuffer::replace(qsizetype start, qsizetype end, const QSt
         touched = true;
     }
     if (!text.isEmpty()) {
-        std::vector<Piece> ps = addPieces(text.toUtf8());
+        std::vector<Piece> ps = addPieces(utf8Of(text));
         for (const Piece &p : ps)
             c.insertedLength += p.agg.u16;
         c.inserted = ps;

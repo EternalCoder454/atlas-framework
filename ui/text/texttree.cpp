@@ -184,6 +184,8 @@ void pushMerged(std::vector<Piece> &v, Piece p)
     v.push_back(std::move(p));
 }
 
+void rebalance(std::vector<Child> &kids);
+
 std::vector<Child> insertRec(const Node &n, qsizetype pos, std::vector<Piece> &ps)
 {
     std::vector<Child> out;
@@ -259,6 +261,9 @@ std::vector<Child> insertRec(const Node &n, qsizetype pos, std::vector<Piece> &p
         nk.push_back(std::move(c));
     for (size_t i = idx + 1; i < cnt; ++i)
         nk.push_back(n.kids[i]);
+    // A merge of pieces can leave the rebuilt child with fewer than MinFan
+    // entries: fold it into a sibling before the groups are cut.
+    rebalance(nk);
     auto groups = makeGroups(std::move(nk));
     for (auto &g : groups)
         out.push_back(makeInternal(std::move(g)));
@@ -274,8 +279,6 @@ void collect(const Node &n, std::vector<Piece> &out)
     for (const Child &c : n.kids)
         collect(*c.node, out);
 }
-
-void rebalance(std::vector<Child> &kids);
 
 // One or two nodes holding the entries of a and b (siblings, a first).
 std::vector<Child> mergeTwo(const Child &a, const Child &b)
@@ -340,7 +343,7 @@ Child removeRec(const Node &n, qsizetype a, qsizetype b, std::vector<Piece> *rem
             const qsizetype s = cum, e = cum + p.agg.u16;
             cum = e;
             if (e <= a || s >= b) {
-                v.push_back(p);
+                pushMerged(v, p);
                 continue;
             }
             const qsizetype lo = std::max(a, s) - s, hi = std::min(b, e) - s;
@@ -352,11 +355,11 @@ Child removeRec(const Node &n, qsizetype a, qsizetype b, std::vector<Piece> *rem
             const qsizetype bl = bytesForUnits(p.data(), p.len(), lo);
             const qsizetype bh = bytesForUnits(p.data(), p.len(), hi);
             if (bl > 0)
-                v.push_back(makePiece(p.block, p.off, bl));
+                pushMerged(v, makePiece(p.block, p.off, bl));
             if (bh > bl && removed)
                 removed->push_back(makePiece(p.block, p.off + bl, bh - bl));
             if (bh < p.len())
-                v.push_back(makePiece(p.block, p.off + bh, p.len() - bh));
+                pushMerged(v, makePiece(p.block, p.off + bh, p.len() - bh));
         }
         if (v.empty())
             return Child();
@@ -804,9 +807,9 @@ QString TextTree::text(qsizetype start, qsizetype end) const
         const qsizetype hi = std::min(end, us + p.agg.u16) - us;
         const QString s = QString::fromUtf8(p.data(), p.len());
         if (lo == 0 && hi == p.agg.u16)
-            out += s;
+            out.append(s);
         else
-            out += QStringView(s).mid(lo, hi - lo);
+            out.append(QStringView(s).mid(lo, hi - lo));
         return true;
     };
     walkFrom(*m_root, skip, bc, uc, cb);
@@ -866,7 +869,10 @@ TextTree TextTree::withInserted(qsizetype position, std::vector<Piece> pieces) c
         return fromPieces(std::move(pieces));
     position = std::clamp<qsizetype>(position, 0, length());
     std::vector<Child> res = insertRec(*m_root, position, pieces);
-    return TextTree(wrapUp(std::move(res)));
+    NodePtr root = wrapUp(std::move(res));
+    while (root && !root->leaf && root->kids.size() == 1)
+        root = root->kids.front().node;
+    return TextTree(std::move(root));
 }
 
 TextTree TextTree::withRemoved(qsizetype start, qsizetype end, std::vector<Piece> *removed) const

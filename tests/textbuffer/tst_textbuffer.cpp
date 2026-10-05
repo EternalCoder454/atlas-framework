@@ -9,7 +9,9 @@
 #include <atomic>
 #include <chrono>
 #include <cstring>
+#include <functional>
 #include <mutex>
+#include <new>
 #include <thread>
 
 using namespace AtlasTextDetail;
@@ -201,6 +203,56 @@ QString makeString(const QByteArray &u8)
     return QString::fromUtf8(u8);
 }
 
+std::shared_ptr<const Block> blockOf(const QByteArray &bytes)
+{
+    auto b = std::make_shared<Block>();
+    b->bytes = bytes;
+    b->ptr = b->bytes.constData();
+    return b;
+}
+
+// One piece for every byte (ASCII text only), all from one block.
+TextTree treeOfBytes(const QByteArray &raw)
+{
+    const auto block = blockOf(raw);
+    std::vector<Piece> ps;
+    ps.reserve(size_t(raw.size()));
+    for (qsizetype i = 0; i < raw.size(); ++i)
+        ps.push_back(makePiece(block, i, 1));
+    return TextTree::fromPieces(std::move(ps));
+}
+
+// The task hook of the load tests: a chunk that starts with 'A' waits while the
+// gate is closed; one that starts with g_throwOn fails as if out of memory.
+std::atomic<bool> g_gateClosed{false};
+std::atomic<int> g_throwOn{-1};
+std::atomic<int> g_delayMs{0};
+
+void testHook(const char *data, qsizetype)
+{
+    const int first = uchar(data[0]);
+    if (first == 'A') {
+        for (int i = 0; i < 10000 && g_gateClosed.load(); ++i)
+            QThread::msleep(1);
+    }
+    if (first == g_throwOn.load())
+        throw std::bad_alloc();
+    if (g_delayMs.load() > 0)
+        QThread::msleep(unsigned(g_delayMs.load()));
+}
+
+bool waitUntil(const std::function<bool()> &done, int ms = 10000)
+{
+    QElapsedTimer t;
+    t.start();
+    while (!done()) {
+        if (t.elapsed() > ms)
+            return false;
+        QThread::msleep(2);
+    }
+    return true;
+}
+
 } // namespace
 
 class TestTextBuffer : public QObject
@@ -208,6 +260,8 @@ class TestTextBuffer : public QObject
     Q_OBJECT
 
 private slots:
+    void init();
+    void cleanup();
     void emptyBuffer();
     void fuzzTree_data();
     void fuzzTree();
@@ -217,6 +271,10 @@ private slots:
     void surrogateEdits();
     void crlfAcrossEdits();
     void undoPieces();
+    void insertPiecesContiguous();
+    void removeAcrossLevels();
+    void lineSeamsManyPieces();
+    void loneSurrogateInInsert();
 
     void loadChunkBoundaries();
     void loadCrlfBoundary();
@@ -226,9 +284,19 @@ private slots:
     void loadOneMegabyte();
     void loadEditsRefused();
     void loadRestart();
+    void loadWorkerBoundaries();
+    void destroyWithTasks();
+    void beginLoadWhileWorkersRun();
+    void cancelledTasksSilent();
+    void loadFailure();
+    void abortLoad();
+    void outOfOrderFinish();
+    void notifyPerRange();
 
     void lineEndingDetection();
     void lineEndingConversion();
+    void convertFlushBetweenCrLf();
+    void dominantTies();
     void lineEndingBig();
 
     void snapshotIsFrozen();
@@ -236,6 +304,22 @@ private slots:
     void snapshotNull();
     void snapshotThreads();
 };
+
+void TestTextBuffer::init()
+{
+    g_gateClosed = false;
+    g_throwOn = -1;
+    g_delayMs = 0;
+    setTaskHookForTests(testHook);
+}
+
+void TestTextBuffer::cleanup()
+{
+    g_gateClosed = false; // lets a blocked task go
+    g_throwOn = -1;
+    g_delayMs = 0;
+    setTaskHookForTests(nullptr);
+}
 
 void TestTextBuffer::emptyBuffer()
 {
@@ -332,8 +416,14 @@ void TestTextBuffer::fuzzTree()
         }
         maxHeight = std::max(maxHeight, buf.tree().height());
         maxPieces = std::max(maxPieces, buf.tree().pieceCount());
-        const QString e = compareAll(buf.tree(), model, rng, step % 250 == 0 || step == 9999);
-        QVERIFY2(e.isEmpty(), qPrintable(QStringLiteral("seed %1 step %2 after %3: %4").arg(seed).arg(step).arg(what, e)));
+        // The invariants after every step; the model (O(n) to build) every 20th.
+        const QString v = buf.tree().validate();
+        QVERIFY2(v.isEmpty() && buf.tree().length() == model.size(),
+                 qPrintable(QStringLiteral("seed %1 step %2 after %3: invalid tree: %4").arg(seed).arg(step).arg(what, v)));
+        if (step % 20 == 0 || step % 250 == 0 || step == 9999) {
+            const QString e = compareAll(buf.tree(), model, rng, step % 250 == 0 || step == 9999);
+            QVERIFY2(e.isEmpty(), qPrintable(QStringLiteral("seed %1 step %2 after %3: %4").arg(seed).arg(step).arg(what, e)));
+        }
     }
     qInfo() << "seed" << seed << "max pieces" << maxPieces << "max height" << maxHeight << "final length" << model.size();
     QVERIFY(maxPieces > 64);
@@ -512,6 +602,137 @@ void TestTextBuffer::undoPieces()
     QVERIFY(buf.tree().validate().isEmpty());
 }
 
+
+void TestTextBuffer::insertPiecesContiguous()
+{
+    // Pieces that continue their neighbours in the same block merge back.
+    TextBuffer b;
+    b.insert(0, QStringLiteral("abcdef"));
+    QCOMPARE(b.tree().pieceCount(), qsizetype(1));
+    auto c = b.remove(2, 4);
+    QCOMPARE(b.tree().pieceCount(), qsizetype(2));
+    b.insertPieces(2, c.removed);
+    QCOMPARE(b.tree().pieceCount(), qsizetype(1));
+    QCOMPARE(b.tree().text(0, 6), QStringLiteral("abcdef"));
+    QVERIFY2(b.tree().validate().isEmpty(), qPrintable(b.tree().validate()));
+    c = b.remove(0, 2);
+    b.insertPieces(0, c.removed);
+    QCOMPARE(b.tree().pieceCount(), qsizetype(1));
+    c = b.remove(4, 6);
+    b.insertPieces(4, c.removed);
+    QCOMPARE(b.tree().pieceCount(), qsizetype(1));
+    // Many times, with a validate after each.
+    QRandomGenerator rng(8);
+    for (int i = 0; i < 300; ++i) {
+        const qsizetype a = qsizetype(rng.bounded(6u));
+        const qsizetype e = a + 1 + qsizetype(rng.bounded(quint32(6 - a)));
+        c = b.remove(a, e);
+        QVERIFY(c.changed());
+        const auto back = b.insertPieces(a, c.removed);
+        QCOMPARE(back.insertedLength, e - a);
+        QVERIFY2(b.tree().validate().isEmpty(), qPrintable(b.tree().validate()));
+        QCOMPARE(b.tree().text(0, 6), QStringLiteral("abcdef"));
+        QCOMPARE(b.tree().pieceCount(), qsizetype(1));
+    }
+}
+
+void TestTextBuffer::removeAcrossLevels()
+{
+    // 6000 one-byte pieces of one block: three levels. Every removal also merges
+    // the contiguous pieces of the leaves it touches, so nodes drop below the
+    // minimum and are folded into their neighbours; validate() after each step.
+    QRandomGenerator rng(4242);
+    static const char alpha[] = "ab \r\n";
+    QByteArray raw;
+    for (int i = 0; i < 6000; ++i)
+        raw.append(alpha[rng.bounded(5u)]);
+    TextTree t = treeOfBytes(raw);
+    QString model = QString::fromLatin1(raw);
+    QVERIFY2(t.height() >= 3, qPrintable(QString::number(t.height())));
+    QVERIFY2(t.validate().isEmpty(), qPrintable(t.validate()));
+    for (int step = 0; step < 900 && !model.isEmpty(); ++step) {
+        const qsizetype a = qsizetype(rng.bounded(quint32(model.size())));
+        const quint32 most = quint32(std::min<qsizetype>(model.size() - a, step % 10 == 0 ? 800 : 40));
+        const qsizetype len = 1 + qsizetype(rng.bounded(most));
+        const QString gone = model.mid(a, len);
+        std::vector<Piece> removed;
+        t = t.withRemoved(a, a + len, &removed);
+        model.remove(a, len);
+        QVERIFY2(t.validate().isEmpty(), qPrintable(QStringLiteral("step %1: %2").arg(step).arg(t.validate())));
+        if (step % 5 == 0 && !removed.empty()) {
+            t = t.withInserted(a, removed);
+            model.insert(a, gone);
+            QVERIFY2(t.validate().isEmpty(), qPrintable(QStringLiteral("step %1 (put back): %2").arg(step).arg(t.validate())));
+        }
+        if (step % 25 == 0) {
+            const QString e = compareAll(t, model, rng, false);
+            QVERIFY2(e.isEmpty(), qPrintable(QStringLiteral("step %1: %2").arg(step).arg(e)));
+        }
+    }
+    QString e = compareAll(t, model, rng, true);
+    QVERIFY2(e.isEmpty(), qPrintable(e));
+    // Everything out, down to nothing.
+    t = t.withRemoved(0, t.length(), nullptr);
+    QVERIFY(t.isEmpty());
+}
+
+void TestTextBuffer::lineSeamsManyPieces()
+{
+    // One piece for every byte, so a CR can end one leaf and its LF start the
+    // next (groups of 50 for 200 pieces). Then a lone CR at the same seams.
+    QRandomGenerator rng(6);
+    for (int variant = 0; variant < 3; ++variant) {
+        QByteArray raw;
+        for (int i = 0; i < 200; ++i)
+            raw.append(rng.bounded(2u) ? 'a' : 'b');
+        for (int seam : {49, 99, 149}) {
+            raw[seam] = '\r';
+            raw[seam + 1] = variant == 0 ? '\n' : variant == 1 ? 'q' : '\r';
+        }
+        raw[24] = '\r';
+        raw[25] = 'x';
+        const TextTree t = treeOfBytes(raw);
+        QVERIFY(t.height() >= 2);
+        const QString s = QString::fromLatin1(raw);
+        const QString e = compareAll(t, s, rng, true);
+        QVERIFY2(e.isEmpty(), qPrintable(QStringLiteral("variant %1: %2").arg(variant).arg(e)));
+    }
+    // Dense and random over three levels.
+    QByteArray raw;
+    static const char alpha[] = "a\r\n\r\n";
+    for (int i = 0; i < 5000; ++i)
+        raw.append(alpha[rng.bounded(5u)]);
+    const TextTree t = treeOfBytes(raw);
+    QVERIFY(t.height() >= 3);
+    const QString e = compareAll(t, QString::fromLatin1(raw), rng, true);
+    QVERIFY2(e.isEmpty(), qPrintable(e));
+}
+
+void TestTextBuffer::loneSurrogateInInsert()
+{
+    const QString smile = QString::fromUtf8("\xF0\x9F\x98\x80");
+    const QString fffd(QChar(0xFFFD));
+    QString s = QStringLiteral("ab");
+    s += QChar(0xD800);
+    s += QStringLiteral("cd");
+    s += QChar(0xDC00);
+    s += smile;
+    s += QChar(0xD83D); // a high half at the very end
+    TextBuffer b;
+    b.insert(0, QStringLiteral("xy"));
+    const auto c = b.insert(1, s);
+    const QString want = QStringLiteral("x") + QStringLiteral("ab") + fffd + QStringLiteral("cd") + fffd + smile + fffd + QStringLiteral("y");
+    QCOMPARE(b.tree().text(0, b.tree().length()), want);
+    QCOMPARE(c.insertedLength, s.size());
+    QVERIFY(b.tree().validate().isEmpty());
+    QVERIFY(!b.tree().utf8(0, b.tree().byteLength()).contains('?'));
+    // Replace and setText take the same road.
+    b.replace(0, 1, QString(QChar(0xDE00)));
+    QCOMPARE(b.tree().text(0, 1), fffd);
+    b.setText(s);
+    QCOMPARE(b.tree().text(0, b.tree().length()), QStringLiteral("ab") + fffd + QStringLiteral("cd") + fffd + smile + fffd);
+}
+
 // ---- Loading ----
 
 static QByteArray mixedSample()
@@ -551,8 +772,7 @@ void TestTextBuffer::loadChunkBoundaries()
 
 void TestTextBuffer::loadCrlfBoundary()
 {
-    // The CR ends one chunk and the LF starts the next, then the same with a
-    // piece boundary made by a second load of the pieces.
+    // The CR ends one chunk and the LF starts the next.
     TextBuffer b;
     b.beginLoad();
     b.appendData(QByteArray("a\r"));
@@ -570,7 +790,9 @@ void TestTextBuffer::loadCrlfBoundary()
     QCOMPARE(b.tree().lineAt(1), qsizetype(0));
     QCOMPARE(b.tree().lineAt(2), qsizetype(0)); // between CR and LF
     QCOMPARE(b.tree().lineAt(3), qsizetype(1));
-    QCOMPARE(b.tree().pieceCount(), qsizetype(4));
+    // Small chunks are gathered into one piece; the seams are tested on purpose
+    // in lineSeamsManyPieces().
+    QCOMPARE(b.tree().pieceCount(), qsizetype(1));
     QRandomGenerator rng(3);
     QVERIFY2(compareAll(b.tree(), want, rng, true).isEmpty(), "crlf boundary");
     // CR at the very end of the load.
@@ -679,7 +901,12 @@ void TestTextBuffer::loadOneMegabyte()
         b.beginLoad();
         for (qsizetype i = 0; i < data.size(); i += chunk)
             b.appendData(data.mid(i, chunk));
-        QVERIFY(b.endLoad(false) || b.loading());
+        // Small chunks are all checked on this thread, so nothing is left to
+        // wait for; with workers the answer is whatever the state says.
+        const bool finished = b.endLoad(false);
+        QCOMPARE(finished, !b.loading());
+        if (chunk < 32768)
+            QVERIFY(finished);
         // Poll to the end; the text only grows meanwhile.
         qsizetype last = 0;
         QElapsedTimer timer;
@@ -757,6 +984,281 @@ void TestTextBuffer::loadRestart()
     QVERIFY(before.length() <= 200004);
     QVERIFY(before.revision() < b.revision());
     QVERIFY(b.tree().validate().isEmpty());
+}
+
+void TestTextBuffer::loadWorkerBoundaries()
+{
+    // Ranges of worker size: a 4-byte character and a CRLF cut by the chunk
+    // boundary, and the same cut by the 1 MB range boundary inside one chunk.
+    const QByteArray smile("\xF0\x9F\x98\x80");
+    for (int split = 1; split <= 3; ++split) {
+        TextBuffer b;
+        b.beginLoad();
+        b.appendData(QByteArray(40000, 'a') + smile.left(split));
+        b.appendData(smile.mid(split) + QByteArray(40000, 'b'));
+        QVERIFY(b.endLoad());
+        QVERIFY(!b.hadInvalidText());
+        const QString want = QString(40000, u'a') + QString::fromUtf8(smile) + QString(40000, u'b');
+        QVERIFY2(b.tree().text(0, b.tree().length()) == want, qPrintable(QString::number(split)));
+        QVERIFY(b.tree().validate().isEmpty());
+    }
+    {
+        TextBuffer b;
+        b.beginLoad();
+        b.appendData(QByteArray(40000, 'a') + "\r");
+        b.appendData("\n" + QByteArray(40000, 'b'));
+        QVERIFY(b.endLoad());
+        QCOMPARE(b.tree().lineCount(), qsizetype(2));
+        QCOMPARE(b.tree().lineStart(1), qsizetype(40002));
+        QCOMPARE(b.tree().lineAt(40001), qsizetype(0));
+        QVERIFY(b.lineEnding() == LE::CRLF);
+    }
+    const qsizetype range = 1024 * 1024;
+    {   // The cut falls between CR and LF.
+        const QByteArray data = QByteArray(range - 1, 'a') + "\r\n" + QByteArray(100000, 'b');
+        TextBuffer b;
+        b.beginLoad();
+        b.appendData(data);
+        QVERIFY(b.endLoad());
+        QCOMPARE(b.tree().lineCount(), qsizetype(2));
+        QCOMPARE(b.tree().lineStart(1), range + 1);
+        QVERIFY(b.tree().utf8(0, b.tree().byteLength()) == data);
+        QVERIFY(b.tree().validate().isEmpty());
+    }
+    {   // The cut falls inside a 4-byte character.
+        QByteArray data("x");
+        for (int i = 0; i < 800000; ++i)
+            data += smile;
+        TextBuffer b;
+        b.beginLoad();
+        b.appendData(data);
+        QVERIFY(b.endLoad());
+        QVERIFY(!b.hadInvalidText());
+        QCOMPARE(b.tree().length(), qsizetype(1 + 2 * 800000));
+        QVERIFY(b.tree().utf8(0, b.tree().byteLength()) == data);
+        QVERIFY(b.tree().validate().isEmpty());
+    }
+    {   // The cut falls inside a run of stray continuation bytes.
+        const QByteArray data = QByteArray(range - 6, 'a') + QByteArray(10, '\x80') + QByteArray(5000, 'b');
+        TextBuffer b;
+        b.beginLoad();
+        b.appendData(data);
+        QVERIFY(b.endLoad());
+        QVERIFY(b.hadInvalidText());
+        const QString want = QString(range - 6, u'a') + QString(10, QChar(0xFFFD)) + QString(5000, u'b');
+        QVERIFY(b.tree().text(0, b.tree().length()) == want);
+        QVERIFY(b.tree().validate().isEmpty());
+    }
+    {   // Mostly valid text with a few bad bytes: the long runs stay whole pieces.
+        QByteArray data = QByteArray(300000, 'a');
+        data[100000] = char(0xFF);
+        data[200000] = char(0xC3);
+        TextBuffer b;
+        b.beginLoad();
+        b.appendData(data);
+        QVERIFY(b.endLoad());
+        QVERIFY(b.hadInvalidText());
+        QCOMPARE(b.tree().length(), qsizetype(300000));
+        QVERIFY(b.tree().pieceCount() <= 12);
+        QCOMPARE(b.tree().text(100000, 100001), QString(QChar(0xFFFD)));
+        QCOMPARE(b.tree().text(200000, 200001), QString(QChar(0xFFFD)));
+        QVERIFY(b.tree().validate().isEmpty());
+    }
+}
+
+void TestTextBuffer::destroyWithTasks()
+{
+    // The buffer goes away with tasks outstanding: no callback runs afterwards.
+    std::atomic<int> calls{0};
+    std::atomic<bool> gone{false};
+    std::atomic<int> late{0};
+    g_delayMs = 20;
+    {
+        TextBuffer b;
+        b.setLoadNotify([&] {
+            ++calls;
+            if (gone.load())
+                ++late;
+        });
+        b.beginLoad();
+        for (int i = 0; i < 12; ++i)
+            b.appendData(QByteArray(100000, char('b' + i)));
+    }
+    gone = true;
+    QThread::msleep(600); // the tasks finish (and are dropped) meanwhile
+    QCOMPARE(late.load(), 0);
+}
+
+void TestTextBuffer::beginLoadWhileWorkersRun()
+{
+    // A new load while workers of the old one are busy: the old ones notify
+    // nobody and add nothing.
+    g_gateClosed = true;
+    std::atomic<int> notified{0};
+    TextBuffer b;
+    b.setLoadNotify([&] { ++notified; });
+    b.beginLoad();
+    for (int i = 0; i < 3; ++i)
+        b.appendData(QByteArray(100000, 'A'));
+    b.beginLoad();
+    g_gateClosed = false;
+    b.appendData(QByteArray(100000, 'B'));
+    b.appendData(QByteArray(100000, 'C'));
+    QVERIFY(b.endLoad());
+    QVERIFY(waitUntil([&] { return notified.load() >= 2; }));
+    QThread::msleep(300);
+    QCOMPARE(notified.load(), 2);
+    QVERIFY(b.tree().utf8(0, b.tree().byteLength()) == QByteArray(100000, 'B') + QByteArray(100000, 'C'));
+    QVERIFY(b.tree().validate().isEmpty());
+}
+
+void TestTextBuffer::cancelledTasksSilent()
+{
+    g_gateClosed = true;
+    std::atomic<int> notified{0};
+    TextBuffer b;
+    b.cancelLoad(); // no load: nothing happens
+    b.setLoadNotify([&] { ++notified; });
+    b.beginLoad();
+    for (int i = 0; i < 3; ++i)
+        b.appendData(QByteArray(100000, 'A'));
+    b.appendData(QByteArray("small"));
+    b.cancelLoad();
+    QVERIFY(!b.loading());
+    QVERIFY(!b.loadFailed());
+    QVERIFY(b.tree().isEmpty());
+    QVERIFY(b.pollLoad());
+    g_gateClosed = false;
+    QThread::msleep(300);
+    QCOMPARE(notified.load(), 0);
+    QVERIFY(b.tree().isEmpty());
+    // The buffer is usable again.
+    b.setText(QStringLiteral("after"));
+    QCOMPARE(b.tree().text(0, b.tree().length()), QStringLiteral("after"));
+}
+
+void TestTextBuffer::loadFailure()
+{
+    // The worker of the middle chunk fails: the text is the chunk before it,
+    // whole, and nothing after the hole.
+    g_throwOn = 'F';
+    TextBuffer b;
+    b.beginLoad();
+    b.appendData(QByteArray(100000, 'a'));
+    b.appendData(QByteArray(100000, 'F'));
+    b.appendData(QByteArray(100000, 'c'));
+    QVERIFY(b.endLoad());
+    QVERIFY(!b.loading());
+    QVERIFY(b.loadFailed());
+    QVERIFY(b.tree().utf8(0, b.tree().byteLength()) == QByteArray(100000, 'a'));
+    QVERIFY2(b.tree().validate().isEmpty(), qPrintable(b.tree().validate()));
+    b.appendData(QByteArray("late")); // ignored: no load is running
+    QCOMPARE(b.tree().byteLength(), qsizetype(100000));
+    // The failure is for this load only.
+    b.beginLoad();
+    QVERIFY(!b.loadFailed());
+    b.appendData(QByteArray("ok"));
+    QVERIFY(b.endLoad());
+    QVERIFY(!b.loadFailed());
+    QCOMPARE(b.tree().text(0, b.tree().length()), QStringLiteral("ok"));
+    // A failure seen by pollLoad() without endLoad(wait): later chunks are not
+    // appended even if the caller keeps feeding the load.
+    TextBuffer c;
+    c.beginLoad();
+    c.appendData(QByteArray(100000, 'F'));
+    c.appendData(QByteArray(100000, 'c'));
+    QVERIFY(waitUntil([&] { return c.pollLoad() || c.loadFailed(); }));
+    c.appendData(QByteArray(100000, 'd'));
+    QVERIFY(c.endLoad());
+    QVERIFY(c.loadFailed());
+    QVERIFY(c.tree().isEmpty());
+}
+
+void TestTextBuffer::abortLoad()
+{
+    TextBuffer b;
+    b.abortLoad(true); // no load: nothing happens
+    QVERIFY(!b.loadFailed());
+    // Small data only: it is all kept.
+    b.beginLoad();
+    b.appendData(QByteArray("abc"));
+    b.abortLoad(false);
+    QVERIFY(!b.loading());
+    QVERIFY(!b.loadFailed());
+    QCOMPARE(b.tree().text(0, b.tree().length()), QStringLiteral("abc"));
+    // The first range is in, the second is stuck, the third is done: the text
+    // is the first only.
+    g_gateClosed = true;
+    b.beginLoad();
+    b.appendData(QByteArray(100000, 'c'));
+    QVERIFY(waitUntil([&] {
+        b.pollLoad();
+        return b.tree().byteLength() == 100000;
+    }));
+    b.appendData(QByteArray(100000, 'A'));
+    b.appendData(QByteArray(100000, 'd'));
+    b.appendData(QByteArray("tail"));
+    QThread::msleep(100);
+    b.abortLoad(true);
+    QVERIFY(!b.loading());
+    QVERIFY(b.loadFailed());
+    QVERIFY(b.pollLoad());
+    QVERIFY(b.tree().utf8(0, b.tree().byteLength()) == QByteArray(100000, 'c'));
+    QVERIFY(b.tree().validate().isEmpty());
+    QVERIFY(b.insert(0, QStringLiteral("x")).ok); // editing is allowed again
+    g_gateClosed = false;
+}
+
+void TestTextBuffer::outOfOrderFinish()
+{
+    // The second chunk is done while the first is still being checked: nothing
+    // is taken until the first is in, and then the order is the input's.
+    g_gateClosed = true;
+    std::atomic<int> notified{0};
+    TextBuffer b;
+    b.setLoadNotify([&] { ++notified; });
+    b.beginLoad();
+    b.appendData(QByteArray(100000, 'A'));
+    b.appendData(QByteArray(100000, 'B'));
+    QVERIFY(waitUntil([&] { return notified.load() >= 1; }));
+    QVERIFY(!b.pollLoad());
+    QCOMPARE(b.tree().byteLength(), qsizetype(0));
+    g_gateClosed = false;
+    QVERIFY(b.endLoad());
+    QVERIFY(b.tree().utf8(0, b.tree().byteLength()) == QByteArray(100000, 'A') + QByteArray(100000, 'B'));
+    QVERIFY(b.tree().validate().isEmpty());
+}
+
+void TestTextBuffer::notifyPerRange()
+{
+    // One call for every finished range, and none from appendData itself.
+    std::atomic<int> n{0};
+    TextBuffer b;
+    b.setLoadNotify([&] { ++n; });
+    b.beginLoad();
+    for (int i = 0; i < 50; ++i)
+        b.appendData(QByteArray(1000, 's'));
+    b.appendData(QByteArray(10, 't'));
+    QCOMPARE(n.load(), 0); // small chunks are checked inline
+    QVERIFY(b.endLoad());
+    QThread::msleep(50);
+    QCOMPARE(n.load(), 0);
+    QCOMPARE(b.tree().byteLength(), qsizetype(50010));
+
+    b.beginLoad();
+    b.appendData(QByteArray(100000, 'a'));
+    QVERIFY(b.endLoad());
+    QVERIFY(waitUntil([&] { return n.load() >= 1; }));
+    QThread::msleep(100);
+    QCOMPARE(n.load(), 1);
+
+    b.beginLoad();
+    b.appendData(QByteArray(3 * 1024 * 1024 - 10, 'a')); // three ranges
+    QVERIFY(b.endLoad());
+    QVERIFY(waitUntil([&] { return n.load() >= 4; }));
+    QThread::msleep(100);
+    QCOMPARE(n.load(), 4);
+    QCOMPARE(b.tree().byteLength(), qsizetype(3 * 1024 * 1024 - 10));
 }
 
 // ---- Line endings ----
@@ -863,6 +1365,50 @@ void TestTextBuffer::lineEndingConversion()
     QCOMPARE(c.tree().text(0, c.tree().length()), QStringLiteral("x\ny"));
     c.convertLineEndings(LE::CR);
     QCOMPARE(c.tree().text(0, c.tree().length()), QStringLiteral("x\ry"));
+}
+
+void TestTextBuffer::convertFlushBetweenCrLf()
+{
+    // The output is flushed into a new piece near the 64 KB limit; with the CR
+    // last in one piece and the LF it swallowed next, the text must still be
+    // right for every offset around the limit.
+    for (qsizetype pad = MaxPiece - 20; pad <= MaxPiece - 2; ++pad) {
+        const QString text = QString(pad, u'a') + QStringLiteral("\r\nb\nc\r\nd");
+        for (LE kind : {LE::LF, LE::CRLF, LE::CR}) {
+            TextBuffer b;
+            b.setText(text);
+            const auto c = b.convertLineEndings(kind);
+            QVERIFY(c.ok);
+            const QString want = convertModel(text, kind);
+            QVERIFY2(b.tree().text(0, b.tree().length()) == want, qPrintable(QStringLiteral("pad %1 kind %2").arg(pad).arg(int(kind))));
+            QVERIFY2(b.tree().validate().isEmpty(), qPrintable(b.tree().validate()));
+            QCOMPARE(b.tree().lineCount(), qsizetype(4));
+            QVERIFY(b.lineEnding() == kind);
+        }
+    }
+}
+
+void TestTextBuffer::dominantTies()
+{
+    struct Row {
+        const char *text;
+        LE kind;
+    };
+    const Row rows[] = {
+        {"a\nb\r\nc", LE::LF},        // LF = CRLF
+        {"a\nb\rc", LE::LF},           // LF = CR
+        {"a\r\nb\rc", LE::CRLF},      // CRLF = CR, both above LF
+        {"a\r\nb\rc\nd", LE::LF},     // all three equal
+        {"a\r\nb\r\nc\rd\ne", LE::CRLF},
+        {"a\rb\rc\r\nd\ne", LE::CR},
+        {"a\r\nb\nc\nd\r", LE::LF}, // LF leads
+        {"plain", LE::LF},
+    };
+    for (const Row &r : rows) {
+        TextBuffer b;
+        b.setText(QString::fromLatin1(r.text));
+        QVERIFY2(b.dominantLineEnding() == r.kind, r.text);
+    }
 }
 
 void TestTextBuffer::lineEndingBig()

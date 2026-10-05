@@ -171,14 +171,16 @@ if(ATLAS_UI_DEV_BUILD)
 endif()
 # Appearance: the shared transparency switch (atlasrc) and window blur.
 # The text buffer behind AtlasTextView (ui/text): pure QtCore, so a static
-# library the plugin links and its tests link alone. Not installed.
+# library the plugin links and its tests link alone. Not installed, and atlasui
+# is installed without an export set; if one is ever added, the include paths
+# below are BUILD_INTERFACE-only so no source-tree path can leak into it.
 add_library(atlastext STATIC
     text/texttree.h text/texttree.cpp
     text/textbuffer.h text/textbuffer.cpp)
 set_target_properties(atlastext PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(atlastext PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/text
-    ${PROJECT_SOURCE_DIR}/crates/atlas-framework-ui/include)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/text>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/crates/atlas-framework-ui/include>)
 target_link_libraries(atlastext PUBLIC Qt6::Core Qt6::Gui)
 
 target_link_libraries(atlasui PRIVATE atlastext Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::DBus
