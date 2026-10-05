@@ -14,26 +14,58 @@ import Atlas.Ui
 //       Behavior on color { ColorAnimation { duration: AtlasStyle.durationShort } }
 //   }
 //
-// Colours (follow the system colour scheme and accent, light or dark):
-//   accent, accentText      the accent colour, and text readable on it. Atlas
-//                           violet (#6858E2 light, #8A7AF4 dark) unless the user
-//                           chose an accent in Plasma, which then wins.
-//   focus                   the keyboard focus ring and decoration colour: Atlas
-//                           pink (#C8326F light, #F07AB0 dark, 3:1 or more on
-//                           the window), or the user's Plasma accent
-//   surface                 a raised card over the page (Section's card)
+// Colours follow the system colour scheme, light or dark, with the neutrals
+// tinted slightly toward Atlas violet (not under high contrast). Light and
+// Dark are tuned separately.
+//   accent                  selection, indicators, checked states: Atlas violet
+//                           (#6858E2 light, #8A7AF4 dark) unless the user chose
+//                           an accent in Plasma, which then wins
+//   accentText              text readable on `accent`
+//   accentStrong            the prominent (primary) button fill: the darker
+//                           violet in Light (#5B4BD6, 6:1 with white), the
+//                           brighter one in Dark (#A396F7)
+//   accentStrongText        text on `accentStrong` (4.5:1 or more)
+//   focus                   the keyboard focus ring: magenta-violet pink
+//                           (#A62A8C light, 5:1 on the window; #E28BE0 dark),
+//                           or the user's Plasma accent
+//   base                    the window background (tonal step 0)
+//   surface                 a card over the page (Section's card, step 1)
+//   surfaceRaised           menus, popovers, dialogs, tooltips (step 2)
+//   control                 the fill of fields and default buttons (step 3)
+//   codeSurface             a code view's own background
 //   surfaceAlt              the alternate row colour of the colour scheme
-//   text, textMuted         body text, and secondary text (65% of text)
-//   separator               hairlines and card borders
+//   hover, pressed          grey overlays for hover and press, never the
+//                           accent, so hover never looks like selection
+//   selection               a selected row or item (quiet accent tint);
+//                           selectionInactive when the view has no focus
+//   text, textMuted         body text; secondary info ("Step 2 of 2"),
+//                           captions, units (65% of text)
+//   textDisabled            disabled text, still readable (55% of text)
+//   separator               decorative hairlines and card borders (light)
+//   controlBorder           control edges (stronger than separator)
 //   success, warning, error  the scheme's positive, neutral and negative text
+//   errorFill               the faint fill of an invalid field
+//   sakura                  the signature gradient runs from violet (`accent`)
+//                           to sakura. Only for the edge glow, an active
+//                           progress shimmer and "update ready": never on
+//                           buttons, selection or text
+//   floatingBackground      menus, popovers, notifications, launcher: strongly
+//                           tinted over the blur (85%), solid without it
+//   chromeBackground        header bars, sidebars, floating toolbars: lightly
+//                           blurred (94%), solid without it
+// Tables, text fields, code views and dense forms stay solid.
 //
-// Spacing: spacingSmall, spacing, spacingLarge (Kirigami.Units small, medium
-// and large spacing, in pixels).
+// Spacing: one fixed scale, used by every control: spacingXSmall 2,
+// spacingSmall 4, spacing 8, spacingLarge 12, spacingXLarge 16,
+// spacingXXLarge 24.
 //
-// Radii: radiusSmall 4 (checkboxes, small buttons, menu items), radius 6
-// (list items, steps, tooltips), radiusLarge 8 (cards, menus, banners),
-// radiusPill (any height: the button and text field rule, radius = height / 2
-// is the same look; use `height / 2` when the exact value matters).
+// Radii: radiusSmall 4 (controls: buttons, fields, combo boxes, search fields,
+// menu items, sidebar and list selections), radius 6 (menus, cards, popovers,
+// tooltips), radiusLarge 8 (dialogs), radiusPill (switch tracks, badges,
+// chips: any height).
+//
+// Sizes: controlHeight is the height of a button, field or combo box: 28 px,
+// 24 px when compact (a control grows when its text needs more).
 //
 // Fonts: fontFamily is IBM Plex Sans and monoFamily is JetBrains Mono when
 // installed, else the system font and the system fixed font. Atlas apps already
@@ -55,6 +87,14 @@ import Atlas.Ui
 // by the app. `compact` is the same as a bool, and `rowHeight` is the height
 // of a list or SectionRow row for the density: Normal is 2.5 grid units,
 // Compact 75% of it.
+//
+// Springs: spatial movement (a panel opening, a row expanding, a selection
+// indicator sliding) uses AtlasSpringAnimation: standard (no overshoot) by
+// default, `expressive: true` (a small overshoot) only for the signature
+// moments: sliding selection indicators, the focus ring growing in, the
+// switch thumb, a drop zone accepting. Colour and opacity never spring: they
+// fade with the durations above. Under reducedMotion a spring is off and the
+// change is a short fade or a jump.
 //
 // highContrast and textScale pass Appearance's values through.
 QtObject {
@@ -80,29 +120,55 @@ QtObject {
 
     // Atlas violet, unless the user chose an accent in Plasma: then theirs.
     readonly property bool _dark: _theme.Kirigami.Theme.backgroundColor.hslLightness < 0.5
-    readonly property color accent: Appearance.accentFromSystem ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#8A7AF4" : "#6858E2")
-    readonly property color accentText: Appearance.accentFromSystem ? _theme.Kirigami.Theme.highlightedTextColor : (_dark ? "#14121F" : "#FFFFFF")
-    readonly property color focus: Appearance.accentFromSystem ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#F07AB0" : "#C8326F")
-    readonly property color surface: {
+    readonly property bool _system: Appearance.accentFromSystem
+    readonly property color accent: _system ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#8A7AF4" : "#6858E2")
+    readonly property color accentText: _system ? _theme.Kirigami.Theme.highlightedTextColor : (_dark ? "#14121F" : "#FFFFFF")
+    readonly property color accentStrong: _system ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#A396F7" : "#5B4BD6")
+    readonly property color accentStrongText: _system ? _theme.Kirigami.Theme.highlightedTextColor : (_dark ? "#14121F" : "#FFFFFF")
+    readonly property color focus: _system ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#E28BE0" : "#A62A8C")
+
+    // Neutrals: the scheme's window colour tinted toward violet, then tonal
+    // steps. Light steps up toward white; Dark toward a lighter grey.
+    readonly property color _tint: _dark ? "#8A7AF4" : "#6858E2"
+    readonly property color base: {
         const bg = _theme.Kirigami.Theme.backgroundColor;
-        return bg.hslLightness > 0.5 ? Qt.lighter(bg, 1.5) : Qt.tint(bg, Qt.rgba(1, 1, 1, 0.06));
+        return highContrast ? bg : Qt.tint(bg, Qt.alpha(_tint, _dark ? 0.06 : 0.045));
     }
+    readonly property color surface: _dark ? Qt.tint(base, Qt.rgba(1, 1, 1, 0.045)) : Qt.tint(base, Qt.rgba(1, 1, 1, 0.6))
+    readonly property color surfaceRaised: _dark ? Qt.tint(base, Qt.rgba(1, 1, 1, 0.085)) : Qt.tint(base, Qt.rgba(1, 1, 1, 0.85))
+    readonly property color control: _dark ? Qt.tint(base, Qt.rgba(1, 1, 1, 0.065)) : Qt.tint(base, Qt.alpha(_theme.Kirigami.Theme.textColor, 0.055))
+    readonly property color codeSurface: _dark ? Qt.tint(base, Qt.rgba(0, 0, 0, 0.18)) : Qt.tint(base, Qt.alpha(_tint, 0.035))
     readonly property color surfaceAlt: _theme.Kirigami.Theme.alternateBackgroundColor
+    readonly property color hover: Qt.alpha(_theme.Kirigami.Theme.textColor, _dark ? 0.07 : 0.055)
+    readonly property color pressed: Qt.alpha(_theme.Kirigami.Theme.textColor, _dark ? 0.12 : 0.1)
+    readonly property color selection: Qt.alpha(accent, _dark ? 0.24 : 0.16)
+    readonly property color selectionInactive: Qt.alpha(accent, _dark ? 0.15 : 0.1)
     readonly property color text: _theme.Kirigami.Theme.textColor
     readonly property color textMuted: Qt.alpha(_theme.Kirigami.Theme.textColor, 0.65)
-    readonly property color separator: Qt.alpha(_theme.Kirigami.Theme.textColor, 0.12)
+    readonly property color textDisabled: Qt.alpha(_theme.Kirigami.Theme.textColor, 0.55)
+    readonly property color separator: Qt.alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.4 : 0.08)
+    readonly property color controlBorder: Qt.alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.8 : 0.22)
     readonly property color success: _theme.Kirigami.Theme.positiveTextColor
     readonly property color warning: _theme.Kirigami.Theme.neutralTextColor
     readonly property color error: _theme.Kirigami.Theme.negativeTextColor
+    readonly property color errorFill: Qt.alpha(error, _dark ? 0.1 : 0.06)
+    readonly property color sakura: _dark ? "#F4B3CF" : "#E58BB4"
+    readonly property color floatingBackground: Appearance.effective ? Qt.alpha(surfaceRaised, 0.85) : surfaceRaised
+    readonly property color chromeBackground: Appearance.effective ? Qt.alpha(base, 0.94) : base
 
-    readonly property real spacingSmall: Kirigami.Units.smallSpacing
-    readonly property real spacing: Kirigami.Units.mediumSpacing
-    readonly property real spacingLarge: Kirigami.Units.largeSpacing
+    readonly property real spacingXSmall: 2
+    readonly property real spacingSmall: 4
+    readonly property real spacing: 8
+    readonly property real spacingLarge: 12
+    readonly property real spacingXLarge: 16
+    readonly property real spacingXXLarge: 24
 
     readonly property real radiusSmall: 4
     readonly property real radius: 6
     readonly property real radiusLarge: 8
     readonly property real radiusPill: 1000
+
+    readonly property real controlHeight: compact ? 24 : 28
 
     readonly property string fontFamily: Appearance.fontFamily
     readonly property string monoFamily: Appearance.monoFamily

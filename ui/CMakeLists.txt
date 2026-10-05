@@ -97,6 +97,7 @@ qt_add_qml_module(atlasui
         AtlasDoubleSpinBox.qml
         AtlasShortcutField.qml
         AtlasSplitView.qml
+        AtlasSpringAnimation.qml
         AtlasNavigationStack.qml
         AtlasViewSwitcher.qml
         AtlasColorField.qml

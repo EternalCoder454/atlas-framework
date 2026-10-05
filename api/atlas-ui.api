@@ -507,6 +507,8 @@ AtlasSplitView.method restoreSizes(QString sizes): bool
 AtlasSplitView.method saveSizes(): QString
 AtlasSplitView.property stateKey: QString
 AtlasSplitView.type
+AtlasSpringAnimation.property expressive: bool
+AtlasSpringAnimation.type
 AtlasStat.property invertTrend: bool
 AtlasStat.property label: QString
 AtlasStat.property sparkline: QList<double>
@@ -519,13 +521,23 @@ AtlasStat.type
 AtlasStyle.enum Density: Compact = 1
 AtlasStyle.enum Density: Normal = 0
 AtlasStyle.property accent: QColor [readonly]
+AtlasStyle.property accentStrong: QColor [readonly]
+AtlasStyle.property accentStrongText: QColor [readonly]
 AtlasStyle.property accentText: QColor [readonly]
+AtlasStyle.property base: QColor [readonly]
+AtlasStyle.property chromeBackground: QColor [readonly]
+AtlasStyle.property codeSurface: QColor [readonly]
 AtlasStyle.property compact: bool [readonly]
+AtlasStyle.property control: QColor [readonly]
+AtlasStyle.property controlBorder: QColor [readonly]
+AtlasStyle.property controlHeight: double [readonly]
 AtlasStyle.property density: int
 AtlasStyle.property duration: int [readonly]
 AtlasStyle.property durationLong: int [readonly]
 AtlasStyle.property durationShort: int [readonly]
 AtlasStyle.property error: QColor [readonly]
+AtlasStyle.property errorFill: QColor [readonly]
+AtlasStyle.property floatingBackground: QColor [readonly]
 AtlasStyle.property focus: QColor [readonly]
 AtlasStyle.property fontFamily: QString [readonly]
 AtlasStyle.property fontSizeBody: double [readonly]
@@ -533,21 +545,31 @@ AtlasStyle.property fontSizeCaption: double [readonly]
 AtlasStyle.property fontSizeHeading: double [readonly]
 AtlasStyle.property fontSizeTitle: double [readonly]
 AtlasStyle.property highContrast: bool [readonly]
+AtlasStyle.property hover: QColor [readonly]
 AtlasStyle.property monoFamily: QString [readonly]
+AtlasStyle.property pressed: QColor [readonly]
 AtlasStyle.property radius: double [readonly]
 AtlasStyle.property radiusLarge: double [readonly]
 AtlasStyle.property radiusPill: double [readonly]
 AtlasStyle.property radiusSmall: double [readonly]
 AtlasStyle.property reducedMotion: bool [readonly]
 AtlasStyle.property rowHeight: double [readonly]
+AtlasStyle.property sakura: QColor [readonly]
+AtlasStyle.property selection: QColor [readonly]
+AtlasStyle.property selectionInactive: QColor [readonly]
 AtlasStyle.property separator: QColor [readonly]
 AtlasStyle.property spacing: double [readonly]
 AtlasStyle.property spacingLarge: double [readonly]
 AtlasStyle.property spacingSmall: double [readonly]
+AtlasStyle.property spacingXLarge: double [readonly]
+AtlasStyle.property spacingXSmall: double [readonly]
+AtlasStyle.property spacingXXLarge: double [readonly]
 AtlasStyle.property success: QColor [readonly]
 AtlasStyle.property surface: QColor [readonly]
 AtlasStyle.property surfaceAlt: QColor [readonly]
+AtlasStyle.property surfaceRaised: QColor [readonly]
 AtlasStyle.property text: QColor [readonly]
+AtlasStyle.property textDisabled: QColor [readonly]
 AtlasStyle.property textMuted: QColor [readonly]
 AtlasStyle.property textScale: double [readonly]
 AtlasStyle.property warning: QColor [readonly]
