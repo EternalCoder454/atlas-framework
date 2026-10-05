@@ -29,7 +29,7 @@ AtlasWindow {
         centerTitle: true
         trailing: [
             AtlasSegmentedControl {
-                Accessible.name: qsTr("Colour scheme")
+                Accessible.name: qsTr("Color scheme")
                 model: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
                 onActivated: index => {
                     currentIndex = index;

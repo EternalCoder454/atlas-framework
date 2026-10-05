@@ -121,6 +121,8 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Added: `AtlasAppMenu` nested submenus, model-driven rows,
   `exportShortcuts` (shortcuts in the global menu) and `modelActivated`;
   rows bound to a checkable Action stay in step with it.
+- Changed: user-facing strings use US spelling like the rest of KDE:
+  `AtlasColorField` says "Color", "Hex color" and "Not a color".
 - Docs: `TextButton` is not an `AtlasButton` preset and has no `variant`.
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call

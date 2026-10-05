@@ -17,13 +17,13 @@ AtlasColorField is a Qt Quick Templates `AbstractButton`; its inherited properti
 AtlasColorField {
     color: "#3daee9"
     onEdited: settings.accent = color
-    Accessible.name: qsTr("Accent colour")
+    Accessible.name: qsTr("Accent color")
 }
 ```
 
 ## Accessibility
 
-Name it with `Accessible.name` (what the colour is for). The default name is "Colour". The hex value is spoken as the description.
+Name it with `Accessible.name` (what the colour is for). The default name is "Color". The hex value is spoken as the description.
 
 ## Properties
 

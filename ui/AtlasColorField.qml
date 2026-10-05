@@ -18,7 +18,7 @@ import org.kde.kirigami as Kirigami
 //   AtlasColorField {
 //       color: "#3daee9"
 //       onEdited: settings.accent = color
-//       Accessible.name: qsTr("Accent colour")
+//       Accessible.name: qsTr("Accent color")
 //   }
 //
 // Name it for screen readers with Accessible.name (what the colour is for);
@@ -144,7 +144,7 @@ T.AbstractButton {
 
     Accessible.role: Accessible.Button
     //: Spoken name of a colour chooser that has no name of its own
-    Accessible.name: qsTr("Colour")
+    Accessible.name: qsTr("Color")
     Accessible.description: control.hex
 
     onClicked: popup.opened ? popup.close() : popup.open()
@@ -263,7 +263,7 @@ T.AbstractButton {
                     placeholderText: control.showAlpha ? "#aarrggbb, rgba(r, g, b, a)" : "#rrggbb, rgb(r, g, b)"
                     maximumLength: 40
                     inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
-                    Accessible.name: qsTr("Hex colour")
+                    Accessible.name: qsTr("Hex color")
                     onTextEdited: {
                         const c = internals.parse(text);
                         if (c !== undefined) {
@@ -282,7 +282,7 @@ T.AbstractButton {
                             _checked = true;
                         }
                     }
-                    errorText: _checked && text.length > 0 && internals.parse(text) === undefined ? qsTr("Not a colour") : ""
+                    errorText: _checked && text.length > 0 && internals.parse(text) === undefined ? qsTr("Not a color") : ""
                 }
                 TextButton {
                     visible: control.showMore
