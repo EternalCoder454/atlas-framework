@@ -55,8 +55,9 @@ Item {
     // True once Loading has lasted 300 ms.
     readonly property bool spinnerShown: priv.waited && view.status === AtlasStatus.Loading
 
-    // Test hook: replaces Accessible.announce().
+    // Test hooks: replace Accessible.announce(), and the spinner's delay (ms).
     property var _announceHook: null
+    property int _delay: 300
 
     visible: view.active
     implicitWidth: Kirigami.Units.gridUnit * 18
@@ -69,29 +70,34 @@ Item {
         } else {
             delay.stop();
         }
-        if (view.status === AtlasStatus.Error && priv.ready) {
-            priv.announceError();
+        if (view.status === AtlasStatus.Error) {
+            priv.pending = true;
+            Qt.callLater(priv.flush);
+        } else {
+            priv.pending = false;
         }
     }
     Component.onCompleted: {
         if (view.status === AtlasStatus.Loading) {
             delay.restart();
         }
-        // The first announcement waits a turn: initial values are not spoken
-        // one by one, and the page's own announcements come first.
-        Qt.callLater(() => {
-            priv.ready = true;
-            if (view.status === AtlasStatus.Error) {
-                priv.announceError();
-            }
-        });
+        if (view.status === AtlasStatus.Error) {
+            priv.pending = true;
+            Qt.callLater(priv.flush);
+        }
     }
 
     QtObject {
         id: priv
         property bool waited: false
-        property bool ready: false
-        function announceError(): void {
+        property bool pending: false
+        // Speaks the heading and text once they have settled for a turn, so a
+        // text set just after the status is part of it.
+        function flush(): void {
+            if (!priv.pending || view.status !== AtlasStatus.Error) {
+                return;
+            }
+            priv.pending = false;
             const t = view.effectiveTitle + (view.text.length > 0 ? ". " + view.text : "");
             if (view._announceHook) {
                 view._announceHook(t);
@@ -104,7 +110,7 @@ Item {
     // Runs only while a load is under way.
     Timer {
         id: delay
-        interval: 300
+        interval: view._delay
         onTriggered: priv.waited = true
     }
 
@@ -153,7 +159,7 @@ Item {
         title: view.effectiveTitle
         text: view.text
         // The action's text without its "&" mnemonic marker.
-        actionText: view.action ? view.action.text.replace(/&(&|.)/g, "$1") : ""
+        actionText: view.action && view.action.enabled ? view.action.text.replace(/&(&|.)/g, "$1") : ""
         actionSymbol: view.action ? view.action.symbol : 0
         onTriggered: {
             if (view.action && view.action.enabled) {

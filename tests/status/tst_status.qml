@@ -9,6 +9,7 @@ Item {
     width: 480
     height: 360
 
+    property bool keep: true
     ListModel {
         id: lm
         ListElement { name: "a"; cpu: 1 }
@@ -23,6 +24,12 @@ Item {
         id: retry
         text: "Re&try"
         symbol: Symbols.Refresh
+    }
+    Component {
+        id: spyComp
+        SignalSpy {
+            signalName: "activated"
+        }
     }
     SignalSpy {
         id: retrySpy
@@ -43,6 +50,20 @@ Item {
                 color: "gray"
             }
             statusAction: retry
+        }
+    }
+    Component {
+        id: bindComp
+        AtlasListView {
+            anchors.fill: parent
+            model: 3
+            delegate: Rectangle {
+                required property int index
+                width: ListView.view.width
+                height: 20
+                color: "blue"
+                visible: root.keep
+            }
         }
     }
     Component {
@@ -181,15 +202,21 @@ Item {
             verify(rowItem().visible, "rows are back");
         }
 
-        function test_loading_spinner_waits_300ms() {
+        function test_spinner_delay_is_300ms() {
+            const v = make("list");
+            compare(statusView(v)._delay, 300);
+        }
+
+        function test_loading_spinner_waits() {
             const v = make("list");
             const sv = statusView(v);
+            sv._delay = 1200;
             v.status = AtlasStatus.Loading;
             verify(sv.visible);
             verify(!sv.spinnerShown);
-            wait(150);
-            verify(!sv.spinnerShown, "no spinner before 300 ms");
-            tryVerify(() => sv.spinnerShown, 1500);
+            wait(100);
+            verify(!sv.spinnerShown, "no spinner before the delay");
+            tryVerify(() => sv.spinnerShown, 3000);
             compare(sv.effectiveTitle, "", "Loading has no heading");
             v.status = AtlasStatus.Ready;
             verify(!sv.spinnerShown);
@@ -199,11 +226,12 @@ Item {
         function test_fast_load_never_shows_the_spinner() {
             const v = make("table");
             const sv = statusView(v);
+            sv._delay = 800;
             v.status = AtlasStatus.Loading;
-            wait(100);
+            wait(50);
             v.status = AtlasStatus.Ready;
-            wait(400);
-            verify(!sv.spinnerShown, "a load that ended in 100 ms left no spinner");
+            wait(1000);
+            verify(!sv.spinnerShown, "a load that ended early left no spinner");
             verify(!sv.visible);
         }
 
@@ -226,11 +254,13 @@ Item {
             const said = [];
             sv._announceHook = t => said.push(t);
             wait(50);
-            v.statusText = "No network.";
+            // The text comes a moment after the status: it is still spoken.
             v.status = AtlasStatus.Error;
-            compare(said.length, 1);
+            v.statusText = "No network.";
+            tryCompare(said, "length", 1);
             compare(said[0], "Something went wrong. No network.");
             v.status = AtlasStatus.Empty;
+            wait(50);
             compare(said.length, 1, "Empty is not announced");
         }
 
@@ -250,17 +280,61 @@ Item {
             compare(es.actionText, "");
         }
 
-        function test_disabled_action_does_nothing() {
+        function test_disabled_action_has_no_button() {
             const v = make("list");
             const sv = statusView(v);
             v.status = AtlasStatus.Empty;
-            retry.enabled = false;
             const es = emptyState(sv);
+            verify(findBy(es, c => c.text === "Retry" && typeof c.clicked === "function" && c.visible) !== null);
+            retry.enabled = false;
+            compare(es.actionText, "");
+            verify(findBy(es, c => c.text === "Retry" && typeof c.clicked === "function" && c.visible) === null, "no dead button");
             es.triggered();
             compare(retrySpy.count, 0);
             retry.enabled = true;
+            compare(es.actionText, "Retry");
             es.triggered();
             compare(retrySpy.count, 1);
+        }
+
+        function test_app_visible_binding_survives_a_status() {
+            const l = createTemporaryObject(bindComp, root);
+            verify(l !== null);
+            tryVerify(() => l.itemAtIndex(0) !== null);
+            const d = l.itemAtIndex(0);
+            verify(d.visible);
+            l.status = AtlasStatus.Empty;
+            verify(!d.visible, "hidden under the status");
+            l.status = AtlasStatus.Ready;
+            verify(d.visible);
+            root.keep = false;
+            verify(!d.visible, "the app's binding still drives it");
+            l.status = AtlasStatus.Loading;
+            l.status = AtlasStatus.Ready;
+            verify(!d.visible, "still hidden by the app");
+            root.keep = true;
+            verify(d.visible, "and shown again by the app");
+            // Under a status the app's change waits for Ready.
+            l.status = AtlasStatus.Error;
+            root.keep = false;
+            root.keep = true;
+            verify(!d.visible);
+            l.status = AtlasStatus.Ready;
+            verify(d.visible);
+        }
+
+        function test_clicks_do_nothing_under_a_status() {
+            const l = make("list");
+            tryVerify(() => l.itemAtIndex(0) !== null);
+            l.currentIndex = -1;
+            const spy = createTemporaryObject(spyComp, root, { target: l });
+            l.status = AtlasStatus.Empty;
+            mouseClick(l, 20, 60);
+            mouseDoubleClickSequence(l, 20, 60);
+            mouseClick(l, 20, 60, Qt.RightButton);
+            compare(l.currentIndex, -1);
+            compare(l.selectedIndexes, []);
+            compare(spy.count, 0);
         }
 
         function test_table_header_stays() {

@@ -20,6 +20,9 @@ Item {
             collapseWidth: 400
             _pushDuration: 0
             property real p0Pref: 150
+            property bool p1On: true
+            property alias in0: input0
+            property alias in1: input1
             property alias p0: pane0
             property alias p1: pane1
             property alias p2: pane2
@@ -28,12 +31,23 @@ Item {
                 QQC2.SplitView.preferredWidth: sv.p0Pref
                 QQC2.SplitView.minimumWidth: 80
                 color: "red"
+                TextInput {
+                    id: input0
+                    activeFocusOnTab: true
+                    width: 50
+                }
             }
             Rectangle {
                 id: pane1
+                visible: sv.p1On
                 QQC2.SplitView.preferredWidth: 150
                 QQC2.SplitView.minimumWidth: 80
                 color: "green"
+                TextInput {
+                    id: input1
+                    activeFocusOnTab: true
+                    width: 50
+                }
             }
             Rectangle {
                 id: pane2
@@ -60,6 +74,27 @@ Item {
                 property alias p1: r1
                 Rectangle { id: r0; QQC2.SplitView.preferredWidth: 150; color: "red" }
                 Rectangle { id: r1; QQC2.SplitView.fillWidth: true; color: "green" }
+            }
+        }
+    }
+    Component {
+        id: navComp
+        AtlasNavigationStack {
+            id: nav
+            anchors.fill: parent
+            initialItem: Item {
+            }
+            property Component page: Item {
+                property alias sv: inner
+                AtlasSplitView {
+                    id: inner
+                    anchors.fill: parent
+                    collapsible: true
+                    collapseWidth: 800
+                    _pushDuration: 0
+                    Rectangle { QQC2.SplitView.preferredWidth: 150; color: "red" }
+                    Rectangle { QQC2.SplitView.fillWidth: true; color: "green" }
+                }
             }
         }
     }
@@ -264,6 +299,140 @@ Item {
             paneSpy.clear();
             sv.showPane(1);
             compare(paneSpy.count, 1);
+        }
+
+        function test_app_visible_binding_survives_collapse() {
+            const sv = make({ width: 300 });
+            compare(shown(sv), [true, false, false]);
+            sv.showPane(1);
+            compare(shown(sv), [false, true, false]);
+            sv.width = 600;
+            compare(shown(sv), [true, true, true]);
+            sv.p1On = false;
+            compare(sv.p1.visible, false, "the app's binding is still followed");
+            sv.p1On = true;
+            compare(sv.p1.visible, true);
+            // Collapsed with the pane switched off by the app.
+            sv.p1On = false;
+            sv.width = 300;
+            sv.showPane(1);
+            sv.width = 600;
+            compare(sv.p1.visible, false, "off by the app after an expand");
+            sv.p1On = true;
+            compare(sv.p1.visible, true);
+        }
+
+        function test_nested_in_a_stack_the_pane_goes_back_first_by_key() {
+            const nav = createTemporaryObject(navComp, root, { width: 700, height: 400 });
+            verify(nav !== null);
+            nav.push(nav.page);
+            tryCompare(nav, "depth", 2);
+            wait(300);
+            const sv = nav.currentItem.sv;
+            compare(sv.collapsed, true);
+            sv.showPane(1);
+            sv.forceActiveFocus();
+            keyClick(Qt.Key_Left, Qt.AltModifier);
+            compare(sv.currentPane, 0, "the pane went back");
+            compare(nav.depth, 2, "the page stayed");
+            keyClick(Qt.Key_Left, Qt.AltModifier);
+            tryCompare(nav, "depth", 1);
+        }
+
+        function test_nested_in_a_stack_the_pane_goes_back_first_by_mouse() {
+            const nav = createTemporaryObject(navComp, root, { width: 700, height: 400 });
+            verify(nav !== null);
+            nav.push(nav.page);
+            tryCompare(nav, "depth", 2);
+            wait(300);
+            const sv = nav.currentItem.sv;
+            sv.showPane(1);
+            mouseClick(sv, 100, 200, Qt.BackButton);
+            compare(sv.currentPane, 0, "the pane went back");
+            compare(nav.depth, 2, "the page stayed");
+            mouseClick(sv, 100, 200, Qt.BackButton);
+            tryCompare(nav, "depth", 1);
+        }
+
+        function test_nested_in_a_stack_back_button_goes_back_a_pane() {
+            const nav = createTemporaryObject(navComp, root, { width: 700, height: 400 });
+            nav.push(nav.page);
+            tryCompare(nav, "depth", 2);
+            wait(300);
+            const sv = nav.currentItem.sv;
+            sv.showPane(1);
+            mouseClick(backButton(sv));
+            compare(sv.currentPane, 0);
+            compare(nav.depth, 2);
+        }
+
+        function test_two_views_do_not_clash() {
+            const a = make({ width: 300 });
+            const b = make({ width: 300, y: 310 });
+            a.showPane(1);
+            b.showPane(1);
+            a.forceActiveFocus();
+            keyClick(Qt.Key_Left, Qt.AltModifier);
+            compare(a.currentPane, 0);
+            compare(b.currentPane, 1, "the other view stays");
+            b.forceActiveFocus();
+            keyClick(Qt.Key_Left, Qt.AltModifier);
+            compare(b.currentPane, 0);
+        }
+
+        function test_focus_follows_the_shown_pane() {
+            const sv = make({ width: 300 });
+            sv.in0.forceActiveFocus();
+            verify(sv.in0.activeFocus);
+            sv.showPane(1);
+            tryVerify(() => sv.in1.activeFocus, 1000);
+            // Back hides the row the focus may be on.
+            const back = backButton(sv);
+            back.forceActiveFocus();
+            verify(back.activeFocus);
+            sv._back();
+            tryVerify(() => sv.in0.activeFocus, 1000);
+        }
+
+        function test_history_is_capped() {
+            const sv = make({ width: 300 });
+            for (let i = 0; i < 100; ++i) {
+                sv.showPane(i % 2 === 0 ? 1 : 2);
+            }
+            verify(sv._history.length <= 64, "history " + sv._history.length);
+            sv.showPane(2);
+            sv.showPane(2);
+            const n = sv._history.length;
+            sv.showPane(2);
+            compare(sv._history.length, n, "no duplicate steps");
+        }
+
+        function test_zero_width_is_not_collapsed() {
+            const sv = make({ width: 0 });
+            compare(sv.collapsed, false);
+            sv.width = 300;
+            compare(sv.collapsed, true);
+        }
+
+        function test_clips_while_collapsed() {
+            const sv = make({ width: 300 });
+            compare(sv.clip, true);
+            sv.width = 600;
+            compare(sv.clip, false);
+        }
+
+        function test_back_row_adds_to_the_padding() {
+            const sv = make({ width: 300, padding: 10 });
+            compare(sv.topPadding, 10);
+            sv.showPane(1);
+            const back = backButton(sv);
+            verify(sv.topPadding >= 10 + back.parent.height - 1);
+            verify(sv.p1.mapToItem(sv, 0, 0).y >= 10 + back.parent.height - 1);
+        }
+
+        function test_current_pane_beyond_the_count_is_clamped() {
+            const sv = make({ width: 300, currentPane: 9 });
+            compare(shown(sv), [false, false, true]);
         }
     }
 }

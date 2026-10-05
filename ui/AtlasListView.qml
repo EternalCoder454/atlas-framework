@@ -505,6 +505,7 @@ ListView {
     // Input for every row, made by the view so a custom delegate gets it too.
     // These are children of the content item: positions are content positions.
     HoverHandler {
+        enabled: !control._statusActive
         onPointChanged: control._hover = control.indexAt(point.position.x, point.position.y)
         onHoveredChanged: {
             if (!hovered) {
@@ -513,6 +514,7 @@ ListView {
         }
     }
     TapHandler {
+        enabled: !control._statusActive
         acceptedModifiers: Qt.NoModifier
         onTapped: point => control._clickAt(control.indexAt(point.position.x, point.position.y), 0)
         onDoubleTapped: point => {
@@ -523,18 +525,22 @@ ListView {
         }
     }
     TapHandler {
+        enabled: !control._statusActive
         acceptedModifiers: Qt.ControlModifier
         onTapped: point => control._clickAt(control.indexAt(point.position.x, point.position.y), Qt.ControlModifier)
     }
     TapHandler {
+        enabled: !control._statusActive
         acceptedModifiers: Qt.ShiftModifier
         onTapped: point => control._clickAt(control.indexAt(point.position.x, point.position.y), Qt.ShiftModifier)
     }
     TapHandler {
+        enabled: !control._statusActive
         acceptedModifiers: Qt.ControlModifier | Qt.ShiftModifier
         onTapped: point => control._clickAt(control.indexAt(point.position.x, point.position.y), Qt.ControlModifier | Qt.ShiftModifier)
     }
     TapHandler {
+        enabled: !control._statusActive
         acceptedButtons: Qt.RightButton
         acceptedModifiers: Qt.KeyboardModifierMask
         onTapped: point => {
@@ -575,14 +581,34 @@ ListView {
 
     // The rows are hidden while a status shows; the header stays.
     readonly property bool _statusActive: control.status !== AtlasStatus.Ready
-    on_StatusActiveChanged: control._syncRows()
-    function _syncRows(): void {
-        const kids = control.contentItem ? control.contentItem.children : [];
-        const show = !control._statusActive;
+    on_StatusActiveChanged: control._hookRows()
+    // Rows are hidden by a Binding on each one's `visible`, so an app's own
+    // `visible` binding on a delegate is kept and comes back with Ready.
+    property var _hooked: null
+    Component {
+        id: hiderComp
+        Binding {
+            property: "visible"
+            value: false
+            restoreMode: Binding.RestoreBindingOrValue
+        }
+    }
+    function _hookRows(): void {
+        if (!control.contentItem) {
+            return;
+        }
+        if (control._hooked === null) {
+            control._hooked = new WeakSet();
+        }
+        const kids = control.contentItem.children;
         for (let i = 0; i < kids.length; ++i) {
             const k = kids[i];
-            if (k.ListView.view === control && k.visible !== show) {
-                k.visible = show;
+            if (k.ListView.view === control && !control._hooked.has(k)) {
+                control._hooked.add(k);
+                hiderComp.createObject(k, {
+                    "target": k,
+                    "when": Qt.binding(() => control._statusActive)
+                });
             }
         }
     }
@@ -590,7 +616,9 @@ ListView {
         target: control.contentItem
         enabled: control._statusActive
         function onChildrenChanged() {
-            control._syncRows();
+            control._hookRows();
+            // The view's own bookkeeping of a new row may come a moment later.
+            Qt.callLater(control._hookRows);
         }
     }
     AtlasStatusView {

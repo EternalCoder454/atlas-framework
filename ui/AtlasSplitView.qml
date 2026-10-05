@@ -32,7 +32,7 @@ QQC2.SplitView {
     property bool collapsible: false
     property real collapseWidth: Kirigami.Units.gridUnit * 40
     // One pane at a time now.
-    readonly property bool collapsed: control.collapsible && control.orientation === Qt.Horizontal && control.width < control.collapseWidth
+    readonly property bool collapsed: control.collapsible && control.orientation === Qt.Horizontal && control.width > 0 && control.width < control.collapseWidth
     // The pane shown while collapsed; kept across a resize.
     property int currentPane: 0
 
@@ -93,8 +93,10 @@ QQC2.SplitView {
     property bool _ready: false
     // The sizes as they were when the view collapsed.
     property string _expandedSizes: ""
-    // The panes this view hid, to show them again.
-    property var _hidden: []
+    // The panes that already carry the Binding that hides them.
+    property var _hooked: null
+    // Whether focus was inside the view when it last moved.
+    property bool _hadFocus: false
     // The panes shown before this one, for Back.
     property var _history: []
     property int _previous: 0
@@ -108,35 +110,107 @@ QQC2.SplitView {
     property int _pushDuration: AtlasStyle.duration
     readonly property bool _sliding: pushAnim.running
 
-    // Hides every pane but the shown one while collapsed, and shows them all
-    // otherwise.
+    // Whether collapsing hides `pane` now.
+    function _hides(pane: Item): bool {
+        if (!control._ready || !control.collapsed) {
+            return false;
+        }
+        const shown = control._paneShown();
+        for (let i = 0; i < control.count; ++i) {
+            if (control.itemAt(i) === pane) {
+                return i !== shown;
+            }
+        }
+        return false;
+    }
+    // Every pane gets a Binding on its `visible` that hides it while collapsed
+    // and is off otherwise, so a pane's own `visible` binding is kept.
+    Component {
+        id: hiderComp
+        Binding {
+            property: "visible"
+            value: false
+            restoreMode: Binding.RestoreBindingOrValue
+        }
+    }
     function _syncPanes(): void {
         if (!control._ready) {
             return;
         }
-        const hidden = control._hidden.slice();
+        if (control._hooked === null) {
+            control._hooked = new WeakSet();
+        }
         for (let i = 0; i < control.count; ++i) {
             const pane = control.itemAt(i);
-            if (!pane) {
-                continue;
-            }
-            const at = hidden.indexOf(pane);
-            if (control.collapsed && i !== control._paneShown()) {
-                if (pane.visible) {
-                    pane.visible = false;
-                    hidden.push(pane);
-                }
-            } else if (at >= 0) {
-                pane.visible = true;
-                hidden.splice(at, 1);
+            if (pane && !control._hooked.has(pane)) {
+                control._hooked.add(pane);
+                hiderComp.createObject(pane, {
+                    "target": pane,
+                    "when": Qt.binding(() => control._hides(pane))
+                });
             }
         }
-        control._hidden = hidden.filter(p => p !== null && p !== undefined);
+        Qt.callLater(control._restoreFocus);
+    }
+
+    function _contains(item: Item): bool {
+        for (let p = item; p; p = p.parent) {
+            if (p === control) {
+                return true;
+            }
+        }
+        return false;
+    }
+    function _firstFocusable(item: Item, depth: int): Item {
+        if (item.activeFocusOnTab && item.visible && item.enabled) {
+            return item;
+        }
+        if (depth < 12) {
+            for (let i = 0; i < item.children.length; ++i) {
+                const r = control._firstFocusable(item.children[i], depth + 1);
+                if (r) {
+                    return r;
+                }
+            }
+        }
+        return null;
+    }
+    // Focus that was in a pane or the Back row when it hid moves to the
+    // shown pane.
+    function _restoreFocus(): void {
+        const win = control.Window.window;
+        if (!control._hadFocus || !win) {
+            return;
+        }
+        const f = win.activeFocusItem;
+        if (f && f !== win.contentItem) {
+            return;
+        }
+        const pane = control.itemAt(control._paneShown());
+        if (!pane || !pane.visible) {
+            return;
+        }
+        const target = control._firstFocusable(pane, 0) ?? pane;
+        target.forceActiveFocus();
+    }
+    Connections {
+        target: control.Window.window
+        function onActiveFocusItemChanged() {
+            const f = control.Window.window.activeFocusItem;
+            if (f && f !== control.Window.window.contentItem) {
+                control._hadFocus = control._contains(f);
+            }
+        }
+    }
+
+    // Whether Back would go somewhere.
+    function _canBack(): bool {
+        return control.collapsed && control._paneShown() > 0;
     }
 
     // Back one pane: the one before in the history, else the one before in order.
     function _back(): void {
-        if (!control.collapsed || control._paneShown() <= 0) {
+        if (!control._canBack()) {
             return;
         }
         const h = control._history.slice();
@@ -157,8 +231,11 @@ QQC2.SplitView {
     onCurrentPaneChanged: {
         if (control.collapsed && !control._goingBack && control._previous !== control.currentPane) {
             const h = control._history.slice();
-            h.push(control._previous);
-            control._history = h;
+            if (h[h.length - 1] !== control._previous) {
+                h.push(control._previous);
+            }
+            // The oldest steps go first.
+            control._history = h.length > 64 ? h.slice(h.length - 64) : h;
         }
         control._slide(control._goingBack);
         control._previous = control.currentPane;
@@ -167,20 +244,28 @@ QQC2.SplitView {
     onCountChanged: control._syncPanes()
     onCollapsedChanged: {
         if (control.collapsed) {
-            // Keep a drag the timer has not written yet, then the sizes.
+            // Keep a drag the timer has not written yet. The sizes are taken
+            // once: a drag back and forth over the width keeps the first.
             if (saveTimer.running) {
                 control._saveNowForce();
             }
-            control._expandedSizes = control.saveSizes();
+            if (control._expandedSizes.length === 0) {
+                control._expandedSizes = control.saveSizes();
+            }
         } else {
             control._history = [];
+            Qt.callLater(control._restoreExpanded);
         }
         control._syncPanes();
-        if (!control.collapsed && control._expandedSizes.length > 0) {
-            const sizes = control._expandedSizes;
-            control._expandedSizes = "";
-            Qt.callLater(() => control.restoreSizes(sizes));
+    }
+    // The sizes from before the collapse, once the panes are back.
+    function _restoreExpanded(): void {
+        if (control.collapsed || control._expandedSizes.length === 0) {
+            return;
         }
+        const sizes = control._expandedSizes;
+        control._expandedSizes = "";
+        control.restoreSizes(sizes);
     }
     function _saveNowForce() {
         saveTimer.stop();
@@ -203,7 +288,10 @@ QQC2.SplitView {
 
     // The back row: shown over the top while collapsed on any pane after the
     // first. The panes start below it.
-    topPadding: backRow.visible ? backRow.height : 0
+    // (`padding` still counts; set it rather than `topPadding`.)
+    topPadding: control.padding + (backRow.visible ? backRow.height : 0)
+    // A pane sliding in stays inside the view.
+    clip: control.collapsed
     Item {
         id: backRow
         parent: control
@@ -230,15 +318,27 @@ QQC2.SplitView {
             onClicked: control._back()
         }
     }
-    Shortcut {
-        sequence: "Alt+Left"
-        enabled: control.collapsed && control._shown > 0 && control.visible
-        onActivated: control._back()
+    // Alt+Left goes back a pane while focus is inside and there is a pane to
+    // go back to; otherwise an enclosing AtlasNavigationStack gets it. The
+    // override keeps a stack's window-wide shortcut from firing first.
+    Keys.onShortcutOverride: event => {
+        if (event.key === Qt.Key_Left && (event.modifiers & Qt.AltModifier) && control._canBack()) {
+            event.accepted = true;
+        }
     }
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Left && (event.modifiers & Qt.AltModifier) && control._canBack()) {
+            control._back();
+            event.accepted = true;
+        }
+    }
+    // The mouse Back button takes the click exclusively while there is a pane
+    // to go back to, so an enclosing stack does not pop as well.
     TapHandler {
         acceptedButtons: Qt.BackButton
-        grabPermissions: PointerHandler.ApprovesTakeOverByAnything
-        enabled: control.collapsed && control._shown > 0
+        gesturePolicy: TapHandler.WithinBounds
+        grabPermissions: PointerHandler.CanTakeOverFromAnything
+        enabled: control._canBack()
         onTapped: control._back()
     }
     Translate {

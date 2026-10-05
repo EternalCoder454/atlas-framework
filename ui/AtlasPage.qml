@@ -198,6 +198,8 @@ Item {
                     id: body
                     Layout.fillWidth: true
                     spacing: col.spacing
+                    // With every item hidden it is empty: cancel the gap before it.
+                    Layout.topMargin: implicitHeight > 0 ? 0 : -col.spacing
                     visible: root.status === AtlasStatus.Ready && children.length > 0
                 }
 
