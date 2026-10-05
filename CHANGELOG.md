@@ -148,6 +148,18 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   page covers it; the notifyrc names a real icon; a per-app CI workflow
   (`.github/workflows/atlas.yml`) pinned to a framework tag; the minimum
   Atlas.Ui is 1.4.0.
+- Crates: `atlas_framework_core::task` (cargo feature `task`, off by default):
+  one tokio runtime thread for the app and `spawn_ui(post, timeout, future,
+  on_done)`, which runs a future with a timeout and a cancellable
+  `TaskHandle` and posts the `Outcome` back to the UI thread (with cxx-qt,
+  `post` is `move |job| qt_thread.queue(job)`; a gone QObject is ignored).
+- Crates: `Settings::migrate(&[Migration])` upgrades a settings file by
+  `[Atlas] SchemaVersion` (missing is 0), keeping the old file as `<name>.bak`
+  first; a failing step names its version and changes nothing, and a file
+  newer than the app is an error and is left alone.
+- Crates: `Settings::watch(callback)` reports changes to the file, also an
+  editor's rename over it, debounced by 200 ms, with the new values in a
+  `Snapshot` (inotify on the directory through `libc`, no new dependency).
 
 ## 1.4.0
 

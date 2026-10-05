@@ -41,6 +41,69 @@ s.set("Restart", "ScheduledAt", None)?; // removes the key
 
 A file carries `[Atlas]` `Format=1` (`settings::FORMAT`), written when a file is first created or changed. Reading never requires it: files from before it, and files a newer app wrote with a higher number, read the same. Only a change to how existing keys are read would raise it.
 
+## Migrations
+
+`Settings::migrate(&[Migration])` brings an older file up to the app's schema version. The version is `[Atlas]` `SchemaVersion=N` (`SCHEMA_GROUP`, `SCHEMA_KEY`), separate from `Format`. `migrations[n]` upgrades version `n` to `n + 1`, so the app's version is `migrations.len()`. A file without `SchemaVersion` is version 0. Call `migrate` once at start, before reading.
+
+```rust
+use atlas_framework_core::settings::{Migration, Settings, get_in, set_in};
+
+fn rename_lang(text: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let v = get_in(text, "General", "Lang");
+    let text = set_in(text, "General", "Lang", None);
+    Ok(match v {
+        Some(v) => set_in(&text, "General", "Language", Some(&v)),
+        None => text,
+    })
+}
+const MIGRATIONS: &[Migration] = &[rename_lang]; // version 0 to 1
+
+let s = Settings::at("/tmp/atlas-examplerc");
+match s.migrate(MIGRATIONS) {
+    Ok(done) => log::info!("settings: {done:?}"),
+    Err(e) => eprintln!("{e}"), // show it; the file is untouched
+}
+```
+
+- All steps run in memory under the writer lock. Only when every step has succeeded is the old file copied to `<name>.bak` (a temp file and a rename, with the old file's mode; an earlier `.bak` is replaced), and then the new text replaces the file atomically. A failing step, or a panic in one, returns `MigrateError::Failed { from, source }` and writes nothing, not even the `.bak`. Its message names the version: "settings migration from version 1 to 2 failed: ...".
+- A file newer than the app (`SchemaVersion` above `migrations.len()`) is never written: `migrate` returns `MigrateError::Newer { found, known }` and logs a warning. The file still reads. The app chooses: read it and avoid `set`, or quit with a message. Nothing stops a later `set`, so the app must not call it.
+- A missing or empty file is created at the current version (`Migrated::Created`), so a later start does not run the migrations on new data.
+- `SchemaVersion` that is not a number is `MigrateError::BadVersion`; an immutable one is `Io` with `PermissionDenied`; a file that is not UTF-8 is `Io` with `InvalidData`.
+
+| Item | Description |
+|---|---|
+| `type Migration = fn(&str) -> Result<String, Box<dyn Error + Send + Sync>>` | One step: the whole text in, the new text out |
+| `fn migrate(&self, migrations: &[Migration]) -> Result<Migrated, MigrateError>` | As above |
+| `enum Migrated` | `UpToDate`, `Created { to }`, `Upgraded { from, to }` (`Debug, Clone, Copy, PartialEq, Eq`) |
+| `enum MigrateError` (`#[non_exhaustive]`) | `Failed { from, source }`, `Newer { found, known }`, `BadVersion(String)`, `Io(io::Error)`; implements `Error` and `Display` |
+| `SCHEMA_GROUP`, `SCHEMA_KEY` | `pub const &str`: `"Atlas"`, `"SchemaVersion"` |
+
+## Watching for changes
+
+`Settings::watch(on_change)` calls `on_change(&Snapshot)` on a thread named `atlas-settings-watch` whenever the file's contents change, and returns a `SettingsWatcher`. Dropping the watcher stops the watch; a callback already running finishes and none starts afterwards.
+
+```rust
+let s = Settings::at("/tmp/atlas-examplerc");
+let _watch = s.watch(|new| {
+    let dark = new.get_bool("General", "Dark");
+    // hand `dark` to the UI thread
+})?;
+```
+
+- The directory is watched with inotify (through `libc`; no new dependency), not the file, so a write in place, an editor's rename over the file, a delete and a re-create are all seen. A symlinked file is followed: its target's directory is watched as well. Other files in the directory are ignored.
+- Events are debounced: the callback runs once the file has been quiet for `DEBOUNCE` (200 ms). It runs only when the text differs from the last one reported; the text when `watch` was called is the first. The app's own `set` that changes nothing, or a delete and re-create with the same text, call nothing.
+- A deleted file gives a `Snapshot` where `exists()` is false and every `get` is `None`.
+- The directory is created if it is missing. If it is removed while watched, the watch logs a warning, reports the file's loss and ends.
+- A panic in the callback is logged and the watch goes on. The callback runs on the watch thread, not the UI thread: hand the values over (see [task](task.md)).
+- Errors: `NotFound` with no home directory; the OS error when inotify has no instances or watches left, or the directory cannot be read.
+
+| Item | Description |
+|---|---|
+| `fn watch<F: FnMut(&Snapshot) + Send + 'static>(&self, on_change: F) -> io::Result<SettingsWatcher>` | Starts the watch |
+| `struct SettingsWatcher` | Keeps the watch alive; stops it on drop |
+| `struct Snapshot` | The file read once: `exists() -> bool`, `get(group, key) -> Option<String>`, `get_bool(group, key) -> Option<bool>` (`Debug, Clone, PartialEq, Eq`) |
+| `DEBOUNCE` | `pub const Duration`, 200 ms |
+
 ## Settings
 
 `#[derive(Debug, Clone, PartialEq, Eq)]`

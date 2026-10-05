@@ -18,6 +18,9 @@
 //! so concurrent `set`s in Atlas code never lose a change; another program
 //! writing the file without the lock can still race, but never corrupts it.
 //! Keys and groups KConfig marks immutable (`[$i]`) are refused.
+//!
+//! [`Settings::migrate`] upgrades an older file in place, keeping a `.bak`;
+//! [`Settings::watch`] reports changes, also from editors that replace the file.
 
 use std::fs;
 use std::io::{self, Write};
@@ -27,6 +30,12 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::AppInfo;
+
+mod migrate;
+mod watch;
+
+pub use migrate::{MigrateError, Migrated, Migration, SCHEMA_GROUP, SCHEMA_KEY};
+pub use watch::{DEBOUNCE, SettingsWatcher, Snapshot};
 
 /// One settings file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,11 +64,7 @@ impl Settings {
     }
 
     pub fn get_bool(&self, group: &str, key: &str) -> Option<bool> {
-        match self.get(group, key)?.to_ascii_lowercase().as_str() {
-            "true" | "1" | "yes" | "on" => Some(true),
-            "false" | "0" | "no" | "off" => Some(false),
-            _ => None,
-        }
+        parse_bool(&self.get(group, key)?)
     }
 
     /// Sets `group`/`key`; `None` removes it. Writes nothing when the file
@@ -97,6 +102,14 @@ impl Settings {
             return Ok(());
         }
         replace(&target, out.as_bytes(), meta.as_ref())
+    }
+}
+
+fn parse_bool(v: &str) -> Option<bool> {
+    match v.to_ascii_lowercase().as_str() {
+        "true" | "1" | "yes" | "on" => Some(true),
+        "false" | "0" | "no" | "off" => Some(false),
+        _ => None,
     }
 }
 
