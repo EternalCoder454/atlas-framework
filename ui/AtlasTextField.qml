@@ -151,7 +151,7 @@ T.TextField {
     Text {
         x: control.leftPadding
         y: Math.round((internals.fieldHeight - height) / 2)
-        width: control.width - control.leftPadding - control.rightPadding
+        width: Math.max(0, control.width - control.leftPadding - control.rightPadding)
         visible: control.length === 0 && control.preeditText.length === 0
         text: control.placeholderText
         font: control.font

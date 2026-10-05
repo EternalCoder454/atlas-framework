@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import QtTest
 import Atlas.Ui
 
@@ -22,6 +23,15 @@ Item {
         id: flowComp
         AtlasFlowLayout {
             width: 200
+        }
+    }
+    Component {
+        id: fillComp
+        Rectangle {
+            implicitWidth: 40
+            implicitHeight: 30
+            Layout.fillWidth: true
+            Layout.maximumWidth: 150
         }
     }
     Component {
@@ -147,6 +157,16 @@ Item {
             b.visible = false;
             wait(50);
             compare(flow.implicitHeight, h);
+        }
+        // The layout read child.Layout without importing QtQuick.Layouts, where
+        // the attached object is undefined: the Layout.* values were ignored.
+        function test_fill_width_grows_up_to_the_maximum() {
+            const flow = createTemporaryObject(flowComp, root, {width: 400});
+            const a = createTemporaryObject(boxComp, flow);
+            const b = createTemporaryObject(fillComp, flow);
+            verify(flow && a && b);
+            tryVerify(() => b.width > 40, 1000, "fillWidth grows the item: " + b.width);
+            compare(b.width, 150, "up to Layout.maximumWidth");
         }
         function test_destroyed_layout_leaves_children_alone() {
             failOnWarning(/.*/);

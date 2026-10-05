@@ -1,4 +1,6 @@
 import QtQuick
+// child.Layout reads the attached Layout only where its type is imported.
+import QtQuick.Layouts
 
 // Lays its children out left to right and wraps them onto new rows, like
 // Flow, but it honours the Layout attached properties (QtQuick.Layouts) that
