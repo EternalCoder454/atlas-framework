@@ -19,6 +19,10 @@
 // 14:05"), "relative" ("just now", "3 hours ago", "yesterday", "in 5 minutes";
 // a date a week or more away shows its short form). "atTime" and "relative"
 // take the moment to compare with as `now` (default: the current time).
+// "longAtTime" is the long date with the weekday, then the time ("Thursday, 1
+// January 2099 at 03:00"); "atTimeSentence" and "relativeSentence" are "atTime"
+// and "relative" with the first letter in upper case ("Today at 9:41", "Just
+// now"), for the start of a sentence.
 #pragma once
 
 #include <QDateTime>
@@ -36,9 +40,13 @@ public:
     explicit AtlasFormat(QObject *parent = nullptr);
 
     // IEC units: "0 B", "512 B", "1.5 KiB", "3.2 GiB". precision 0..10.
-    Q_INVOKABLE QString bytes(double n, int precision = 1, const QString &locale = QString()) const;
+    // `system` "si" counts in 1000 and writes kB, MB, GB ("1.2 GB"); "iec" (the
+    // default, also for any other name) is the above.
+    Q_INVOKABLE QString bytes(double n, int precision = 1, const QString &locale = QString(),
+                              const QString &system = QStringLiteral("iec")) const;
     // "1.5 MiB/s"
-    Q_INVOKABLE QString bytesPerSecond(double n, int precision = 1, const QString &locale = QString()) const;
+    Q_INVOKABLE QString bytesPerSecond(double n, int precision = 1, const QString &locale = QString(),
+                                       const QString &system = QStringLiteral("iec")) const;
     // 0.423 -> "42%" (en), "42 %" (de)
     Q_INVOKABLE QString percent(double fraction, int precision = 0, const QString &locale = QString()) const;
     // Grouped by the locale; precision -1 is the shortest exact form, up to 6 decimals.

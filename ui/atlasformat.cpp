@@ -66,21 +66,40 @@ double roundsToZero(double n, int precision)
     return std::abs(n) < 0.5 * std::pow(10.0, -precision) ? 0.0 : n;
 }
 
-QString sized(double n, int precision, const QLocale &l)
+QString sized(double n, int precision, const QLocale &l, bool si)
 {
+    // IEC counts in 1024 (KiB), SI in 1000 (kB); the first unit above bytes.
+    const double base = si ? 1000.0 : 1024.0;
     precision = qBound(0, precision, kMaxPrecision);
     const double a = std::abs(n);
     const QString sign = n < 0 ? l.negativeSign() : QString();
     // 1023.5 and up rounds to 1024 B: that is 1.0 KiB, taken below.
-    if (std::round(a) < 1024.0) {
+    if (std::round(a) < base) {
         // "0 B": QLocale would say "0 bytes".
         const double whole = std::round(a);
         return (whole > 0 ? sign : QString()) + QCoreApplication::translate("AtlasFormat", "%1 B").arg(l.toString(whole, 'f', 0));
     }
     if (a >= kMaxInt64Size) {
-        return sign + l.toString(a / double(Q_INT64_C(1) << 60), 'f', precision) + QLatin1String(" EiB");
+        return sign + (si ? l.toString(a / 1.0e18, 'f', precision) + QLatin1String(" EB") : l.toString(a / double(Q_INT64_C(1) << 60), 'f', precision) + QLatin1String(" EiB"));
     }
-    return sign + l.formattedDataSize(a < 1024.0 ? 1024 : qint64(a), precision, QLocale::DataSizeIecFormat);
+    return sign + l.formattedDataSize(a < base ? qint64(base) : qint64(a), precision, si ? QLocale::DataSizeSIFormat : QLocale::DataSizeIecFormat);
+}
+
+// "iec" (the default, and what an unknown name means) or "si".
+bool isSi(const QString &system)
+{
+    return system == QLatin1String("si");
+}
+
+// The first letter in upper case by the locale's rules (Turkish dotted I); a
+// script without case is left alone.
+QString upperFirst(const QString &text, const QLocale &l)
+{
+    if (text.isEmpty()) {
+        return text;
+    }
+    const qsizetype n = text.at(0).isHighSurrogate() && text.size() > 1 ? 2 : 1;
+    return l.toUpper(text.left(n)) + text.mid(n);
 }
 
 QString twoDigits(qint64 v)
@@ -95,14 +114,14 @@ AtlasFormat::AtlasFormat(QObject *parent)
 {
 }
 
-QString AtlasFormat::bytes(double n, int precision, const QString &locale) const
+QString AtlasFormat::bytes(double n, int precision, const QString &locale, const QString &system) const
 {
-    return isNum(n) ? sized(n, precision, localeFor(locale)) : QString();
+    return isNum(n) ? sized(n, precision, localeFor(locale), isSi(system)) : QString();
 }
 
-QString AtlasFormat::bytesPerSecond(double n, int precision, const QString &locale) const
+QString AtlasFormat::bytesPerSecond(double n, int precision, const QString &locale, const QString &system) const
 {
-    return isNum(n) ? QCoreApplication::translate("AtlasFormat", "%1/s", "a size per second, e.g. 1.5 MiB/s").arg(sized(n, precision, localeFor(locale))) : QString();
+    return isNum(n) ? QCoreApplication::translate("AtlasFormat", "%1/s", "a size per second, e.g. 1.5 MiB/s").arg(sized(n, precision, localeFor(locale), isSi(system))) : QString();
 }
 
 QString AtlasFormat::percent(double fraction, int precision, const QString &locale) const
@@ -197,12 +216,19 @@ QString AtlasFormat::date(const QDateTime &d, const QString &style, const QStrin
         return {};
     }
     const QLocale l = localeFor(locale);
+    if (style == QLatin1String("atTimeSentence") || style == QLatin1String("relativeSentence")) {
+        const bool at = style == QLatin1String("atTimeSentence");
+        return upperFirst(date(d, at ? QStringLiteral("atTime") : QStringLiteral("relative"), locale, nowArg), l);
+    }
     const QDateTime when = d.toLocalTime();
     const QString shortDate = l.toString(when.date(), QLocale::ShortFormat);
     const QString shortTime = l.toString(when.time(), QLocale::ShortFormat);
 
     if (style == QLatin1String("long")) {
         return l.toString(when.date(), QLocale::LongFormat);
+    }
+    if (style == QLatin1String("longAtTime")) {
+        return QCoreApplication::translate("AtlasFormat", "%1 at %2", "a date, then a time of day").arg(l.toString(when.date(), QLocale::LongFormat), shortTime);
     }
     if (style == QLatin1String("dateTime")) {
         return l.toString(when, QLocale::ShortFormat);

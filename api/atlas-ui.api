@@ -180,8 +180,10 @@ AtlasCommandPalette.property recentCount: int
 AtlasCommandPalette.signal triggered(QObject* action)
 AtlasCommandPalette.type
 AtlasCopyButton.base QQuickAbstractButton
+AtlasCopyButton.property copiedLabel: QString
 AtlasCopyButton.property focusable: bool
 AtlasCopyButton.property iconRotation: double
+AtlasCopyButton.property label: QString
 AtlasCopyButton.property shortcutText: QString
 AtlasCopyButton.property symbol: int
 AtlasCopyButton.signal copied()
@@ -298,9 +300,11 @@ AtlasFormat.base QObject
 AtlasFormat.method bytes(double n): QString
 AtlasFormat.method bytes(double n, int precision): QString
 AtlasFormat.method bytes(double n, int precision, QString locale): QString
+AtlasFormat.method bytes(double n, int precision, QString locale, QString system): QString
 AtlasFormat.method bytesPerSecond(double n): QString
 AtlasFormat.method bytesPerSecond(double n, int precision): QString
 AtlasFormat.method bytesPerSecond(double n, int precision, QString locale): QString
+AtlasFormat.method bytesPerSecond(double n, int precision, QString locale, QString system): QString
 AtlasFormat.method date(QDateTime d): QString
 AtlasFormat.method date(QDateTime d, QString style): QString
 AtlasFormat.method date(QDateTime d, QString style, QString locale): QString
@@ -687,10 +691,14 @@ AtlasTextField.type
 AtlasTimePicker.base QQuickControl
 AtlasTimePicker.property day: int
 AtlasTimePicker.property hours: int
+AtlasTimePicker.property minimumHours: int
+AtlasTimePicker.property minimumMinutes: int
+AtlasTimePicker.property minuteArrowStep: int
 AtlasTimePicker.property minuteStep: int
 AtlasTimePicker.property minutes: int
 AtlasTimePicker.property showDay: bool
 AtlasTimePicker.property use24Hour: bool
+AtlasTimePicker.signal adjusted()
 AtlasTimePicker.signal edited()
 AtlasTimePicker.type
 AtlasToolTip.base QQuickToolTip
@@ -891,6 +899,7 @@ InfoBanner.base QQuickItem
 InfoBanner.property actions: QQmlListProperty<QObject> [readonly]
 InfoBanner.property closable: bool
 InfoBanner.property closeName: QString
+InfoBanner.property dismissed: bool [readonly]
 InfoBanner.property iconName: QString [readonly]
 InfoBanner.property shown: bool
 InfoBanner.property text: QString
