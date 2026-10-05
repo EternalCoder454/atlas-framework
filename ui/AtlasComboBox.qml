@@ -24,6 +24,28 @@ T.ComboBox {
     // A filter field at the top of the list; for long lists.
     property bool filterable: false
 
+    // The user's choice, held on `currentIndex` for one turn so an app binding survives it.
+    property int _edit: -1
+    property bool _editing: false
+    readonly property Binding _hold: Binding {
+        target: control
+        property: "currentIndex"
+        value: control._edit
+        when: control._editing
+        restoreMode: Binding.RestoreBinding
+    }
+    function _release(): void {
+        control._editing = false;
+    }
+    // Any choice, also the template's own (a click or the arrow keys on a
+    // list that is not filterable), is held for one turn after the app's
+    // handler has run.
+    onActivated: index => {
+        control._edit = index;
+        control._editing = true;
+        Qt.callLater(control._release);
+    }
+
     QtObject {
         id: internals
         // What the filter field holds.
@@ -56,7 +78,9 @@ T.ComboBox {
             if (index < 0 || index >= control.count) {
                 return;
             }
-            control.currentIndex = index;
+            // Held, not written: the app's `currentIndex: x` binding survives.
+            control._edit = index;
+            control._editing = true;
             control.activated(index);
             control.popup.close();
         }

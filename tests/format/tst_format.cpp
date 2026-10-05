@@ -204,6 +204,74 @@ private Q_SLOTS:
         QCOMPARE(f.date(QDateTime(QDate(2026, 3, 8), QTime(2, 0), QTimeZone::LocalTime).addSecs(60), "relative", en, now),
                  "yesterday");
     }
+    void bytesSi()
+    {
+        QCOMPARE(f.bytes(1200000000, 1, en, "si"), "1.2 GB");
+        QCOMPARE(f.bytes(999, 1, en, "si"), "999 B");
+        QCOMPARE(f.bytes(1500, 1, en, "si"), "1.5 kB");
+        QCOMPARE(f.bytes(1536, 1, de, "si"), "1,5 kB");
+        QCOMPARE(f.bytes(-1500, 1, en, "si"), "-1.5 kB");
+        QVERIFY(f.bytes(1000, 1, en, "si").endsWith(" kB"));
+        QCOMPARE(f.bytes(1e300, 1, en, "si").right(3), " EB");
+        QCOMPARE(f.bytes(kNaN, 1, en, "si"), "");
+        QCOMPARE(f.bytes(kInf, 1, en, "si"), "");
+        // An unknown name, and none, are IEC.
+        QCOMPARE(f.bytes(1536, 1, en, "bogus"), "1.5 KiB");
+        QCOMPARE(f.bytes(1536, 1, en, "iec"), "1.5 KiB");
+        QCOMPARE(f.bytesPerSecond(2500000, 1, en, "si"), "2.5 MB/s");
+        QCOMPARE(f.bytesPerSecond(1.5 * 1024 * 1024, 1, en), "1.5 MiB/s");
+        QCOMPARE(f.bytesPerSecond(kNaN, 1, en, "si"), "");
+    }
+
+    void bytesPromoteAtRounding()
+    {
+        QCOMPARE(f.bytes(999999, 1, en, "si"), "1.0 MB");
+        QCOMPARE(f.bytes(999949, 1, en, "si"), "999.9 kB");
+        QCOMPARE(f.bytes(999950, 1, en, "si"), "1.0 MB");
+        QCOMPARE(f.bytes(999999999, 1, en, "si"), "1.0 GB");
+        QCOMPARE(f.bytes(1048575, 1, en), "1.0 MiB");
+        QCOMPARE(f.bytes(1048575, 1, en, "iec"), "1.0 MiB");
+        QCOMPARE(f.bytes(1023.97 * 1024, 1, en), "1.0 MiB");
+        QCOMPARE(f.bytes(1023.97 * 1024, 2, en), "1,023.97 KiB");
+        QCOMPARE(f.bytes(-999999, 1, en, "si"), "-1.0 MB");
+        QCOMPARE(f.bytesPerSecond(999999, 1, en, "si"), "1.0 MB/s");
+        QCOMPARE(f.bytes(999999, 0, en, "si"), "1 MB");
+    }
+
+    void longAtTime()
+    {
+        const QDateTime d(QDate(2099, 1, 1), QTime(3, 0), QTimeZone::LocalTime);
+        QVERIFY(f.date(d, "longAtTime", en).startsWith("Thursday, January 1, 2099 at 3:00"));
+        QVERIFY(f.date(d, "longAtTime", de).startsWith("Donnerstag, 1. Januar 2099"));
+        QVERIFY(f.date(d, "longAtTime", de).contains("Donnerstag"));
+        QVERIFY(f.date(d, "longAtTime", de).contains("03:00"));
+        QCOMPARE(f.date(QDateTime(), "longAtTime", en), "");
+    }
+
+    void sentenceStyles()
+    {
+        const QDateTime now(QDate(2026, 3, 9), QTime(15, 0), QTimeZone::LocalTime);
+        const QDateTime today(QDate(2026, 3, 9), QTime(9, 41), QTimeZone::LocalTime);
+        const QDateTime yesterday(QDate(2026, 3, 8), QTime(9, 41), QTimeZone::LocalTime);
+        QVERIFY(f.date(today, "atTimeSentence", en, now).startsWith("Today at 9:41"));
+        QVERIFY(f.date(yesterday, "atTimeSentence", en, now).startsWith("Yesterday at 9:41"));
+        QCOMPARE(f.date(now, "relativeSentence", en, now), "Just now");
+        QCOMPARE(f.date(now.addDays(-1), "relativeSentence", en, now), "Yesterday");
+        QCOMPARE(f.date(now.addSecs(-300), "relativeSentence", en, now), "5 minutes ago");
+        // A date at the start is unchanged; the lower-case styles stay lower case.
+        QVERIFY(f.date(now.addDays(-30), "atTimeSentence", en, now).startsWith("2/"));
+        QCOMPARE(f.date(now, "relative", en, now), "just now");
+        QCOMPARE(f.date(QDateTime(), "atTimeSentence", en), "");
+        QCOMPARE(f.date(QDateTime(), "relativeSentence", en), "");
+    }
+
+    void sentenceUsesTheLocalesCase()
+    {
+        // Turkish: the i of "in 5 minutes" becomes a dotted capital I.
+        const QDateTime now(QDate(2026, 3, 9), QTime(15, 0), QTimeZone::LocalTime);
+        QCOMPARE(f.date(now.addSecs(300), "relativeSentence", QStringLiteral("tr_TR"), now).left(1), QString(QChar(0x0130)));
+        QCOMPARE(f.date(now.addSecs(300), "relativeSentence", en, now).left(1), QStringLiteral("I"));
+    }
 };
 
 QTEST_MAIN(TestFormat)
