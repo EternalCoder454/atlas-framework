@@ -715,13 +715,19 @@ AtlasToolTip.base QQuickToolTip
 AtlasToolTip.property shown: bool
 AtlasToolTip.type
 AtlasToolbar.base QQuickItem
+AtlasToolbar.enum Overflow: Menu = 0
+AtlasToolbar.enum Overflow: Scroll = 1
 AtlasToolbar.property accessibleName: QString
 AtlasToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
 AtlasToolbar.property flat: bool
+AtlasToolbar.property focusOnClick: bool
 AtlasToolbar.property focusable: bool
 AtlasToolbar.property leading: QQmlListProperty<QObject> [readonly]
 AtlasToolbar.property moreMenu: ContextMenu_QMLTYPE* [readonly]
+AtlasToolbar.property orientation: int
+AtlasToolbar.property overflow: int
 AtlasToolbar.property overflowCount: int [readonly]
+AtlasToolbar.property scrolls: bool [readonly]
 AtlasToolbar.property trailing: QQmlListProperty<QObject> [readonly]
 AtlasToolbar.property visibleCount: int [readonly]
 AtlasToolbar.type

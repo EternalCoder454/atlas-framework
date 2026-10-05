@@ -314,8 +314,8 @@ Item {
         anchors.left: root.titleCentered ? leftRow.right : title.right
         anchors.leftMargin: AtlasStyle.spacingSmall
         // With a stretch row the tools take only what they need.
-        readonly property real _room: root.titleCentered ? Math.max(0, (root.width - title.width) / 2 - leftRow.width - 4 - 2 * AtlasStyle.spacingSmall) : Math.max(0, root.width - leftRow.width - 4 - (root.showTitle ? AtlasStyle.spacing : 0) - title.width - rightRow.width - 9 - 3 * AtlasStyle.spacingSmall)
-        width: root._hasStretch ? Math.min(implicitWidth, _room) : _room
+        readonly property real _toolsRoom: root.titleCentered ? Math.max(0, (root.width - title.width) / 2 - leftRow.width - 4 - 2 * AtlasStyle.spacingSmall) : Math.max(0, root.width - leftRow.width - 4 - (root.showTitle ? AtlasStyle.spacing : 0) - title.width - rightRow.width - 9 - 3 * AtlasStyle.spacingSmall)
+        width: root._hasStretch ? Math.min(implicitWidth, _toolsRoom) : _toolsRoom
         visible: actions.length > 0
         accessibleName: qsTr("Main tools")
     }

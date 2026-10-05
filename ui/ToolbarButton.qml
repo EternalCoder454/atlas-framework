@@ -182,6 +182,20 @@ T.AbstractButton {
         when: control._opener !== null
         value: control._opened
     }
+    // True in a vertical strip: menus open beside the button, on the side with more room.
+    property bool _beside: false
+    readonly property var _window: Window.window
+    function _popup(m): void {
+        const gap = AtlasStyle.spacingSmall;
+        if (!control._beside) {
+            m.popup(control, 0, control.height + gap);
+            return;
+        }
+        const w = control._window ? control._window.width : 0;
+        const sx = control.mapToItem(null, 0, 0).x;
+        const right = w - (sx + control.width) >= sx;
+        m.popup(control, right ? control.width + gap : -m.implicitWidth - gap, 0);
+    }
     function _open(): void {
         const o = control._opener;
         if (!o || control._pressedAt - control._closedAt < 150 && control._closedAt > 0 && control._pressedAt >= control._closedAt) {
@@ -189,7 +203,7 @@ T.AbstractButton {
         }
         control._hadFocus = control.activeFocus;
         if (control._menu) {
-            control._menu.popup(control, 0, control.height + AtlasStyle.spacingSmall);
+            control._popup(control._menu);
         } else {
             if (o.target !== undefined) {
                 o.target = control;
@@ -221,7 +235,7 @@ T.AbstractButton {
             x: control._tipRight ? control.width + AtlasStyle.spacingSmall : -implicitWidth - AtlasStyle.spacingSmall
             y: Math.round((control.height - implicitHeight) / 2)
             onAboutToShow: {
-                const w = control.Window.window ? control.Window.window.width : 0;
+                const w = control._window ? control._window.width : 0;
                 const sx = control.mapToItem(null, 0, 0).x;
                 const gap = AtlasStyle.spacingSmall;
                 const wantRight = (control.tipSide === ToolbarButton.End) !== control.mirrored;

@@ -84,5 +84,26 @@ Item {
             flat: false
             actions: [undo, redo, bold, italic, link, image]
         }
+        QQC2.Label {
+            text: "Scroll: one button per step, with chevrons"
+            font: Kirigami.Theme.smallFont
+            opacity: 0.6
+        }
+        AtlasToolbar {
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 11
+            flat: false
+            overflow: AtlasToolbar.Scroll
+            actions: [undo, redo, bold, italic, link, image]
+        }
+        QQC2.Label {
+            text: "Vertical"
+            font: Kirigami.Theme.smallFont
+            opacity: 0.6
+        }
+        AtlasToolbar {
+            flat: false
+            orientation: Qt.Vertical
+            actions: [undo, redo, bold, italic]
+        }
     }
 }
