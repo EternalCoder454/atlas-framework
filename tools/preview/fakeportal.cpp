@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QMap>
 #include <QStringList>
+#include <QTimer>
 #include <QVariantMap>
 
 #include <cstdio>
@@ -45,7 +46,7 @@ public slots:
     }
 };
 
-int runFakePortal(const QString &readyFile)
+int runFakePortal(const QString &readyFile, int timeoutSeconds)
 {
     qDBusRegisterMetaType<Settings>();
     QDBusConnection bus = QDBusConnection::sessionBus();
@@ -54,6 +55,12 @@ int runFakePortal(const QString &readyFile)
         || !bus.registerObject(QStringLiteral("/org/freedesktop/portal/desktop"), &portal, QDBusConnection::ExportAllSlots)) {
         std::fprintf(stderr, "fake-portal: could not register on the session bus: %s\n", qPrintable(bus.lastError().message()));
         return 1;
+    }
+    // The bus going away (its session ended) ends the stand-in too.
+    bus.connect(QString(), QStringLiteral("/org/freedesktop/DBus/Local"), QStringLiteral("org.freedesktop.DBus.Local"),
+                QStringLiteral("Disconnected"), QCoreApplication::instance(), SLOT(quit()));
+    if (timeoutSeconds > 0) {
+        QTimer::singleShot(timeoutSeconds * 1000, QCoreApplication::instance(), &QCoreApplication::quit);
     }
     QFile ready(readyFile);
     if (!ready.open(QIODevice::WriteOnly)) {

@@ -10,6 +10,8 @@ namespace AtlasVariant {
 
 // Serves the answer on the session bus, creates `readyFile` once it does, and
 // runs the event loop (a QCoreApplication must exist). Returns an exit code.
-int runFakePortal(const QString &readyFile);
+// It also ends when its bus connection closes, and after `timeoutSeconds`
+// when that is above 0, so it never outlives the run that started it.
+int runFakePortal(const QString &readyFile, int timeoutSeconds = 0);
 
 } // namespace AtlasVariant

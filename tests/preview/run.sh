@@ -76,4 +76,17 @@ expect2 "no file"
 expect2 "bad size" "$here/good.qml" --out "$tmp/x" --size 0x10
 expect2 "bad size text" "$here/good.qml" --out "$tmp/x" --size big
 expect2 "unknown option" "$here/good.qml" --out "$tmp/x" --nope
+expect2 "size over 4096" "$here/good.qml" --out "$tmp/x" --size 5000x100
+expect2 "internal mode without the parent's token" --internal-portal "$tmp/ready"
+[ ! -e "$tmp/ready" ] || fail "an internal mode ran without the token"
+# An output that is a symbolic link is refused, not written through.
+mkdir "$tmp/link"
+echo keep >"$tmp/target"
+ln -s "$tmp/target" "$tmp/link/good-light.png"
+expect2 "output is a symlink" "$here/good.qml" --out "$tmp/link" --size 200x100
+[ "$(cat "$tmp/target")" = keep ] || fail "wrote through a symbolic link"
+grep -q 'symbolic link' "$tmp/e.err" || fail "the symlink refusal is not explained"
+# A new --out is private.
+"$bin" "$here/good.qml" --out "$tmp/private" --size 200x100 >/dev/null 2>&1
+[ "$(stat -c %a "$tmp/private")" = 700 ] || fail "a new --out directory is not mode 700"
 echo "atlas-preview ok"

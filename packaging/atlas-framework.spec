@@ -52,8 +52,10 @@ Requires:       atlas-symbols-fonts = %{version}-%{release}
 # QML modules Atlas.Ui imports (the plugin doesn't link them)
 Requires:       kf6-kirigami
 Requires:       qt6-qtdeclarative
-# atlas-preview runs its high-contrast variant on a private session bus.
+# atlas-preview runs every variant on a private session bus, in the
+# org.kde.desktop style.
 Requires:       dbus-daemon
+Requires:       kf6-qqc2-desktop-style
 # The Atlas look: IBM Plex Sans for the UI, JetBrains Mono for code (without
 # them Atlas.Ui falls back to the system fonts).
 Requires:       ibm-plex-sans-fonts

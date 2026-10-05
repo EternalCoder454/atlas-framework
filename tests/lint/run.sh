@@ -129,3 +129,31 @@ expect 0 "a warning without --strict" "$tmp/strict"
 expect 1 "a warning with --strict" --strict "$tmp/strict"
 expect 0 "--strict on a clean app" --strict "$tmp/c1/../impl"
 echo "lint --strict ok"
+
+# allow-raw silences the raw-value rules only: errors and password findings stay.
+mkdir "$tmp/rawonly"
+cat >"$tmp/rawonly/A.qml" <<'QML'
+import QtQuick
+import QtQuick.Controls
+import Atlas.Ui
+Item {
+    Button { } // atlas-lint: allow-raw
+    AtlasTextField { echoMode: TextInput.Password } // atlas-lint: allow-raw
+    AtlasPasswordField { echoMode: TextInput.Normal } // atlas-lint: allow-raw
+    Rectangle { radius: 6; color: "#fff" } // atlas-lint: allow-raw
+}
+QML
+expect 1 "allow-raw does not silence an error" "$tmp/rawonly"
+grep -q 'A.qml:5: error: default Button' "$tmp/out" || fail "allow-raw hid the default Button error"
+grep -q 'A.qml:6: warning: AtlasTextField with echoMode Password' "$tmp/out" || fail "allow-raw hid the password finding"
+grep -q 'A.qml:7: warning: AtlasPasswordField sets' "$tmp/out" || fail "allow-raw hid the masking finding"
+! grep -q 'A.qml:8:' "$tmp/out" || fail "allow-raw did not silence the raw values"
+# Deep nesting and a very long line: bounded work, and still a result.
+mkdir "$tmp/deep"
+{ echo 'import QtQuick'; for _ in $(seq 1 2000); do echo 'Item { NumberAnimation {'; done; echo 'duration: 200'; } >"$tmp/deep/A.qml"
+{ printf 'Item { color: "'; head -c 200000 /dev/zero | tr '\0' 'x'; echo '" }'; } >"$tmp/deep/B.qml"
+start=$SECONDS
+timeout 30 "$lint" "$tmp/deep" >/dev/null 2>&1
+[ $? -ne 124 ] || fail "deep nesting made the lint run away"
+[ $((SECONDS - start)) -lt 20 ] || fail "deep nesting took too long"
+echo "lint allow-raw scope and bounds ok"

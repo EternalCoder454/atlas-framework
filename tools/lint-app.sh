@@ -53,7 +53,9 @@ if [ "$#" -eq 0 ]; then
 fi
 
 read -r -d '' program <<'AWK'
-function allowed(n) { return (index(lines[n], "atlas-lint: allow") > 0) || (n > 1 && index(lines[n-1], "atlas-lint: allow") > 0) }
+# `atlas-lint: allow <reason>`; `allow-raw` is another marker, for the raw-value rules only.
+function plainAllow(s) { return match(s, /atlas-lint: allow/) > 0 && substr(s, RSTART + RLENGTH, 4) != "-raw" }
+function allowed(n) { return plainAllow(lines[n]) || (n > 1 && plainAllow(lines[n-1])) }
 function report(n, level, what, why) {
     if (allowed(n)) return
     printf "%s:%d: %s: %s%s\n", file, n, level, what, why
@@ -102,6 +104,9 @@ function uses(s, a, name,   re) {
 # Strings and comments are skipped. Used to tell what a `duration:` belongs to.
 function scanStack(st, str,   i, n, c, q, pre, t) {
     n = length(str)
+    # Hostile input must not cost more than a line's worth of work or memory:
+    # very long lines are not scanned, and at most 64 items are tracked.
+    if (n > 4000) return st
     for (i = 1; i <= n; i++) {
         c = substr(str, i, 1)
         if (c == "\"" || c == "'") {
@@ -122,7 +127,7 @@ function scanStack(st, str,   i, n, c, q, pre, t) {
                 t = substr(pre, RSTART, RLENGTH); sub(/[ \t]+$/, "", t)
             }
             sub(/^.*\./, "", t)
-            st = st "|" t
+            if (gsub(/\|/, "|", st) < 64) st = st "|" t
         } else if (c == "}") {
             sub(/\|[^|]*$/, "", st)
         }
@@ -220,7 +225,7 @@ END {
     # Per line: is it inside a block comment, and which items are open at its start.
     blk = 0; ctxst = ""
     for (nr = 1; nr <= NR; nr++) {
-        ctx[nr] = ctxst
+        if (index(lines[nr], "duration") > 0) ctx[nr] = ctxst
         s = lines[nr]
         if (blk) {
             incomment[nr] = 1
