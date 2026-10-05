@@ -23,7 +23,7 @@ assert!(!asked.is_empty()); // pulseaudio and home access are new
 - `[Context]` lists (`filesystems=home;xdg-download;`) are compared by what they grant in the end: a later `!item` takes an item away. A `filesystems` item counts its access level (`:ro`, then `:rw` or nothing, then `:create`).
 - D-Bus policies are compared by level: none, then see, then talk, then own. A level flatpak may learn later counts as the highest.
 - Other values (`[Environment]`, `[Policy *]`, newer groups) are compared whole, so any change counts.
-- Groups that grant nothing are ignored: what the app is (`[Application]`, apart from a change of runtime), where extensions mount, how it was built, and `[Extra Data]` (which changes with every release of an app such as Spotify or Chrome).
+- Groups that grant nothing are ignored: what the app is (`[Application]`, apart from a change of runtime or sdk), where extensions mount, how it was built, and `[Extra Data]` (which changes with every release of an app such as Spotify or Chrome).
 - An update that moves to a different runtime counts, because the runtime's own `[Context]` then applies to the app. A new branch of the same runtime is a routine update.
 - A runtime update is read as strictly as an app if it grants anything. A runtime that grants nothing only reports what it would start granting, since runtimes update often, and its environment is left out either way. A runtime update that widens its own `[Context]` or bus policies is held itself.
 - Metadata that cannot be parsed is reported as `UNREADABLE`, never as nothing new.

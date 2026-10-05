@@ -50,7 +50,7 @@ Off unless the file says `enabled = true`.
 | `fn path() -> Option<PathBuf>` | `$XDG_CONFIG_HOME/atlas/crash-reporting.toml` (or `~/.config/...`); `None` without an absolute config directory |
 | `fn load() -> Settings` | Reads the switch; missing or unreadable means off |
 | `fn load_from(path: &Path) -> Settings` | Reads another file |
-| `fn save(&self) -> io::Result<()>` | Saves the switch. Turning reporting **on** starts the coredump and event markers at "now", so nothing from before the opt-in is queued. Turning it **off** prunes the sent history and deletes every pending report |
+| `fn save(&self) -> io::Result<()>` | Saves the switch. Turning reporting **on** starts the coredump and event markers at "now", so nothing from before the opt-in is queued. Turning it **off** deletes every pending report and removes sent reports older than 90 days (as `pending()` and `sent()` also do) |
 | `fn save_to(&self, path: &Path) -> io::Result<()>` | Writes one file: a temp file beside it (never through a symlink), then a rename |
 
 ## Endpoint
@@ -101,7 +101,7 @@ A GlitchTip DSN of the form `https://<key>@<host>[/prefix]/<project>`. `store_ur
 | `fn new(users: &[&str], hosts: &[&str], homes: &[&str]) -> Self` | `users` are user names and full names, `hosts` host names (their first label is added), `homes` literal home directories |
 | `fn from_env() -> Self` | Everything about this user and machine that could identify them: `$USER`, `$LOGNAME`, `$HOME`, the passwd name, full name and home, and the kernel, static and pretty host names |
 | `fn for_system() -> Self` | Only the host names, for a root helper that has no user |
-| `fn scrub(&self, s: &str) -> String` | `/home/<name>` and `/var/home/<name>` become `.../USER`, user names `USER`, host names `HOST`; addresses and IDs go |
+| `fn scrub(&self, s: &str) -> String` | `/home/<name>` and `/var/home/<name>` become `/home/USER` and `/var/home/USER`, user names `USER`, host names `HOST`; addresses and IDs go |
 | `fn scrub_message(&self, s: &str) -> String` | `scrub`, then hides paths that can name a file the user had open. For panic messages and stack traces |
 
 ## Functions

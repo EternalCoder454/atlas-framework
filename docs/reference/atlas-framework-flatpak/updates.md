@@ -57,7 +57,7 @@ All derive `Debug, Clone, PartialEq, Eq` unless noted.
 | `Progress` | `installation: InstallationKind`, `reference: String` (such as `app/org.kde.kate/x86_64/stable`), `percent: u32` (0 to 100 for the current operation), `status: String` (flatpak's status line, such as "Downloading") | Progress of the running transaction |
 | `Updated` | `id`, `name`, `branch`, `installation`, `is_runtime`, `old_version: Option<String>` (`None` for a new dependency or no version), `new_version: Option<String>` | An app or runtime that was updated, or installed as a new dependency |
 | `Held` | `app: AppUpdate`, `permissions: Vec<String>` | An app left out by `hold_new_permissions`, and what it asks for |
-| `Outcome` (also `Default`, not `Clone`) | `updated: Vec<Updated>`, `held_back: Vec<Held>`, `error: Option<Error>` (the first error; the other installations were still tried) | What `update` did |
+| `Outcome` (`Debug` and `Default` only: not `Clone`, `PartialEq` or `Eq`) | `updated: Vec<Updated>`, `held_back: Vec<Held>`, `error: Option<Error>` (the first error; the other installations were still tried) | What `update` did |
 
 ## Errors and text from remotes
 

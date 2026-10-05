@@ -45,7 +45,7 @@ assert_eq!("stable".parse::<Channel>().unwrap(), Channel::Stable);
 | `fn channel(&self) -> Option<Channel>` | The channel the system follows, from `spec.image` (a switch changes it at once, while the booted ref keeps the old channel until the restart) |
 | `fn has_staged(&self) -> bool` | A staged deployment exists |
 | `fn latest_image(&self) -> Option<&ImageStatus>` | The newest image of the tracked reference this system knows of: the `cachedUpdate` of the entry holding the image ref's commit, or that entry's own image when it has none. Without ref heads, or when no entry holds the commit, the booted entry's `cachedUpdate` |
-| `fn available_update(&self) -> Option<&ImageStatus>` | `latest_image` when it is neither the booted nor the staged image: an update found by `upgrade --check` that is not staged yet. An image older than the booted or staged one is not an update |
+| `fn available_update(&self) -> Option<&ImageStatus>` | `latest_image` when it is neither the booted nor the staged image: an update found by `upgrade --check` that is not staged yet. An image older than the booted or staged one, or one with no digest, is not an update |
 | `fn update_available(&self) -> bool` | `available_update()` has one |
 | `fn is_downgrade(&self, candidate: &ImageStatus) -> bool` | `candidate` is older than the booted or staged image of the same reference (a tag moved back to an older build). Such an image is never offered or staged; Go Back and a channel switch are the ways to an older build |
 | `fn is_bad_image(&self, digest: &str) -> bool` | `digest` failed its boot health checks on this machine |
