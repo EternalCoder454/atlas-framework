@@ -12,7 +12,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   AtlasButton's Destructive look again (error text and border on a faint
   error fill); since 1.4.0 it was drawn in the accent.
 - Fix: `AtlasTreeModel` no longer follows a `QModelIndex` that is another
-  model's or outlived `setItems()`; `AtlasShortcuts` ignores NaN, infinite and
+  model's or outlived `setItems()` (best effort), caps its nodes at 100000 and reads `symbol` safely; `AtlasShortcuts` ignores NaN, infinite and
   out-of-range numbers as key sequences; `Appearance.textScale` is kept
   between 0.5 and 4.
 

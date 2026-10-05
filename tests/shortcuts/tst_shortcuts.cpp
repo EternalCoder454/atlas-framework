@@ -117,6 +117,17 @@ private Q_SLOTS:
                                   QVariant(qlonglong(1) << 40), QVariant(qulonglong(1) << 63), QVariant(-5), QVariant(qlonglong(-1) << 40)}) {
             QVERIFY2(AtlasShortcuts::toSequence(v).isEmpty(), qPrintable(v.toString()));
         }
+        QVERIFY(AtlasShortcuts::toSequence(2147483648.0).isEmpty());
+        QVERIFY(AtlasShortcuts::toSequence(float(1e30)).isEmpty());
+        QVERIFY(AtlasShortcuts::toSequence(float(-3)).isEmpty());
+        QVERIFY(AtlasShortcuts::toSequence(qulonglong(2147483648u)).isEmpty());
+        QVERIFY(AtlasShortcuts::toSequence(QVariant::fromValue(ulong(1) << 40)).isEmpty());
+        // In range: no crash, a key (INT_MAX as int and as double).
+        const int big = std::numeric_limits<int>::max();
+        QCOMPARE(AtlasShortcuts::toSequence(big), AtlasShortcuts::toSequence(double(big)));
+        QCOMPARE(AtlasShortcuts::toSequence(1.5), AtlasShortcuts::toSequence(1));
+        QCOMPARE(AtlasShortcuts::toSequence(QVariant::fromValue(ulong(Qt::Key_Escape))), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(AtlasShortcuts::toSequence(float(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
         QCOMPARE(AtlasShortcuts::toSequence(double(int(Qt::Key_Escape))), QKeySequence(Qt::Key_Escape));
         QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel) + 0.0), QKeySequence(QKeySequence::Cancel));
         QCOMPARE(AtlasShortcuts::toSequence(qlonglong(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));

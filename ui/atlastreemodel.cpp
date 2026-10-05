@@ -1,6 +1,12 @@
 #include "atlastreemodel.h"
 
+#include <QLoggingCategory>
 #include <QVariantMap>
+
+#include <cmath>
+#include <limits>
+
+Q_LOGGING_CATEGORY(lcTree, "atlas.ui.tree")
 
 AtlasTreeModel::AtlasTreeModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -11,20 +17,30 @@ AtlasTreeModel::~AtlasTreeModel() = default;
 
 // Builds the nodes under `into` from the list's objects. Entries that aren't
 // objects are skipped; nesting deeper than kMaxDepth is dropped, so a
-// self-referencing value can't run away.
+// self-referencing value can't run away; nodes past kMaxNodes are dropped
+// (one warning per setItems()).
 void AtlasTreeModel::fill(Node &into, const QVariantList &list, int depth)
 {
     if (depth > kMaxDepth) {
         return;
     }
     for (const QVariant &entry : list) {
+        if (m_nodes.size() >= kMaxNodes) {
+            if (!m_capWarned) {
+                m_capWarned = true;
+                qCWarning(lcTree) << "AtlasTreeModel: more than" << kMaxNodes << "nodes; the rest are dropped";
+            }
+            return;
+        }
         const QVariantMap map = entry.toMap();
         if (map.isEmpty()) {
             continue;
         }
         auto child = std::make_unique<Node>();
         child->text = map.value(QStringLiteral("text")).toString();
-        child->symbol = map.value(QStringLiteral("symbol")).toInt();
+        // A JS number: NaN, infinity and out-of-range values are "no symbol".
+        const double sym = map.value(QStringLiteral("symbol")).toDouble();
+        child->symbol = (std::isfinite(sym) && sym >= 0 && sym <= double(std::numeric_limits<int>::max())) ? int(sym) : 0;
         child->icon = map.value(QStringLiteral("icon")).toString();
         child->parent = &into;
         child->row = int(into.children.size());
@@ -40,6 +56,7 @@ void AtlasTreeModel::setItems(const QVariantList &items)
     m_items = items;
     m_root.children.clear();
     m_nodes.clear();
+    m_capWarned = false;
     fill(m_root, items, 0);
     endResetModel();
     Q_EMIT itemsChanged();
@@ -48,6 +65,8 @@ void AtlasTreeModel::setItems(const QVariantList &items)
 // The node of an index, the root for the invalid index, and nullptr for an
 // index that is not a live node of this model (another model's, or one that
 // outlived a setItems()): the pointer is never followed before it is checked.
+// Best effort: a node of a newer tree at the same address and row as an old
+// one is taken for it.
 AtlasTreeModel::Node *AtlasTreeModel::node(const QModelIndex &index) const
 {
     if (!index.isValid()) {
@@ -57,7 +76,7 @@ AtlasTreeModel::Node *AtlasTreeModel::node(const QModelIndex &index) const
         return nullptr;
     }
     const auto *n = static_cast<const Node *>(index.internalPointer());
-    return m_nodes.count(n) ? const_cast<Node *>(n) : nullptr;
+    return m_nodes.count(n) && n->row == index.row() ? const_cast<Node *>(n) : nullptr;
 }
 
 QModelIndex AtlasTreeModel::index(int row, int column, const QModelIndex &parent) const
@@ -98,7 +117,7 @@ int AtlasTreeModel::columnCount(const QModelIndex &) const
 
 QVariant AtlasTreeModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.column() != 0) {
+    if (!index.isValid()) {
         return {};
     }
     const Node *n = node(index);
@@ -137,7 +156,7 @@ QItemSelection AtlasTreeModel::_selectionOf(const QVariantList &indexes) const
     };
     for (const QVariant &v : indexes) {
         const QModelIndex idx = v.value<QModelIndex>();
-        if (!idx.isValid() || idx.model() != this) {
+        if (!idx.isValid() || idx.model() != this || idx.column() != 0 || !node(idx)) {
             continue;
         }
         if (runStart.isValid() && idx.parent() == runEnd.parent() && idx.row() == runEnd.row() + 1) {
