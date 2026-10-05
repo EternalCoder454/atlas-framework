@@ -142,6 +142,7 @@ qt_add_qml_module(atlasui
         atlasclipboard.h atlasclipboard.cpp
         atlassettings.h atlassettings.cpp
         atlasportal.h atlasportal.cpp
+        atlascolorsprivate.h atlascolorsprivate.cpp
         atlaswindowchrome.h atlaswindowchrome.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         translations.cpp atlasuiplugin.cpp

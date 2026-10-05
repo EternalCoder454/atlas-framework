@@ -136,29 +136,34 @@ QtObject {
     readonly property color _tint: _dark ? "#8A7AF4" : "#6858E2"
     readonly property color base: {
         const bg = _theme.Kirigami.Theme.backgroundColor;
-        return highContrast ? bg : Qt.tint(bg, Qt.alpha(_tint, _dark ? 0.06 : 0.045));
+        return highContrast ? bg : mix(bg, _tint, _dark ? 0.06 : 0.045);
     }
-    readonly property color surface: _dark ? Qt.tint(base, Qt.rgba(1, 1, 1, 0.045)) : Qt.tint(base, Qt.rgba(1, 1, 1, 0.6))
-    readonly property color surfaceRaised: _dark ? Qt.tint(base, Qt.rgba(1, 1, 1, 0.085)) : Qt.tint(base, Qt.rgba(1, 1, 1, 0.85))
-    readonly property color control: _dark ? Qt.tint(base, Qt.rgba(1, 1, 1, 0.065)) : Qt.tint(base, Qt.alpha(_theme.Kirigami.Theme.textColor, 0.055))
-    readonly property color codeSurface: _dark ? Qt.tint(base, Qt.rgba(0, 0, 0, 0.18)) : Qt.tint(base, Qt.alpha(_tint, 0.035))
+    readonly property color surface: _dark ? mix(base, "white", 0.045) : mix(base, "white", 0.6)
+    readonly property color surfaceRaised: _dark ? mix(base, "white", 0.085) : mix(base, "white", 0.85)
+    readonly property color control: _dark ? mix(base, "white", 0.065) : mix(base, _theme.Kirigami.Theme.textColor, 0.055)
+    readonly property color codeSurface: _dark ? mix(base, "black", 0.18) : mix(base, _tint, 0.035)
     readonly property color surfaceAlt: _theme.Kirigami.Theme.alternateBackgroundColor
-    readonly property color hover: Qt.alpha(_theme.Kirigami.Theme.textColor, _dark ? 0.07 : 0.055)
-    readonly property color pressed: Qt.alpha(_theme.Kirigami.Theme.textColor, _dark ? 0.12 : 0.1)
-    readonly property color selection: Qt.alpha(accent, _dark ? 0.24 : 0.16)
-    readonly property color selectionInactive: Qt.alpha(accent, _dark ? 0.15 : 0.1)
+    readonly property color hover: alpha(_theme.Kirigami.Theme.textColor, _dark ? 0.07 : 0.055)
+    readonly property color pressed: alpha(_theme.Kirigami.Theme.textColor, _dark ? 0.12 : 0.1)
+    readonly property color selection: alpha(accent, _dark ? 0.24 : 0.16)
+    readonly property color selectionInactive: alpha(accent, _dark ? 0.15 : 0.1)
     readonly property color text: _theme.Kirigami.Theme.textColor
-    readonly property color textMuted: Qt.alpha(_theme.Kirigami.Theme.textColor, 0.65)
-    readonly property color textDisabled: Qt.alpha(_theme.Kirigami.Theme.textColor, 0.55)
-    readonly property color separator: Qt.alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.4 : 0.08)
-    readonly property color controlBorder: Qt.alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.8 : 0.22)
+    readonly property color textMuted: alpha(_theme.Kirigami.Theme.textColor, 0.65)
+    readonly property color textDisabled: alpha(_theme.Kirigami.Theme.textColor, 0.55)
+    readonly property color separator: alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.4 : 0.08)
+    readonly property color controlBorder: alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.8 : 0.22)
     readonly property color success: _theme.Kirigami.Theme.positiveTextColor
     readonly property color warning: _theme.Kirigami.Theme.neutralTextColor
     readonly property color error: _theme.Kirigami.Theme.negativeTextColor
-    readonly property color errorFill: Qt.alpha(error, _dark ? 0.1 : 0.06)
+    readonly property color errorFill: alpha(error, _dark ? 0.1 : 0.06)
     readonly property color sakura: _dark ? "#F4B3CF" : "#E58BB4"
-    readonly property color floatingBackground: Appearance.effective ? Qt.alpha(surfaceRaised, 0.85) : surfaceRaised
-    readonly property color chromeBackground: Appearance.effective ? Qt.alpha(base, 0.94) : base
+    readonly property color floatingBackground: Appearance.effective ? alpha(surfaceRaised, 0.85) : surfaceRaised
+    readonly property color chromeBackground: Appearance.effective ? alpha(base, 0.94) : base
+
+    // `c` with alpha `a`, and `a` blended toward `b` by `t`, both kept to 0..1
+    // (NaN is 0). Typed, unlike Qt.alpha and Qt.rgba, so bindings compile.
+    function alpha(c: color, a: real): color { return AtlasColorsPrivate.alpha(c, a); }
+    function mix(a: color, b: color, t: real): color { return AtlasColorsPrivate.mix(a, b, t); }
 
     readonly property real spacingXSmall: 2
     readonly property real spacingSmall: 4

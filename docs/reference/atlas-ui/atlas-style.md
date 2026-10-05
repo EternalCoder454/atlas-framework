@@ -84,6 +84,18 @@ Rectangle {
 
 Spacing steps are 2, 4, 8, 12, 16 and 24 pixels.
 
+## Methods
+
+| Signature | Description |
+|---|---|
+| `alpha(color c, real a): color` | `c` with alpha `a`, replacing `c`'s own alpha. `a` is kept between 0 and 1 and NaN is 0 (fully transparent). An invalid `c` stays invalid. Typed, unlike `Qt.alpha` and `Qt.rgba` (which return a QVariant), so a binding that uses it stays in the compiled code. Since 1.5.0. |
+| `mix(color a, color b, real t): color` | `a` blended toward `b` by `t`: `t` 0 is `a`, 1 is `b`. Each channel and the alpha blend linearly in sRGB. `t` is kept between 0 and 1 and NaN is 0 (so `a`). If either colour is invalid the result is invalid. `Qt.tint(a, Qt.alpha(b, t))` gives the same colour for an opaque `b`. Since 1.5.0. |
+
+```qml
+Rectangle { color: AtlasStyle.alpha(AtlasStyle.accent, 0.2) }
+Rectangle { color: AtlasStyle.mix(AtlasStyle.surface, AtlasStyle.accent, 0.5) }
+```
+
 ## Enums
 
 ### Density

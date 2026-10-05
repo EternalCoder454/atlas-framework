@@ -678,6 +678,8 @@ AtlasStat.type
 AtlasStyle.base QObject
 AtlasStyle.enum Density: Compact = 1
 AtlasStyle.enum Density: Normal = 0
+AtlasStyle.method alpha(QColor c, double a): QColor
+AtlasStyle.method mix(QColor a, QColor b, double t): QColor
 AtlasStyle.property accent: QColor [readonly]
 AtlasStyle.property accentStrong: QColor [readonly]
 AtlasStyle.property accentStrongText: QColor [readonly]

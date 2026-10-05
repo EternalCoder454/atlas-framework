@@ -345,6 +345,9 @@ properties, signals, functions and enum values, the singletons, and
 `Symbols.<Name>`. They are built separately and updated separately, so a
 change that breaks an app breaks it on users' machines.
 
+- **Not API:** members whose name starts with `_`, and C++ helper types
+  whose name ends in `Private` (`AtlasColorsPrivate`, behind AtlasStyle's
+  colour functions). Apps don't use them; `api/` leaves them out.
 - **Adding** is fine: a new property with a default that keeps the old look,
   a new value, a new type. Raise the minor version (1.0.0 to 1.1.0) and say
   what was added in the spec's changelog, so apps can require it.

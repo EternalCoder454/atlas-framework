@@ -227,6 +227,15 @@ target_link_libraries(atlas-validators-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Q
 add_test(NAME validators COMMAND atlas-validators-tests)
 set_tests_properties(validators PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+# The colour helpers behind AtlasStyle.alpha() and mix() (ui/atlascolorsprivate.cpp,
+# compiled into the test): clamping, NaN, alpha, invalid colours (tests/colors).
+add_executable(atlas-colors-tests colors/tst_colors.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlascolorsprivate.h ${PROJECT_SOURCE_DIR}/ui/atlascolorsprivate.cpp)
+target_include_directories(atlas-colors-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-colors-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+add_test(NAME colors COMMAND atlas-colors-tests)
+set_tests_properties(colors PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 # The clipboard singleton (ui/atlasclipboard.cpp, compiled into the test):
 # text, rich text and image round trips, and what setImage() refuses.
 add_executable(atlas-clipboard-tests clipboard/tst_clipboard.cpp

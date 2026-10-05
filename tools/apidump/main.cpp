@@ -242,7 +242,8 @@ int main(int argc, char *argv[])
     QHash<QString, const QmlTypesComponent *> cppTypes;
     for (const QmlTypesComponent &c : components) {
         for (const QString &exported : c.exportedNames) {
-            if (!typeNames.contains(exported)) {
+            // A C++ helper named "...Private" is not API (AtlasColorsPrivate).
+            if (!typeNames.contains(exported) && !exported.endsWith(QLatin1String("Private"))) {
                 cppTypes.insert(exported, &c);
             }
         }
