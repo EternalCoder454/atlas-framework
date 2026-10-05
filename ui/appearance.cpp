@@ -1,4 +1,6 @@
 #include "appearance.h"
+
+#include "portalappearance.h"
 #include "textscale.h"
 
 #include <KConfigGroup>
@@ -84,6 +86,14 @@ Appearance::Appearance(QObject *parent)
             readMotion();
         }
     });
+    // The portal's contrast and reduced-motion join Qt's and Plasma's.
+    m_portal = PortalAppearance::shared();
+    if (m_portal) {
+        connect(m_portal, &PortalAppearance::changed, this, [this] {
+            readSystem();
+            readMotion();
+        });
+    }
     readSystem();
     readMotion();
 
@@ -153,7 +163,7 @@ void Appearance::readSystem()
         mine = DarkScheme;
     }
     const bool dark = mine == DarkScheme || (mine == UnknownScheme && qGuiApp->palette().color(QPalette::Window).lightnessF() < 0.5);
-    const bool contrast = hints->accessibility()->contrastPreference() == Qt::ContrastPreference::HighContrast;
+    const bool contrast = hints->accessibility()->contrastPreference() == Qt::ContrastPreference::HighContrast || (m_portal && m_portal->highContrast());
     qreal scale = qGuiApp->font().pointSizeF() / kDefaultPointSize;
     // A pixel-sized font has no point size (-1): that and NaN are the default;
     // anything else is held between 0.5 and 4.
@@ -187,6 +197,7 @@ void Appearance::readMotion()
         const double factor = raw.toDouble(&ok);
         reduced = ok && factor == 0.0;
     }
+    reduced = reduced || (m_portal && m_portal->reducedMotion());
     if (reduced != m_reducedMotion) {
         m_reducedMotion = reduced;
         Q_EMIT reducedMotionChanged();

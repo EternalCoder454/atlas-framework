@@ -5,59 +5,59 @@
     <name>AtlasAboutPage</name>
     <message>
         <location filename="../AtlasAboutPage.qml" line="35"/>
-        <location filename="../AtlasAboutPage.qml" line="138"/>
+        <location filename="../AtlasAboutPage.qml" line="140"/>
         <source>About</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="113"/>
+        <location filename="../AtlasAboutPage.qml" line="115"/>
         <source>Version %1</source>
         <extracomment>Version line under the app name: %1 is the version number (&quot;Version 1.2.0&quot;)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="129"/>
+        <location filename="../AtlasAboutPage.qml" line="131"/>
         <source>Copy system info</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="132"/>
+        <location filename="../AtlasAboutPage.qml" line="134"/>
         <source>Copied</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="140"/>
+        <location filename="../AtlasAboutPage.qml" line="142"/>
         <source>Version</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="145"/>
+        <location filename="../AtlasAboutPage.qml" line="147"/>
         <source>Operating system</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="150"/>
+        <location filename="../AtlasAboutPage.qml" line="152"/>
         <source>Qt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="156"/>
+        <location filename="../AtlasAboutPage.qml" line="158"/>
         <source>License</source>
         <extracomment>The software licence of the app, as in &quot;MIT License&quot; (not a driving licence)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="163"/>
+        <location filename="../AtlasAboutPage.qml" line="165"/>
         <source>Links</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="166"/>
+        <location filename="../AtlasAboutPage.qml" line="168"/>
         <source>Source code</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasAboutPage.qml" line="172"/>
+        <location filename="../AtlasAboutPage.qml" line="174"/>
         <source>Report a problem</source>
         <translation type="unfinished"></translation>
     </message>
@@ -564,6 +564,14 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
+    </message>
+</context>
+<context>
+    <name>AtlasGlobalShortcut</name>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="179"/>
+        <source>Global shortcuts need a running application.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1240,6 +1248,83 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
     <message>
         <location filename="../FindBar.qml" line="367"/>
         <source>Replace All</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GlobalShortcutSession</name>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="223"/>
+        <source>The desktop did not answer the shortcut request in time.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="255"/>
+        <source>The desktop portal stopped.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="327"/>
+        <source>The name of a global shortcut is letters, digits, &quot;.&quot;, &quot;_&quot; and &quot;-&quot;, at most %1 characters.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="333"/>
+        <source>Another global shortcut in this app already has the name &quot;%1&quot;.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="399"/>
+        <source>Global shortcuts are not available: there is no session bus.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="503"/>
+        <source>Global shortcuts are not available: the desktop portal is not running.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="509"/>
+        <source>This desktop does not offer global shortcuts.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="513"/>
+        <source>The desktop portal did not answer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="516"/>
+        <source>The desktop portal refused the request: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="598"/>
+        <location filename="../atlasglobalshortcut.cpp" line="604"/>
+        <location filename="../atlasglobalshortcut.cpp" line="637"/>
+        <location filename="../atlasglobalshortcut.cpp" line="653"/>
+        <location filename="../atlasglobalshortcut.cpp" line="659"/>
+        <source>The desktop sent an answer that could not be understood.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="609"/>
+        <source>The shortcut request was cancelled.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="609"/>
+        <source>The desktop could not set up global shortcuts.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="713"/>
+        <source>The desktop did not accept this shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../atlasglobalshortcut.cpp" line="735"/>
+        <source>The desktop closed the shortcuts session.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

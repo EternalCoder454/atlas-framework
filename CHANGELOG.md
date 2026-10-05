@@ -98,6 +98,13 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `compactBreakpoint` and `wideBreakpoint` set where `widthClass` changes.
 - Added: `AtlasNavigationStack` announces the new page's title to screen
   readers on push, pop and replace.
+- Added: `AtlasGlobalShortcut`, a shortcut that works in every window,
+  through the desktop portal's GlobalShortcuts (the user can change the key
+  in System Settings); asynchronous, with timeouts and a capped retry.
+- Added: `AccessibilityState.highContrast`, `reducedMotion` and
+  `accentColor`, from Qt and the desktop portal's appearance settings.
+- `Appearance.highContrast` and `reducedMotion` (and so `AtlasStyle`) also
+  follow the desktop portal's `contrast` and `reduced-motion`, live.
 - Docs: `TextButton` is not an `AtlasButton` preset and has no `variant`.
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call
@@ -140,6 +147,14 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   an update run rewrites only the goldens that fail, not every picture.
 - Tools: `ATLAS_UPDATE_GOLDENS=1 tools/dev-check.sh` can write the goldens
   (it mounted the source read-only).
+- Tests: the visual and platform tests run on a private D-Bus session bus
+  (`tests/private-bus.conf`), never the desktop's.
+- CI: caches are written only by a green push to main, trimmed first; the
+  qmllint budget is an exact ratchet; the perf job no longer restores the
+  template's CMake tree.
+- CI: a new rpm job builds the RPMs and keeps them for 7 days.
+- Release: the tag format, version and newest-release checks run before the
+  CI wait and again after it.
 - Packaging: `build-rpm.sh` packages the committed tree only (git archive of
   HEAD) and refuses a dirty one; the spec builds and ships the translations.
 - Template: drill-down pages use `AtlasNavigationStack`; `main.cpp`

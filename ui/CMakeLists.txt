@@ -132,10 +132,12 @@ qt_add_qml_module(atlasui
         repaintarea.h repaintarea.cpp
         accessibilitystate.h accessibilitystate.cpp
         appearance.h appearance.cpp
+        portalappearance.h portalappearance.cpp
         atlasshortcuts.h atlasshortcuts.cpp
         atlasvalidators.h atlasvalidators.cpp
         atlastreemodel.h atlastreemodel.cpp
         atlasformat.h atlasformat.cpp
+        atlasglobalshortcut.h atlasglobalshortcut.cpp
         atlasapp.h atlasapp.cpp
         atlasclipboard.h atlasclipboard.cpp
         atlassettings.h atlassettings.cpp

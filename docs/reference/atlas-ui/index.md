@@ -221,6 +221,7 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasApp](atlas-app.md): The running app's name, ID, version and the OS.
 - [AtlasSettings](atlas-settings.md): The app's own settings file.
 - [AtlasClipboard](atlas-clipboard.md): The system clipboard.
+- [AtlasGlobalShortcut](atlas-global-shortcut.md): A system-wide shortcut through the desktop portal.
 - [AtlasFormat](atlas-format.md): Formats sizes, speeds, numbers, durations and dates for the user's locale.
 - [AtlasPortal](atlas-portal.md): Opens links and sends desktop notifications.
 - [AtlasShortcuts](atlas-shortcuts.md): The registry of the app's actions and shortcut conflicts.
