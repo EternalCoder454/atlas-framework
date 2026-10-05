@@ -37,7 +37,7 @@ AtlasTextView {
 | `selectionStart` | `int` | `0` | Start of the selection. Read-only. |
 | `selectionEnd` | `int` | `0` | End of the selection. Read-only. |
 | `hasSelection` | `bool` | `false` | Part of the text is selected. Read-only. Use it instead of reading `selectedText` to find out. |
-| `selectedText` | `string` | `""` | The selected text. Read-only. It is empty when the selection is larger than 128 million characters; `copy()` has the same limit. |
+| `selectedText` | `string` | `""` | The selected text. Read-only. It is empty when the selection is larger than 32 million characters; `copy()` has the same limit. |
 | `contentX` | `real` | `0` | Horizontal scroll offset. |
 | `contentY` | `real` | `0` | Vertical scroll offset. |
 | `contentWidth` | `real` | | Width of the text. Read-only. |
@@ -85,7 +85,7 @@ The values of `lineEnding`:
 | `positionOfLine(line)` | The position where a line starts. |
 | `lineOf(position)` | The line a position is on. |
 | `columnOf(position)` | The column of a position in its line. |
-| `beginLoad()` | Starts a streamed load and clears the text. |
+| `beginLoad()` | Starts a streamed load and clears the text and every decoration layer. |
 | `appendBytes(utf8)` | Adds UTF-8 bytes to a streamed load. |
 | `endLoad()` | Finishes a streamed load. |
 | `appendText(text)` | Appends text to the end. |
@@ -95,7 +95,7 @@ The values of `lineEnding`:
 | `copy()` | Copies the selection to the clipboard. |
 | `ensureVisible(position)` | Scrolls to show a position. |
 | `lineY(line)` | The y coordinate of a line in the content. |
-| `setDecorationPairs(layer, pairs, style)` | Sets a decoration layer from a flat list `[start, end, ...]` with a style number. |
+| `setDecorationPairs(layer, pairs, style)` | Sets a decoration layer from a flat list `[start, end, ...]` with a style number. `beginLoad()` and `setText` clear every decoration layer. |
 | `clearDecorations(layer)` | Removes a decoration layer. |
 
 ## Signals

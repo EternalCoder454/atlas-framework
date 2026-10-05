@@ -94,6 +94,8 @@ private slots:
     void hasSelectionAndBounds();
     void surrogateKeys();
     void tabsCountInContentWidth();
+    void longLineWindows();
+    void maximumLinesShiftsDecorations();
 };
 
 void TestTextView::emptyView()
@@ -989,6 +991,46 @@ void TestTextView::tabsCountInContentWidth()
     v->setText(QStringLiteral("\t\t\tx"));
     f.settle();
     QVERIFY(v->contentWidth() >= 25 * v->characterWidth());
+}
+
+void TestTextView::longLineWindows()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    const qsizetype n = 3 * 1024 * 1024;
+    QString text(n, QLatin1Char('x'));
+    text.replace(2 * 1024 * 1024, 5, QStringLiteral("hello"));
+    v->setText(text);
+    QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(v);
+    QAccessibleTextInterface *ti = iface->textInterface();
+    int a = 0, b = 0;
+    const int off = 2 * 1024 * 1024 + 2;
+    const QString w = ti->textAtOffset(off, QAccessible::LineBoundary, &a, &b);
+    QVERIFY(w.size() <= (1 << 20));
+    QVERIFY(a <= off && off < b);
+    QCOMPARE(b - a, int(w.size()));
+    QVERIFY(w.contains(QStringLiteral("hello")));
+    // A double click inside a huge line selects a word within the window.
+    v->setText(QString(300000, QLatin1Char('a')));
+    QTest::mouseDClick(&f.win, Qt::LeftButton, {}, QPoint(30, 8));
+    QVERIFY(v->selectionEnd() - v->selectionStart() <= 2 * 65536);
+}
+
+void TestTextView::maximumLinesShiftsDecorations()
+{
+    Fixture f;
+    AtlasTextView *v = f.view;
+    v->setText(lines(30));
+    v->setDecorationPairs(QStringLiteral("a"), {0, 3}, 0);
+    v->setDecorationPairs(QStringLiteral("b"), {v->positionOfLine(25), v->positionOfLine(25) + 4}, 0);
+    v->setMaximumLines(10);
+    f.settle();
+    QCOMPARE(v->lineCount(), qsizetype(10));
+    QVERIFY(!f.win.grabWindow().isNull());
+    // Setting text clears the layers, so a later change finds none.
+    v->setText(lines(5));
+    v->setMaximumLines(3);
+    QCOMPARE(v->lineCount(), qsizetype(3));
 }
 
 int main(int argc, char **argv)
