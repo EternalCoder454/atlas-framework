@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      # qmllint warnings allowed; lower it when warnings are fixed, never raise it.
+      QMLLINT_MAX: 119
       # Every step below runs in the dev container, with the checkout at /src.
       # git runs as root on a checkout the runner user owns: safe.directory lets it.
       RUN: docker run --rm -v ${{ github.workspace }}:/src -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
@@ -32,9 +34,13 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/dev-container
+        with:
+          # One writer for the shared layer cache: three at once race.
+          write-cache: 'true'
 
       - name: Restore the compiler cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .ccache
           # A new entry per commit; the newest one of any commit seeds the next run.
@@ -45,7 +51,15 @@ jobs:
         run: $RUN bash -c 'cmake -S . -B build -G Ninja -DATLAS_UI_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build && ccache --show-stats'
 
       - name: qmllint
-        run: $RUN bash -c 'cmake --build build --target all_qmllint'
+        # Warnings don't fail qmllint itself; more than the budget fails here.
+        run: |
+          $RUN bash -o pipefail -c 'cmake --build build --target all_qmllint 2>&1 | tee build/qmllint.log'
+          n=$(grep -c '^Warning' build/qmllint.log || true)
+          echo "qmllint: $n warnings (budget $QMLLINT_MAX)"
+          if [ "$n" -gt "$QMLLINT_MAX" ]; then
+            echo "::error::qmllint has $n warnings, over the budget of $QMLLINT_MAX: fix the new ones (grep -A2 '^Warning' build/qmllint.log)"
+            exit 1
+          fi
 
       - name: Visual tests
         run: $RUN bash -c 'ctest --test-dir build -j "$(nproc)" --output-on-failure'
@@ -60,6 +74,19 @@ jobs:
 
       - name: API check
         run: $RUN tools/check-api.sh build
+
+      # The container writes as root: hand the cache back to the runner user,
+      # or saving it fails on files tar cannot read.
+      - name: Own the compiler cache
+        if: ${{ !cancelled() && github.event_name == 'push' }}
+        run: sudo chown -R "$(id -u):$(id -g)" .ccache
+
+      - name: Save the compiler cache
+        if: ${{ !cancelled() && github.event_name == 'push' && steps.cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .ccache
+          key: ${{ steps.cache.outputs.cache-primary-key }}
 
   crates:
     # The Rust crates: tests, clippy and cargo-semver-checks against the last release.
@@ -77,7 +104,8 @@ jobs:
       - uses: ./.github/actions/dev-container
 
       - name: Restore the cargo cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           # The downloaded crates, and the compiled dependencies (cargo rebuilds
           # the workspace's own crates, whose sources the checkout made newer).
@@ -88,18 +116,24 @@ jobs:
           restore-keys: cargo-crates-${{ hashFiles('packaging/Containerfile.dev', '**/Cargo.lock') }}-
 
       - name: Rust tests
-        run: $RUN cargo test --workspace --all-features
+        run: $RUN cargo test --locked --workspace --all-features
 
       - name: Clippy
-        run: $RUN cargo clippy --workspace --all-features --all-targets -- -D warnings
+        run: $RUN cargo clippy --locked --workspace --all-features --all-targets -- -D warnings
 
       - name: Baseline for cargo-semver-checks
         id: baseline
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          # The latest v* tag; else, for a pull request, where it branched from the target.
-          ref=$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null || true)
+          # The latest v* tag before this commit (a tag push compares with the
+          # release before it, not with itself); else, for a pull request,
+          # where it branched from the target.
+          exclude=()
+          while read -r t; do
+            [ -n "$t" ] && exclude+=(--exclude "$t")
+          done < <(git tag --points-at HEAD --list 'v*')
+          ref=$(git describe --tags --match 'v*' "${exclude[@]}" --abbrev=0 2>/dev/null || true)
           if [ -z "$ref" ] && [ -n "$BASE_REF" ]; then
             ref=$(git merge-base HEAD "origin/$BASE_REF" || true)
           fi
@@ -114,6 +148,19 @@ jobs:
       - name: cargo semver-checks
         if: steps.baseline.outputs.root != ''
         run: docker run --rm -v "${{ github.workspace }}:/src" -v "${{ github.workspace }}/.cargo-registry:/opt/cargo/registry" -v "${{ steps.baseline.outputs.root }}:/baseline:ro" -w /src -e CARGO_TARGET_DIR=/src/target/semver -e QMAKE=/usr/bin/qmake6 atlas-framework-dev:ci cargo semver-checks --workspace --baseline-root /baseline
+
+      - name: Own the cargo cache
+        if: ${{ !cancelled() && github.event_name == 'push' }}
+        run: sudo chown -R "$(id -u):$(id -g)" .cargo-registry target
+
+      - name: Save the cargo cache
+        if: ${{ !cancelled() && github.event_name == 'push' && steps.cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            .cargo-registry
+            target
+          key: ${{ steps.cache.outputs.cache-primary-key }}
 
   perf:
     # The app template on this Atlas.Ui, headless, against perf/budget.json.
@@ -130,7 +177,8 @@ jobs:
       - uses: ./.github/actions/dev-container
 
       - name: Restore the build caches
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           # Atlas.Ui's objects, and the template's build tree with its cargo target.
           path: |
@@ -161,6 +209,20 @@ jobs:
           path: perf/out.json
           if-no-files-found: ignore
 
+      - name: Own the build caches
+        if: ${{ !cancelled() && github.event_name == 'push' }}
+        run: sudo chown -R "$(id -u):$(id -g)" .ccache .cargo-registry .perf-template
+
+      - name: Save the build caches
+        if: ${{ !cancelled() && github.event_name == 'push' && steps.cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            .ccache
+            .cargo-registry
+            .perf-template
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
   apps:
     # The Atlas apps against this Atlas.Ui: a type named like one of an app's own
     # files breaks that app (it fails here); rule 6 findings belong to the apps
@@ -181,7 +243,16 @@ jobs:
           done < tools/apps.txt
 
       - name: Design rule 6 findings (informational)
-        run: tools/lint-app.sh "$RUNNER_TEMP"/apps/* || echo "::notice::Rule 6 errors above belong to those apps; they do not fail this check"
+        # Exit 1 is findings, which belong to the apps; anything else (a
+        # missing app, a broken script) fails.
+        run: |
+          rc=0
+          tools/lint-app.sh "$RUNNER_TEMP"/apps/* || rc=$?
+          if [ "$rc" = 1 ]; then
+            echo "::notice::Rule 6 errors above belong to those apps; they do not fail this check"
+          elif [ "$rc" != 0 ]; then
+            exit "$rc"
+          fi
 
       - name: Type names against the apps' files
         run: tools/check-app-names.sh "$RUNNER_TEMP"/apps/*
@@ -200,6 +271,13 @@ jobs:
         run: |
           python3 tools/test_docs.py
           python3 tools/docs.py check
+
+      - name: Design rules in the gallery and the template
+        # These are ours, so their findings fail; so does a type name the
+        # template's own files would hide.
+        run: |
+          tools/lint-app.sh ui/gallery template
+          tools/check-app-names.sh template
 
   publish-docs:
     # main, and v* tags that point at main's tip: rebuilds the docs-published
