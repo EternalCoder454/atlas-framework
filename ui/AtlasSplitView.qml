@@ -356,13 +356,20 @@ QQC2.SplitView {
         }
     }
     // The mouse Back button takes the click exclusively while there is a pane
-    // to go back to, so an enclosing stack does not pop as well.
-    TapHandler {
-        acceptedButtons: Qt.BackButton
-        gesturePolicy: TapHandler.WithinBounds
-        grabPermissions: PointerHandler.CanTakeOverFromAnything
-        enabled: control._canBack()
-        onTapped: control._back()
+    // to go back to, so an enclosing stack does not pop as well. It sits over
+    // the panes: a pane that takes presses would otherwise keep the click.
+    // Other buttons pass through (the item itself takes no presses).
+    readonly property Item _backMouse: Item {
+        parent: control
+        anchors.fill: parent
+        z: 3
+        TapHandler {
+            acceptedButtons: Qt.BackButton
+            gesturePolicy: TapHandler.WithinBounds
+            grabPermissions: PointerHandler.CanTakeOverFromAnything
+            enabled: control._canBack()
+            onTapped: control._back()
+        }
     }
     Translate {
         id: slide
