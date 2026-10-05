@@ -41,7 +41,7 @@ bool hasSpace(const QString &s)
 
 AtlasUrlValidator::AtlasUrlValidator(QObject *parent)
     : QValidator(parent)
-    , m_schemes{QStringLiteral("https"), QStringLiteral("http")}
+    , m_schemes{QStringLiteral("https")}
 {
 }
 
@@ -138,12 +138,23 @@ QValidator::State AtlasEmailValidator::validate(QString &input, int &) const
     if (local.size() > kMaxLocalPart) {
         return Invalid;
     }
+    // Characters that are legal only in quoted local parts, and that let an
+    // address smuggle extra recipients or parameters into mailto: or a header.
+    static const QString special = QStringLiteral(",;<>\"()[]\\:?&%#");
+    for (const QChar c : local) {
+        if (special.contains(c) || c.category() == QChar::Other_Format) {
+            return Invalid;
+        }
+    }
     for (const QChar c : domain) {
         if (!(c.isLetterOrNumber() || c == QLatin1Char('-') || c == QLatin1Char('.'))) {
             return Invalid;
         }
     }
     if (local.isEmpty() || domain.isEmpty() || !domain.contains(QLatin1Char('.'))) {
+        return Intermediate;
+    }
+    if (local.startsWith(QLatin1Char('.')) || local.endsWith(QLatin1Char('.')) || local.contains(QLatin1String(".."))) {
         return Intermediate;
     }
     const QStringList labels = domain.split(QLatin1Char('.'));

@@ -29,7 +29,7 @@ private Q_SLOTS:
         QTest::newRow("empty") << "" << QValidator::Intermediate;
         QTest::newRow("https") << "https://example.com/a?b=c" << QValidator::Acceptable;
         QTest::newRow("upper scheme") << "HTTPS://Example.com" << QValidator::Acceptable;
-        QTest::newRow("http") << "http://localhost:8080" << QValidator::Acceptable;
+        QTest::newRow("http, not by default") << "http://localhost:8080" << QValidator::Invalid;
         QTest::newRow("scheme start") << "ht" << QValidator::Intermediate;
         QTest::newRow("scheme colon") << "https:" << QValidator::Intermediate;
         QTest::newRow("no host") << "https://" << QValidator::Intermediate;
@@ -56,6 +56,8 @@ private Q_SLOTS:
         v.setSchemes({QStringLiteral("HTTPS")});
         QCOMPARE(check(v, "https://a.com"), QValidator::Acceptable);
         QCOMPARE(check(v, "http://a.com"), QValidator::Invalid);
+        v.setSchemes({QStringLiteral("https"), QStringLiteral("http")});
+        QCOMPARE(check(v, "http://localhost:8080"), QValidator::Acceptable);
         v.setSchemes({QStringLiteral("mailto")});
         QCOMPARE(check(v, "mailto:a@b.com"), QValidator::Acceptable);
         QString s = QStringLiteral("  https://a.com  ");
@@ -84,6 +86,14 @@ private Q_SLOTS:
         QTest::newRow("too long") << QString(300, 'a') + "@example.com" << QValidator::Invalid;
         QTest::newRow("long local") << QString(65, 'a') + "@example.com" << QValidator::Invalid;
         QTest::newRow("unicode") << QString::fromUtf8("jörg@bücher.de") << QValidator::Acceptable;
+        QTest::newRow("mailto param") << "a?bcc=x@evil.com" << QValidator::Invalid;
+        QTest::newRow("comma") << "x,y@evil.com" << QValidator::Invalid;
+        QTest::newRow("angle") << "a<b>@x.com" << QValidator::Invalid;
+        QTest::newRow("quote") << "a\"b@x.com" << QValidator::Invalid;
+        QTest::newRow("format char") << QString::fromUtf8("a\u202Eb@x.com") << QValidator::Invalid;
+        QTest::newRow("dotted local") << "a.b@x.com" << QValidator::Acceptable;
+        QTest::newRow("leading dot") << ".a@x.com" << QValidator::Intermediate;
+        QTest::newRow("double dot") << "a..b@x.com" << QValidator::Intermediate;
     }
     void email()
     {

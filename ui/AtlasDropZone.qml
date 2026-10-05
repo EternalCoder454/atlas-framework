@@ -98,13 +98,21 @@ Item {
 
         function acceptUrl(url: url): bool {
             const s = url.toString();
-            if (!control.allowRemote && !s.startsWith("file:")) {
+            // Local means file:/// (no host): file://server/... is a share.
+            if (!control.allowRemote && !s.startsWith("file:///")) {
                 return false;
             }
             if (control.nameFilters.length === 0) {
                 return true;
             }
-            const name = decodeURIComponent(s.split("?")[0].split("#")[0].split("/").pop());
+            const raw = s.split("?")[0].split("#")[0].split("/").pop();
+            let name = raw;
+            try {
+                name = decodeURIComponent(raw);
+            } catch (e) {
+                // Not UTF-8 (a Linux name can be any bytes): match the
+                // encoded name rather than drop every file in the drag.
+            }
             for (let i = 0; i < control.nameFilters.length; ++i) {
                 if (globToRegExp(control.nameFilters[i]).test(name)) {
                     return true;
