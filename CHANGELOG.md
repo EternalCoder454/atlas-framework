@@ -33,6 +33,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   writable `maxContentWidth`. docs/DESIGN.md "States" says what every control
   does disabled, read only, in error, busy, hovered, pressed and focused, and
   `tests/state` checks the disabled and focus rules on every demo.
+- Atlas.Ui: AtlasSplitView (Atlas divider, remembers sizes), AtlasNavigationStack
+  (pages with a Back header) and AtlasViewSwitcher (page tabs with symbols and
+  badges).
 - Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
