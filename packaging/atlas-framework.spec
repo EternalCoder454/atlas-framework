@@ -187,8 +187,11 @@ fi
 %{_datadir}/applications/net.eterneon.atlas.symbols.desktop
 
 %changelog
-* Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.5.0-1
-- In development: robustness release; see CHANGELOG.md
+* Mon Oct 05 2026 Atlas <atlas@eterneon.net> - 1.5.0-1
+- Atlas.Ui: AtlasForm, AtlasFormEntry, AtlasPreferencesDialog and
+  AtlasPreferencesPage; AtlasShelf and the store card states; AtlasTextView;
+  InfoBanner.animated; AtlasStyle.alpha, mix and softwareRendering
+- Robustness fixes across Atlas.Ui and the crates; see CHANGELOG.md
 
 * Sun Oct 04 2026 Atlas <atlas@eterneon.net> - 1.4.0-1
 - Atlas.Ui: AtlasPasswordField, a password field with a show/hide eye

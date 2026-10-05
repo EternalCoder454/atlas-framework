@@ -6,7 +6,7 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
-## 1.5.0 (unreleased)
+## 1.5.0
 
 - New: `AtlasStyle.softwareRendering`, true under Qt Quick's software
   adaptation and under a software OpenGL rasterizer (llvmpipe). The edge
