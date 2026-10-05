@@ -31,11 +31,12 @@ let handle = spawn_ui(
 ## Behaviour
 
 - One runtime for the app: a thread named `atlas-tasks` running a current-thread tokio runtime with timers on (no I/O driver: tokio's sockets do not work on it, so use your own runtime for those). It starts on the first call.
+- The runtime has one thread: **never block in a future** (no `std::thread::sleep`, blocking file or network calls, or long loops without an await), or every other task waits. Use `runtime()?.spawn_blocking(...)` (the blocking pool is on, threads start on demand) or a thread of your own.
 - `spawn_ui` runs the future for at most `timeout`. On timeout the future is dropped.
 - `on_done` runs once on the UI thread, for every outcome including `Cancelled`, so a busy indicator can always be reset.
 - If `post` fails (for `queue`: the QObject is gone) the result is dropped quietly.
 - Dropping a `TaskHandle` does not cancel the task.
-- A panic in the future is logged and reported as `Outcome::Panicked`; the runtime goes on.
+- A panic in the future is logged and reported as `Outcome::Panicked`; the runtime goes on. A panic in `post` or `on_done` is caught and logged too. All of this needs `panic = "unwind"` (the default); with `"abort"` the process ends.
 - Errors: `spawn_ui` and `runtime` fail only if the runtime thread cannot start (they try again on the next call).
 
 ## Items

@@ -45,7 +45,7 @@ pub enum MigrateError {
     /// The file was written by a newer app (`found`) than this one knows
     /// (`known`). It is left alone: reading it still works, but do not `set`.
     Newer { found: u32, known: u32 },
-    /// `SchemaVersion` is not a number.
+    /// `SchemaVersion` is not a number (the value is cut to 64 characters).
     BadVersion(String),
     /// The file could not be read, locked or written (`InvalidData` for a
     /// file that is not UTF-8, `TimedOut` for a held lock).
@@ -95,13 +95,14 @@ impl Settings {
     /// `SchemaVersion` is version 0. Call it once at start, before reading.
     ///
     /// - Everything runs in memory under the writer lock. The old file is
-    ///   copied to `<name>.bak` (atomically, with its mode) only after every
-    ///   step succeeded, then the new text replaces the file atomically. A
+    ///   copied to `<name>.bak` (atomically, with its mode; one per call, the
+    ///   last call's wins) only after every step succeeded, then the new text replaces the file atomically. A
     ///   failing step returns [`MigrateError::Failed`] naming its version and
     ///   writes nothing, not even the `.bak`.
     /// - A file newer than the app is never changed: `Err(Newer)`. Choose
     ///   what the app does: read it and keep from calling `set`, or quit with
     ///   a message.
+    /// - A panic in a step is caught like an error (with `panic = "unwind"`).
     /// - A missing or empty file is created at the current version, so a
     ///   later start does not run the migrations on new data.
     pub fn migrate(&self, migrations: &[Migration]) -> Result<Migrated, MigrateError> {
@@ -130,7 +131,7 @@ impl Settings {
             Some(v) => v
                 .trim()
                 .parse::<u32>()
-                .map_err(|_| MigrateError::BadVersion(v.clone()))?,
+                .map_err(|_| MigrateError::BadVersion(v.chars().take(64).collect()))?,
         };
         if found > known {
             log::warn!(
@@ -160,6 +161,12 @@ impl Settings {
                         log::error!("settings migration from version {n} failed: {source}");
                         MigrateError::Failed { from: n, source }
                     })?;
+                if next.len() as u64 > super::MAX_BYTES {
+                    return Err(MigrateError::Failed {
+                        from: n,
+                        source: "the migrated text is over 4 MB".into(),
+                    });
+                }
                 cur = next;
             }
         }
@@ -289,6 +296,24 @@ mod tests {
         assert_eq!(s.get("Atlas", "SchemaVersion").as_deref(), Some("2"));
         assert!(!d.path().join("sub/atlas-yrc.bak").exists());
         assert_eq!(s.migrate(&[m0, m1]).unwrap(), Migrated::UpToDate);
+    }
+
+    #[test]
+    fn a_huge_result_is_refused_and_a_long_bad_version_is_cut() {
+        fn big(t: &str) -> R {
+            Ok(format!("{t}{}", "a".repeat(5 * 1024 * 1024)))
+        }
+        let (d, s) = file("[General]\nLang=nl\n");
+        let e = s.migrate(&[m0, big]).unwrap_err();
+        assert!(matches!(e, MigrateError::Failed { from: 1, .. }), "{e}");
+        assert_eq!(
+            fs::read_to_string(s.path()).unwrap(),
+            "[General]\nLang=nl\n"
+        );
+        assert!(!d.path().join("atlas-xrc.bak").exists());
+        let (_d, s) = file(&format!("[Atlas]\nSchemaVersion={}\n", "x".repeat(5000)));
+        let e = s.migrate(&[m0]).unwrap_err();
+        assert!(e.to_string().len() < 200, "{}", e.to_string().len());
     }
 
     #[test]

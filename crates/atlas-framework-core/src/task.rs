@@ -18,6 +18,7 @@
 
 use std::future::Future;
 use std::io;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
@@ -25,6 +26,10 @@ use std::time::Duration;
 
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
+
+// Panics in `post` and `on_done` are caught and logged, like those in the
+// future, only with `panic = "unwind"` (the default); with "abort" the
+// process ends.
 
 /// How a task ended.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,9 +161,16 @@ where
                 }
             },
         };
-        let job: UiJob<O> = Box::new(move |obj| on_done(obj, outcome));
+        let job: UiJob<O> = Box::new(move |obj| {
+            if catch_unwind(AssertUnwindSafe(|| on_done(obj, outcome))).is_err() {
+                log::error!("a background task's on_done panicked");
+            }
+        });
         // Gone QObject: nothing to tell.
-        let _ = post(job);
+        match catch_unwind(AssertUnwindSafe(|| post(job))) {
+            Ok(_) => {}
+            Err(_) => log::error!("a background task's post closure panicked"),
+        }
     });
     Ok(handle)
 }
@@ -268,6 +280,29 @@ mod tests {
         assert_eq!(r.recv_timeout(WAIT).unwrap(), Outcome::Panicked);
         let (_h, r) = run(Duration::from_secs(5), async { 2 });
         assert_eq!(r.recv_timeout(WAIT).unwrap(), Outcome::Done(2));
+    }
+
+    #[test]
+    fn a_panicking_on_done_or_post_is_contained() {
+        let (jtx, orx) = fake_ui();
+        spawn_ui(
+            move |job| jtx.send(Some(job)),
+            Duration::from_secs(5),
+            async { 1 },
+            |_: Pin<&mut Ui>, _| panic!("on_done"),
+        )
+        .unwrap();
+        // the fake UI thread survives and reports it ran the job
+        orx.recv_timeout(WAIT).unwrap();
+        spawn_ui(
+            |_job: UiJob<Ui>| -> Result<(), ()> { panic!("post") },
+            Duration::from_secs(5),
+            async { 1 },
+            |_: Pin<&mut Ui>, _| {},
+        )
+        .unwrap();
+        let (_h, r) = run(Duration::from_secs(5), async { 3 });
+        assert_eq!(r.recv_timeout(WAIT).unwrap(), Outcome::Done(3));
     }
 
     #[test]

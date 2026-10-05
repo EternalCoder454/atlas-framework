@@ -7,9 +7,10 @@ use std::io;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::os::unix::ffi::OsStrExt;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use super::{Settings, get_in, parse_bool, read_text, resolve_link};
@@ -18,15 +19,21 @@ use super::{Settings, get_in, parse_bool, read_text, resolve_link};
 /// several events (create, write, rename, chmod).
 pub const DEBOUNCE: Duration = Duration::from_millis(200);
 
+/// The longest the callback is held back by a steady stream of events.
+const MAX_WAIT: Duration = Duration::from_secs(2);
+
 /// The file's contents at one moment, read once, so every `get` of one
-/// callback agrees. A missing, unreadable or non-regular file reads as empty.
+/// callback agrees. A snapshot is only made of a file that is missing
+/// (`exists()` is false) or that was read as text: a file that cannot be read
+/// (over 4 MB, not a regular file, no permission) is never reported as
+/// missing; the watch logs it and keeps the last snapshot.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Snapshot {
     text: Option<String>,
 }
 
 impl Snapshot {
-    /// Whether the file existed and could be read.
+    /// Whether the file existed (`false` only for a missing file).
     pub fn exists(&self) -> bool {
         self.text.is_some()
     }
@@ -42,12 +49,15 @@ impl Snapshot {
     }
 }
 
-/// Keeps a watch alive. Dropping it stops the watch; a callback already
-/// running finishes, none starts after the drop.
+/// Keeps a watch alive. Dropping it stops the watch and waits for the watch
+/// thread, so no callback runs after the drop returns (a callback that is
+/// running finishes first; dropping the watcher from inside its own callback
+/// does not wait).
 #[derive(Debug)]
 pub struct SettingsWatcher {
     stop: Arc<AtomicBool>,
     wake: OwnedFd,
+    thread: Option<JoinHandle<()>>,
 }
 
 impl Drop for SettingsWatcher {
@@ -56,6 +66,11 @@ impl Drop for SettingsWatcher {
         let one = 1u64.to_ne_bytes();
         // SAFETY: a valid eventfd and an 8-byte buffer.
         unsafe { libc::write(self.wake.as_raw_fd(), one.as_ptr().cast(), 8) };
+        if let Some(h) = self.thread.take()
+            && h.thread().id() != std::thread::current().id()
+        {
+            let _ = h.join();
+        }
     }
 }
 
@@ -67,9 +82,82 @@ fn cvt(r: libc::c_int) -> io::Result<libc::c_int> {
     }
 }
 
-fn snapshot(path: &Path) -> Snapshot {
-    Snapshot {
-        text: read_text(path).ok(),
+/// `Ok(Missing)` for a file that is not there, an error for one that is but
+/// cannot be read.
+fn snapshot(path: &Path) -> io::Result<Snapshot> {
+    match read_text(path) {
+        Ok(t) => Ok(Snapshot { text: Some(t) }),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Snapshot { text: None }),
+        Err(e) => Err(e),
+    }
+}
+
+/// One watched directory and the file names in it that count.
+struct Watched {
+    wd: libc::c_int,
+    name: OsString,
+}
+
+/// Watches the directory of `path` and, when `path` is a symlink, of its
+/// target. Creates the path's own directory. A target directory that does
+/// not exist is skipped (logged).
+fn establish(ino: &OwnedFd, path: &Path) -> io::Result<Vec<Watched>> {
+    let target = resolve_link(path)?;
+    let mask = libc::IN_CLOSE_WRITE
+        | libc::IN_MOVED_TO
+        | libc::IN_MOVED_FROM
+        | libc::IN_CREATE
+        | libc::IN_DELETE
+        | libc::IN_MODIFY
+        | libc::IN_DELETE_SELF
+        | libc::IN_MOVE_SELF;
+    let mut out: Vec<Watched> = Vec::new();
+    for (i, p) in [path, target.as_path()].into_iter().enumerate() {
+        let (Some(dir), Some(name)) = (p.parent(), p.file_name()) else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "not a file path",
+            ));
+        };
+        let dir = if dir.as_os_str().is_empty() {
+            Path::new(".")
+        } else {
+            dir
+        };
+        if i == 0 {
+            fs::create_dir_all(dir)?;
+        }
+        let c = CString::new(dir.as_os_str().as_bytes())
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "NUL in a path"))?;
+        // SAFETY: a valid inotify fd and a NUL-terminated path.
+        let wd = unsafe { libc::inotify_add_watch(ino.as_raw_fd(), c.as_ptr(), mask) };
+        if wd < 0 {
+            let e = io::Error::last_os_error();
+            if i == 0 {
+                return Err(e);
+            }
+            log::warn!(
+                "settings watch: not watching the link target's directory {}: {e}",
+                dir.display()
+            );
+            continue;
+        }
+        if !out.iter().any(|w| w.wd == wd && w.name == name) {
+            out.push(Watched {
+                wd,
+                name: name.to_os_string(),
+            });
+        }
+    }
+    Ok(out)
+}
+
+fn forget(ino: &OwnedFd, old: &[Watched], keep: &[Watched]) {
+    for w in old {
+        if !keep.iter().any(|k| k.wd == w.wd) {
+            // SAFETY: a valid inotify fd; an already-gone watch just fails.
+            unsafe { libc::inotify_rm_watch(ino.as_raw_fd(), w.wd) };
+        }
     }
 }
 
@@ -78,16 +166,27 @@ impl Settings {
     /// change, on a thread named `atlas-settings-watch`.
     ///
     /// - The directory is watched, not the file: a write in place, a rename
-    ///   over the file, a delete and a re-create are all seen. A symlinked
-    ///   file is followed to its target's directory too.
-    /// - Events are debounced by [`DEBOUNCE`], and the callback runs only if
+    ///   over the file, a delete and a re-create are all seen.
+    /// - A symlinked file is followed: its target's directory is watched too,
+    ///   and the link is resolved again when something happens to the link
+    ///   itself, so a retargeted link is followed. A link whose target is in
+    ///   a directory that does not exist is watched only through the link's
+    ///   own directory: the target appearing later is not seen until the link
+    ///   changes or another event of the file arrives.
+    /// - Events are debounced by [`DEBOUNCE`] (but a steady stream of them
+    ///   holds the callback back at most 2 s), and the callback runs only if
     ///   the text differs from the last one reported (the text at the call to
     ///   `watch` is the first), so the app's own no-op `set`s and a
     ///   delete-then-same-content never call it. A deleted file is reported
     ///   as a snapshot where [`Snapshot::exists`] is false.
-    /// - The directory is created if missing. If it is removed while watched,
-    ///   the watch logs a warning and ends.
-    /// - A panic in the callback is logged; the watch goes on.
+    /// - A file that exists but cannot be read (over 4 MB, not a regular
+    ///   file, no permission) is not "deleted": the watch logs it, does not
+    ///   call back, and keeps the last snapshot until the file reads again.
+    /// - The directory is created if missing. If it is removed or renamed
+    ///   while watched, it is created and watched again at the same path; if
+    ///   that fails the watch logs a warning and ends.
+    /// - A panic in the callback is logged and the watch goes on (with
+    ///   `panic = "unwind"`; under `panic = "abort"` the process ends).
     /// - Errors: no home directory (`NotFound`), no inotify instance or watch
     ///   slots left, the directory not readable.
     pub fn watch<F>(&self, on_change: F) -> io::Result<SettingsWatcher>
@@ -100,28 +199,6 @@ impl Settings {
                 "no home directory to keep settings in",
             ));
         }
-        let target = resolve_link(&self.path)?;
-        // (directory, file name) pairs: the path itself, and its link target.
-        let mut spots: Vec<(std::path::PathBuf, OsString)> = Vec::new();
-        for p in [self.path.as_path(), target.as_path()] {
-            let (Some(dir), Some(name)) = (p.parent(), p.file_name()) else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "not a file path",
-                ));
-            };
-            let dir = if dir.as_os_str().is_empty() {
-                Path::new(".")
-            } else {
-                dir
-            };
-            let spot = (dir.to_path_buf(), name.to_os_string());
-            if !spots.contains(&spot) {
-                spots.push(spot);
-            }
-        }
-        fs::create_dir_all(&spots[0].0)?;
-
         // SAFETY: plain syscalls; the fds are wrapped at once.
         let ino = unsafe {
             OwnedFd::from_raw_fd(cvt(libc::inotify_init1(
@@ -134,55 +211,52 @@ impl Settings {
                 libc::EFD_CLOEXEC | libc::EFD_NONBLOCK,
             ))?)
         };
-        let mask = libc::IN_CLOSE_WRITE
-            | libc::IN_MOVED_TO
-            | libc::IN_MOVED_FROM
-            | libc::IN_CREATE
-            | libc::IN_DELETE
-            | libc::IN_MODIFY
-            | libc::IN_DELETE_SELF
-            | libc::IN_MOVE_SELF;
-        let mut dirs: Vec<(libc::c_int, OsString)> = Vec::new();
-        for (dir, name) in &spots {
-            let c = CString::new(dir.as_os_str().as_bytes())
-                .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "NUL in a path"))?;
-            let wd = cvt(unsafe { libc::inotify_add_watch(ino.as_raw_fd(), c.as_ptr(), mask) })?;
-            dirs.push((wd, name.clone()));
-        }
-        let names: Vec<OsString> = spots.iter().map(|(_, n)| n.clone()).collect();
-        let wds: Vec<libc::c_int> = dirs.iter().map(|d| d.0).collect();
-        let stop = Arc::new(AtomicBool::new(false));
-        let wake_fd = wake.as_raw_fd();
+        let watched = establish(&ino, &self.path)?;
         let path = self.path.clone();
-        let first = snapshot(&path);
+        let first = snapshot(&path).unwrap_or_else(|e| {
+            log::warn!("settings watch: {} cannot be read: {e}", path.display());
+            Snapshot { text: None }
+        });
+        let stop = Arc::new(AtomicBool::new(false));
         let stop2 = stop.clone();
-        let eventfd = unsafe { OwnedFd::from_raw_fd(cvt(libc::dup(wake_fd))?) };
-        std::thread::Builder::new()
+        // SAFETY: a valid fd.
+        let wake2 = unsafe { OwnedFd::from_raw_fd(cvt(libc::dup(wake.as_raw_fd()))?) };
+        let thread = std::thread::Builder::new()
             .name("atlas-settings-watch".into())
-            .spawn(move || run(ino, eventfd, stop2, wds, names, path, first, on_change))?;
-        Ok(SettingsWatcher { stop, wake })
+            .spawn(move || run(ino, wake2, stop2, watched, path, first, on_change))?;
+        Ok(SettingsWatcher {
+            stop,
+            wake,
+            thread: Some(thread),
+        })
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn run<F: FnMut(&Snapshot)>(
     ino: OwnedFd,
     wake: OwnedFd,
     stop: Arc<AtomicBool>,
-    wds: Vec<libc::c_int>,
-    names: Vec<OsString>,
-    path: std::path::PathBuf,
+    mut watched: Vec<Watched>,
+    path: PathBuf,
     mut last: Snapshot,
     mut on_change: F,
 ) {
+    let link_name = path.file_name().map(|n| n.to_os_string());
     let mut buf = vec![0u8; 16 * 1024];
-    let mut due: Option<Instant> = None;
+    // (first event of the burst, when to read)
+    let mut due: Option<(Instant, Instant)> = None;
+    let bump = |due: &mut Option<(Instant, Instant)>| {
+        let now = Instant::now();
+        let first = due.map_or(now, |d| d.0);
+        *due = Some((first, (now + DEBOUNCE).min(first + MAX_WAIT)));
+    };
     loop {
         let timeout = match due {
             None => -1,
-            Some(t) => t
+            Some((_, t)) => t
                 .saturating_duration_since(Instant::now())
                 .as_millis()
+                .saturating_add(1) // round up: never wake just before it is due
                 .min(i32::MAX as u128) as libc::c_int,
         };
         let mut fds = [
@@ -210,6 +284,7 @@ fn run<F: FnMut(&Snapshot)>(
             return;
         }
         if fds[0].revents & libc::POLLIN != 0 {
+            let mut reestablish = false;
             loop {
                 // SAFETY: buf is valid for its length.
                 let r = unsafe { libc::read(ino.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
@@ -228,34 +303,63 @@ fn run<F: FnMut(&Snapshot)>(
                     let raw = &buf[off + 16..nend];
                     let nm = raw.split(|b| *b == 0).next().unwrap_or(&[]);
                     off = nend;
+                    let ours = watched.iter().any(|w| w.wd == wd);
                     if mask & libc::IN_Q_OVERFLOW != 0 {
-                        due = Some(Instant::now() + DEBOUNCE);
-                    } else if mask & (libc::IN_DELETE_SELF | libc::IN_IGNORED) != 0 {
-                        if wds.contains(&wd) {
-                            log::warn!("settings watch: the directory is gone; watch ends");
-                            // Report the loss of the file once, then stop.
-                            let now = snapshot(&path);
-                            if now != last && !stop.load(Ordering::SeqCst) {
-                                call(&mut on_change, &now);
-                            }
-                            return;
+                        bump(&mut due);
+                    } else if mask & (libc::IN_DELETE_SELF | libc::IN_MOVE_SELF | libc::IN_IGNORED)
+                        != 0
+                    {
+                        if ours {
+                            reestablish = true;
+                            bump(&mut due);
                         }
-                    } else if wds.contains(&wd) && names.iter().any(|n| n.as_bytes() == nm) {
-                        due = Some(Instant::now() + DEBOUNCE);
+                    } else if watched
+                        .iter()
+                        .any(|w| w.wd == wd && w.name.as_bytes() == nm)
+                    {
+                        if link_name.as_ref().is_some_and(|l| l.as_bytes() == nm) {
+                            reestablish = true; // the link itself changed
+                        }
+                        bump(&mut due);
+                    }
+                }
+            }
+            if reestablish {
+                match establish(&ino, &path) {
+                    Ok(new) => {
+                        forget(&ino, &watched, &new);
+                        watched = new;
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "settings watch: cannot watch {} again: {e}; watch ends",
+                            path.display()
+                        );
+                        let now = snapshot(&path).unwrap_or(Snapshot { text: None });
+                        if now != last && !stop.load(Ordering::SeqCst) {
+                            call(&mut on_change, &now);
+                        }
+                        return;
                     }
                 }
             }
         }
-        if let Some(t) = due
+        if let Some((_, t)) = due
             && Instant::now() >= t
         {
             due = None;
-            let now = snapshot(&path);
-            if now != last {
-                last = now.clone();
-                if !stop.load(Ordering::SeqCst) {
-                    call(&mut on_change, &now);
+            match snapshot(&path) {
+                Ok(now) if now != last => {
+                    last = now.clone();
+                    if !stop.load(Ordering::SeqCst) {
+                        call(&mut on_change, &now);
+                    }
                 }
+                Ok(_) => {}
+                Err(e) => log::warn!(
+                    "settings watch: {} exists but cannot be read ({e}); keeping the last values",
+                    path.display()
+                ),
             }
         }
     }
@@ -349,5 +453,117 @@ mod tests {
             rx.recv_timeout(WAIT),
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected)
         ));
+    }
+
+    #[test]
+    fn an_unreadable_file_is_not_a_deletion() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("atlas-xrc");
+        fs::write(&p, "[G]\nA=1\n").unwrap();
+        let s = Settings::at(&p);
+        let (_w, rx) = watch(&s);
+        // over 4 MB
+        fs::write(&p, vec![b'a'; 5 * 1024 * 1024]).unwrap();
+        assert!(rx.recv_timeout(Duration::from_millis(700)).is_err());
+        // a FIFO in its place
+        let fifo = d.path().join("fifo");
+        let c = std::ffi::CString::new(fifo.to_str().unwrap()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
+        fs::rename(&fifo, &p).unwrap();
+        assert!(rx.recv_timeout(Duration::from_millis(700)).is_err());
+        // readable again: reported as a normal change
+        fs::remove_file(&p).unwrap();
+        let gone = rx.recv_timeout(WAIT).unwrap();
+        assert!(!gone.exists());
+        fs::write(&p, "[G]\nA=9\n").unwrap();
+        assert_eq!(
+            rx.recv_timeout(WAIT).unwrap().get("G", "A").as_deref(),
+            Some("9")
+        );
+    }
+
+    #[test]
+    fn follows_a_retargeted_link() {
+        let d = tempfile::tempdir().unwrap();
+        let (a, b) = (d.path().join("a"), d.path().join("b"));
+        fs::create_dir(&a).unwrap();
+        fs::create_dir(&b).unwrap();
+        fs::write(a.join("real"), "[G]\nA=a\n").unwrap();
+        fs::write(b.join("real"), "[G]\nA=b\n").unwrap();
+        let link = d.path().join("atlas-xrc");
+        std::os::unix::fs::symlink(a.join("real"), &link).unwrap();
+        let s = Settings::at(&link);
+        let (_w, rx) = watch(&s);
+        let tmp = d.path().join("tmplink");
+        std::os::unix::fs::symlink(b.join("real"), &tmp).unwrap();
+        fs::rename(&tmp, &link).unwrap();
+        assert_eq!(
+            rx.recv_timeout(WAIT).unwrap().get("G", "A").as_deref(),
+            Some("b")
+        );
+        // the new target's directory is watched now; the old one is not
+        fs::write(b.join("real"), "[G]\nA=b2\n").unwrap();
+        assert_eq!(
+            rx.recv_timeout(WAIT).unwrap().get("G", "A").as_deref(),
+            Some("b2")
+        );
+        fs::write(a.join("real"), "[G]\nA=a2\n").unwrap();
+        assert!(rx.recv_timeout(Duration::from_millis(600)).is_err());
+    }
+
+    #[test]
+    fn follows_a_renamed_directory() {
+        let d = tempfile::tempdir().unwrap();
+        let dir = d.path().join("cfg");
+        fs::create_dir(&dir).unwrap();
+        let p = dir.join("atlas-xrc");
+        fs::write(&p, "[G]\nA=1\n").unwrap();
+        let s = Settings::at(&p);
+        let (_w, rx) = watch(&s);
+        fs::rename(&dir, d.path().join("moved")).unwrap();
+        let gone = rx.recv_timeout(WAIT).unwrap();
+        assert!(!gone.exists());
+        // the same path is watched again
+        fs::write(&p, "[G]\nA=2\n").unwrap();
+        assert_eq!(
+            rx.recv_timeout(WAIT).unwrap().get("G", "A").as_deref(),
+            Some("2")
+        );
+    }
+
+    #[test]
+    fn a_steady_stream_cannot_starve_the_callback() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("atlas-xrc");
+        let s = Settings::at(&p);
+        let (_w, rx) = watch(&s);
+        let t = Instant::now();
+        let mut i = 0;
+        while t.elapsed() < Duration::from_millis(3500) {
+            fs::write(&p, format!("[G]\nA={i}\n")).unwrap();
+            i += 1;
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert!(rx.try_recv().is_ok(), "no callback during the burst");
+    }
+
+    #[test]
+    fn drop_waits_and_works_from_inside_the_callback() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("atlas-xrc");
+        let s = Settings::at(&p);
+        let (tx, rx) = channel();
+        let slot: Arc<std::sync::Mutex<Option<SettingsWatcher>>> = Arc::default();
+        let slot2 = slot.clone();
+        let w = s
+            .watch(move |_| {
+                // dropping the watcher on the watch thread must not deadlock
+                drop(slot2.lock().unwrap().take());
+                let _ = tx.send(());
+            })
+            .unwrap();
+        *slot.lock().unwrap() = Some(w);
+        s.set("G", "A", Some("1")).unwrap();
+        rx.recv_timeout(WAIT).unwrap();
     }
 }

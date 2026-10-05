@@ -65,10 +65,10 @@ match s.migrate(MIGRATIONS) {
 }
 ```
 
-- All steps run in memory under the writer lock. Only when every step has succeeded is the old file copied to `<name>.bak` (a temp file and a rename, with the old file's mode; an earlier `.bak` is replaced), and then the new text replaces the file atomically. A failing step, or a panic in one, returns `MigrateError::Failed { from, source }` and writes nothing, not even the `.bak`. Its message names the version: "settings migration from version 1 to 2 failed: ...".
+- All steps run in memory under the writer lock. Only when every step has succeeded is the old file copied to `<name>.bak` (a temp file and a rename, with the old file's mode; one `.bak` per `migrate` call, so a later call that upgrades replaces it: the last one wins), and then the new text replaces the file atomically. A failing step, a step whose text is over 4 MB, or a panic in one (caught only with `panic = "unwind"`), returns `MigrateError::Failed { from, source }` and writes nothing, not even the `.bak`. Its message names the version: "settings migration from version 1 to 2 failed: ...".
 - A file newer than the app (`SchemaVersion` above `migrations.len()`) is never written: `migrate` returns `MigrateError::Newer { found, known }` and logs a warning. The file still reads. The app chooses: read it and avoid `set`, or quit with a message. Nothing stops a later `set`, so the app must not call it.
 - A missing or empty file is created at the current version (`Migrated::Created`), so a later start does not run the migrations on new data.
-- `SchemaVersion` that is not a number is `MigrateError::BadVersion`; an immutable one is `Io` with `PermissionDenied`; a file that is not UTF-8 is `Io` with `InvalidData`.
+- `SchemaVersion` that is not a number is `MigrateError::BadVersion` (the value cut to 64 characters); an immutable one is `Io` with `PermissionDenied`; a file that is not UTF-8 is `Io` with `InvalidData`.
 
 | Item | Description |
 |---|---|
@@ -90,11 +90,13 @@ let _watch = s.watch(|new| {
 })?;
 ```
 
-- The directory is watched with inotify (through `libc`; no new dependency), not the file, so a write in place, an editor's rename over the file, a delete and a re-create are all seen. A symlinked file is followed: its target's directory is watched as well. Other files in the directory are ignored.
-- Events are debounced: the callback runs once the file has been quiet for `DEBOUNCE` (200 ms). It runs only when the text differs from the last one reported; the text when `watch` was called is the first. The app's own `set` that changes nothing, or a delete and re-create with the same text, call nothing.
-- A deleted file gives a `Snapshot` where `exists()` is false and every `get` is `None`.
-- The directory is created if it is missing. If it is removed while watched, the watch logs a warning, reports the file's loss and ends.
-- A panic in the callback is logged and the watch goes on. The callback runs on the watch thread, not the UI thread: hand the values over (see [task](task.md)).
+- The directory is watched with inotify (through `libc`; no new dependency), not the file, so a write in place, an editor's rename over the file, a delete and a re-create are all seen. Other files in the directory are ignored.
+- A symlinked file is followed: its target's directory is watched as well, and the link is resolved again when the link itself changes, so a retargeted link is followed. A link whose target is in a directory that does not exist is watched only through the link's own directory: the target appearing later is not seen until the link changes.
+- Events are debounced: the callback runs once the file has been quiet for `DEBOUNCE` (200 ms), but a steady stream of events holds it back at most 2 seconds. It runs only when the text differs from the last one reported; the text when `watch` was called is the first. The app's own `set` that changes nothing, or a delete and re-create with the same text, call nothing.
+- A deleted file gives a `Snapshot` where `exists()` is false and every `get` is `None`. `exists()` is false only for a missing file. A file that is there but cannot be read (over 4 MB, not a regular file such as a FIFO, no permission) is logged and no callback runs: the last values stand until it reads again, so an app that writes defaults when `!exists()` never overwrites it.
+- The directory is created if it is missing. If it is removed or renamed while watched, it is created and watched again at the same path (a deletion of the file is reported); if that fails the watch logs a warning and ends.
+- A panic in the callback is logged and the watch goes on (only with `panic = "unwind"`, the default). The callback runs on the watch thread, not the UI thread: hand the values over (see [task](task.md)).
+- Dropping the `SettingsWatcher` waits for the watch thread, so no callback runs after the drop returns; a callback already running finishes first, so do not drop it while holding a lock that the callback takes. Dropping it from inside its own callback does not wait.
 - Errors: `NotFound` with no home directory; the OS error when inotify has no instances or watches left, or the directory cannot be read.
 
 | Item | Description |
