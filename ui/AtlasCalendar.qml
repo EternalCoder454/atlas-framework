@@ -46,7 +46,7 @@ T.Control {
     // today's. `month` and `year` follow these unless the app binds them.
     // A user edit (a day, a month button, the cursor) is held by Bindings for
     // one turn, so an app binding on `selectedDate`, `month` or `year` is kept
-    // (see docs/reference/atlascalendar.md).
+    // (see docs/reference/atlas-ui/atlas-calendar.md).
     property int _viewMonth: today.getMonth()
     property int _viewYear: today.getFullYear()
     property date _editDate
@@ -74,8 +74,21 @@ T.Control {
         restoreMode: Binding.RestoreBinding
     }
     function _release(): void {
+        const viewHeld = control._editingView;
         control._editingDate = false;
         control._editingView = false;
+        if (!viewHeld) {
+            return;
+        }
+        // An app that refused a turn of the month has put `month` and `year`
+        // back: follow them, and keep the cursor in the month that is shown.
+        control._viewMonth = control.month;
+        control._viewYear = control.year;
+        const c = internals.cursor;
+        if (control._isValid(c) && (c.getMonth() !== control.month || c.getFullYear() !== control.year)) {
+            const last = control._makeDate(control.year, control.month + 1, 0).getDate();
+            internals.cursor = control._clampToRange(control._makeDate(control.year, control.month, Math.min(c.getDate(), last)));
+        }
     }
 
     // A copy of `d` at noon of its local day, in any year (JavaScript's Date
@@ -99,7 +112,9 @@ T.Control {
     // Turns to the month of `d` (nothing for an invalid date).
     function showDate(d: date): void {
         if (_isValid(d)) {
-            _userShow(d);
+            _viewDate(d);
+            month = d.getMonth();
+            year = d.getFullYear();
         }
     }
     // The control's own turn to the month of `d`, with no write to `month` or `year`.
@@ -148,7 +163,7 @@ T.Control {
         Qt.callLater(_release);
     }
 
-    onSelectedDateChanged: showDate(selectedDate)
+    onSelectedDateChanged: _viewDate(selectedDate)
 
     QtObject {
         id: internals

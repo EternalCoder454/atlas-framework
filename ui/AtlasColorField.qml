@@ -36,7 +36,7 @@ T.AbstractButton {
     signal edited
 
     // A user edit is held by a Binding for one turn, so an app binding on
-    // `color` is kept (see docs/reference/atlascolorfield.md).
+    // `color` is kept (see docs/reference/atlas-ui/atlas-color-field.md).
     property color _edit: "transparent"
     property bool _editing: false
     readonly property Binding _hold: Binding {

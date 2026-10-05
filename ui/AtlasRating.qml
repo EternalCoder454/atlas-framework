@@ -47,7 +47,7 @@ T.Control {
     readonly property string _valueText: Qt.locale().toString(_rounded, "f", _rounded % 1 === 0 ? 0 : 1)
 
     // A user edit is held by a Binding for one turn, so an app binding on
-    // `value` is kept (see docs/reference/atlasrating.md).
+    // `value` is kept (see docs/reference/atlas-ui/atlas-rating.md).
     property real _edit: 0
     property bool _editing: false
     readonly property Binding _hold: Binding {

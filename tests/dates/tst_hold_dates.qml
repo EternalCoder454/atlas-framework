@@ -54,6 +54,25 @@ TestCase {
             month: app.month
         }
     }
+    // The app owns the month and also binds the selection, in both orders.
+    Component {
+        id: calBothA
+        AtlasCalendar {
+            locale: Qt.locale("en_US")
+            today: new Date(2026, 2, 12)
+            selectedDate: app.day
+            month: app.month
+        }
+    }
+    Component {
+        id: calBothB
+        AtlasCalendar {
+            locale: Qt.locale("en_US")
+            today: new Date(2026, 2, 12)
+            month: app.month
+            selectedDate: app.day
+        }
+    }
     Component {
         id: pickAccept
         AtlasDatePicker {
@@ -205,5 +224,113 @@ TestCase {
         keyClick(Qt.Key_Delete);
         wait(50);
         verify(isNaN(p.selectedDate.getTime()));
+    }
+
+    function test_calendar_starts_on_the_selection() {
+        // Never changed after creation: the month is the selection's, not today's.
+        const lit = focused(calLiteral);
+        lit.selectedDate = new Date(2026, 8, 5);
+        compare(lit.month, 8);
+        compare(lit.year, 2026);
+        app.day = new Date(2026, 8, 5);
+        const bound = focused(calAccept);
+        compare(bound.month, 8, "a bound selection");
+        compare(bound.year, 2026);
+        wait(50);
+        compare(bound.month, 8);
+        const born = createTemporaryObject(calLiteralSeptember, this);
+        compare(born.month, 8, "a literal selection at creation");
+        compare(born.year, 2026);
+        wait(50);
+        compare(born.month, 8);
+    }
+    Component {
+        id: calLiteralSeptember
+        AtlasCalendar {
+            locale: Qt.locale("en_US")
+            today: new Date(2026, 2, 12)
+            selectedDate: new Date(2026, 8, 5)
+        }
+    }
+    function test_picker_popup_starts_on_the_selection() {
+        app.day = new Date(2026, 8, 5);
+        const p = createTemporaryObject(pickAccept, this);
+        compare(p._popup.contentItem.month, 8);
+        compare(p._popup.contentItem.year, 2026);
+        open(p);
+        compare(p._popup.contentItem.month, 8);
+        compare(p._popup.contentItem.year, 2026);
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => !p.opened);
+        wait(50);
+        compare(p._popup.contentItem.month, 8);
+    }
+    function test_calendar_month_and_selection_both_bound() {
+        for (const comp of [calBothA, calBothB]) {
+            app.day = new Date(2026, 8, 5);
+            app.month = 4;
+            const c = createTemporaryObject(comp, this);
+            verify(c !== null);
+            compare(c.month, 4, "the app's month wins at creation");
+            wait(50);
+            compare(c.month, 4, "and after a turn");
+            app.month = 6;
+            compare(c.month, 6, "and follows the model");
+            app.day = new Date(2026, 10, 1);
+            compare(c.month, 6, "a new selection does not move an app-bound month");
+        }
+    }
+    function test_calendar_refused_turn_keeps_the_cursor_in_view() {
+        const c = focused(calMonthBound);
+        const months = [];
+        c.monthChanged.connect(() => months.push(c.month));
+        keyClick(Qt.Key_PageDown);
+        tryCompare(c, "month", 2);
+        compare(c._viewMonth, 2, "the view follows the month that came back");
+        months.length = 0;
+        keyClick(Qt.Key_Right);
+        wait(50);
+        compare(months.length, 0, "the cursor is in the month that is shown");
+        compare(c.month, 2);
+    }
+    function test_rapid_edits_last_wins() {
+        const c = focused(calAccept);
+        c._activate(new Date(2026, 2, 6));
+        c._activate(new Date(2026, 2, 9));
+        compare(day(c.selectedDate), 20260309);
+        wait(50);
+        compare(day(c.selectedDate), 20260309);
+        compare(day(app.day), 20260309);
+        const r = focused(calRefuse);
+        r._activate(new Date(2026, 2, 6));
+        r._activate(new Date(2026, 2, 10));
+        compare(day(r.selectedDate), 20260310);
+        tryCompare(r, "selectedDate", app.day);
+        const p = createTemporaryObject(pickAccept, this);
+        p._userSet(new Date(2026, 3, 1));
+        p._userSet(new Date(2026, 3, 2));
+        compare(day(p.selectedDate), 20260402);
+        wait(50);
+        compare(day(p.selectedDate), 20260402);
+        compare(day(app.day), 20260402);
+        const q = createTemporaryObject(pickRefuse, this);
+        q._userSet(new Date(2026, 3, 1));
+        q._userSet(new Date(2026, 3, 3));
+        compare(day(q.selectedDate), 20260403);
+        tryCompare(q, "selectedDate", app.day);
+    }
+    function test_picker_refused_pick_popup_matches() {
+        const p = createTemporaryObject(pickRefuse, this);
+        open(p);
+        keyClick(Qt.Key_Right);
+        keyClick(Qt.Key_Return);
+        tryVerify(() => !p.opened);
+        tryCompare(p, "selectedDate", app.day);
+        wait(50);
+        compare(day(p._popup.contentItem.selectedDate), day(p.selectedDate));
+        compare(day(p.selectedDate), 20260305);
+        p.open();
+        tryVerify(() => p.opened);
+        compare(day(p._popup.contentItem.selectedDate), 20260305);
     }
 }

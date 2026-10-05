@@ -32,7 +32,7 @@ T.AbstractButton {
     signal edited
 
     // A user edit is held by a Binding for one turn, so an app binding on
-    // `font.family` or `font.pointSize` is kept (see docs/reference/atlasfontpicker.md).
+    // `font.family` or `font.pointSize` is kept (see docs/reference/atlas-ui/atlas-font-picker.md).
     property string _editFamily
     property real _editSize: 0
     property bool _editingFamily: false

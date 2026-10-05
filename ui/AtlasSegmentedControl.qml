@@ -44,7 +44,7 @@ T.Control {
         return m && typeof m === "object" && m.toolTip ? m.toolTip : _text(i);
     }
     // A user choice is held by a Binding for one turn, so an app binding on
-    // `currentIndex` is kept (see docs/reference/atlassegmentedcontrol.md).
+    // `currentIndex` is kept (see docs/reference/atlas-ui/atlas-segmented-control.md).
     property int _edit: 0
     property bool _editing: false
     readonly property Binding _hold: Binding {

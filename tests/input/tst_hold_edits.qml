@@ -291,4 +291,93 @@ Item {
             compare(p.font.family, picked);
         }
     }
+
+    TestCase {
+        name: "HoldTogether"
+        when: windowShown
+
+        function init() {
+            app.rating = 2;
+            app.index = 0;
+        }
+        // Two instances edited in one turn, both refusing: each springs back.
+        function test_two_ratings_and_two_segmented_controls() {
+            const a = createTemporaryObject(ratingRefuse, root);
+            const b = createTemporaryObject(ratingRefuse, root);
+            const c = createTemporaryObject(segRefuse, root);
+            const d = createTemporaryObject(segRefuse, root);
+            (function () {
+                a._set(4);
+                b._set(5);
+                c._choose(1);
+                d._choose(2);
+            })();
+            compare(a.value, 4);
+            compare(b.value, 5);
+            compare(c.currentIndex, 1);
+            compare(d.currentIndex, 2);
+            wait(50);
+            compare(a.value, 2);
+            compare(b.value, 2);
+            compare(c.currentIndex, 0);
+            compare(d.currentIndex, 0);
+            app.rating = 3;
+            app.index = 1;
+            compare(a.value, 3);
+            compare(b.value, 3);
+            compare(c.currentIndex, 1);
+            compare(d.currentIndex, 1);
+        }
+        function test_rapid_edits_last_wins() {
+            const r = createTemporaryObject(ratingAccept, root);
+            r._set(3);
+            r._set(5);
+            compare(r.value, 5);
+            wait(50);
+            compare(r.value, 5);
+            compare(app.rating, 5);
+            const rr = createTemporaryObject(ratingRefuse, root);
+            app.rating = 2;
+            rr._set(3);
+            rr._set(5);
+            compare(rr.value, 5);
+            tryCompare(rr, "value", 2);
+            const s = createTemporaryObject(segAccept, root);
+            s._choose(1);
+            s._choose(2);
+            compare(s.currentIndex, 2);
+            wait(50);
+            compare(s.currentIndex, 2);
+            compare(app.index, 2);
+            const sr = createTemporaryObject(segRefuse, root);
+            app.index = 0;
+            sr._choose(1);
+            sr._choose(2);
+            compare(sr.currentIndex, 2);
+            tryCompare(sr, "currentIndex", 0);
+            const sl = createTemporaryObject(segLiteral, root);
+            sl._choose(1);
+            sl._choose(2);
+            wait(50);
+            compare(sl.currentIndex, 2);
+        }
+        function test_rapid_keys() {
+            const s = createTemporaryObject(segAccept, root);
+            s.forceActiveFocus();
+            keyClick(Qt.Key_Right);
+            keyClick(Qt.Key_Right);
+            compare(s.currentIndex, 2);
+            wait(50);
+            compare(s.currentIndex, 2);
+            compare(app.index, 2);
+            const r = createTemporaryObject(ratingAccept, root);
+            r.forceActiveFocus();
+            keyClick(Qt.Key_Right);
+            keyClick(Qt.Key_Right);
+            keyClick(Qt.Key_Right);
+            wait(50);
+            compare(r.value, 5);
+            compare(app.rating, 5);
+        }
+    }
 }

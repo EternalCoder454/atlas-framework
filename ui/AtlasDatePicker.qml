@@ -51,7 +51,7 @@ T.Control {
     readonly property string _text: _hasDate ? (typeof format === "string" ? locale.toString(selectedDate, format) : selectedDate.toLocaleDateString(locale, format)) : ""
 
     // A user edit is held by a Binding for one turn, so an app binding on
-    // `selectedDate` is kept (see docs/reference/atlasdatepicker.md).
+    // `selectedDate` is kept (see docs/reference/atlas-ui/atlas-date-picker.md).
     property date _edit
     property bool _editing: false
     readonly property Binding _hold: Binding {
