@@ -128,7 +128,7 @@ control takes `iconName`.
 | `ConfirmDialog` | Modal dialog with pill buttons; `alternativeText` adds a third button (`alternative()`), `defaultButton` ("accept", "reject", "alternative") takes the focus and Return, `destructive` draws accept in the error colour, and a long body scrolls instead of outgrowing the window (since 1.4.0) |
 | `NotesText` | Release notes from a safe HTML fragment |
 | `LiveChart`, `UsageBar`, `MiniBars` | A live chart, a stacked usage bar, a row of small bars |
-| `DataTable` | A sortable table in the Section style that only makes the rows on screen |
+| `DataTable` | A sortable table in the Section style that only makes the rows on screen; 1.4.0 adds resizable and hideable columns, multi-selection, `rowContextMenuRequested`, `density` (since 1.4.0) |
 | `SearchField` | Rounded search field with a debounced `query` |
 | `ContextMenu`, `ContextMenuItem`, `ContextMenuSeparator` | Right-click menu; a row can be checkable (a check mark) or a `radio` (a dot; exclusive through a `ButtonGroup` or an `ActionGroup`), have a Material Symbol or an icon (also from an action's `symbol`), open a submenu (an arrow); a menu taller than the window scrolls |
 | `TabBar` | Document tabs: a pill per tab with an unsaved dot and a close button, "+" for a new tab, drag to reorder. The app owns the `model` (`title`, `modified`, `toolTip`) and answers its signals. Tabs take no keyboard focus: the app gives Ctrl+Tab and Ctrl+W. Same name as QtQuick.Controls' TabBar, so import Controls qualified (`as QQC2`) (since 1.2.0) |

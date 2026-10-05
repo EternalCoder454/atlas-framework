@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -42,6 +44,36 @@ import org.kde.kirigami as Kirigami
 //                     those three say and keeps no state of its own.
 //   sortable          false to keep its header from sorting (default true)
 //
+// The header stays at the top of the table while the rows scroll under it
+// (the table scrolls its own rows; only they move), wherever the table sits.
+//
+// Resize: `resizableColumns: true` lets the user drag the boundary between
+// two columns (a double click fits the column to its widest visible cell).
+// The fill column takes what the others leave, so a drag changes the column
+// beside the boundary, never the table's width. `columnWidths` holds every
+// column's width in pixels once the user has resized (empty: automatic, as
+// before) and is writable: save it from `columnResized(column, width)` and
+// restore it on start. The fill column's entry is informational only.
+//
+// Show and hide: `columnsMenu: true` opens a menu of checkable column titles
+// on a right click of the header; `hiddenColumns` lists the hidden column
+// indexes and is writable. At least one column always stays visible.
+//
+// Selection: `selectionMode` is DataTable.SingleSelection (the default: the
+// current row is the selection), DataTable.MultiSelection (Ctrl click toggles,
+// Shift click and Shift+arrows extend, Ctrl+A selects all, Space toggles the
+// current row) or DataTable.NoSelection. `selectedRows` lists the selected
+// row numbers, ascending. Selection is by row number: a live model that moves
+// rows leaves it where it was, and a change of `model` clears it.
+// selectRows(rows), selectAll() and clearSelection() set it from code.
+//
+// Right click (which selects the row first, unless it is already part of a
+// selection) and the Menu key or Shift+F10 on the current row emit
+// rowContextMenuRequested(row, pos) as well as contextMenuRequested.
+//
+// `density` follows AtlasStyle.density: Compact makes the rows about 75% as
+// tall.
+//
 // Name the table for screen readers with Accessible.name ("Apps").
 //
 // A tree (an app and its processes) is the model's to flatten: give
@@ -50,8 +82,29 @@ import org.kde.kirigami as Kirigami
 FocusScope {
     id: root
 
+    enum SelectionMode {
+        SingleSelection,
+        MultiSelection,
+        NoSelection
+    }
+
     property var model
     property var columns: []
+    property int selectionMode: DataTable.SingleSelection
+    readonly property list<int> selectedRows: {
+        if (selectionMode === DataTable.SingleSelection) {
+            return list.currentIndex >= 0 ? [list.currentIndex] : [];
+        }
+        if (selectionMode === DataTable.MultiSelection) {
+            return Object.keys(_sel).map(Number).sort((a, b) => a - b);
+        }
+        return [];
+    }
+    property bool resizableColumns: false
+    property list<real> columnWidths
+    property bool columnsMenu: false
+    property list<int> hiddenColumns
+    property int density: AtlasStyle.density
     property string sortRole
     property int sortOrder: Qt.DescendingOrder
     property alias currentIndex: list.currentIndex
@@ -61,11 +114,15 @@ FocusScope {
     // Shown in the middle when there are no rows ("No Apps Match").
     property string placeholderText
     readonly property bool pointerInside: hover.hovered
-    readonly property real rowHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+    readonly property real rowHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * (density === AtlasStyle.Compact ? 0.75 : 1))
     readonly property alias count: list.count
 
     signal activated(int row)
     signal contextMenuRequested(int row, real x, real y)
+    // The same request with the position as a point in the table.
+    signal rowContextMenuRequested(int row, point pos)
+    // The user resized a column (also while dragging); `width` is in pixels.
+    signal columnResized(int column, real width)
     // A right click on the header, at x, y in the table: for a menu of
     // the columns to show.
     signal headerMenuRequested(real x, real y)
@@ -83,19 +140,48 @@ FocusScope {
     // mirrors only the table itself.
     LayoutMirroring.childrenInherit: true
 
-    readonly property real padding: Kirigami.Units.smallSpacing
-    readonly property real cellPadding: Kirigami.Units.largeSpacing
+    readonly property real padding: AtlasStyle.spacingSmall
+    readonly property real cellPadding: AtlasStyle.spacingLarge
+    readonly property real _minColumnWidth: Kirigami.Units.gridUnit * 3
+    // Hidden columns as a set of indexes; the first column stays if the app
+    // hides them all.
+    readonly property var _hidden: {
+        const set = {};
+        for (const h of hiddenColumns) {
+            if (h >= 0 && h < columns.length) {
+                set[h] = true;
+            }
+        }
+        if (columns.length > 0 && Object.keys(set).length >= columns.length) {
+            delete set[0];
+        }
+        return set;
+    }
+    // The column that takes the space the others leave: the first visible one
+    // saying `fill`, else the first visible one.
+    readonly property int _fillIndex: {
+        let first = -1;
+        for (let i = 0; i < columns.length; ++i) {
+            if (_hidden[i]) {
+                continue;
+            }
+            if (columns[i].fill === true) {
+                return i;
+            }
+            if (first < 0) {
+                first = i;
+            }
+        }
+        return first;
+    }
     // Pixel widths, the fill column taking what the others leave. A column
     // without a width (or a second fill) gets a few grid units rather than
     // NaN; if the fixed columns don't fit, the header and rows clip.
     readonly property var widths: {
         const avail = Math.max(0, width - 2 * padding);
         const gu = Kirigami.Units.gridUnit;
-        let fill = columns.findIndex(c => c.fill === true);
-        if (fill < 0) {
-            fill = 0;
-        }
-        const w = columns.map((c, i) => i === fill ? 0 : Math.round((c.width ?? 4) * gu));
+        const fill = _fillIndex;
+        const w = columns.map((c, i) => _hidden[i] || i === fill ? 0 : columnWidths[i] > 0 ? Math.round(Math.max(_minColumnWidth, columnWidths[i])) : Math.round((c.width ?? 4) * gu));
         const fixed = w.reduce((a, b) => a + b, 0);
         if (columns.length > 0) {
             w[fill] = Math.max(gu * 4, avail - fixed);
@@ -117,7 +203,217 @@ FocusScope {
         }
     }
 
+    // Selected rows in Multi mode, row number -> true. Replaced, never edited,
+    // so bindings see the change.
+    readonly property var _columnsMenu: columnsMenuLoader.item
+    property var _sel: ({})
+    property int _anchor: -1
+    readonly property bool _multi: selectionMode === DataTable.MultiSelection
+
+    onModelChanged: {
+        _sel = ({});
+        _anchor = -1;
+    }
+
+    function selectRows(rows) {
+        if (!_multi) {
+            if (selectionMode === DataTable.SingleSelection && rows.length > 0) {
+                list.currentIndex = rows[0];
+            }
+            return;
+        }
+        const set = {};
+        for (const r of rows) {
+            if (r >= 0 && r < list.count) {
+                set[r] = true;
+            }
+        }
+        _sel = set;
+        _anchor = rows.length > 0 ? rows[rows.length - 1] : -1;
+    }
+    function selectAll() {
+        if (!_multi) {
+            return;
+        }
+        const set = {};
+        for (let i = 0; i < list.count; ++i) {
+            set[i] = true;
+        }
+        _sel = set;
+    }
+    function clearSelection() {
+        if (_multi) {
+            _sel = ({});
+        }
+    }
+    function _selectRange(a, b, add) {
+        const set = add ? Object.assign({}, _sel) : {};
+        const hi = Math.min(list.count - 1, Math.max(a, b));
+        for (let i = Math.max(0, Math.min(a, b)); i <= hi; ++i) {
+            set[i] = true;
+        }
+        _sel = set;
+    }
+    // A press or key moved the current row from `from` to `to`.
+    function _select(from, to, shift, ctrl) {
+        if (!_multi || to < 0) {
+            return;
+        }
+        if (shift) {
+            if (_anchor < 0) {
+                _anchor = from >= 0 ? from : to;
+            }
+            _selectRange(_anchor, to, ctrl);
+        } else if (ctrl) {
+            const set = Object.assign({}, _sel);
+            if (set[to]) {
+                delete set[to];
+            } else {
+                set[to] = true;
+            }
+            _sel = set;
+            _anchor = to;
+        } else {
+            const set = {};
+            set[to] = true;
+            _sel = set;
+            _anchor = to;
+        }
+    }
+    function _pruneSelection() {
+        const keys = Object.keys(_sel);
+        if (keys.some(k => Number(k) >= list.count)) {
+            const set = {};
+            keys.forEach(k => {
+                if (Number(k) < list.count) {
+                    set[k] = true;
+                }
+            });
+            _sel = set;
+        }
+        if (_anchor >= list.count) {
+            _anchor = -1;
+        }
+    }
+
+    function _nextVisible(i) {
+        for (let j = i + 1; j < columns.length; ++j) {
+            if (!_hidden[j]) {
+                return j;
+            }
+        }
+        return -1;
+    }
+    // Sets a column's pixel width, within what the fill column can give up.
+    function _setColumnWidth(i, w) {
+        const fill = _fillIndex;
+        if (i < 0 || i >= columns.length || i === fill || _hidden[i] || !isFinite(w)) {
+            return;
+        }
+        const room = Math.max(0, widths[fill] - Kirigami.Units.gridUnit * 4);
+        w = Math.round(Math.max(_minColumnWidth, Math.min(w, widths[i] + room)));
+        if (w === widths[i]) {
+            return;
+        }
+        const all = columns.map((c, k) => _hidden[k] ? (columnWidths[k] ?? 0) : widths[k]);
+        all[i] = w;
+        columnWidths = all;
+        columnResized(i, w);
+    }
+    // The delegate of row r, or null when it isn't on screen.
+    function _delegate(r) {
+        return list.itemAtIndex(r);
+    }
+    // The widest the visible cells of column i are, plus the header.
+    function _fitColumn(i) {
+        const c = columns[i];
+        if (!c) {
+            return;
+        }
+        const icon = Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall;
+        const pad = 2 * cellPadding + 2;
+        metrics.text = String(c.title ?? "");
+        let best = metrics.advanceWidth + pad + icon;
+        const first = Math.max(0, list.indexAt(1, list.contentY + 1));
+        let last = list.indexAt(1, list.contentY + list.height - 2);
+        if (last < 0) {
+            last = list.count - 1;
+        }
+        const firstVisible = _nextVisible(-1);
+        for (let r = first; r <= last; ++r) {
+            const item = _delegate(r);
+            if (!item || c.cell !== undefined) {
+                continue;
+            }
+            const v = item.model[c.role];
+            metrics.text = String(c.text ? c.text(v, item.model) : (v ?? ""));
+            let w = metrics.advanceWidth + pad + (c.iconRole !== undefined ? icon : 0);
+            if (i === firstVisible && (expandableRole || item.depth > 0)) {
+                w += Kirigami.Units.iconSizes.small + item.indent;
+            }
+            best = Math.max(best, w);
+        }
+        _setColumnWidth(i, Math.ceil(best));
+    }
+    function _toggleColumn(i) {
+        const hidden = Object.keys(_hidden).map(Number);
+        const at = hidden.indexOf(i);
+        if (at >= 0) {
+            hidden.splice(at, 1);
+        } else if (hidden.length < columns.length - 1) {
+            hidden.push(i);
+        } else {
+            return;
+        }
+        hiddenColumns = hidden.sort((a, b) => a - b);
+    }
+    function _openColumnsMenu(x, y) {
+        columnsMenuLoader.active = true;
+        (columnsMenuLoader.item as ContextMenu).popup(root, x, y);
+    }
+    function _requestRowMenu(row, x, y) {
+        if (_multi && !_sel[row]) {
+            _select(list.currentIndex, row, false, false);
+        }
+        contextMenuRequested(row, x, y);
+        rowContextMenuRequested(row, Qt.point(x, y));
+    }
+
+    TextMetrics {
+        id: metrics
+        font: Kirigami.Theme.defaultFont
+    }
+
+    Loader {
+        id: columnsMenuLoader
+        active: false
+        sourceComponent: ContextMenu {
+            Repeater {
+                model: root.columns.length
+
+                ContextMenuItem {
+                    id: entry
+                    required property int index
+                    text: root.columns[index].title
+                    checkable: true
+                    // The last visible column can't be hidden.
+                    enabled: !(checked && root.columns.length - Object.keys(root._hidden).length <= 1)
+                    onTriggered: root._toggleColumn(index)
+
+                    Binding {
+                        target: entry
+                        property: "checked"
+                        value: !root._hidden[entry.index]
+                    }
+                }
+            }
+        }
+    }
+
     Keys.onPressed: event => {
+        const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
+        const ctrl = (event.modifiers & Qt.ControlModifier) !== 0;
+        const from = list.currentIndex;
         const page = Math.max(1, Math.floor(list.height / root.rowHeight) - 1);
         let to = list.currentIndex;
         switch (event.key) {
@@ -133,6 +429,18 @@ FocusScope {
         case Qt.Key_PageDown:
             to = Math.min(list.count - 1, to + page);
             break;
+        case Qt.Key_A:
+            if (ctrl && root._multi) {
+                root.selectAll();
+                event.accepted = true;
+            }
+            return;
+        case Qt.Key_Space:
+            if (root._multi && to >= 0 && !event.isAutoRepeat) {
+                root._select(from, to, false, true);
+                event.accepted = true;
+            }
+            return;
         case Qt.Key_Home:
             to = 0;
             break;
@@ -182,6 +490,7 @@ FocusScope {
             list.currentIndex = to;
             list.positionViewAtIndex(to, ListView.Contain);
         }
+        root._select(from, to, shift, false);
         event.accepted = true;
     }
     readonly property bool mirrored: LayoutMirroring.enabled
@@ -196,14 +505,14 @@ FocusScope {
             return false;
         }
         const p = item.mapToItem(root, root.mirrored ? item.width - Kirigami.Units.gridUnit * 2 : Kirigami.Units.gridUnit * 2, item.height / 2);
-        root.contextMenuRequested(list.currentIndex, p.x, p.y);
+        root._requestRowMenu(list.currentIndex, p.x, p.y);
         return true;
     }
 
     // The card, drawn like Section's.
     Rectangle {
         anchors.fill: parent
-        radius: 10
+        radius: AtlasStyle.radiusLarge
         color: Qt.alpha(Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06)), root.Window.window && root.Window.window.blurred === true ? 0.94 : 1)
         border.width: 1
         border.color: root.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.6) : Qt.alpha(Kirigami.Theme.textColor, 0.12)
@@ -217,6 +526,19 @@ FocusScope {
         height: Math.round(Kirigami.Units.gridUnit * 1.8)
         clip: true
 
+        // Right clicks only, over every column and the space after them; a
+        // handler, so left clicks and the resize grips below get theirs.
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: eventPoint => {
+                const p = header.mapToItem(root, eventPoint.position);
+                root.headerMenuRequested(p.x, p.y);
+                if (root.columnsMenu) {
+                    root._openColumnsMenu(p.x, p.y);
+                }
+            }
+        }
+
         Repeater {
             model: root.columns.length
 
@@ -227,6 +549,7 @@ FocusScope {
                 readonly property bool sorted: column.role === root.sortRole
                 readonly property bool alignRight: column.align === Qt.AlignRight
 
+                visible: !root._hidden[index]
                 width: root.widths[index] ?? 0
                 height: header.height
                 Accessible.role: Accessible.ColumnHeader
@@ -236,7 +559,7 @@ FocusScope {
                 Rectangle {
                     anchors.fill: parent
                     anchors.margins: 1
-                    radius: 6
+                    radius: AtlasStyle.radiusSmall
                     color: Qt.alpha(Kirigami.Theme.textColor, headMouse.pressed ? 0.1 : headMouse.containsMouse ? 0.05 : 0)
                 }
 
@@ -279,21 +602,50 @@ FocusScope {
                     cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                     onClicked: root.sortBy(head.index)
                 }
-            }
-        }
-    }
 
-    // Right clicks only, over every column and the space after them; left
-    // clicks go through to the columns' own areas below.
-    MouseArea {
-        x: header.x
-        y: header.y
-        width: header.width
-        height: header.height
-        acceptedButtons: Qt.RightButton
-        onClicked: mouse => {
-            const p = mapToItem(root, mouse.x, mouse.y);
-            root.headerMenuRequested(p.x, p.y);
+                // The boundary to the next visible column. Only the fill
+                // column gives or takes space, so with it at or before the
+                // boundary the columns after the boundary change (the other
+                // way round from the pointer), else the column before it.
+                MouseArea {
+                    id: grip
+                    readonly property int _next: root._nextVisible(head.index)
+                    readonly property bool _after: head.index >= root._fillIndex
+                    readonly property int _target: _after ? _next : head.index
+                    property real _startX
+                    property real _startWidth
+
+                    // Anchors mirror with the table, so this is the end edge.
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    width: Kirigami.Units.smallSpacing * 3
+                    visible: root.resizableColumns && _next >= 0
+                    hoverEnabled: true
+                    cursorShape: Qt.SplitHCursor
+                    onPressed: mouse => {
+                        _startX = mapToItem(root, mouse.x, 0).x;
+                        _startWidth = root.widths[_target] ?? 0;
+                    }
+                    onPositionChanged: mouse => {
+                        if (!pressed) {
+                            return;
+                        }
+                        const dx = (mapToItem(root, mouse.x, 0).x - _startX) * (root.mirrored ? -1 : 1);
+                        root._setColumnWidth(_target, _startWidth + (_after ? -dx : dx));
+                    }
+                    onDoubleClicked: root._fitColumn(_target)
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: grip.pressed || grip.containsMouse ? 2 : 1
+                        height: parent.height * 0.5
+                        radius: width / 2
+                        color: grip.pressed || grip.containsMouse ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, 0.18)
+                    }
+                }
+            }
         }
     }
 
@@ -321,6 +673,7 @@ FocusScope {
         clip: true
         model: root.model
         reuseItems: true
+        onCountChanged: root._pruneSelection()
         boundsBehavior: Flickable.StopAtBounds
         currentIndex: -1
         highlightMoveDuration: 0
@@ -343,7 +696,7 @@ FocusScope {
                 opacity: parent.active ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Kirigami.Units.longDuration
+                        duration: AtlasStyle.duration
                     }
                 }
             }
@@ -355,7 +708,8 @@ FocusScope {
             required property int index
             required property var model
 
-            readonly property bool selected: ListView.isCurrentItem
+            readonly property bool current: ListView.isCurrentItem
+            readonly property bool selected: root.selectionMode === DataTable.SingleSelection ? current : root._multi ? root._sel[index] === true : false
             readonly property int depth: root.depthRole ? (model[root.depthRole] ?? 0) : 0
             readonly property bool expandable: root.expandableRole ? model[root.expandableRole] === true : false
             readonly property bool expanded: root.expandedRole ? model[root.expandedRole] === true : false
@@ -395,8 +749,12 @@ FocusScope {
                 anchors.fill: parent
                 anchors.topMargin: 1
                 anchors.bottomMargin: 1
-                radius: 6
+                radius: AtlasStyle.radiusSmall
                 color: row.selected ? Qt.alpha(Kirigami.Theme.highlightColor, root.activeFocus ? 0.22 : 0.14) : Qt.alpha(Kirigami.Theme.textColor, rowMouse.pressed ? 0.08 : rowMouse.containsMouse ? 0.045 : 0)
+                // The current row of a multi-selection when it isn't selected
+                // (Ctrl+Space off), so the keyboard position stays visible.
+                border.width: root._multi && row.current && !row.selected && root.activeFocus ? 1 : 0
+                border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.6)
             }
 
             Row {
@@ -414,6 +772,7 @@ FocusScope {
                         readonly property real heat: column.heat > 0 && Number(value) > 0 ? Math.min(1, Number(value) / column.heat) : 0
                         readonly property real indent: index === 0 ? row.indent : 0
 
+                        visible: !root._hidden[index]
                         width: root.widths[index] ?? 0
                         height: row.height
 
@@ -429,7 +788,7 @@ FocusScope {
 
                         Loader {
                             id: custom
-                            active: cell.column.cell !== undefined
+                            active: cell.column.cell !== undefined && cell.visible
                             anchors.fill: parent
                             anchors.leftMargin: root.cellPadding
                             anchors.rightMargin: root.cellPadding
@@ -507,13 +866,17 @@ FocusScope {
                 hoverEnabled: true
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onPressed: mouse => {
+                    const from = list.currentIndex;
                     list.currentIndex = row.index;
                     root.forceActiveFocus(Qt.MouseFocusReason);
+                    if (mouse.button === Qt.LeftButton) {
+                        root._select(from, row.index, (mouse.modifiers & Qt.ShiftModifier) !== 0, (mouse.modifiers & Qt.ControlModifier) !== 0);
+                    }
                 }
                 onClicked: mouse => {
                     if (mouse.button === Qt.RightButton) {
                         const p = mapToItem(root, mouse.x, mouse.y);
-                        root.contextMenuRequested(row.index, p.x, p.y);
+                        root._requestRowMenu(row.index, p.x, p.y);
                     }
                 }
                 onDoubleClicked: mouse => {

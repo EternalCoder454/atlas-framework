@@ -18,6 +18,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Atlas.Ui: AtlasListView, a ListView in the Atlas look with single or multiple
   selection, a default row (symbol, text, subtitle), type-ahead, a placeholder,
   `contextMenuRequested` and drag or Alt+arrow reordering (`moveRequested`).
+- Atlas.Ui: DataTable `resizableColumns` (drag or double-click a header boundary,
+  `columnWidths`, `columnResized`), `columnsMenu` and `hiddenColumns`,
+  `selectionMode` with `selectedRows` (Ctrl/Shift click, Shift+arrows, Ctrl+A),
+  `rowContextMenuRequested` and `density`; it reads AtlasStyle tokens.
 - Atlas.Ui: AtlasUrlValidator, AtlasEmailValidator, AtlasPathValidator and
   AtlasNumberValidator, validators for an AtlasTextField; AtlasDoubleSpinBox
   (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,

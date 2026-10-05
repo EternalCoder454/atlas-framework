@@ -87,6 +87,19 @@ add_test(NAME lists
 set_tests_properties(lists PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-lists-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/lists-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+# DataTable behaviour: selection, column resize and visibility, the row menu
+# (tests/tables).
+add_executable(atlas-tables-tests tables/main.cpp)
+target_compile_definitions(atlas-tables-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tables")
+target_link_libraries(atlas-tables-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-tables-tests atlasui)
+add_test(NAME tables
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(tables PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-tables-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/tables-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
 # The translation test: a throwaway atlas-ui_de.qm (tests/i18n) in a directory
 # of its own, found through ATLAS_UI_TRANSLATIONS_DIR (development builds only).

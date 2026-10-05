@@ -28,10 +28,16 @@ Item {
         anchors.margins: 10
         model: rows
         sortRole: "cpu"
+        resizableColumns: true
+        columnsMenu: true
+        selectionMode: DataTable.MultiSelection
+        hiddenColumns: [3]
+        Component.onCompleted: selectRows([1, 2])
         columns: [
             { title: "Name", role: "name", fill: true },
             { title: "CPU", role: "cpu", width: 5, align: Qt.AlignRight, heat: 20, text: v => v.toFixed(1) + "%" },
-            { title: "Memory", role: "mem", width: 6, align: Qt.AlignRight, text: v => v + " MB" }
+            { title: "Memory", role: "mem", width: 6, align: Qt.AlignRight, text: v => v + " MB" },
+            { title: "Threads", role: "mem", width: 5, align: Qt.AlignRight }
         ]
         Accessible.name: "Processes"
     }
