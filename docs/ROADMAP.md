@@ -345,7 +345,7 @@ split). Designs in docs/api-1.5.0.md Part 3; item numbers are the sketch's.
   migrations and directory watching. Crash minidumps wait for the crash.rs
   work in another session.
 - [ ] 38 A virtualized text view (Notepad, 2026-10-05; also Monitor's and
-  the Updater's logs, Notes' source view, AtlasCodeView). A C++ QQuickItem:
+  the Updater's logs, AtlasCodeView). A C++ QQuickItem:
   piece table and line index, only visible lines laid out (QTextLayout),
   own caret, selection, input method and undo, KSyntaxHighlighting per line
   in the background, word wrap as a mode. Read-only first (AtlasCodeView
@@ -691,7 +691,8 @@ that lands, then go in one batch.
   which has a required reviewer (EternalCoder454) and a v*-tags-only
   deployment rule; the "release tags" ruleset guards refs/tags/v*. The
   update PRs wait for that approval. v1.4.0 and v1.5.0 ran before it and
-  opened no app PRs. `tools/apps.txt` lists all eleven apps.
+  opened no app PRs. `tools/apps.txt` lists all ten apps (atlasos-notes is
+  deprecated; atlasos-notepad replaces it).
 
 ### Follow-ups from the 1.4.0 gates
 

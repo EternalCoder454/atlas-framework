@@ -5,8 +5,7 @@ other apps read. This is the input for the design page that comes before the
 code; the API, once it exists, is documented only in docs/reference.
 
 Consumers: Notepad (plain and code files; its Markdown Formatted view stays
-on TextEdit), AtlasCodeView, Monitor's and the Updater's logs, Notes' source
-view.
+on TextEdit), AtlasCodeView, Monitor's and the Updater's logs.
 
 ## Shape
 
