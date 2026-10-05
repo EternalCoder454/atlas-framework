@@ -440,11 +440,11 @@ Item {
                 verify(lists.length > 0);
                 const list = lists[0];
                 tryVerify(() => list.contentHeight > list.height);
-                // Scrolled to the end with the wheel, as a user does (only the
-                // user's own scrolling is kept); a rebuilt model would reset it.
-                for (let i = 0; i < 30 && list.contentY < list.contentHeight - list.height - 1; ++i) {
-                    mouseWheel(list, list.width / 2, list.height / 2, 0, -360);
-                }
+                // Flicked down, as a user does (only the user's own movement
+                // is kept); a rebuilt model would reset it. Not the wheel: after
+                // the earlier tests of the suite a synthetic wheel event does not
+                // reach the list (alone it does).
+                list.flick(0, -3000);
                 tryVerify(() => !list.moving, 3000);
                 const before = list.contentY;
                 verify(before > 0);
