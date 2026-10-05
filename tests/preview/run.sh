@@ -79,14 +79,41 @@ expect2 "unknown option" "$here/good.qml" --out "$tmp/x" --nope
 expect2 "size over 4096" "$here/good.qml" --out "$tmp/x" --size 5000x100
 expect2 "internal mode without the parent's token" --internal-portal "$tmp/ready"
 [ ! -e "$tmp/ready" ] || fail "an internal mode ran without the token"
-# An output that is a symbolic link is refused, not written through.
+# An output name that is a symbolic link is replaced, never written through.
 mkdir "$tmp/link"
 echo keep >"$tmp/target"
 ln -s "$tmp/target" "$tmp/link/good-light.png"
-expect2 "output is a symlink" "$here/good.qml" --out "$tmp/link" --size 200x100
+"$bin" "$here/good.qml" --out "$tmp/link" --size 200x100 >/dev/null 2>"$tmp/e.err"
 [ "$(cat "$tmp/target")" = keep ] || fail "wrote through a symbolic link"
-grep -q 'symbolic link' "$tmp/e.err" || fail "the symlink refusal is not explained"
+[ -f "$tmp/link/good-light.png" ] && [ ! -L "$tmp/link/good-light.png" ] || fail "the symbolic link was not replaced by the picture"
+# An --out that is a symbolic link, or that others can write to, is refused.
+ln -s "$tmp/link" "$tmp/linkdir"
+expect2 "--out is a symlink" "$here/good.qml" --out "$tmp/linkdir" --size 200x100
+mkdir -m 777 "$tmp/open"
+expect2 "--out writable by others" "$here/good.qml" --out "$tmp/open" --size 200x100
+grep -q 'other users can write' "$tmp/e.err" || fail "the refusal of a shared --out is not explained"
 # A new --out is private.
 "$bin" "$here/good.qml" --out "$tmp/private" --size 200x100 >/dev/null 2>&1
 [ "$(stat -c %a "$tmp/private")" = 700 ] || fail "a new --out directory is not mode 700"
+# A killed parent leaves no bus or helper behind: its helpers end with it.
+mkdir "$tmp/t"
+TMPDIR="$tmp/t" "$bin" "$here/good.qml" --out "$tmp/killed" >/dev/null 2>&1 &
+pid=$!
+for _ in $(seq 1 100); do
+    pgrep -f -- "--config-file=$tmp/t/atlas-preview-" >/dev/null && break
+    sleep 0.1
+done
+pgrep -f -- "--config-file=$tmp/t/atlas-preview-" >/dev/null || fail "no private bus started for the kill test"
+kill -9 "$pid"
+wait "$pid" 2>/dev/null
+sleep 2
+if pgrep -f -- "--config-file=$tmp/t/atlas-preview-" >/dev/null; then
+    pkill -f -- "--config-file=$tmp/t/atlas-preview-"
+    fail "a dbus-daemon survived its killed parent"
+fi
+if pgrep -f -- "--internal-" >/dev/null && pgrep -f -- "$tmp/t/atlas-preview-" >/dev/null; then
+    fail "a helper survived its killed parent"
+fi
+# Only the (empty) top-level directory may stay: no files, no bus sockets.
+[ -z "$(find "$tmp/t" -mindepth 2 -print -quit)" ] || fail "files left in the scratch directory after a kill: $(find "$tmp/t" -mindepth 2 | head -3)"
 echo "atlas-preview ok"

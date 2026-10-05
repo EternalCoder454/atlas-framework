@@ -13,7 +13,7 @@
 // platform theme are read once at start. The first process (the parent) starts
 // itself once per variant with the hidden option --internal-render; the
 // contrast variant runs inside a private session bus with a settings portal
-// stand-in (--internal-contrast-host and --internal-portal).
+// stand-in (--internal-host and --internal-portal).
 #include "fakeportal.h"
 #include "variant.h"
 
@@ -34,7 +34,7 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QRegularExpression>
-#include <QSaveFile>
+#include <QBuffer>
 #include <QSocketNotifier>
 #include <QSize>
 #include <QStandardPaths>
@@ -45,12 +45,15 @@
 #include <QUuid>
 #include <QLibraryInfo>
 
+#include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <sys/prctl.h>
 #include <unistd.h>
 
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
 #include <functional>
 #include <memory>
@@ -75,39 +78,116 @@ constexpr int kGraceMs = 3000;
 // the hidden --internal-* modes refuse to run without it.
 const char kTokenVariable[] = "ATLAS_PREVIEW_PRIVATE";
 const char kScratchVariable[] = "ATLAS_PREVIEW_SCRATCH";
+// The parent's process id: a helper that finds it gone ends at once.
+const char kRootVariable[] = "ATLAS_PREVIEW_ROOT";
 
-// Control characters other than a tab become '?': a message from QML or a
-// file name must not move the cursor or forge a CI log command.
+// Control characters other than a tab and a newline, C1 controls and the
+// Unicode line and bidi controls become '?': a message from QML or a file name
+// must not move the cursor, hide text or forge a CI log command.
 QString clean(QString text)
 {
     for (QChar &c : text) {
-        if ((c.unicode() < 0x20 && c != QLatin1Char('\t') && c != QLatin1Char('\n')) || c.unicode() == 0x7f) {
+        const ushort u = c.unicode();
+        if ((u < 0x20 && c != QLatin1Char('\t') && c != QLatin1Char('\n')) || u == 0x7f || (u >= 0x80 && u <= 0x9f) || u == 0x2028
+            || u == 0x2029 || (u >= 0x202a && u <= 0x202e)) {
             c = QLatin1Char('?');
         }
     }
     return text;
 }
 
+// Continuation lines are indented with "  | ": no line of a message can start
+// with a CI command such as ::error::.
 void say(const QString &text)
 {
-    std::fprintf(stderr, "%s\n", qUtf8Printable(clean(text)));
-}
-
-// A file the tool writes must not be a symbolic link: QSaveFile would write
-// through it to wherever it points.
-bool refuseLink(const QString &path)
-{
-    if (QFileInfo(path).isSymLink()) {
-        say(QStringLiteral("error: %1 is a symbolic link; not writing through it").arg(path));
-        return true;
+    const QStringList lines = clean(text).split(QLatin1Char('\n'));
+    for (qsizetype i = 0; i < lines.size(); ++i) {
+        std::fprintf(stderr, "%s%s\n", i == 0 ? "" : "  | ", qUtf8Printable(lines.at(i)));
     }
-    return false;
 }
 
-// A child ends with its parent: SIGTERM when the parent dies (Linux).
+// A file is written beside its final name in a directory opened without
+// following a link at its end, then renamed over the name: a symbolic link at
+// the name is replaced, never written through, and a crash leaves no half file.
+// The directory must be the user's own, and not writable by others (unless sticky).
+int openOutDir(const QString &dir, QString *problem)
+{
+    const int fd = ::open(QFile::encodeName(dir).constData(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) {
+        *problem = QStringLiteral("cannot open %1: %2").arg(dir, QString::fromLocal8Bit(std::strerror(errno)));
+        return -1;
+    }
+    struct stat st = {};
+    if (::fstat(fd, &st) != 0 || st.st_uid != ::geteuid() || ((st.st_mode & (S_IWGRP | S_IWOTH)) && !(st.st_mode & S_ISVTX))) {
+        ::close(fd);
+        *problem = QStringLiteral("%1 is not owned by you, or other users can write to it; use a directory of your own").arg(dir);
+        return -1;
+    }
+    return fd;
+}
+
+bool saveAtomic(const QString &dir, const QString &name, const QByteArray &data, QString *problem)
+{
+    const int dirfd = openOutDir(dir, problem);
+    if (dirfd < 0) {
+        return false;
+    }
+    int fd = -1;
+    QByteArray temp;
+    for (int attempt = 0; attempt < 10 && fd < 0; ++attempt) {
+        temp = "." + QFile::encodeName(name) + "." + QUuid::createUuid().toString(QUuid::Id128).left(12).toLatin1();
+        fd = ::openat(dirfd, temp.constData(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+        if (fd < 0 && errno != EEXIST) {
+            break;
+        }
+    }
+    bool ok = fd >= 0;
+    if (ok) {
+        qsizetype done = 0;
+        while (ok && done < data.size()) {
+            const ssize_t n = ::write(fd, data.constData() + done, size_t(data.size() - done));
+            if (n < 0 && errno == EINTR) {
+                continue;
+            }
+            ok = n > 0;
+            done += n > 0 ? n : 0;
+        }
+        ok = ok && ::fsync(fd) == 0 && ::fchmod(fd, 0644) == 0;
+        ::close(fd);
+        ok = ok && ::renameat(dirfd, temp.constData(), dirfd, QFile::encodeName(name).constData()) == 0;
+        if (!ok) {
+            *problem = QStringLiteral("cannot write %1/%2: %3").arg(dir, name, QString::fromLocal8Bit(std::strerror(errno)));
+            ::unlinkat(dirfd, temp.constData(), 0);
+        }
+    } else {
+        *problem = QStringLiteral("cannot write %1/%2: %3").arg(dir, name, QString::fromLocal8Bit(std::strerror(errno)));
+    }
+    ::close(dirfd);
+    return ok;
+}
+
+// A helper ends with the process that started it: SIGTERM when that dies. The
+// check after prctl closes the gap in which the parent could already be gone.
 void hardenChild(QProcess &process)
 {
-    process.setChildProcessModifier([] { ::prctl(PR_SET_PDEATHSIG, SIGTERM); });
+    const pid_t parent = ::getpid();
+    process.setChildProcessModifier([parent] {
+        ::prctl(PR_SET_PDEATHSIG, SIGTERM);
+        if (::getppid() != parent) {
+            ::_exit(1);
+        }
+    });
+}
+
+// The same for a helper's own start-up, where its parent's pid is not known
+// but the first parent's is: if that is gone, so is everything else.
+void dieWithParent()
+{
+    ::prctl(PR_SET_PDEATHSIG, SIGTERM);
+    const pid_t root = qEnvironmentVariable(kRootVariable).toInt();
+    if (root > 1 && ::kill(root, 0) != 0 && errno == ESRCH) {
+        ::_exit(1);
+    }
 }
 
 // terminate(), and kill() when it has not ended after the grace period.
@@ -125,7 +205,8 @@ void stopProcess(QProcess &process)
 
 bool privateModeAllowed()
 {
-    return qEnvironmentVariable(kTokenVariable).size() >= 16;
+    static const QRegularExpression token(QStringLiteral("^[0-9a-f]{32}$"));
+    return token.match(qEnvironmentVariable(kTokenVariable)).hasMatch();
 }
 
 // "WxH" with both sides between 1 and kLargestSide.
@@ -220,11 +301,18 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
 
 bool savePng(const QImage &image, const QString &path)
 {
-    if (refuseLink(path)) {
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    QString problem;
+    if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG")) {
         return false;
     }
-    QSaveFile file(path);
-    return file.open(QIODevice::WriteOnly) && image.save(&file, "PNG") && file.commit();
+    const QFileInfo info(path);
+    if (!saveAtomic(info.absolutePath(), info.fileName(), bytes, &problem)) {
+        say(QStringLiteral("error: %1").arg(problem));
+        return false;
+    }
+    return true;
 }
 
 // Lets the event loop run for `ms`.
@@ -254,6 +342,10 @@ void settle(int ms)
 int renderVariant(int argc, char **argv, const QString &variant, const QString &file, const QString &png, const QSize &size,
                   const QStringList &importPaths)
 {
+    dieWithParent();
+    // The page runs in this process: it does not need the keys to the helpers.
+    qunsetenv(kTokenVariable);
+    qunsetenv(kRootVariable);
     QApplication app(argc, argv);
     AtlasVariant::applyToApplication(variant);
     qInstallMessageHandler(messageHandler);
@@ -336,66 +428,17 @@ int renderVariant(int argc, char **argv, const QString &variant, const QString &
     finish(0);
 }
 
-// ---- helper processes of the contrast variant ------------------------------
-
-int runPortal(int argc, char **argv, const QString &readyFile)
-{
-    QCoreApplication app(argc, argv);
-    return AtlasVariant::runFakePortal(readyFile, kPortalSeconds);
-}
-
-// Inside a private session bus: starts the portal stand-in, waits for it, runs
-// the render process (its output goes straight through), stops the portal.
-int runContrastHost(int argc, char **argv, const QStringList &renderArgs)
-{
-    QCoreApplication app(argc, argv);
-    // The parent's scratch directory for this variant: it removes it.
-    const QString ready = qEnvironmentVariable(kScratchVariable) + QStringLiteral("/portal-ready");
-    if (qEnvironmentVariable(kScratchVariable).isEmpty()) {
-        say(QStringLiteral("error: no scratch directory"));
-        return kExitError;
-    }
-    QProcess portal;
-    hardenChild(portal);
-    portal.setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    portal.start(QCoreApplication::applicationFilePath(), {QStringLiteral("--internal-portal"), ready});
-    QElapsedTimer waited;
-    waited.start();
-    while (!QFile::exists(ready) && portal.state() != QProcess::NotRunning && waited.elapsed() < 10000) {
-        settle(50);
-    }
-    if (!QFile::exists(ready)) {
-        say(QStringLiteral("error: the settings portal stand-in did not start"));
-        stopProcess(portal);
-        return kExitError;
-    }
-
-    QProcess render;
-    hardenChild(render);
-    render.setProcessChannelMode(QProcess::ForwardedChannels);
-    render.start(QCoreApplication::applicationFilePath(), renderArgs);
-    int code = kExitError;
-    if (render.waitForFinished(kHostSeconds * 1000)) {
-        code = render.exitStatus() == QProcess::NormalExit ? render.exitCode() : kExitError;
-    } else {
-        say(QStringLiteral("error: the contrast variant did not finish in %1 s").arg(kHostSeconds));
-        stopProcess(render);
-    }
-    stopProcess(portal);
-    return code;
-}
-
-// ---- the parent -----------------------------------------------------------
-
-// SIGINT and SIGTERM reach the event loop through a pipe, so the parent can stop its
+// SIGINT, SIGTERM and SIGHUP reach the event loop through a pipe, so the parent can stop its
 // children and remove its temporary directory.
 int g_signalPipe[2] = {-1, -1};
 
 void onSignal(int)
 {
+    const int saved = errno;
     const char byte = 1;
     const ssize_t ignored = ::write(g_signalPipe[1], &byte, 1);
     (void)ignored;
+    errno = saved;
 }
 
 bool catchSignals(QObject *parent, const std::function<void()> &handler)
@@ -413,8 +456,110 @@ bool catchSignals(QObject *parent, const std::function<void()> &handler)
     struct sigaction action = {};
     action.sa_handler = onSignal;
     sigemptyset(&action.sa_mask);
-    return ::sigaction(SIGINT, &action, nullptr) == 0 && ::sigaction(SIGTERM, &action, nullptr) == 0;
+    return ::sigaction(SIGINT, &action, nullptr) == 0 && ::sigaction(SIGTERM, &action, nullptr) == 0
+        && ::sigaction(SIGHUP, &action, nullptr) == 0;
 }
+
+// ---- helper processes: the private bus, the portal stand-in --------------
+
+int runPortal(int argc, char **argv, const QString &readyFile)
+{
+    dieWithParent();
+    QCoreApplication app(argc, argv);
+    return AtlasVariant::runFakePortal(readyFile, kPortalSeconds);
+}
+
+// The helper of every variant: starts the private session bus (dbus-daemon
+// with the parent's config, so no service can be activated on it), the settings
+// portal stand-in for the contrast variant, and the render process; then stops
+// them in turn. It is a direct child of the parent chain with PDEATHSIG all the
+// way down, so a killed parent leaves no bus behind.
+int runHost(int argc, char **argv, const QStringList &renderArgs)
+{
+    dieWithParent();
+    QCoreApplication app(argc, argv);
+    const QString scratch = qEnvironmentVariable(kScratchVariable);
+    const QString daemonPath = QStandardPaths::findExecutable(QStringLiteral("dbus-daemon"));
+    if (scratch.isEmpty() || renderArgs.size() < 2) {
+        say(QStringLiteral("error: no scratch directory"));
+        return kExitError;
+    }
+    if (daemonPath.isEmpty()) {
+        say(QStringLiteral("error: atlas-preview needs dbus-daemon (package dbus-daemon)"));
+        return kExitError;
+    }
+    bool interrupted = false;
+    QEventLoop loop;
+    std::function<void()> onSignal = [&] {
+        interrupted = true;
+        loop.quit();
+    };
+    catchSignals(&app, onSignal);
+
+    QProcess daemon;
+    QProcess portal;
+    QProcess render;
+    int code = kExitError;
+    auto finish = [&](int result) {
+        stopProcess(render);
+        stopProcess(portal);
+        stopProcess(daemon);
+        QDir(scratch).removeRecursively();
+        return result;
+    };
+
+    hardenChild(daemon);
+    daemon.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    daemon.start(daemonPath, {QStringLiteral("--config-file=%1/bus.conf").arg(scratch), QStringLiteral("--nofork"), QStringLiteral("--print-address=1")});
+    QElapsedTimer waited;
+    waited.start();
+    while (!interrupted && !daemon.canReadLine() && daemon.state() != QProcess::NotRunning && waited.elapsed() < 10000) {
+        settle(20);
+    }
+    const QString address = QString::fromUtf8(daemon.readLine()).trimmed();
+    if (address.isEmpty() || interrupted) {
+        say(QStringLiteral("error: the private session bus did not start"));
+        return finish(kExitError);
+    }
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert(QStringLiteral("DBUS_SESSION_BUS_ADDRESS"), address);
+    env.remove(QStringLiteral("DBUS_SESSION_BUS_PID"));
+
+    if (renderArgs.at(1) == QLatin1String("contrast")) {
+        const QString ready = scratch + QStringLiteral("/portal-ready");
+        hardenChild(portal);
+        portal.setProcessEnvironment(env);
+        portal.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+        portal.start(QCoreApplication::applicationFilePath(), {QStringLiteral("--internal-portal"), ready});
+        waited.restart();
+        while (!interrupted && !QFile::exists(ready) && portal.state() != QProcess::NotRunning && waited.elapsed() < 10000) {
+            settle(50);
+        }
+        if (!QFile::exists(ready)) {
+            say(QStringLiteral("error: the settings portal stand-in did not start"));
+            return finish(kExitError);
+        }
+    }
+
+    hardenChild(render);
+    render.setProcessEnvironment(env);
+    render.setProcessChannelMode(QProcess::ForwardedChannels);
+    QObject::connect(&render, &QProcess::finished, &loop, &QEventLoop::quit);
+    QObject::connect(&render, &QProcess::errorOccurred, &loop, &QEventLoop::quit);
+    QTimer::singleShot(kHostSeconds * 1000, &loop, &QEventLoop::quit);
+    render.start(QCoreApplication::applicationFilePath(), renderArgs);
+    if (!interrupted) {
+        loop.exec();
+    }
+    if (render.state() == QProcess::NotRunning && render.exitStatus() == QProcess::NormalExit && render.error() != QProcess::FailedToStart) {
+        code = render.exitCode();
+    } else if (!interrupted) {
+        say(QStringLiteral("error: the %1 variant did not finish in %2 s").arg(renderArgs.at(1)).arg(kHostSeconds));
+    }
+    return finish(code);
+}
+
+// ---- the parent -----------------------------------------------------------
 
 // The org.kde.desktop style (kf6-qqc2-desktop-style) is the one the pictures are
 // made in; without it Qt would fall back to another and say nothing.
@@ -444,11 +589,13 @@ struct Job
 
 bool writeFile(const QString &path, const QByteArray &data)
 {
-    if (refuseLink(path)) {
+    const QFileInfo info(path);
+    QString problem;
+    if (!saveAtomic(info.absolutePath(), info.fileName(), data, &problem)) {
+        say(QStringLiteral("error: %1").arg(problem));
         return false;
     }
-    QSaveFile f(path);
-    return f.open(QIODevice::WriteOnly) && f.write(data) == data.size() && f.commit();
+    return true;
 }
 
 // A private environment for one variant, the way tests/visual/run-variant.sh
@@ -491,15 +638,11 @@ bool prepare(Job &job, const QString &root, const QStringList &renderArgs, QProc
     env.remove(QStringLiteral("KDE_FULL_SESSION"));
     env.remove(QStringLiteral("XDG_CURRENT_DESKTOP"));
 
-    // Every variant runs on a session bus of its own: no service can be
+    // Every variant runs on a session bus of its own (started by the host
+    // process, runHost): no service can be
     // started on it (no service directories), and nothing on the user's bus is
     // reachable, whether a notification, a global shortcut or the real
     // portal's colour scheme.
-    const QString runner = QStandardPaths::findExecutable(QStringLiteral("dbus-run-session"));
-    if (runner.isEmpty()) {
-        *problem = QStringLiteral("atlas-preview needs dbus-run-session (package dbus-daemon)");
-        return false;
-    }
     const QString busConfig = base + QStringLiteral("/bus.conf");
     const QByteArray busXml = QByteArrayLiteral(
                                   "<!DOCTYPE busconfig PUBLIC \"-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN\" "
@@ -519,12 +662,8 @@ bool prepare(Job &job, const QString &root, const QStringList &renderArgs, QProc
     hardenChild(*job.process);
     job.process->setProcessEnvironment(env);
     const QString self = QCoreApplication::applicationFilePath();
-    job.process->setProgram(runner);
-    QStringList args{QStringLiteral("--config-file=%1").arg(busConfig), QStringLiteral("--"), self};
-    if (job.variant == QLatin1String("contrast")) {
-        args << QStringLiteral("--internal-contrast-host");
-    }
-    job.process->setArguments(args + renderArgs);
+    job.process->setProgram(self);
+    job.process->setArguments(QStringList{QStringLiteral("--internal-host")} + renderArgs);
     return true;
 }
 
@@ -569,6 +708,19 @@ int runParent(int argc, char **argv)
     for (const QString &p : parser.values(importOption)) {
         importPaths << QDir(p).absolutePath();
     }
+    // Signals are caught before anything is created, so an interrupt always
+    // reaches the clean-up of the temporary directory below.
+    bool interrupted = false;
+    std::function<void()> stopAll;
+    QEventLoop loop;
+    catchSignals(&app, [&] {
+        interrupted = true;
+        if (stopAll) {
+            stopAll();
+        } else {
+            loop.quit();
+        }
+    });
     if (!desktopStyleInstalled()) {
         say(QStringLiteral("atlas-preview: the org.kde.desktop style is not installed (package kf6-qqc2-desktop-style); the pictures would be made in another style"));
         return kExitError;
@@ -582,6 +734,15 @@ int runParent(int argc, char **argv)
     if (!outExisted) {
         QFile::setPermissions(outDir, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
     }
+    {
+        QString problem;
+        const int fd = openOutDir(outDir, &problem);
+        if (fd < 0) {
+            say(QStringLiteral("atlas-preview: %1").arg(problem));
+            return kExitError;
+        }
+        ::close(fd);
+    }
     const QString file = info.canonicalFilePath();
     const QString stem = info.completeBaseName();
 
@@ -593,6 +754,7 @@ int runParent(int argc, char **argv)
 
     // The hidden modes run only for a parent that holds this random value.
     qputenv(kTokenVariable, QUuid::createUuid().toString(QUuid::Id128).toLatin1());
+    qputenv(kRootVariable, QByteArray::number(qlonglong(::getpid())));
     QList<std::shared_ptr<Job>> jobs;
     const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     for (const QString &variant : names()) {
@@ -618,8 +780,6 @@ int runParent(int argc, char **argv)
     const int parallel = qBound(1, QThread::idealThreadCount() / 2, 4);
     int next = 0;
     int running = 0;
-    QEventLoop loop;
-    bool interrupted = false;
     std::function<void()> startMore = [&] {
         while (!interrupted && running < parallel && next < jobs.size()) {
             const std::shared_ptr<Job> job = jobs.at(next++);
@@ -662,8 +822,7 @@ int runParent(int argc, char **argv)
             p->start();
         }
     };
-    catchSignals(&app, [&] {
-        interrupted = true;
+    stopAll = [&] {
         for (const auto &job : std::as_const(jobs)) {
             QProcess *p = job->process.get();
             if (p && !job->done && p->state() != QProcess::NotRunning) {
@@ -678,9 +837,11 @@ int runParent(int argc, char **argv)
         if (running == 0) {
             loop.quit();
         }
-    });
+    };
+    // A signal that came while the directories were made.
+    QCoreApplication::processEvents();
     startMore();
-    if (running > 0) {
+    if (running > 0 && !interrupted) {
         loop.exec();
     }
 
@@ -732,7 +893,7 @@ int runParent(int argc, char **argv)
             failed = true;
         }
     }
-    std::fprintf(stdout, "atlas-preview: %d of %lld pictures in %s, %lld warning(s)\n", pictures, static_cast<long long>(names().size()), qUtf8Printable(outDir),
+    std::fprintf(stdout, "atlas-preview: %d of %lld pictures in %s, %lld warning(s)\n", pictures, static_cast<long long>(names().size()), qUtf8Printable(clean(outDir)),
                  static_cast<long long>(report.size()));
     if (failed) {
         return kExitError;
@@ -759,11 +920,11 @@ int main(int argc, char **argv)
     if (args.size() == 2 && args.at(0) == QLatin1String("--internal-portal")) {
         return runPortal(argc, argv, args.at(1));
     }
-    const bool host = !args.isEmpty() && args.at(0) == QLatin1String("--internal-contrast-host");
+    const bool host = !args.isEmpty() && args.at(0) == QLatin1String("--internal-host");
     const QStringList render = host ? args.mid(1) : args;
     if (render.size() >= 2 && render.at(0) == QLatin1String("--internal-render")) {
         if (host) {
-            return runContrastHost(argc, argv, render);
+            return runHost(argc, argv, render);
         }
         // --internal-render <variant> then key/value pairs; the parent wrote them.
         const QString variant = render.at(1);

@@ -56,9 +56,16 @@ int runFakePortal(const QString &readyFile, int timeoutSeconds)
         std::fprintf(stderr, "fake-portal: could not register on the session bus: %s\n", qPrintable(bus.lastError().message()));
         return 1;
     }
-    // The bus going away (its session ended) ends the stand-in too.
-    bus.connect(QString(), QStringLiteral("/org/freedesktop/DBus/Local"), QStringLiteral("org.freedesktop.DBus.Local"),
-                QStringLiteral("Disconnected"), QCoreApplication::instance(), SLOT(quit()));
+    // The bus going away (its session ended) ends the stand-in too. Qt
+    // notices a closed connection itself: checked every second. The timeout is
+    // the backstop, whatever else fails (the process also ends with its parent).
+    auto *watch = new QTimer(QCoreApplication::instance());
+    QObject::connect(watch, &QTimer::timeout, QCoreApplication::instance(), [bus]() mutable {
+        if (!bus.isConnected()) {
+            QCoreApplication::quit();
+        }
+    });
+    watch->start(1000);
     if (timeoutSeconds > 0) {
         QTimer::singleShot(timeoutSeconds * 1000, QCoreApplication::instance(), &QCoreApplication::quit);
     }

@@ -157,3 +157,23 @@ timeout 30 "$lint" "$tmp/deep" >/dev/null 2>&1
 [ $? -ne 124 ] || fail "deep nesting made the lint run away"
 [ $((SECONDS - start)) -lt 20 ] || fail "deep nesting took too long"
 echo "lint allow-raw scope and bounds ok"
+
+# allow-raw on the line before silences the next line's raw values (as `allow` does).
+mkdir "$tmp/prev"
+printf 'import QtQuick\nItem {\n    // atlas-lint: allow-raw sample colour\n    Rectangle { color: "#fff"; radius: 6 }\n    Rectangle { color: "#fff" }\n}\n' >"$tmp/prev/A.qml"
+"$lint" "$tmp/prev" >"$tmp/out" 2>&1
+grep -q 'A.qml:4:' "$tmp/out" && fail "allow-raw on the previous line did not silence line 4"
+grep -q 'A.qml:5: warning: raw colour' "$tmp/out" || fail "allow-raw on the previous line silenced two lines"
+
+# Hostile files finish fast: a 2 MB line of colour strings, and 2000 lines of braces.
+mkdir "$tmp/hostile2" "$tmp/hostile3"
+{ printf 'Item { color: "#fff"'; for _ in $(seq 1 80000); do printf ' "#fff" "#fff" "#fff" "#fff" "#fff"'; done; echo ' }'; } >"$tmp/hostile2/A.qml"
+line=$(printf 'a{}%.0s' $(seq 1 100))
+{ echo 'NumberAnimation {'; for _ in $(seq 1 2000); do echo "$line"; done; echo 'duration: 200 }'; } >"$tmp/hostile3/B.qml"
+for d in hostile2 hostile3; do
+    start=$(date +%s.%N)
+    timeout 30 "$lint" "$tmp/$d" >/dev/null 2>&1
+    elapsed=$(awk -v a="$start" -v b="$(date +%s.%N)" 'BEGIN { printf "%d", (b - a) * 1000 }')
+    [ "$elapsed" -lt 2000 ] || fail "$d took $elapsed ms (limit 2000)"
+    echo "lint bounds $d ok ($elapsed ms)"
+done

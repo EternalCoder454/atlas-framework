@@ -99,14 +99,16 @@ function uses(s, a, name,   re) {
     re = "(^|[^A-Za-z0-9_.])" (a == "" ? "" : a "\\.") name "[ \t]*\\{"
     return match(s, re) > 0
 }
-# The open items after the text str, given the stack st before it (item type
-# names joined by "|"; "-" for a block that is not an item, such as a JS body).
-# Strings and comments are skipped. Used to tell what a `duration:` belongs to.
-function scanStack(st, str,   i, n, c, q, pre, t) {
+# The open items after the text str, given the stack st before it: "<n>|Type|Type..."
+# (item type names, at most 64 deep, each at most 64 characters; "-" for a block
+# that is not an item, such as a JS body; n counts the blocks opened beyond the
+# 64th, so their closing braces do not pop a real item). Strings and comments
+# are skipped. Used to tell what a `duration:` belongs to.
+function scanStack(st, str,   i, n, c, q, pre, t, p, ov, rest, items) {
+    p = index(st, "|")
+    ov = (p ? substr(st, 1, p - 1) : st) + 0
+    rest = p ? substr(st, p) : ""
     n = length(str)
-    # Hostile input must not cost more than a line's worth of work or memory:
-    # very long lines are not scanned, and at most 64 items are tracked.
-    if (n > 4000) return st
     for (i = 1; i <= n; i++) {
         c = substr(str, i, 1)
         if (c == "\"" || c == "'") {
@@ -120,6 +122,7 @@ function scanStack(st, str,   i, n, c, q, pre, t) {
             break
         } else if (c == "{") {
             pre = substr(str, 1, i - 1)
+            if (length(pre) > 200) pre = substr(pre, length(pre) - 199)
             t = "-"
             if (match(pre, /[A-Za-z_][A-Za-z0-9_.]*[ \t]+on[ \t]+[A-Za-z_][A-Za-z0-9_.]*[ \t]*$/)) {
                 t = substr(pre, RSTART, RLENGTH); sub(/[ \t].*$/, "", t)
@@ -127,17 +130,35 @@ function scanStack(st, str,   i, n, c, q, pre, t) {
                 t = substr(pre, RSTART, RLENGTH); sub(/[ \t]+$/, "", t)
             }
             sub(/^.*\./, "", t)
-            if (gsub(/\|/, "|", st) < 64) st = st "|" t
+            t = substr(t, 1, 64)
+            items = gsub(/\|/, "|", rest)
+            if (items < 64) rest = rest "|" t
+            else ov++
         } else if (c == "}") {
-            sub(/\|[^|]*$/, "", st)
+            if (ov > 0) ov--
+            else sub(/\|[^|]*$/, "", rest)
         }
     }
-    return st
+    return ov rest
 }
 function topOf(st) { return match(st, /[^|]*$/) ? substr(st, RSTART) : "" }
+# The items open at the start of line n. Lines are scanned in order, once, and
+# only when a literal `duration:` asks; a file that costs more than 200000
+# characters to scan stops being tracked (no verdict, so no warning).
+function ctxFor(n) {
+    while (cl < n - 1) {
+        cl++
+        if (length(lines[cl]) <= 4000 && cbudget > 0) {
+            cbudget -= length(lines[cl])
+            cst = scanStack(cst, lines[cl])
+        }
+    }
+    return cbudget > 0 ? cst : "0"
+}
 # Raw colours, animation durations and corner radii that have a token in AtlasStyle.
 function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
-    if (incomment[n] || index(lines[n], "atlas-lint: allow-raw") > 0) return
+    if (incomment[n] || length(s) > 4000) return
+    if (index(lines[n], "atlas-lint: allow-raw") > 0 || (n > 1 && index(lines[n-1], "atlas-lint: allow-raw") > 0)) return
     c = s
     sub(/[ \t]\/\/.*$/, "", c)
     # Colour strings: "#rgb", "#argb", "#rrggbb", "#aarrggbb". Not in text (qsTr, text:).
@@ -183,7 +204,7 @@ function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
         rest = substr(rest, RSTART + RLENGTH)
         v = tok; sub(/^[^0-9]*duration[ \t]*:[ \t]*/, "", v); sub(/[^0-9].*$/, "", v)
         if (v + 0 == 0) continue
-        st = scanStack(ctx[n], pre)
+        st = scanStack(ctxFor(n), pre)
         if (topOf(st) !~ /(Animation|Animator)$/) continue
         hint = (v + 0 <= 100) ? "durationShort (100 ms)" : ((v + 0 <= 150) ? "duration (150 ms)" : "durationLong (250 ms)")
         report(n, "warning", "literal animation duration " v, ": use AtlasStyle." hint " (it is 0 when the user turned motion off); `// atlas-lint: allow-raw` if it must stay")
@@ -223,17 +244,16 @@ BEGIN {
 { lines[NR] = $0 }
 END {
     # Per line: is it inside a block comment, and which items are open at its start.
-    blk = 0; ctxst = ""
+    blk = 0; cl = 0; cst = "0"; cbudget = 200000
     for (nr = 1; nr <= NR; nr++) {
-        if (index(lines[nr], "duration") > 0) ctx[nr] = ctxst
         s = lines[nr]
+        if (length(s) > 4000) continue
         if (blk) {
             incomment[nr] = 1
             if (index(s, "*/") > 0) blk = 0
         } else {
             if (s ~ /^[ \t]*\/\*/) incomment[nr] = 1
             if (match(s, /\/\*/) && index(substr(s, RSTART), "*/") == 0 && s !~ /"[^"]*\/\*/) blk = 1
-            ctxst = scanStack(ctxst, s)
         }
     }
     for (nr = 1; nr <= NR; nr++) {
