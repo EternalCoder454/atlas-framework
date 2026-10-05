@@ -13,7 +13,9 @@
 # Its API is a contract with every Atlas app: see "Compatibility" in
 # docs/DESIGN.md before renaming or removing anything.
 # AtlasStyle is a QML singleton: the qmldir needs it marked before the module.
-set_source_files_properties(AtlasStyle.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(AtlasStyle.qml AtlasStatus.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+# AtlasStatusView is Atlas.Ui's own: what the views show for a status.
+set_source_files_properties(AtlasStatusView.qml PROPERTIES QT_QML_INTERNAL_TYPE TRUE)
 qt_add_qml_module(atlasui
     URI Atlas.Ui
     VERSION 1.0
@@ -126,6 +128,8 @@ qt_add_qml_module(atlasui
         AtlasAvatar.qml
         AtlasRating.qml
         AtlasBadge.qml
+        AtlasStatus.qml
+        AtlasStatusView.qml
     SOURCES
         livechart.h livechart.cpp
         atlassparkline.h atlassparkline.cpp

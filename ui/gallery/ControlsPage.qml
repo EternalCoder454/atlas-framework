@@ -51,7 +51,7 @@ Item {
         },
         {
             title: qsTr("Feedback and status"),
-            types: ["AtlasProgressBar", "AtlasSpinner", "InfoBanner", "Toast", "AtlasToolTip", "UsageBar", "AtlasPlaceholder", "AtlasEmptyState", "AtlasBadge", "StatusHero"]
+            types: ["AtlasProgressBar", "AtlasSpinner", "InfoBanner", "Toast", "AtlasToolTip", "UsageBar", "AtlasPlaceholder", "AtlasEmptyState", "AtlasStatus", "AtlasBadge", "StatusHero"]
         },
         {
             title: qsTr("Data display"),

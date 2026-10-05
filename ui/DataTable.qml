@@ -114,6 +114,14 @@ FocusScope {
     property string expandedRole
     // Shown in the middle when there are no rows ("No Apps Match").
     property string placeholderText
+    // What the table shows in place of its rows (an AtlasStatus value), under
+    // the column header, and the content of that: the heading, the
+    // explanation, a Symbols value (0 for the status's own) and one action.
+    property int status: AtlasStatus.Ready
+    property string statusTitle
+    property string statusText
+    property int statusSymbol: 0
+    property AtlasAction statusAction: null
     readonly property bool pointerInside: hover.hovered
     readonly property real rowHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * (density === AtlasStyle.Compact ? 0.75 : 1))
     readonly property alias count: list.count
@@ -413,6 +421,9 @@ FocusScope {
     }
 
     Keys.onPressed: event => {
+        if (root.status !== AtlasStatus.Ready) {
+            return;
+        }
         const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
         const ctrl = (event.modifiers & Qt.ControlModifier) !== 0;
         const from = list.currentIndex;
@@ -677,6 +688,7 @@ FocusScope {
         id: list
         anchors.fill: rows
         clip: true
+        visible: root.status === AtlasStatus.Ready
         model: root.model
         reuseItems: true
         onCountChanged: root._pruneSelection()
@@ -899,8 +911,17 @@ FocusScope {
         }
     }
 
+    AtlasStatusView {
+        anchors.fill: rows
+        status: root.status
+        title: root.statusTitle
+        text: root.statusText
+        symbol: root.statusSymbol
+        action: root.statusAction
+    }
+
     QQC2.Label {
-        visible: list.count === 0 && root.placeholderText.length > 0
+        visible: root.status === AtlasStatus.Ready && list.count === 0 && root.placeholderText.length > 0
         anchors.centerIn: rows
         width: list.width - Kirigami.Units.gridUnit * 2
         horizontalAlignment: Text.AlignHCenter

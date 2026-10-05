@@ -109,6 +109,20 @@ set_tests_properties(tables PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-tables-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/tables-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
+# AtlasStatus on AtlasListView, DataTable, AtlasTreeView and AtlasPage, and
+# AtlasSplitView's collapse and Back (tests/status).
+add_executable(atlas-status-tests status/main.cpp)
+target_compile_definitions(atlas-status-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/status")
+target_link_libraries(atlas-status-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-status-tests atlasui)
+add_test(NAME status
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(status PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-status-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/status-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
 # The frameless window (tests/chrome): AtlasHeaderBar's drag and double click,
 # AtlasWindow's resize handles and cursors, AtlasWindowChrome's button layout.
 add_executable(atlas-chrome-tests chrome/main.cpp)

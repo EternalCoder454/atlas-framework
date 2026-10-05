@@ -47,6 +47,14 @@ T.Control {
     property string symbolRole
     property string iconRole
     property int selectionMode: AtlasTreeView.SingleSelection
+    // What the tree shows in place of its rows (an AtlasStatus value) and the
+    // content of that: the heading, the explanation, a Symbols value (0 for
+    // the status's own) and one action.
+    property int status: AtlasStatus.Ready
+    property string statusTitle
+    property string statusText
+    property int statusSymbol: 0
+    property AtlasAction statusAction: null
     // The QModelIndex of the current row (invalid when there is none).
     readonly property var currentIndex: selection.currentIndex
     // Which rows are selected: an ItemSelectionModel for the app to read.
@@ -250,6 +258,9 @@ T.Control {
     }
 
     Keys.onPressed: event => {
+        if (control.status !== AtlasStatus.Ready) {
+            return;
+        }
         const row = priv.currentRow();
         const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
         const ctrl = (event.modifiers & Qt.ControlModifier) !== 0;
@@ -345,6 +356,7 @@ T.Control {
     contentItem: TreeView {
         id: view
         clip: true
+        visible: control.status === AtlasStatus.Ready
         model: control.model
         selectionModel: selection
         boundsBehavior: Flickable.StopAtBounds
@@ -514,5 +526,15 @@ T.Control {
                 }
             }
         }
+    }
+
+    AtlasStatusView {
+        parent: control
+        anchors.fill: parent
+        status: control.status
+        title: control.statusTitle
+        text: control.statusText
+        symbol: control.statusSymbol
+        action: control.statusAction
     }
 }

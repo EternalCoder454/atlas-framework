@@ -45,6 +45,10 @@ import org.kde.kirigami as Kirigami
 // moves the current row: the list emits `moveRequested(from, to)` and the app
 // moves the model's row to `to` at once, in the handler; the list then
 // selects it. Name the list for screen readers with Accessible.name.
+//
+// `status` (an AtlasStatus value) shows Loading, Empty, NoResults or Error
+// in place of the rows, below the list's `header` if it has one; see
+// docs/reference/atlas-ui/atlas-status.md.
 ListView {
     id: control
 
@@ -62,6 +66,14 @@ ListView {
     // Shown in the middle when there are no rows.
     property string placeholderText
     property int placeholderSymbol: 0
+    // What the list shows in place of its rows (an AtlasStatus value) and the
+    // content of that: the heading, the explanation, a Symbols value (0 for
+    // the status's own) and one action button.
+    property int status: AtlasStatus.Ready
+    property string statusTitle
+    property string statusText
+    property int statusSymbol: 0
+    property AtlasAction statusAction: null
     // The selected row indexes, ascending.
     readonly property list<int> selectedIndexes: {
         control._rev;
@@ -409,6 +421,9 @@ ListView {
     }
 
     Keys.onPressed: event => {
+        if (control._statusActive) {
+            return;
+        }
         control._mouseFocus = false;
         const mods = event.modifiers;
         const at = control.currentIndex;
@@ -558,10 +573,44 @@ ListView {
         Accessible.ignored: true
     }
 
+    // The rows are hidden while a status shows; the header stays.
+    readonly property bool _statusActive: control.status !== AtlasStatus.Ready
+    on_StatusActiveChanged: control._syncRows()
+    function _syncRows(): void {
+        const kids = control.contentItem ? control.contentItem.children : [];
+        const show = !control._statusActive;
+        for (let i = 0; i < kids.length; ++i) {
+            const k = kids[i];
+            if (k.ListView.view === control && k.visible !== show) {
+                k.visible = show;
+            }
+        }
+    }
+    Connections {
+        target: control.contentItem
+        enabled: control._statusActive
+        function onChildrenChanged() {
+            control._syncRows();
+        }
+    }
+    AtlasStatusView {
+        parent: control
+        x: 0
+        y: control.headerItem ? Math.max(0, control.headerItem.y + control.headerItem.height - control.contentY) : 0
+        width: control.width
+        height: Math.max(0, control.height - y)
+        z: 2
+        status: control.status
+        title: control.statusTitle
+        text: control.statusText
+        symbol: control.statusSymbol
+        action: control.statusAction
+    }
+
     AtlasEmptyState {
         parent: control
         anchors.fill: parent
-        visible: control.count === 0 && (control.placeholderText.length > 0 || control.placeholderSymbol !== 0)
+        visible: control.status === AtlasStatus.Ready && control.count === 0 && (control.placeholderText.length > 0 || control.placeholderSymbol !== 0)
         symbol: control.placeholderSymbol
         title: control.placeholderText
     }
