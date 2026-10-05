@@ -5,7 +5,7 @@ import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
 // A list in the Atlas look: rows of AtlasStyle.rowHeight, a hover tint, the
-// selected rows in an accent pill, and a focus ring on the current row when
+// selected rows in an accent-tint rounded selection (radiusSmall), and a focus ring on the current row when
 // the keyboard moved there. It is a ListView, so `model`, `delegate`,
 // `currentIndex`, `count` and the rest work as usual, and it makes rows only
 // for what is on screen: ten thousand rows cost what a screenful does.

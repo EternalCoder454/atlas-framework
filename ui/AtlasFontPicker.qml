@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A font chooser: a pill with the family drawn in its own face and the size.
+// A font chooser: a field like AtlasComboBox with the family drawn in its own face and the size.
 // Clicking it opens a card with a search field, the list of installed families
 // (each in its own face, drawn only while visible) and a size spin box. `font`
 // is the chosen font (its `family` and `pointSize`); the other parts of `font`
@@ -31,7 +31,7 @@ T.AbstractButton {
 
     signal edited
 
-    // The pill never draws the picker's own font at the picked size: it uses
+    // The field never draws the picker's own font at the picked size: it uses
     // the application font for everything but the family name.
     readonly property font _nameFont: Qt.font({
         family: control.font.family,

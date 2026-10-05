@@ -1,7 +1,7 @@
 import QtQuick
 import Atlas.Ui
 
-// The keyboard focus ring every Atlas control shows: a 2 px pink
+// The keyboard focus ring every Atlas control shows: a 2 px magenta-violet
 // (AtlasStyle.focus) outline with a 2 px gap outside the control's shape, only
 // when focus came from the keyboard. It fades in with durationShort and grows
 // slightly into place (scale 0.96 to 1, the expressive spring); under reduced

@@ -16,6 +16,11 @@ Atlas.Ui, and the compatibility rules. Change it together with the code.
   would hide the app's own. The crates' public items, the C functions in
   `crates/atlas-framework-ui/include/atlas/app.h` and every on-disk or D-Bus
   format are contracts too.
+- **docs/reference is the single source for API documentation** (published
+  at atlasos.eterneon.net/framework). Change the page in the same commit as
+  the API, and don't describe types, properties or crate items anywhere else
+  (DESIGN.md, READMEs, comments): link to the page. `tools/docs.py check`
+  fails when `api/atlas-ui.api` has a type or public member without one.
 - **Build and test in a container**, never on the host (no Qt -devel there):
   `localhost/atlas-framework-dev:44` (`packaging/Containerfile.dev` builds it;
   the older `localhost/atlas-ui-dev:44` lacks flatpak-devel), or `registry.fedoraproject.org/fedora:44` for
@@ -56,5 +61,5 @@ runs, for when you need one step on its own.
 CI (`.github/workflows/ci.yml`) runs all of these. A release is a `vX.Y.Z`
 tag: the version in `CMakeLists.txt`, `Cargo.toml` and the spec must match it,
 and `CHANGELOG.md` needs its section (`.github/workflows/release.yml`).
-New controls are named `Atlas<Name>` and get a `ui/gallery/demos/<Type>Demo.qml`, goldens (tests/README.md) and
-an API line.
+New controls are named `Atlas<Name>` and get a `ui/gallery/demos/<Type>Demo.qml`, goldens (tests/README.md), an
+API line and a docs/reference page.

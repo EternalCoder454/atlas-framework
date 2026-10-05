@@ -1,6 +1,6 @@
 ---
 title: ContextMenu
-summary: A right-click menu in the Atlas look: a rounded raised card with inset rows.
+summary: A right-click menu in the Atlas look: a raised card with 6 px corners with inset rows.
 section: Menus, dialogs and popups
 ---
 

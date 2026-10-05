@@ -5,7 +5,7 @@ section: Lists and tables
 since: "1.3.0"
 ---
 
-A row of screenshots, one at a time: previous and next buttons over the picture, dots below, and the arrow keys. Only the shown image and its two neighbours are loaded, asynchronously and at a bounded size. At most the first 50 sources are shown. With no sources it shows a short "No screenshots" message. Use it on an app's detail page, next to [AtlasInstallButton](atlas-install-button.md).
+A row of screenshots, one at a time: previous and next buttons over the picture, dots below (a "3 / 20" counter instead when there are more than 12; nothing for a single screenshot), and the arrow keys. Only the shown image and its two neighbours are loaded, asynchronously and at a bounded size. At most the first 50 sources are shown. With no sources it shows a short "No screenshots" message. Use it on an app's detail page, next to [AtlasInstallButton](atlas-install-button.md).
 
 AtlasScreenshotCarousel is a Qt Quick Controls [`Control`](https://doc.qt.io/qt-6/qml-qtquick-templates-control.html); its inherited properties work as usual.
 
@@ -30,7 +30,7 @@ AtlasScreenshotCarousel {
 
 ## Keyboard
 
-The arrow keys go to the previous and next screenshot.
+The arrow keys go to the previous and next screenshot; Home and End go to the first and last.
 
 ## Where pictures may come from
 

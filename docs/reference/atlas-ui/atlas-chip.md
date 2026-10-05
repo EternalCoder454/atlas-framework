@@ -1,11 +1,11 @@
 ---
 title: AtlasChip
-summary: A small pill for a tag, a filter or a value; plain, checkable or closable.
+summary: A small label for a tag, a filter or a value; plain, checkable or closable.
 section: Buttons
 since: "1.4.0"
 ---
 
-AtlasChip is plain (just `text`), checkable, or closable, or a mix. A checkable chip is a filter: the checked chip has the selection fill, an accent border and a check mark instead of its symbol, and is a full pill, while an unchecked one is a little less round. A `closable` chip has an x button; the app removes the chip when `closeRequested()` fires. Put chips that belong together in an [AtlasChipGroup](atlas-chip-group.md).
+AtlasChip is plain (just `text`), checkable, or closable, or a mix. A checkable chip is a filter: the checked chip has the selection fill, an accent border and a check mark instead of its symbol, and is fully round, while an unchecked one has 8 px corners. A plain (not checkable) chip is always fully round. A `closable` chip has an x button; the app removes the chip when `closeRequested()` fires. Put chips that belong together in an [AtlasChipGroup](atlas-chip-group.md).
 
 AtlasChip is a Qt Quick Templates `AbstractButton`; its inherited properties (`text`, `checkable`, `checked`, `toggled`) work as usual. See <https://doc.qt.io/qt-6/qml-qtquick-controls-abstractbutton.html>.
 

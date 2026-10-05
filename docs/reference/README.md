@@ -78,4 +78,4 @@ Callouts use GitHub alerts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`. Pages link 
    - Members starting with `_` are private and never documented.
 4. Optional sections such as `## Keyboard`, `## Accessibility` and `## Notes`, when there's something an app author must know.
 
-Every public member in `api/atlas-ui.api` belongs on its type's page. When the API changes, change the page in the same commit.
+Every public member in `api/atlas-ui.api` belongs on its type's page (`tools/docs.py check` fails on a missing type or member). A member counts as documented when it is in backticks in the first cell of a table row (`name`, `name(...)` or `Type.Value`), in a heading, or at the start of a list item; a mention in prose or in an example does not count. A member the type inherits (its `ui/<Type>.qml` root object is another Atlas.Ui type) may be left to the base type's page if the page links to it. These pages are the single source for the API: change the page in the same commit as the API, and link to it from DESIGN.md, READMEs and comments instead of describing types there.

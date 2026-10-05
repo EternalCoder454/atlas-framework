@@ -5,7 +5,7 @@ section: Navigation
 since: "1.4.0"
 ---
 
-Pages pushed one over another, with a header row holding a Back button and the current page's title. Pages slide sideways (instantly under reduced motion). Use it for list-to-detail flows inside one window; use [AtlasSidebar](atlas-sidebar.md) for the top-level places of an app.
+Pages pushed one over another, with a header row holding a Back button (disabled on the first page) and the current page's title. Pages slide sideways (instantly under reduced motion). Use it for list-to-detail flows inside one window; use [AtlasSidebar](atlas-sidebar.md) for the top-level places of an app.
 
 A page is any `Item`, or a `Component` or URL of one. Its `title` property (a string, if it has one) shows in the header.
 

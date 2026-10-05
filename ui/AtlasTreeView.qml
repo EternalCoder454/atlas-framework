@@ -6,7 +6,7 @@ import org.kde.kirigami as Kirigami
 
 // A tree of rows on Qt Quick's TreeView, in the Atlas list look: rows as tall
 // as AtlasStyle.rowHeight, a hover tint, the selected rows as an accent-tint
-// pill, a chevron to expand (mirrored in right-to-left layouts) and one
+// rounded selection (radiusSmall), a chevron to expand (mirrored in right-to-left layouts) and one
 // indent per level. Only the rows on screen are made. The model is any
 // QAbstractItemModel; AtlasTreeModel builds one from nested JS objects:
 //

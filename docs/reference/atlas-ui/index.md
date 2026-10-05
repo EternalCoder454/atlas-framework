@@ -93,11 +93,11 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasSplitButton](atlas-split-button.md): A main button joined to an arrow that opens a menu of variants.
 - [AtlasInstallButton](atlas-install-button.md): An install button with progress inside it and states for install, update, open and retry.
 - [AtlasCopyButton](atlas-copy-button.md): An icon button that copies text and shows a check mark.
-- [AtlasSwitch](atlas-switch.md): A pill switch.
+- [AtlasSwitch](atlas-switch.md): A round switch.
 - [AtlasCheckBox](atlas-check-box.md): A check box with an optional partly-checked state.
 - [AtlasRadioButton](atlas-radio-button.md): A radio button; siblings form a group.
 - [AtlasSegmentedControl](atlas-segmented-control.md): Joined segments with one selected.
-- [AtlasChip](atlas-chip.md): A small pill for a tag, filter or value.
+- [AtlasChip](atlas-chip.md): A small chip for a tag, filter or value.
 - [AtlasChipGroup](atlas-chip-group.md): A wrapping group of chips, optionally one-of.
 
 ### Fields and pickers
@@ -155,7 +155,7 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasAppMenu](atlas-app-menu.md): The app's menus for the header bar or the desktop's global menu.
 - [AtlasAction](atlas-action.md): One user action shared by buttons, menus and the keyboard.
 - [AtlasDialog](atlas-dialog.md): The general modal dialog.
-- [ConfirmDialog](confirm-dialog.md): A modal question with pill buttons.
+- [ConfirmDialog](confirm-dialog.md): A modal question with small rounded buttons.
 - [AtlasPopover](atlas-popover.md): A raised card that opens next to a control.
 - [AtlasToolTip](atlas-tool-tip.md): A hint on a raised card.
 - [AtlasCommandPalette](atlas-command-palette.md): A searchable list of the app's actions, opened with Ctrl+K.

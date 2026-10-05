@@ -1,10 +1,10 @@
 ---
 title: SecondaryButton
-summary: An AtlasButton preset as a soft tinted pill with a hairline border.
+summary: An AtlasButton preset as a soft tinted button with a hairline border.
 section: Buttons
 ---
 
-SecondaryButton is [AtlasButton](atlas-button.md) with `prominent: false`: a soft pill with a hairline border for the actions beside the main one ([PrimaryButton](primary-button.md)). The properties, states and enums are AtlasButton's; see its page.
+SecondaryButton is [AtlasButton](atlas-button.md) with `prominent: false`: a soft button with a hairline border for the actions beside the main one ([PrimaryButton](primary-button.md)). The properties, states and enums are AtlasButton's; see its page.
 
 SecondaryButton is a Qt Quick Templates `AbstractButton` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-abstractbutton.html)); its inherited properties (`text`, `icon`, `checkable`, `checked`, `clicked`) work as usual.
 

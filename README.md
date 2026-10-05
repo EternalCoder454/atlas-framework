@@ -2,10 +2,11 @@
 
 The shared base every Atlas app builds on, so they look and behave the same:
 
-- **Atlas.Ui** (`ui/`): the QML module of Atlas controls. Pill buttons,
-  grouped sections, the status hero, sidebar items, setup steps, charts,
-  tables, menus, the window that follows the shared transparency switch, and
-  about 4,000 Material Symbols icons.
+- **Atlas.Ui** (`ui/`): the QML module of Atlas controls: buttons with 4 px
+  corners, grouped sections, fields and pickers, lists and tables, sidebars
+  and navigation, dialogs, charts, a frameless window with its own header
+  bar that follows the shared transparency switch, and about 4,000 Material
+  Symbols icons.
 - **atlas-symbols-fonts** (`ui/symbols/`): the Material Symbols fonts.
 - **Atlas Symbols** (`ui/gallery/`): browse the icons and copy the QML.
 - **The Rust crates** (`crates/`): app startup and single instance, settings,
@@ -23,6 +24,8 @@ import Atlas.Ui
 PrimaryButton { text: qsTr("Share"); symbol: Symbols.Share }
 ```
 
+The API reference is on <https://atlasos.eterneon.net/framework>; its source,
+[docs/reference/](docs/reference/), is the one place the API is described.
 Read [docs/DESIGN.md](docs/DESIGN.md) first: the design rules for Atlas apps,
 how apps use Atlas.Ui, and the compatibility rules for changing it.
 

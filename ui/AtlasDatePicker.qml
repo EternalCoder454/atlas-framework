@@ -2,11 +2,11 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A date field: a pill like AtlasComboBox that shows the chosen date and opens
+// A date field: a field like AtlasComboBox that shows the chosen date and opens
 // an AtlasCalendar in a raised card. An invalid Date (new Date(NaN)) means "no
-// date": the pill shows `placeholderText`. Choosing a day sets `selectedDate`,
+// date": the field shows `placeholderText`. Choosing a day sets `selectedDate`,
 // emits `edited` and closes the card; Escape closes it too, and focus returns
-// to the pill. Alt+Down, Return or Space on the pill open the card.
+// to the field. Alt+Down, Return or Space on the field open the card.
 //
 //   AtlasDatePicker {
 //       selectedDate: new Date(2026, 2, 15)
@@ -25,10 +25,10 @@ T.Control {
     // The earliest and latest day that can be chosen; invalid for no limit.
     property date minimumDate
     property date maximumDate
-    // How the date reads on the pill: a Locale format, or a format string.
+    // How the date reads on the field: a Locale format, or a format string.
     property var format: Locale.ShortFormat
     property string placeholderText: qsTr("Pick a date")
-    // A clear button on the pill (and Delete or Backspace) while a date is set.
+    // A clear button on the field (and Delete or Backspace) while a date is set.
     property bool clearable: false
     // The day that is ringed in the calendar (default: the current day).
     property date today: new Date()

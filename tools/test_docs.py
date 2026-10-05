@@ -38,6 +38,9 @@ class DocsCase(unittest.TestCase):
         self.addCleanup(setattr, docs, "REF", self.saved)
         docs.CUSTOM_ROOT = True  # the fixture is not under the repo root
         self.addCleanup(setattr, docs, "CUSTOM_ROOT", False)
+        self.saved_api = docs.API
+        docs.API = None  # fixtures have no API file unless a test sets one
+        self.addCleanup(setattr, docs, "API", self.saved_api)
         self.write("lib/index.md", page(title="Lib"))
 
     def write(self, rel, content):
@@ -64,6 +67,122 @@ class DocsCase(unittest.TestCase):
 
     def assertClean(self, errors):
         self.assertEqual(errors, [])
+
+
+class ApiCoverage(DocsCase):
+    """Every type and public member in the API file is on an atlas-ui page."""
+
+    API = (
+        "AtlasButton.enum Variant: Default = 0\n"
+        "AtlasButton.enum Variant: Ghost = 3\n"
+        "AtlasButton.property busy: bool\n"
+        "AtlasButton.property _hidden: int\n"
+        "AtlasButton.signal pressed()\n"
+        "AtlasButton.method open(QVariant x): void\n"
+        "AtlasButton.type\n"
+        "DataTable.property busy: bool\n"
+        "DataTable.property rows: int\n"
+        "DataTable.type\n"
+    )
+    BUTTON = (
+        "## Properties\n\n| Name | Type |\n|---|---|\n| `busy` | `bool` |\n\n"
+        "## Signals\n\n| Name | Description |\n|---|---|\n| `pressed()` | Pressed. |\n\n"
+        "## Methods\n\n- `open(x)`: opens it.\n\n"
+        "## Enums\n\n| Value | Description |\n|---|---|\n| `AtlasButton.Default` | Plain. |\n| `AtlasButton.Ghost` | Bare. |\n"
+    )
+    TABLE = "Like [AtlasButton](atlas-button.md).\n\n| Name | Type |\n|---|---|\n| `rows` | `int` |\n"
+
+    def setUp(self):
+        super().setUp()
+        os.makedirs(os.path.join(self.tmp, "api"))
+        os.makedirs(os.path.join(self.tmp, "ui"))
+        self.api = os.path.join(self.tmp, "api", "t.api")
+        self.set_api(self.API)
+        self.qml("DataTable", "import QtQuick\n\nAtlasButton {\n}\n")
+        self.qml("AtlasButton", "import QtQuick.Controls as QQC2\n\nQQC2.Button {\n}\n")
+        docs.API = self.api
+        self.write("atlas-ui/index.md", page(title="Atlas.Ui"))
+        self.write("atlas-ui/atlas-button.md", page(self.BUTTON))
+        self.write("atlas-ui/data-table.md", page(self.TABLE))
+
+    def set_api(self, text):
+        with open(self.api, "w") as f:
+            f.write(text)
+
+    def qml(self, type_name, text):
+        with open(os.path.join(self.tmp, "ui", type_name + ".qml"), "w") as f:
+            f.write(text)
+
+    def test_complete_pages_pass(self):
+        self.assertClean(self.errors())
+
+    def test_missing_page(self):
+        os.remove(os.path.join(self.ref, "atlas-ui/data-table.md"))
+        self.assertFlags(self.errors(), "atlas-ui/data-table.md: no page for DataTable")
+
+    def test_missing_member_names_page_and_member(self):
+        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("- `open(x)`: opens it.", "Nothing.")
+                                                    .replace("| `AtlasButton.Ghost` | Bare. |\n", "")))
+        errors = self.errors()
+        self.assertFlags(errors, "atlas-ui/atlas-button.md: `open` of AtlasButton")
+        self.assertFlags(errors, "`Ghost` of AtlasButton")
+
+    def test_name_in_prose_does_not_count(self):
+        # Only a table's first cell, a heading or a list item's start documents a name.
+        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("| `busy` | `bool` |\n", "")
+                                                    + "\nWhile `busy` it spins.\n"))
+        self.assertFlags(self.errors(), "atlas-button.md: `busy`")
+
+    def test_qualified_name_in_another_cell_does_not_count(self):
+        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("| `busy` | `bool` |", "| `x` | `Foo.busy` |")))
+        self.assertFlags(self.errors(), "atlas-button.md: `busy`")
+
+    def test_inherited_member_needs_link_to_base_page(self):
+        self.write("atlas-ui/data-table.md", page(self.TABLE.replace("Like [AtlasButton](atlas-button.md).", "Like AtlasButton.")))
+        self.assertFlags(self.errors(), "atlas-ui/data-table.md: `busy`")
+
+    def test_a_link_to_a_type_that_is_not_the_base_does_not_count(self):
+        self.qml("DataTable", "import QtQuick\n\nItem {\n}\n")
+        self.assertFlags(self.errors(), "atlas-ui/data-table.md: `busy`")
+
+    def test_inherited_member_must_be_on_the_base_page(self):
+        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("| `busy` | `bool` |\n", "")))
+        errors = self.errors()
+        self.assertFlags(errors, "atlas-button.md: `busy`")
+        self.assertFlags(errors, "data-table.md: `busy`")
+
+    def test_inheritance_is_followed_through_several_types(self):
+        self.set_api(self.API + "AtlasSuperTable.property busy: bool\nAtlasSuperTable.type\n")
+        self.qml("AtlasSuperTable", "DataTable {\n}\n")
+        self.write("atlas-ui/atlas-super-table.md", page("Like [DataTable](data-table.md).\n"))
+        self.assertClean(self.errors())
+
+    def test_private_members_are_not_required(self):
+        self.assertNotIn("_hidden", " ".join(self.errors()))
+
+    def test_unrecognised_line(self):
+        self.set_api(self.API + "garbage\n")
+        self.assertFlags(self.errors(), "unrecognised line")
+
+    def test_names_in_fences_do_not_count(self):
+        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("- `open(x)`: opens it.",
+                                                    "~~~qml\n```\n- `open(x)`: no\n```\n~~~")))
+        self.assertFlags(self.errors(), "`open`")
+
+    def test_no_api_skips_the_check(self):
+        docs.API = None
+        self.write("atlas-ui/atlas-button.md", page("Nothing.\n"))
+        self.assertClean(self.errors())
+
+    def test_cli_api_option(self):
+        self.write("atlas-ui/atlas-button.md", page("`busy`\n"))
+        with self.assertRaises(SystemExit):
+            docs.main(["docs.py", "--root", self.ref, "--api", self.api, "check"])
+
+    def test_page_slug(self):
+        self.assertEqual(docs.page_slug("AtlasButton"), "atlas-button")
+        self.assertEqual(docs.page_slug("DataTable"), "data-table")
+        self.assertEqual(docs.page_slug("AccessibilityState"), "accessibility-state")
 
 
 class HappyPath(DocsCase):

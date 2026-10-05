@@ -42,7 +42,7 @@ Rectangle {
 | `error` | `color` (read-only) | — | The colour scheme's negative text colour. |
 | `errorFill` | `color` (read-only) | — | The faint fill of an invalid field. |
 | `floatingBackground` | `color` (read-only) | — | Menus, popovers, notifications and the launcher: `surfaceRaised` at 85% over the blur, solid without it. |
-| `focus` | `color` (read-only) | — | The keyboard focus ring: magenta-violet pink (`#A62A8C` Light, `#E28BE0` Dark); the user's Plasma accent wins. |
+| `focus` | `color` (read-only) | — | The keyboard focus ring: magenta-violet (`#A62A8C` Light, `#E28BE0` Dark); the user's Plasma accent wins. |
 | `fontFamily` | `string` (read-only) | — | The application font's family: IBM Plex Sans when installed, else the system font. |
 | `fontSizeBody` | `real` (read-only) | — | The body size in points: the application font's size. |
 | `fontSizeCaption` | `real` (read-only) | — | Footers and hints: 0.92 of body. |
@@ -55,9 +55,9 @@ Rectangle {
 | `hover` | `color` (read-only) | — | A grey overlay for hover, never the accent, so hover never looks like selection. |
 | `monoFamily` | `string` (read-only) | — | The fixed-width family: JetBrains Mono when installed, else the system fixed font. Set `font.family: AtlasStyle.monoFamily` on code. |
 | `pressed` | `color` (read-only) | — | A grey overlay for a pressed control. |
-| `radius` | `real` (read-only) | — | 6: menus, cards, popovers and tooltips. |
-| `radiusLarge` | `real` (read-only) | — | 8: dialogs. |
-| `radiusPill` | `real` (read-only) | — | 1000: switch tracks, badges and chips, at any height. |
+| `radius` | `real` (read-only) | — | 6: menus, cards, popovers, tooltips and code views. |
+| `radiusLarge` | `real` (read-only) | — | 8: dialogs, the command palette, drop zones and the segmented control's track. |
+| `radiusPill` | `real` (read-only) | — | 1000: fully round shapes at any height: switch tracks, the radio button, progress and usage bars, toasts, and a chip that is checked or not checkable. |
 | `radiusSmall` | `real` (read-only) | — | 4: controls (buttons, fields, combo boxes, menu items, sidebar and list selections). |
 | `reducedMotion` | `bool` (read-only) | — | Follows `Appearance.reducedMotion` (Plasma's animation speed set to instant, or `ATLAS_REDUCED_MOTION=1`). An animation with no duration, such as a spinner, checks this. |
 | `rowHeight` | `real` (read-only) | — | The height of a list or `SectionRow` row: 2.5 grid units, or 75% of that when compact. |

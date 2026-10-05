@@ -1,10 +1,10 @@
 ---
 title: AtlasFocusRing
-summary: The keyboard focus ring every Atlas control shows: a pink outline with a gap, only for keyboard focus.
+summary: The keyboard focus ring every Atlas control shows: a magenta-violet outline with a gap, only for keyboard focus.
 section: Style and motion
 ---
 
-AtlasFocusRing is a 2 px pink (`AtlasStyle.focus`) outline with a 2 px gap outside the control's shape, shown only when focus came from the keyboard. It fades in over `durationShort` and grows slightly into place; under reduced motion it only appears. Put it inside the control's `background` and give it the shape's radius plus the gap.
+AtlasFocusRing is a 2 px magenta-violet (`AtlasStyle.focus`) outline with a 2 px gap outside the control's shape, shown only when focus came from the keyboard. It fades in over `durationShort` and grows slightly into place; under reduced motion it only appears. Put it inside the control's `background` and give it the shape's radius plus the gap.
 
 ## Example
 

@@ -5,7 +5,7 @@ section: Navigation
 since: "1.2.0"
 ---
 
-TabBar is the strip of document tabs of an editor, after Windows 11 Notepad. Each tab is softly rounded like a [SidebarItem](sidebar-item.md), the current one has an accent tint (one highlight that slides to the new tab), a tab with unsaved changes shows a dot, and a close button shows on hover. A "+" after the last tab asks for a new one. The strip scrolls sideways with the wheel when the tabs overflow and keeps the current tab in view. For page switching use [AtlasViewSwitcher](atlas-view-switcher.md).
+TabBar is the strip of document tabs of an editor, after Windows 11 Notepad. Each tab is softly rounded like a [SidebarItem](sidebar-item.md), the current one has an accent tint (one highlight that slides to the new tab), a tab with unsaved changes shows a dot, and a close button shows on the hovered tab and always on the current one. A "+" after the last tab asks for a new one. The strip scrolls sideways with the wheel when the tabs overflow and keeps the current tab in view. For page switching use [AtlasViewSwitcher](atlas-view-switcher.md).
 
 TabBar is an `Item`. The bar owns no data: the app changes `currentIndex` and the model in answer to the signals. Items put inside the bar sit at its far end.
 

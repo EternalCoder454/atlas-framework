@@ -25,7 +25,7 @@ import Atlas.Ui
 //                           violet in Light (#5B4BD6, 6:1 with white), the
 //                           brighter one in Dark (#A396F7)
 //   accentStrongText        text on `accentStrong` (4.5:1 or more)
-//   focus                   the keyboard focus ring: magenta-violet pink
+//   focus                   the keyboard focus ring: magenta-violet
 //                           (#A62A8C light, 5:1 on the window; #E28BE0 dark),
 //                           or the user's Plasma accent
 //   base                    the window background (tonal step 0)
@@ -60,9 +60,10 @@ import Atlas.Ui
 // spacingXXLarge 24.
 //
 // Radii: radiusSmall 4 (controls: buttons, fields, combo boxes, search fields,
-// menu items, sidebar and list selections), radius 6 (menus, cards, popovers,
-// tooltips), radiusLarge 8 (dialogs), radiusPill (switch tracks, badges,
-// chips: any height).
+// menu items, tabs, sidebar and list selections), radius 6 (menus, cards,
+// popovers, tooltips), radiusLarge 8 (dialogs, the command palette, drop zones,
+// the segmented control's track, an unchecked checkable chip), radiusPill
+// (switch tracks, badges, checked or plain chips, toasts: any height).
 //
 // Sizes: controlHeight is the height of a button, field or combo box: 28 px,
 // 24 px when compact (a control grows when its text needs more).

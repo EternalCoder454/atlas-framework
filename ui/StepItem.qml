@@ -4,7 +4,7 @@ import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
 // One step in a setup sidebar: a numbered circle (a checkmark once done)
-// and the step's name. The current step gets the selection pill. Only done
+// and the step's name. The current step gets the selection fill (radiusSmall). Only done
 // steps can be clicked, to go back to them.
 T.AbstractButton {
     id: control

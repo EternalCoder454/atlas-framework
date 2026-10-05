@@ -5,7 +5,7 @@ section: Lists and tables
 since: "1.4.0"
 ---
 
-AtlasTreeView shows any `QAbstractItemModel` as a tree: rows as tall as `AtlasStyle.rowHeight`, a hover tint, selected rows as an accent-tint pill, a chevron to expand (mirrored in right-to-left layouts) and one indent per level. Only the rows on screen are made. [AtlasTreeModel](atlas-tree-model.md) builds a model from nested JS objects. For a flat list use [AtlasListView](atlas-list-view.md).
+AtlasTreeView shows any `QAbstractItemModel` as a tree: rows as tall as `AtlasStyle.rowHeight`, a hover tint, selected rows as a small rounded accent-tint highlight, a chevron to expand (mirrored in right-to-left layouts) and one indent per level. Only the rows on screen are made. [AtlasTreeModel](atlas-tree-model.md) builds a model from nested JS objects. For a flat list use [AtlasListView](atlas-list-view.md).
 
 AtlasTreeView is a Qt Quick Templates `Control` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-control.html)); its inherited properties work as usual.
 

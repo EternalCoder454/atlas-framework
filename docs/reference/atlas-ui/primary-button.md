@@ -1,10 +1,10 @@
 ---
 title: PrimaryButton
-summary: An AtlasButton preset as a filled accent pill with white text, for the main action.
+summary: An AtlasButton preset as a filled accent button, for the main action.
 section: Buttons
 ---
 
-PrimaryButton is [AtlasButton](atlas-button.md) with `prominent: true`: a filled accent pill for the one main action of a view. The properties, states and enums are AtlasButton's; see its page. Use [SecondaryButton](secondary-button.md) for the other actions and [TextButton](text-button.md) for a link-style action.
+PrimaryButton is [AtlasButton](atlas-button.md) with `prominent: true`: an `accentStrong` button with `accentStrongText` text (white in Light, near-black in Dark) and 4 px corners, for the one main action of a view. The properties, states and enums are AtlasButton's; see its page. Use [SecondaryButton](secondary-button.md) for the other actions and [TextButton](text-button.md) for a link-style action.
 
 PrimaryButton is a Qt Quick Templates `AbstractButton` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-abstractbutton.html)); its inherited properties (`text`, `icon`, `checkable`, `checked`, `clicked`) work as usual.
 

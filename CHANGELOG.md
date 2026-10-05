@@ -27,7 +27,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `AtlasDropZone` swells slightly for an acceptable drag.
 - Atlas.Ui design pass, surfaces: menus, popovers, tooltips, toasts, the
   command palette and dialogs use `AtlasStyle.floatingBackground` (strong tint
-  over the blur, solid without it) with radius 6 (dialogs 8); the header bar
+  over the blur, solid without it) with radius 6 (dialogs and the command palette 8, toasts round); the header bar
   and floating toolbar use `chromeBackground`; the window is `AtlasStyle.base`;
   `Section` and `AtlasCard` are solid surfaces with light separators;
   `AtlasCodeView` has its own `codeSurface`. `AtlasLabel` gains the
@@ -39,7 +39,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   for one meaning only, "the system is doing something for you now" (since 1.4.0;
   `reach` sets how far it reaches in, and the corners overlap by design).
 - Buttons, switch, segmented control and chips follow the new design: small
-  corners (pressed 4 to 6 px), grey hover, `controlHeight`, readable disabled
+  corners (buttons go from 4 to 6 px while pressed), grey hover, `controlHeight`, readable disabled
   text. `AtlasButton` gains `variant` (Default, Prominent, Destructive, Ghost;
   `prominent` still works) and `busy` (spinner, presses ignored); a checked
   button or toolbar button has a clear on state. The switch thumb slides with a
@@ -104,9 +104,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   a field that records a key combination and reports a conflict with another
   AtlasAction.
 - Atlas.Ui: AtlasCalendar (month grid with keyboard navigation, minimum and
-  maximum), AtlasDatePicker (a pill that opens it) and AtlasTimePicker (hours,
+  maximum), AtlasDatePicker (a field that opens it) and AtlasTimePicker (hours,
   minutes, `minuteStep`, 12 or 24 h from the locale, optional day of week).
-- Atlas.Ui: AtlasSegmentedControl (joined pill segments, one selected),
+- Atlas.Ui: AtlasSegmentedControl (joined segments in a rounded 8 px track, one selected),
   AtlasSplitButton (a main button with an arrow menu), AtlasChip (plain,
   checkable or closable) and AtlasChipGroup (a wrapping, exclusive-capable
   group with one Tab stop).
@@ -117,7 +117,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Atlas.Ui: AtlasStat (a figure with unit, trend and sparkline), AtlasDetailGrid
   (label/value pairs with copy buttons), AtlasSparkline (a C++ axis-less line
   chart), AtlasAvatar (image or initials), AtlasRating (zero to five stars,
-  halves, optionally editable) and AtlasBadge (a pill or dot with a tint).
+  halves, optionally editable) and AtlasBadge (a round label or dot with a tint).
 - Atlas.Ui: SectionRow slots `leading` (items before the title, replacing the
   icon), `content` (replaces the title and subtitle, e.g. a slider) and
   `busy` (a spinner at the trailing edge, no activation while it shows;
@@ -130,7 +130,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 - Atlas.Ui: AtlasSplitView (Atlas divider, remembers sizes), AtlasNavigationStack
   (pages with a Back header) and AtlasViewSwitcher (page tabs with symbols and
   badges).
-- Atlas.Ui: AtlasColorField (colour pill with palette, hex field and system
+- Atlas.Ui: AtlasColorField (a field with a colour swatch, palette, hex field and system
   dialog), AtlasFileField and AtlasFolderField (path field with a Browse button
   for the system dialog), AtlasAutocompleteField (suggestions while typing) and
   AtlasFontPicker (family and size, optionally monospace only).
@@ -145,7 +145,7 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   general dialog: title row with Back and Close, scrolling body, footer
   buttons), AtlasCard (a padded, optionally clickable surface) and
   AtlasExpandableSection (a header that folds its content, animated).
-- Atlas.Ui: AtlasPasswordField, a rounded password field with a show/hide eye
+- Atlas.Ui: AtlasPasswordField, a password field with small corners and a show/hide eye
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
   Kirigami.PasswordField and password TextFields to it.

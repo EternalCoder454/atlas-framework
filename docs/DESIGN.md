@@ -61,12 +61,14 @@ CHANGELOG.md                  what each release brings to apps
 Every Atlas app follows these. Atlas.Ui implements them, so an app that uses
 its controls gets them for free.
 
-1. **macOS-style controls.** Pill buttons (`PrimaryButton` filled with the
-   accent, `SecondaryButton` soft and tinted, `TextButton` as a link), pill
-   switches (`AtlasSwitch`), settings grouped in rounded cards (`Section` of
-   `SectionRow`s), a sidebar of rounded selection pills (`SidebarItem`,
-   `SidebarGroup`), a large bold page title (`AtlasPage`), and a big centred
-   status (`StatusHero`).
+1. **macOS-style controls with small rounding.** Buttons with 4 px corners
+   (`PrimaryButton` filled with `accentStrong`, `SecondaryButton` soft and
+   tinted with a hairline border, `TextButton` as a link), round switches
+   (`AtlasSwitch`), settings grouped in 6 px cards (`Section` of
+   `SectionRow`s), a sidebar whose selection is a 4 px highlight
+   (`SidebarItem`, `SidebarGroup`), a large bold page title (`AtlasPage`), and
+   a big centred status (`StatusHero`). The tokens are on the
+   [Style and theming](reference/atlas-ui/style-and-theming.md) page.
 2. **Windows 11 caption buttons.** The title bar is the window manager's:
    AtlasOS's Aurorae themes draw minimize, maximize and close as rounded
    squares on the right, tinted at rest, accent on hover, red for close (see
@@ -130,128 +132,44 @@ those controls is one rectangle that slides to the new item (an expressive
 
 ## Atlas.Ui
 
-| Type | What it is |
-|---|---|
-| `AtlasWindow` | The application window: blur or opaque, following `Appearance`; `sidebarColor()` for a sidebar; `widthClass` (Compact < 30 gridUnits, Wide >= 60) and `sidebarCollapsed` (true in Compact) so every app collapses its sidebar alike; `stateKey` saves and restores size and maximised state; with an `AtlasHeaderBar` as its `header` the window is frameless (`frameless`): it draws its own title row, has 4 px resize handles and a hairline border; without one nothing changes (since 1.4.0) |
-| `AtlasSettings` | The app's own settings file (`atlas-<app>rc`, the one the Rust `settings` module uses): `group`, `fileName`, typed `value(key, default)`, batched atomic `setValue`/`remove`, `contains`, `changed(key)` for other writers. Takes the crate's `flock` (waits at most 1 s), refuses immutable keys, bad names and symlinks leading out of the config directory; reads values as written (a `[$e]` key is ignored, never expanded), ignores a file that is not regular or over 4 MB, creates files with mode 0600, and drops changes it could not write when `group` or `fileName` changes instead of moving them. Qt refuses a settings symlink that leaves the config directory where the Rust crate follows it: the stricter rule is kept on purpose (since 1.4.0) |
-| `AtlasPortal` | Singleton: `openUrl(url)` opens only http(s), mailto (only `subject` and `body` are kept) and existing file URLs (plus `extraSchemes`; files are checked by their real path and content: no executables, launchers or scripts, directories are fine); `notify(title, body, actions, options)` over org.freedesktop.Notifications with the Notifications rules below and `actionInvoked`; the body is plain text unless `options.markup: true` (then escape it with `escape(text)`) (since 1.4.0) |
-| `AtlasHeaderBar` | The merged header of a frameless `AtlasWindow` (`header:`): 32 px row with the window menu button, `leading`, `title`, `actions` in an `AtlasToolbar` (overflow), `trailing` and the window buttons, in KWin's button layout and the Header colours at the window's blur alpha; drags the window, double click maximises, right click or Alt+Space opens a Minimize/Maximize/Close menu; `centerTitle`, `windowButtons`, `openWindowMenu()` (since 1.4.0) |
-| `AtlasWindowButtons` | Minimise, maximise/restore and close drawn like the AtlasOS KWin decoration (26 px rounded squares in 32 px cells, accent hover, red close); `buttons`, `active`, `maximized`; never take the keyboard focus (since 1.4.0) |
-| `AtlasAppMenu` | The app's menus (`menus: [{title, actions}]`, `null` = separator) for `AtlasHeaderBar.leading`: exported natively through DBusMenu when the desktop has a usable global menu (`AtlasWindowChrome.globalMenu`), else a menu button in the header (since 1.4.0) |
-| `AtlasWindowChrome` | Singleton: KWin's caption button layout (`buttonsOnLeft`, `buttonsOnRight`) and `globalMenu` (the `com.canonical.AppMenu.Registrar` name has an owner and the platform theme is KDE's, so the native export works), both live (since 1.4.0) |
-| `AtlasPage` | A scrolling page with a large bold title and centred margins; `headerTrailing` puts items at the end of the title row, `maxContentWidth` is writable (since 1.4.0) |
-| `PrimaryButton`, `SecondaryButton`, `TextButton`, `MenuButton` | Buttons (`AtlasButton` is their shared base; `variant` Default, Prominent, Destructive or Ghost, `busy`, grey hover, 4 px corners that go to 6 px while pressed; `prominent: true` is `variant: Prominent` and a variant other than Default wins) |
-| `AtlasSwitch` | Pill switch |
-| `AtlasTransparencySwitch` | A settings row (`SectionRow`) with a switch for the shared "Transparency and blur" setting (`Appearance.transparency`, writable; atlasrc `[Appearance] Transparency`). Disabled with the reason when the compositor has no blur. Menus, tooltips, popovers, dialogs, toasts and the command palette are tinted translucent (alpha 0.88 to 0.92) over the blurred window when `Appearance.effective`, solid otherwise (since 1.4.0) |
-| `AtlasSegmentedControl` | Joined pill segments, one selected (`model` of strings or `{ text, symbol, toolTip }`, `currentIndex`, `activated(index)`); one Tab stop, arrows, Home/End; a tab list for screen readers (since 1.4.0) |
-| `AtlasSplitButton` | A main pill button joined to an arrow that opens a menu (`items` of `ContextMenuItem`, `action`, `prominent`); two Tab stops, Alt+Down or Menu opens the menu (since 1.4.0) |
-| `AtlasChip`, `AtlasChipGroup` | A small pill (`text`, `symbol`, `checkable`, `closable` with `closeRequested()`), and a wrapping group of them (`exclusive`, roving Tab stop, focus moves to the neighbour of a removed chip) (since 1.4.0) |
-| `Section`, `SectionRow` | A rounded card of rows; a row has a title, subtitle, value, and a checkmark, switch or chevron. A section can fold. A row takes `leading` items (before the title), `content` (replaces the title and subtitle), `trailing` items (the default property) and `busy` (a spinner; no activation) (since 1.4.0) |
-| `SidebarItem`, `SidebarGroup` | Sidebar entries, with a live value, a badge, and sub-entries; a compact item shows its title (and value) as a tooltip on hover or keyboard focus (since 1.4.0) |
-| `AtlasSidebar` | A scrolling sidebar for SidebarItem/SidebarGroup (or a model): keeps the selected and focused entry in view, `filterText` with an optional search field and a placeholder, `contextMenuRequested`, drop targets, Tab lands on the selected entry (since 1.4.0) |
-| `StepItem` | One step in a setup sidebar (done, current or to come) |
-| `StatusHero` | Big centred status: an icon badge with a busy or progress ring, a headline, a subtitle, actions |
-| `AtlasProgressBar` | Rounded accent progress bar, or an indeterminate one; `text` beside it, `status` "normal", "paused" or "error" (a free-form string; other values count as "normal" and warn once); the track fills the height when there is no `text` (`text`, `status` since 1.4.0) |
-| `ConfirmDialog` | Modal dialog with pill buttons; `alternativeText` adds a third button (`alternative()`), `defaultButton` ("accept", "reject", "alternative") takes the focus and Return, `destructive` draws accept in the error colour, and a long body scrolls instead of outgrowing the window (since 1.4.0) |
-| `NotesText` | Release notes from a safe HTML fragment |
-| `LiveChart`, `UsageBar`, `MiniBars` | A live chart, a stacked usage bar, a row of small bars |
-| `DataTable` | A sortable table in the Section style that only makes the rows on screen; 1.4.0 adds resizable and hideable columns, multi-selection, `rowContextMenuRequested`, `density` (since 1.4.0) |
-| `SearchField` | Search field (small corners, 28 px) with a debounced `query` |
-| `ContextMenu`, `ContextMenuItem`, `ContextMenuSeparator` | Right-click menu; a row can be checkable (a check mark) or a `radio` (a dot; exclusive through a `ButtonGroup` or an `ActionGroup`), have a Material Symbol or an icon (also from an action's `symbol`), open a submenu (an arrow); a menu taller than the window scrolls |
-| `TabBar` | Document tabs: a pill per tab with an unsaved dot and a close button, "+" for a new tab, drag to reorder. The app owns the `model` (`title`, `modified`, `toolTip`) and answers its signals. Tabs take no keyboard focus: the app gives Ctrl+Tab and Ctrl+W. Same name as QtQuick.Controls' TabBar, so import Controls qualified (`as QQC2`) (since 1.2.0) |
-| `FindBar` | Find and replace bar with match case, whole words and regex toggles; the app searches and reports `matchCount`, `currentMatch` or `error` (since 1.2.0) |
-| `StatusBar`, `StatusBarItem` | A slim bottom bar of cells (Ln/Col, encoding, zoom); a cell can be clickable or open a `menu` (since 1.2.0), above the cell from its leading edge and inside the window; a `symbol` before the text |
-| `InfoBanner` | Inline info, warning or error banner with action buttons; slides with `shown`; its close button sets `shown` to false and emits `closed()` (since 1.2.0); `closeName` names the close button (since 1.4.0) |
-| `AtlasSplitView` | Panes with a thin Atlas divider and a wider grab area; `stateKey` remembers the sizes in the app's settings file (`AtlasSettings`), `saveSizes()`/`restoreSizes()` for the app's own storage (since 1.4.0) |
-| `AtlasNavigationStack` | Pages pushed over each other with a header (Back button, page `title`); `push()`, `pop()`, `depth`, `canGoBack`, `showHeader`, `wentBack()`; Alt+Left and the mouse Back button go back (since 1.4.0) |
-| `AtlasViewSwitcher` | Page tabs for a window top: `model` of `{ text, symbol, badge }`, `currentIndex`, `activated(index)`, `narrow` puts the text under the symbol; one Tab stop, arrows, Home and End (since 1.4.0) |
-| `AtlasStyle` | Singleton of design tokens: colours by role (`accent` violet, `focus` pink; a Plasma accent wins), spacing, radii (4, 6, 8), `fontFamily` and `monoFamily` (IBM Plex Sans, JetBrains Mono, with fallback), font sizes, durations (100, 150, 250 ms; 0 when `reducedMotion`), `density` (`Normal` or `Compact`) with `rowHeight`. Controls follow `density` (SectionRow, TabBar, StatusBar and SidebarItem also have a local `density`) and `reducedMotion`. `Appearance` also reports `colorScheme`, `darkMode`, `highContrast`, `reducedMotion`, `textScale`, `accentFromSystem`, `fontFamily` and `monoFamily` (since 1.4.0) |
-| `AtlasPopover` | Raised card (surface, shadow, border) that opens next to `target`, below it or above when there is no room, with an optional arrow (`showArrow`); Escape or an outside click closes it and the focus returns to the target (since 1.4.0) |
-| `AtlasScrollBar` | Thin rounded scroll bar: the thumb widens on hover and fades out when nothing scrolls; always drawn while hovered or when a screen reader is active; no fade under reduced motion. Attach with `ScrollBar.vertical: AtlasScrollBar {}` (since 1.4.0) |
-| `AtlasDialog` | General modal dialog on `T.Dialog`: `title`, `showBack` with `backRequested()`, `showClose`, `headerTrailing`, a scrolling body capped to the window, `footerContent` buttons right-aligned in KDE order, `preferredWidth` (since 1.4.0) |
-| `AtlasCard` | Padded surface card with `title`, `subtitle`, `headerTrailing`, `footer` and a content slot; `clickable` makes it a button (`clicked()`, hover, press, focus ring) (since 1.4.0) |
-| `AtlasExpandableSection` | Header row (title, `subtitle`, `symbol`, chevron) that folds its content with an animated height; `expanded`, `toggled(expanded)`; folded content can't take focus (since 1.4.0) |
-| `Toast` | A short message at the bottom centre that goes by itself: `show("Copied")` (since 1.2.0); `showAction("Deleted", "Undo")` adds a button that hides it and emits `actionTriggered()`, and it stays while hovered or focused (since 1.4.0) |
-| `ToolbarButton` | Small icon button for a formatting toolbar that never takes the editor's focus; can be checkable (accent fill and icon when checked; since 1.2.0), have a `symbol` or follow an `action` (tooltip, symbol, shortcut), and be `focusable` for Tab (since 1.4.0) |
-| `AtlasToolbar` | Bar of `actions` (AtlasAction or Qt Action) as ToolbarButtons; what doesn't fit moves into a "more" menu; dividers where `section` changes; `leading` and `trailing` slots; `flat` (since 1.4.0) |
-| `AtlasFloatingToolbar` | Capsule of `actions` that floats over content with a shadow, `shown` fades and slides it, stays in its parent and never takes the editor's focus (since 1.4.0) |
-| `AtlasFlowLayout` | Wrapping row layout that honours `Layout.fillWidth`, `preferredWidth` and `minimumWidth`; `spacing`, `rowSpacing`, RTL; `implicitHeight` follows the width (since 1.4.0) |
-| `AtlasStat` | A figure: muted `label`, big `value` with `unit`, optional `symbol`, `trend` (NaN none; up in the success colour, down in the error colour, `invertTrend` swaps) with `trendText`, and a `sparkline` list; one text for screen readers (since 1.4.0) |
-| `AtlasDetailGrid` | Label/value pairs from `model` of `{ label, value, mono, copyable }`: muted trailing-aligned labels, selectable values, a copy button; `columns` pairs per row, stacks under `columnsBreakpoint` grid units (since 1.4.0) |
-| `AtlasSparkline` | A small axis-less line chart (C++, QPainter): `values` with NaN gaps, `minimum`/`maximum` (NaN = auto), `minimumRange`, `color`, `fill`, `lineWidth`; repaints only when the values change (since 1.4.0) |
-| `AtlasAvatar` | A round picture from `source`, falling back to initials of `name` on a colour hashed from it, or `symbol`; `size` (since 1.4.0) |
-| `AtlasRating` | Zero to five stars, halves drawn; `readOnly` by default, else hover preview, click, Left/Right/Home/End and `edited()`; `count` adds "(123)" (since 1.4.0) |
-| `AtlasBadge` | A small pill label: `text`, `type` ("neutral", "accent", "success", "warning", "error"), `symbol`; a dot when empty (since 1.4.0) |
-| `AtlasTextField`, `AtlasTextArea` | Text fields (small corners, `controlHeight` high, grows with large text): placeholder, `errorText` under the field with a red border, faint red fill and an error symbol at the trailing edge, `clearable`; `showCounter`, `prefix`, `suffix`, and `invalidText` with `validateOn` ("leaving" or "typing") since 1.4.0: a validator error (including an unfinished email or URL) shows only after the field loses focus or Return is pressed, not while typing, then follows the text live and clears once it is valid; an app-set `errorText` shows at once; the area moves focus on Tab (since 1.3.0) |
-| `AtlasPasswordField` | Rounded password field like `AtlasTextField` (placeholder, `errorText`) with an eye that shows the text; it hides again when focus leaves, the window goes to the background, or the field is hidden or disabled (`revealed`, `reveal()` only while focused); copy and cut are off while hidden. No `clearable`; don't set `echoMode` or `inputMethodHints` (since 1.4.0) |
-| `AtlasAction` | Qt's `Action` plus `symbol` (`Symbols.<Name>`, 0 none), `toolTip` (the text without its `&` unless set) and `section` (its group in `AtlasShortcutsDialog`). Registers itself with `AtlasShortcuts`; declare it inside an Item so the window is known (since 1.4.0) |
-| `AtlasShortcuts` | Singleton: `actions` (every registered `AtlasAction`), `conflicts` (`[{ shortcut, texts }]`: enabled actions sharing a shortcut in one window, or of unknown window), `conflictsChanged()`; each new conflict is logged with `qWarning`. Helpers `readable()`, `keys()`, `portable()`, `plainText()` (since 1.4.0) |
-| `AtlasColorField` | Colour chooser: a field with a swatch and the hex text (`rgba(r, g, b, a)` when not opaque, and the hex field accepts `rgb()`/`rgba()` too); clicking opens a palette, a hex field (`#rgb`, `#rrggbb`, `#aarrggbb` with `showAlpha`) and "More..." (`showMore`) for the system colour dialog. `color`, `edited()` (since 1.4.0) |
-| `AtlasFileField`, `AtlasFolderField` | A path field with a Browse button that opens the system file or folder dialog (made on first use). `path`, read-only `url` (`~` is the home folder), `placeholderText`, `editable`, `edited()`; `AtlasFileField` also `nameFilters`, `saveMode`, `title` (since 1.4.0) |
-| `AtlasAutocompleteField` | Text field with a suggestion list that never takes the focus: `model` (strings, or a model with `textRole`), `filter` ("contains" or "startsWith"), `maxSuggestions`, `accepted(text)`; Up/Down, Return/Tab, Escape; matching part in bold; 60 ms debounce for large models. A wrapper around an `AtlasTextField`, not a TextField, so its Return signal is `accepted(text)` (since 1.4.0) |
-| `AtlasFontPicker` | Font chooser: a pill with the family in its own face and the size; the popup has a search field, the families (drawn lazily) and a size spin box. `font` (family, pointSize), `fixedOnly` (monospace families only), `edited()` (since 1.4.0) |
-| `AtlasShortcutLabel` | A shortcut (`sequence`: "Ctrl+S" or a `StandardKey` number) as keycaps in the platform's spelling; no size when empty, follows RTL; the steps of a two-step shortcut are separated by a comma (since 1.4.0) |
-| `AtlasDropZone` | A dashed area files are dropped on: `symbol`, `text`, `subtitle`, optional Browse button (`browseText`, `browseRequested()`); `acceptedKeys`, `nameFilters`, `allowRemote`; `dropped(urls)` carries only accepted URLs, never reads files; rejected drags show the error colour (since 1.4.0) |
-| `AtlasOnboarding` | Setup scaffold: steps on the left, one page at a time (the declared items; optional `title`, `canAdvance`, `skippable`), footer Back, Skip, Next/Finish; `currentIndex`, `count`, `next()`, `back()`, `skip()`, `finished()`, `skipped(index)`, `showSteps`, `showSkip` (since 1.4.0) |
-| `AtlasShortcutsDialog` | Modal list of the registered shortcuts grouped by `section`, with search, scrolling, an empty state and a Close button; `title` (since 1.4.0) |
-| `AtlasClipboard` | Singleton for the system clipboard: `setText()`, `text()`, `setRichText(html, plain)`, `setImage(image or local file url)` (local files only, png, jpeg, webp, gif or bmp, 64 MB cap; returns false when refused), read-only `hasText`, `hasImage`, `changed()`. Nothing is read until the app asks, and no content is logged (since 1.4.0) |
-| `AtlasCodeView` | Read-only, selectable monospace text (plain, never HTML): `text`, `framed` (card, default true), `maximumHeight` (scrolls beyond), `wrap`, `showCopy` (an `AtlasCopyButton` at the top trailing corner), `lineNumbers` (since 1.4.0) |
-| `AtlasCopyButton` | Small icon button (ToolbarButton look, Tab reachable) that copies `text` through `AtlasClipboard` and shows a check mark for 1.5 s with the tooltip "Copied"; `copied()` (since 1.4.0) |
-| `AtlasCommandPalette` | Ctrl+K style popup: a search field over the app's actions (`actions`, default `AtlasShortcuts.actions`; enabled ones only), filtered by text and section, best match first, recent first when empty (`recentCount`); Return runs and closes, Escape closes; `open()`, `close()`, `query`, `placeholderText`, `triggered(action)` (since 1.4.0) |
-| `AtlasComboBox` | Drop-down field (small corners), the choices in a ContextMenu-style card; `placeholderText` (since 1.3.0); `filterable` adds a filter field to the list (since 1.4.0) |
-| `AtlasCheckBox`, `AtlasRadioButton` | Check box (can be `tristate`) and radio button; radios with one parent are a group, arrows move the choice (since 1.3.0) |
-| `AtlasSlider`, `AtlasSpinBox` | Accent pill slider (Page, Home, End keys); number field with minus and plus, `prefix` and `suffix` (since 1.3.0); narrower by default and `showButtons: false` for a plain number field (since 1.4.0) |
-| `AtlasDoubleSpinBox` | `AtlasSpinBox` for reals: `decimals` (default 2), locale-formatted text, `prefix`, `suffix`, `showButtons`, PageUp/PageDown ten steps; with a `prefix` or `suffix` typed text is checked when editing ends (since 1.4.0) |
-| `AtlasShortcutField` | Records a key combination: `sequence` (portable text, "" none), read-only `recording`, `conflictText` (another registered `AtlasAction` has it; `ignoreAction` is the one being edited), `placeholderText`, `edited()`. Click or Space/Return starts, the first non-modifier key sets it, Escape cancels, Backspace/Delete clears; the app decides in `onEdited` (since 1.4.0) |
-| the Atlas validators | `QValidator`s for a field's `validator`, with Acceptable / Intermediate / Invalid as Qt defines them: `AtlasUrlValidator` (`schemes`, default https only; http(s) needs a host), `AtlasEmailValidator` (one @, a dotted domain, at most 254 characters; no `,;<>"()[]\:?&%#` or format characters in the local part). Acceptable text is still not safe to splice into a URL or header unencoded, `AtlasPathValidator` (`absolute`, `mustExist`, `directory`; `~` is home; NUL and control characters never), `AtlasNumberValidator` (`bottom`, `top`, `decimals`, `locale`; group separators accepted). Text over a fixed length is Invalid and none uses regular expressions. Pair with `AtlasTextField.invalidText` (since 1.4.0) |
-| `AtlasCalendar` | Month grid (`selectedDate`, `minimumDate`, `maximumDate`, `month`, `year`, `locale`, `today`; `activated(date)`, `showDate()`); locale week start and names, arrows, Home/End, PageUp/PageDown, disabled out-of-range days. An invalid `Date` means no date (since 1.4.0) |
-| `AtlasDatePicker` | Field like `AtlasComboBox` that opens an `AtlasCalendar`: `selectedDate`, `minimumDate`, `maximumDate`, `format`, `placeholderText`, `clearable`, `edited()` (since 1.4.0) |
-| `AtlasTimePicker` | Hours and minutes fields (`hours` 0-23, `minutes`, `minuteStep`), AM/PM button in 12 h (`use24Hour` from the locale), optional day drop-down (`showDay`, `day`); `edited()` (since 1.4.0) |
-| `AtlasToolTip` | Hint on a raised card; bind `shown` to hover for the delay (since 1.3.0) |
-| `AtlasSpinner`, `AtlasPlaceholder` | Busy arc; skeleton lines while content loads. Both still when hidden or `animated: false` (since 1.3.0) |
-| `AtlasEmptyState` | What an empty list shows: symbol, title, text, an optional action (since 1.3.0); `actionSymbol` puts an icon on the button (since 1.4.0) |
-| `AtlasLabel` | A Label with `textStyle`: Body, Title, Heading (full text colour), Caption, Mono, WindowTitle (semibold, the header bar's title) or Code (same as Mono), sized from `AtlasStyle`; plain text (since 1.4.0) |
-| `AtlasEdgeGlow` | A soft violet-to-sakura glow along the inside edges of its parent: `active`, `animated`, `reach`. One meaning only: the system or the app is doing something for the user right now (an update applying or ready); never decoration, focus or errors. Breathes slowly only while active, static under reduced motion, nothing drawn when inactive (since 1.4.0) |
-| `AtlasFormat` | Singleton that formats values for the user's locale: `bytes(n, precision)` and `bytesPerSecond(n)` (IEC: "1.5 KiB"), `percent(fraction)`, `number(n, precision)`, `duration(seconds, style)` ("short", "long", "clock") and `date(d, style, locale, now)` ("short", "long", "dateTime", "time", "atTime", "relative"). Every function takes an optional `locale` name; NaN and invalid dates give "" (since 1.4.0) |
-| `AtlasFocusRing` | The keyboard focus outline every control uses: 2 px `AtlasStyle.focus` with a 2 px gap, fades in and grows slightly into place (expressive spring; only the fade under reduced motion); put it in a custom control's background (since 1.3.0) |
-| `AtlasBreadcrumb` | Path bar; the middle folds into a "…" menu (since 1.3.0) |
-| `AtlasIconGrid` | Grid of icons over names that only makes the cells on screen; `activated`, `contextMenuRequested` (since 1.3.0) |
-| `AtlasListView` | A `ListView` in the Atlas look with selection (`selectionMode` Single=0, Multi=1, No=2 as in DataTable and AtlasTreeView, `selectedIndexes`/`selectedRows`, `select()`, `selectRows()`, `selectAll()`, `clearSelection()`, `isSelected()`; the selection follows a model's inserts and removes and clears on a new or reset model), a default row from `textRole`/`subtitleRole`/`symbolRole`, type-ahead, `placeholderText`; `activated`, `contextMenuRequested(index, pos)`, and with `reorderable` a drag grip and Alt+Up/Down raising `moveRequested(from, to)` (since 1.4.0) |
-| `AtlasAppCard`, `AtlasInstallButton`, `AtlasScreenshotCarousel` | A store's app card; install pill with progress inside and cancel (`installState`); screenshots one at a time, loading only neighbours (since 1.3.0) |
-| `AtlasSearchResults` | A launcher's results with sections and shortcut hints; the search field keeps focus and passes keys with `handleKey(event)` (since 1.3.0) |
-| `Symbol`, `Symbols` | A Material Symbol, and the singleton of every symbol's value; `Symbols.available(style)` (since 1.3.0) |
-| `Appearance` | Singleton: `transparency`, `blurAvailable`, `effective`, `refresh()`, `applyBlur()` |
-| `AccessibilityState` | Singleton: whether a screen reader is active |
-| `AtlasApp` | Singleton: the app's `name`, `id`, `version`, `repo`, `sourceUrl`, `issuesUrl`; the OS's `osName`, `osVersion`, `osPrettyName`, `osLogo`, `osHomeUrl`; `qtVersion`; `uiVersion`, the version of Atlas.Ui itself (since 1.3.0). Set by atlas-framework-ui's startup |
-| `AtlasAboutPage` | The About page: icon, name, version, `description`, the version and OS rows, `license`, source and issue links; extra content goes below; a "Copy system info" button and `systemInfo()` for bug reports (since 1.4.0) |
-| `AtlasTreeView` | A tree on Qt Quick's TreeView in the Atlas list look (`model` any QAbstractItemModel, `textRole`, `symbolRole`, `iconRole`, `selectionMode` Single, Multi or No (same values as the other lists), `currentIndex`, `selectionModel`, `expandAll()`, `selectAll()`, `clearSelection()`, `activated(index)`, `contextMenuRequested(index, pos)`); arrows, Home/End, type-ahead, Menu key; mirrored in RTL (since 1.4.0) |
-| `AtlasTreeModel` | A read-only tree model built from nested JS objects (`items: [{ text, symbol, icon, children }]`) for `AtlasTreeView`; QML can't build a tree model itself (since 1.4.0) |
+The reference pages in `docs/reference/` are the single source for what each
+type, property, signal and method does (published at
+<https://atlasos.eterneon.net/framework>). This file keeps the design rules,
+the architecture and the reasoning, and does not describe types: change the
+page in the same commit as the API, and link to it from anywhere else.
 
-Each file's header comment says how to use it; its example becomes the
-gallery's "Copy QML" snippet.
+- [Atlas.Ui overview and the list of types](reference/atlas-ui/index.md),
+  grouped as windows and pages, buttons, fields and pickers, lists and
+  tables, navigation, menus, dialogs and popups, feedback and status,
+  charts, text and code, layout, style and motion, icons, services and
+  validators.
+- [Style and theming](reference/atlas-ui/style-and-theming.md) and
+  [AtlasStyle](reference/atlas-ui/atlas-style.md): the tokens behind rule 5.
+- [Accessibility](reference/atlas-ui/accessibility.md): the behaviour behind
+  rule 7.
+- [Symbols](reference/atlas-ui/symbols.md), [Symbol](reference/atlas-ui/symbol.md)
+  and [the icon fonts](reference/symbols/index.md).
+
+Each QML file's header comment says how to use it; its example becomes the
+gallery's "Copy QML" snippet and the page's example.
 
 New controls are named `Atlas<Name>` (`AtlasAboutPage`, not `AboutPage`: five
 apps had their own), which keeps them clear of the apps' files and of
 QtQuick.Controls' names. Each new control comes with
 `ui/gallery/demos/<Type>Demo.qml` (it then shows in the gallery and in the
-visual and accessibility tests without more work), its goldens, and its line
-in `api/atlas-ui.api`.
+visual and accessibility tests without more work), its goldens, its line in
+`api/atlas-ui.api` and its page `docs/reference/atlas-ui/<type>.md`;
+`tools/docs.py check` fails when a type or public member has no page entry.
 
 ### Symbols
 
-`Symbol { icon: Symbols.Settings }` draws one of about 4,000 Material
-Symbols in the Outlined, Rounded (default) or Sharp style, filled or not, at
-any weight from 100 to 700. `Symbols.<Name>` is Google's name in PascalCase
-(`arrow_back` is `ArrowBack`; a leading number is spelled out, `10k` is
-`TenK`); it is an enum, so the `<app>_qmllint` target flags a misspelled one.
-`Symbol { name: "arrow_back" }` takes Google's name as a string and warns at
-run time if there is none.
+How to use symbols is in the [Symbols reference](reference/atlas-ui/symbols.md).
+What is design or packaging stays here.
 
 atlas-symbols-fonts ships Rounded, the default and the only style Atlas.Ui
 uses. Outlined and Sharp are in atlas-symbols-fonts-extra, which the gallery
-recommends. A Symbol that asks for a missing style draws blank and logs one
-warning; `Symbols.available(style)` tells. The split saves about 20 MB on disk;
-unused styles never cost memory (a font is only mapped once drawn).
+recommends. The split saves about 20 MB on disk; unused styles never cost
+memory (a font is only mapped once drawn).
 
 The fonts are installed to `/usr/share/fonts/atlas-symbols`, and found
 through fontconfig. A development build (`-DATLAS_UI_DEV_PATHS=ON`) also
@@ -304,14 +222,18 @@ does, and does not take the keys its inner controls leave unused.
 
 ## The Rust crates
 
-One Cargo workspace, four crates, so a small app pays only for what it uses:
+One Cargo workspace, four crates, so a small app pays only for what it uses.
+Each crate's modules, functions and formats are in the reference:
 
-| Crate | For | Holds |
-|---|---|---|
-| `atlas-framework-core` | every app | `AppInfo` and `app_info!`; `settings` (`~/.config/atlas-<app>rc`, KConfig format, atomic writes); `log` (the `log` crate to the journal, `ATLAS_LOG=debug`); `osrelease`; `fsutil`. No Qt, no async runtime |
-| `atlas-framework-ui` | every GUI app | `app!`, and the startup in `include/atlas/app.h`: `atlas_app_run` (or `atlas_app_init` and `atlas_app_ready` for an app with its own shell) sets the app ID and names, the org.kde.desktop style, one instance per session (KDBusService; a second launch raises the window, with its Wayland activation token), the journal logger, Rust panic and fatal Qt message hooks, and what `AtlasApp` shows |
-| `atlas-framework-system` | system apps | `crash` (opt-in crash reports), `history`, `bootc`, `events`; `polkit` (feature `polkit`: checks a D-Bus caller's authorisation, fail-closed; runs on Tokio with timers enabled); `notify` (feature `notify`: desktop notifications, see below) |
-| `atlas-framework-flatpak` | the Updater, Atlas Store | Flatpak updates through libflatpak |
+- [`atlas-framework-core`](reference/atlas-framework-core/index.md), for every
+  app: no Qt, no async runtime.
+- [`atlas-framework-ui`](reference/atlas-framework-ui/index.md), for every GUI
+  app: `app!` and the startup in `include/atlas/app.h`.
+- [`atlas-framework-system`](reference/atlas-framework-system/index.md), for
+  system apps: crash reports, history, bootc, events, polkit and
+  notifications.
+- [`atlas-framework-flatpak`](reference/atlas-framework-flatpak/index.md), for
+  the Updater and Atlas Store.
 
 An app names itself once in its Rust library:
 
@@ -324,20 +246,13 @@ atlas_framework_ui::app! {
 }
 ```
 
-`ui:` is the oldest Atlas.Ui the app works with. At startup the app reads
-`AtlasApp.uiVersion` from the installed module (about 12 ms); when it is
-older, or the module predates the field, the app shows a plain error window
-naming both versions and exits 1, instead of failing on a missing type. A
-C++ app calls `atlas_app_require_ui("1.3.0")` before `atlas_app_run`. Keep it
-equal to the RPM's `Requires: atlas-ui >=`. Without `ui:` nothing is checked
-and nothing is paid. `atlas_app_run` runs the check after the single-instance
-registration, so a second launch that only raises the window skips it. The
-probe uses the default QML import paths (the installed module, plus
-`QML_IMPORT_PATH`), and a module that fails to import is reported as "could
-not be loaded", with the first line of the error. `app!` is the only supported
-way to define the app info: the C++ side reads it from the Rust library.
+`ui:` is the oldest Atlas.Ui the app works with; keep it equal to the RPM's
+`Requires: atlas-ui >=`. How the check works and what an app sees is in
+[the `app!` reference](reference/atlas-framework-ui/app-macro.md). `app!` is the
+only supported way to define the app info: the C++ side reads it from the Rust
+library.
 
-and its `main.cpp` is one call, `atlas_app_run(argc, argv, "<QML module>",
+The app's `main.cpp` is one call, `atlas_app_run(argc, argv, "<QML module>",
 "Main", atlas_backend_new)`. Corrosion doesn't pass a crate's native
 libraries to the executable, so the app's CMake links `KF6::DBusAddons` and
 `KF6::WindowSystem` itself (the template shows it).
@@ -351,10 +266,6 @@ atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework
 Each release opens a pull request in every app that moves the tag (see
 "Releases"). Apps build with `cargo build --locked` (or `--frozen`), so a
 moved tag can't change their dependencies.
-
-`Settings` is for Atlas-owned files only (`atlas-<app>rc`, the app's own
-files): it parses and rewrites the whole file, so don't point it at another
-program's configuration.
 
 Atlas.Ui's translation is chosen once per process, from `QLocale` at the first
 load; a language change shows after the app restarts.
@@ -373,47 +284,17 @@ Build and test the crates in the development container
 (`packaging/Containerfile.dev`, `localhost/atlas-framework-dev:44`): `cargo test --workspace --all-features`
 and `cargo clippy --workspace --all-features --all-targets`.
 
-### Notifications
+### Notifications and on-disk formats
 
-`atlas_framework_system::notify` is the one way an Atlas app sends a desktop
-notification (it was Atlas Updater's): `Notifier::new(&APP)` once, then
-`send(&conn, &Note::new("eventId", title, text))` over the session bus. It
-sends KDE's hints (`desktop-entry`, `x-kde-appname`, `x-kde-eventId`) so
-Plasma groups them under the app and honours the user's per-event choice in
-System Settings; `popup_enabled(event)` reads that choice. Calls to the
-server time out after 10 s; no notification service gives "No notification
-service is running"; `send_blocking` blocks (for a worker thread or
-`spawn_blocking`, never the UI thread) and runs on a thread and runtime of
-its own, so it also works when called from inside a Tokio runtime;
-`Note.icon` is a name or an absolute path, anything else becomes the app icon.
-The AtlasOS rules:
-
-- Notify only when the user can act on it, or must know: not for progress or
-  success they did not wait for.
-- Popups only, no sounds. Urgency is `Normal` (`High` at most, never
-  `Critical`); `Persistent` only when
-  ignoring it has consequences (a restart is due).
-- Actions are short verbs that open the right page (`DEFAULT_ACTION` opens
-  the app).
-- Never from root to a user's session; a system service tells its app, and
-  the app notifies.
-- Do Not Disturb is Plasma's: don't second-guess it.
-- Each app ships `<short name>.notifyrc` (`atlas-` and the last part of the
-  app ID, `Notifier::component()`) in `/usr/share/knotifications6/` with
-  `DesktopEntry=<app id>` and one camelCase `[Event/<eventId>]` per kind of
-  notification (the template has one).
-
-### On-disk formats
-
-Every file an app or a service writes for another to read carries its
-format version: `"format": 1` on each line of `history.jsonl` and
-`events.jsonl` (`history::FORMAT`, `events::FORMAT`; `version` there is the
-OS version), `Format=1` under `[Atlas]` in settings files
-(`settings::FORMAT`). Readers accept a missing format (written before 1.3.0)
-and a higher one (written by a newer program; unknown fields are ignored)
-forever. Raise the number only for a change an old reader would misread.
-`crates/*/tests/fixtures/` holds files written by older versions; tests read
-them, and they are never edited, only added to.
+[Notifications](reference/atlas-framework-system/notify.md) holds the AtlasOS
+notification rules (only when the user can act, popups only, never `Critical`,
+never from root). [On-disk formats](reference/atlas-framework-system/formats.md)
+holds every file format. The principle stays here: every file an app or a
+service writes for another to read carries its format version, readers
+accept a missing or a higher one forever, and the number is raised only for a
+change an old reader would misread. `crates/*/tests/fixtures/` holds files
+written by older versions; tests read them, and they are never edited, only
+added to.
 
 ## How apps use it
 
@@ -486,8 +367,8 @@ change that breaks an app breaks it on users' machines.
   files, polkit action IDs): read the old form forever.
 - **Deprecation.** A type or property can be deprecated for one more minor
   version before it is removed in the next major. It keeps working; its
-  header comment says "Deprecated since X.Y: use Z"; the table above marks
-  it; and `tools/lint-app.sh` warns (not errors) when an app uses it. The
+  header comment says "Deprecated since X.Y: use Z"; its reference page
+  says so (`deprecated:` in the frontmatter); and `tools/lint-app.sh` warns (not errors) when an app uses it. The
   names live in `tools/deprecated.txt` (`Name<TAB>since<TAB>replacement`),
   which lint-app.sh reads; it is empty for now.
 - **Dependency floors are what CI tests.** A crate's requirement on another

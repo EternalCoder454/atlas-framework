@@ -35,7 +35,7 @@ AtlasAppCard {
 
 ## Keyboard
 
-The card is one Tab stop. Return or Enter on the focused card emits `clicked`; an action inside the card that has focus keeps its own Return.
+The card is a Tab stop, and so is its action. Return or Enter on the focused card emits `clicked`; an action inside the card that has focus keeps its own Return.
 
 ## Properties
 

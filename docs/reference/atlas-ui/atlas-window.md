@@ -4,7 +4,7 @@ summary: The application window of an Atlas app: blur or opaque, a width class, 
 section: Windows and pages
 ---
 
-AtlasWindow is the window of every Atlas app. With "Transparency and blur" on and a compositor that blurs, the background is the theme's background at `blurAlpha` over the blurred desktop; otherwise it is plain and opaque. Put `sidebarColor(base)` on a sidebar so it is a little more see-through.
+AtlasWindow is the window of every Atlas app. With "Transparency and blur" on and a compositor that blurs, the background is `AtlasStyle.base` at `blurAlpha` over the blurred desktop; otherwise it is plain, opaque `AtlasStyle.base`. Put `sidebarColor(base)` on a sidebar so it is a little more see-through.
 
 AtlasWindow is a Qt Quick Controls `ApplicationWindow` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-applicationwindow.html)); its inherited properties work as usual.
 

@@ -4,7 +4,7 @@ summary: A sortable table in the Section style that only makes the rows on scree
 section: Lists and tables
 ---
 
-DataTable is a rounded card with a header that sorts and inset rows below it. It scrolls its own rows and makes only the ones on screen, so a list of a thousand processes costs what twenty do. It supports resizable and hideable columns, multi-selection, row context menus and a flattened tree. For a simple list of rows use [AtlasListView](atlas-list-view.md).
+DataTable is a card with 6 px corners with a header that sorts and inset rows below it. It scrolls its own rows and makes only the ones on screen, so a list of a thousand processes costs what twenty do. It supports resizable and hideable columns, multi-selection, row context menus and a flattened tree. For a simple list of rows use [AtlasListView](atlas-list-view.md).
 
 DataTable is a `FocusScope`, one Tab stop. Name it for screen readers with `Accessible.name`.
 

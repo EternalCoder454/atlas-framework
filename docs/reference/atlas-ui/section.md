@@ -4,7 +4,7 @@ summary: A rounded card that groups SectionRows, or any items, on a raised backg
 section: Layout
 ---
 
-Section is the settings card of Atlas apps: an optional title above, a raised rounded card with the rows inside and an optional footer under it. Put [SectionRow](section-row.md)s in it, or any items. A `foldable` section's title is a button that folds the card away.
+Section is the settings card of Atlas apps: an optional title above, a raised card with 6 px corners with the rows inside and an optional footer under it. Put [SectionRow](section-row.md)s in it, or any items. A `foldable` section's title is a button that folds the card away.
 
 Section is a `ColumnLayout`; its children go into the card.
 

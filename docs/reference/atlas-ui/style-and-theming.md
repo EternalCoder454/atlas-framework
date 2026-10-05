@@ -28,7 +28,7 @@ Colours follow the system colour scheme, light or dark. The neutrals are tinted 
 | `accent` | Selection, indicators and checked states: Atlas violet (`#6858E2` in Light, `#8A7AF4` in Dark) unless the user chose an accent in Plasma. |
 | `accentText` | Text readable on `accent`. |
 | `accentStrong`, `accentStrongText` | The prominent (primary) button fill and its text (4.5:1 or more). |
-| `focus` | The keyboard focus ring: a magenta-violet pink (`#A62A8C` Light, `#E28BE0` Dark), or the user's Plasma accent. |
+| `focus` | The keyboard focus ring: a magenta-violet (`#A62A8C` Light, `#E28BE0` Dark), or the user's Plasma accent. |
 | `base` | The window background (tonal step 0). |
 | `surface` | A card over the page, such as a Section (step 1). |
 | `surfaceRaised` | Menus, popovers, dialogs and tooltips (step 2). |
@@ -59,10 +59,10 @@ Atlas.Ui follows the system colour scheme live. `Appearance.colorScheme` and `Ap
 |---|---|
 | `spacingXSmall`, `spacingSmall`, `spacing` | 2, 4, 8 |
 | `spacingLarge`, `spacingXLarge`, `spacingXXLarge` | 12, 16, 24 |
-| `radiusSmall` | 4: controls such as buttons, fields, combo boxes, menu items and list selections |
-| `radius` | 6: menus, cards, popovers and tooltips |
-| `radiusLarge` | 8: dialogs |
-| `radiusPill` | Switch tracks, badges and chips, at any height |
+| `radiusSmall` | 4: buttons, text and search fields, combo boxes, spin boxes, pickers, tabs, sidebar items, menu items and list selections. A button goes to 6 while pressed. |
+| `radius` | 6: cards, Sections, popovers, tooltips, menus and code views |
+| `radiusLarge` | 8: dialogs, the command palette, drop zones, the segmented control's track, the find bar, and an unchecked checkable chip |
+| `radiusPill` | 1000, fully round: switch tracks, progress and usage bars, the floating toolbar, toasts, the find bar's fields and a checked chip. Badges use half their height. |
 | `controlHeight` | 28 px, or 24 px when compact. A control grows when its text needs more. |
 
 ## Fonts and sizes
@@ -79,7 +79,7 @@ Component.onCompleted: AtlasStyle.density = AtlasStyle.Compact
 
 ## Blur with a solid fallback
 
-The window is blurred only when `Appearance.effective` is true: the user's "Transparency effects" switch is on and the compositor offers blur. Software rendering, many virtual machines and a disabled KWin blur effect do not. `floatingBackground` and `chromeBackground` already do the right thing in both cases, translucent over the blur and solid without it. Use them for chrome, and never set a window's opacity yourself.
+The window is blurred only when `Appearance.effective` is true: the user's "Transparency and blur" switch is on and the compositor offers blur. Software rendering, many virtual machines and a disabled KWin blur effect do not. `floatingBackground` and `chromeBackground` already do the right thing in both cases, translucent over the blur and solid without it. Use them for chrome, and never set a window's opacity yourself.
 
 ```qml
 Rectangle {

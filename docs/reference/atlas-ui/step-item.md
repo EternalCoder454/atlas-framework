@@ -4,7 +4,7 @@ summary: One step in a setup sidebar: a numbered circle, or a check mark once do
 section: Navigation
 ---
 
-StepItem is one step of a setup or wizard sidebar. The current step gets the selection pill. Only done steps can be clicked, to go back to them. Stack several in a column and set `number`, `current` and `done` from the wizard's state.
+StepItem is one step of a setup or wizard sidebar. The current step gets the selection highlight. Only done steps can be clicked, to go back to them. Stack several in a column and set `number`, `current` and `done` from the wizard's state.
 
 StepItem is a Qt Quick Templates `AbstractButton` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-abstractbutton.html)); its inherited properties (`text`, `clicked`) work as usual.
 
@@ -23,7 +23,7 @@ Column {
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `clickable` | `bool` | `done && !current` | Whether the step can be clicked, to go back to it. Not `enabled`: a disabled item gets disabled colours and the current step must keep its accent. |
-| `current` | `bool` | `false` | Marks the step the user is on: draws the selection pill. |
+| `current` | `bool` | `false` | Marks the step the user is on: draws the selection highlight. |
 | `done` | `bool` | `false` | Shows a check mark in place of the number. |
 | `number` | `int` | `1` | The number in the circle. |
 
