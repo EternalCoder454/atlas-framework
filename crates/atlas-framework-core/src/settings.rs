@@ -74,6 +74,9 @@ impl Settings {
     /// immutable one. `TimedOut` after 2 s without the file lock, and
     /// `InvalidData` for a file that is not UTF-8 or over 4 MB: show the error.
     pub fn set(&self, group: &str, key: &str, value: Option<&str>) -> io::Result<()> {
+        if migrate::migrating() {
+            return Err(migrate::reentry());
+        }
         check_name(group, &['[', ']'])?;
         check_name(key, &['[', ']', '='])?;
         if self.path.starts_with(NO_HOME) {
@@ -90,9 +93,6 @@ impl Settings {
         }
         if let Some(dir) = target.parent() {
             fs::create_dir_all(dir)?;
-        }
-        if migrate::migrating() {
-            return Err(migrate::reentry());
         }
         // The file lock first, with its deadline: a stuck holder of one file
         // must not make writers of other files wait on the thread lock.

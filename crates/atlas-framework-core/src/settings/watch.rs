@@ -52,11 +52,16 @@ impl Snapshot {
 /// How long a drop waits for the watch thread (a callback still running).
 const JOIN_WAIT: Duration = Duration::from_secs(1);
 
-/// Keeps a watch alive. Dropping it stops the watch: no callback starts after
-/// the drop. It waits up to one second for a callback that is running, then
-/// gives up (logged) and leaves that thread to end by itself, so a drop can
-/// never hang the UI; dropping the watcher from inside its own callback does
-/// not wait.
+/// Keeps a watch alive. Dropping it stops the watch. It waits up to one
+/// second for the watch thread. If a callback is still running then, the drop
+/// gives up (logged) and leaves the thread to end by itself, so a drop never
+/// hangs the UI; that callback keeps running, and a callback that has not
+/// started is not started. A callback that was already past the stop check
+/// when the drop began can still start. So everything a callback captures
+/// must stay valid until it returns (no raw pointers or unprotected
+/// references to what the dropper frees), and a queue to a QObject must cope
+/// with a target that is gone. Dropping the watcher from inside its own
+/// callback does not wait.
 #[derive(Debug)]
 pub struct SettingsWatcher {
     stop: Arc<AtomicBool>,
@@ -142,13 +147,70 @@ fn add_watch(ino: &OwnedFd, dir: &Path, mask: u32) -> io::Result<libc::c_int> {
     }
 }
 
+/// How often a directory that changes under `spot` is looked at again.
+const SPOT_TRIES: usize = 8;
+
+/// Watches `dir` (for `name`), or its nearest existing ancestor with
+/// `pending` set. `ENOENT` and `ENOTDIR` from `inotify_add_watch` mean "this
+/// level is gone (an `rm -rf` is running)": go one level up. After watching
+/// an ancestor, the wanted level is looked at once more, since it may have
+/// come back before the watch was in place and its create event been lost;
+/// then the walk starts again. Other errors (`EACCES`, `ENOSPC`) are real.
+fn spot(ino: &OwnedFd, dir: &Path, name: &std::ffi::OsStr, mask: u32) -> io::Result<Watched> {
+    'again: for _ in 0..SPOT_TRIES {
+        let mut cur = dir;
+        let mut below: Option<&Path> = None;
+        loop {
+            match add_watch(ino, cur, mask) {
+                Ok(wd) => {
+                    let Some(b) = below else {
+                        return Ok(Watched {
+                            wd,
+                            name: name.to_os_string(),
+                            pending: false,
+                        });
+                    };
+                    if fs::metadata(b).is_ok_and(|m| m.is_dir()) {
+                        continue 'again;
+                    }
+                    return Ok(Watched {
+                        wd,
+                        name: b.file_name().unwrap_or_default().to_os_string(),
+                        pending: true,
+                    });
+                }
+                Err(e) if matches!(e.raw_os_error(), Some(libc::ENOENT | libc::ENOTDIR)) => {
+                    let Some(up) = cur.parent() else {
+                        return Err(e);
+                    };
+                    below = Some(cur);
+                    cur = if up.as_os_str().is_empty() {
+                        Path::new(".")
+                    } else {
+                        up
+                    };
+                    if Some(cur) == below {
+                        return Err(e);
+                    }
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::NotFound,
+        "the directory kept changing while it was being watched",
+    ))
+}
+
 /// Watches the directory of `path` and, when `path` is a symlink, of its
 /// target. Creates nothing: a directory that does not exist is watched
 /// through its nearest existing ancestor until it appears. Returns the watches
 /// and the link's resolved target.
 fn establish(ino: &OwnedFd, path: &Path) -> io::Result<(Vec<Watched>, PathBuf)> {
     let target = resolve_link(path)?;
-    let mask = libc::IN_CLOSE_WRITE
+    let mask = libc::IN_ONLYDIR
+        | libc::IN_CLOSE_WRITE
         | libc::IN_MOVED_TO
         | libc::IN_MOVED_FROM
         | libc::IN_CREATE
@@ -165,34 +227,7 @@ fn establish(ino: &OwnedFd, path: &Path) -> io::Result<(Vec<Watched>, PathBuf)> 
             ));
         };
         let dir = dir_of(p)?;
-        let found = if fs::metadata(dir).is_ok_and(|m| m.is_dir()) {
-            add_watch(ino, dir, mask).map(|wd| Watched {
-                wd,
-                name: name.to_os_string(),
-                pending: false,
-            })
-        } else {
-            // The nearest existing ancestor, and the component below it.
-            let mut below = dir;
-            let mut res = Err(io::Error::from(io::ErrorKind::NotFound));
-            while let Some(up) = below.parent() {
-                let up_dir = if up.as_os_str().is_empty() {
-                    Path::new(".")
-                } else {
-                    up
-                };
-                if fs::metadata(up_dir).is_ok_and(|m| m.is_dir()) {
-                    res = add_watch(ino, up_dir, mask).map(|wd| Watched {
-                        wd,
-                        name: below.file_name().unwrap_or_default().to_os_string(),
-                        pending: true,
-                    });
-                    break;
-                }
-                below = up;
-            }
-            res
-        };
+        let found = spot(ino, dir, name, mask);
         match found {
             Ok(w) => {
                 if !out.iter().any(|o| o.wd == w.wd && o.name == w.name) {
@@ -226,7 +261,10 @@ impl Settings {
     ///   over the file, a delete and a re-create are all seen.
     /// - A symlinked file is followed: its target's directory is watched too,
     ///   and the link is resolved again when something happens to the link
-    ///   itself, so a retargeted link is followed. A target in a directory
+    ///   itself, so a retargeted link is followed. Only the last component
+    ///   of the path is resolved as a link; a symlinked directory higher up is
+    ///   watched by what it points to (the directory's inode), so replacing
+    ///   such a link by another is not noticed. A target in a directory
     ///   that does not exist yet is watched through its nearest existing
     ///   ancestor until it appears.
     /// - Events are debounced by [`DEBOUNCE`] (but a steady stream of them
@@ -397,11 +435,22 @@ fn run<F: FnMut(&Snapshot)>(
                 }
             }
             if reestablish {
-                match establish(&ino, &path) {
+                let mut res = establish(&ino, &path);
+                for _ in 0..3 {
+                    // A tree being removed or moved: look again shortly.
+                    if matches!(&res, Err(e) if e.kind() == io::ErrorKind::NotFound) {
+                        std::thread::sleep(Duration::from_millis(20));
+                        res = establish(&ino, &path);
+                    }
+                }
+                match res {
                     Ok((new, t)) => {
                         forget(&ino, &watched, &new);
                         watched = new;
                         target = t;
+                        // Something may have been written before the watch
+                        // was back: take a snapshot.
+                        bump(&mut due);
                     }
                     Err(e) => {
                         log::warn!(

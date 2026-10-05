@@ -97,7 +97,7 @@ impl Settings {
     /// - Everything runs in memory under the writer lock. The old file is
     ///   copied to `<name>.bak` (atomically, with its mode; the latest call's
     ///   copy) and to `<name>.bak.v<found>`, the copy that later calls do not
-    ///   replace (the 3 highest versions are kept), only after every step
+    ///   replace (the one just made and the 2 highest others are kept), only after every step
     ///   succeeded; then the new text replaces the file atomically. A
     ///   failing step returns [`MigrateError::Failed`] naming its version and
     ///   writes nothing, not even the `.bak`.
