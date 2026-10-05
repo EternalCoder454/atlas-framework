@@ -4,7 +4,7 @@ summary: The button every Atlas app uses, with four variants, an optional symbol
 section: Buttons
 ---
 
-AtlasButton is the shared base of `PrimaryButton`, `SecondaryButton`, `TextButton` and `MenuButton`, which are this button with a preset look. It has small rounded corners (4 px, 6 px while pressed), the standard control height, and grey hover and press states.
+AtlasButton is the shared base of `PrimaryButton` and `SecondaryButton` (and `MenuButton`, which builds on `SecondaryButton`), which are this button with a preset look. [TextButton](text-button.md) is not one of them: it is its own link-styled `AbstractButton` and has no `variant`. It has small rounded corners (4 px, 6 px while pressed), the standard control height, and grey hover and press states.
 
 AtlasButton is a Qt Quick Templates `AbstractButton`; its inherited properties (`text`, `icon`, `checkable`, `checked`, `clicked`) work as usual. See <https://doc.qt.io/qt-6/qml-qtquick-controls-abstractbutton.html>.
 

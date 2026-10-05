@@ -30,8 +30,10 @@ AtlasAboutPage {
 | `description` | `string` | `""` | One or two sentences under the version. Hidden when empty. |
 | `extraContent` | `list<QtObject>` (default, read-only) | — | The default property: sections an app adds after the built-in ones. |
 | `headerTrailing` | `list<QtObject>` (read-only) | — | Items at the trailing end of the title row (a button, a search field). The title elides before them. |
+| `links` | `var` | `[]` | `[{title, url}]`. A non-empty list replaces the Source code and Report a problem rows with one row per entry, each opening its `url`. Only `https`, `http` and `mailto` URLs open: an entry with any other scheme, or an empty one, is skipped with a warning, and an entry without a `title` is skipped. |
 | `license` | `string` | `"MIT"` | The licence name shown in the About section. Hidden when empty. |
 | `maxContentWidth` | `real` | 38 grid units | The widest the content grows. |
+| `showSystemRows` | `bool` | `true` | `false` hides the "Operating system" and "Qt" rows. The Version and License rows stay, and `systemInfo()` and the "Copy system info" button still report the OS and Qt. |
 | `title` | `string` | `qsTr("About")` | The page's large bold title. |
 
 ## Methods

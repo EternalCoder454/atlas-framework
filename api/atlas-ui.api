@@ -27,7 +27,9 @@ AtlasAboutPage.property description: QString
 AtlasAboutPage.property extraContent: QQmlListProperty<QObject> [readonly]
 AtlasAboutPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
 AtlasAboutPage.property license: QString
+AtlasAboutPage.property links: QVariant
 AtlasAboutPage.property maxContentWidth: double
+AtlasAboutPage.property showSystemRows: bool
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
 AtlasAction.base QQuickAction
@@ -97,6 +99,7 @@ AtlasBadge.property type: QString
 AtlasBadge.type
 AtlasBreadcrumb.base QQuickControl
 AtlasBreadcrumb.property count: int [readonly]
+AtlasBreadcrumb.property hiddenText: QString
 AtlasBreadcrumb.property segments: QVariant
 AtlasBreadcrumb.signal activated(int index)
 AtlasBreadcrumb.type
@@ -155,6 +158,7 @@ AtlasClipboard.property hasText: bool [readonly]
 AtlasClipboard.type
 AtlasCodeView.base QQuickItem
 AtlasCodeView.property framed: bool
+AtlasCodeView.property inset: bool
 AtlasCodeView.property lineNumbers: bool
 AtlasCodeView.property maximumHeight: double
 AtlasCodeView.property showCopy: bool
@@ -202,7 +206,10 @@ AtlasDatePicker.type
 AtlasDetailGrid.base QQuickItem
 AtlasDetailGrid.property columns: int
 AtlasDetailGrid.property columnsBreakpoint: double
+AtlasDetailGrid.property footer: QString
+AtlasDetailGrid.property framed: bool
 AtlasDetailGrid.property model: QVariant
+AtlasDetailGrid.property title: QString
 AtlasDetailGrid.type
 AtlasDialog.base QPlatformDialogHelper
 AtlasDialog.property content: QQmlListProperty<QObject> [readonly]

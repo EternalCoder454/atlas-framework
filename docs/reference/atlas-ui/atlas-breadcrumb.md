@@ -36,6 +36,7 @@ The bar is one Tab stop. With the focus on the bar:
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `count` | `int` (read-only) | `0` | The number of segments. |
+| `hiddenText` | `string` | `qsTr("Hidden folders")` | The title of the menu behind the "…" crumb, and its accessible name. |
 | `segments` | `var` | `[]` | The path: a list of `{title, symbol}` objects. |
 
 ## Signals

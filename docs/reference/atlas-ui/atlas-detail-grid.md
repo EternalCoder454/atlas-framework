@@ -25,7 +25,7 @@ AtlasDetailGrid {
 
 ## Accessibility
 
-A screen reader reads each value as "label: value".
+A screen reader reads each value as "label: value". The grid is a group named by `title`, and `footer` is its description.
 
 ## Properties
 
@@ -33,4 +33,7 @@ A screen reader reads each value as "label: value".
 |---|---|---|---|
 | `columns` | `int` | `1` | How many label and value pairs sit in a row. |
 | `columnsBreakpoint` | `real` | `20` | The least width of one pair, in grid units. |
+| `footer` | `string` | `""` | A muted note below the grid, like `Section.footer`. Plain text. |
+| `framed` | `bool` | `false` | Draws the card a `Section` has round the grid. With a `title` and `footer` it looks like a `Section` of label and value rows and can replace one. |
 | `model` | `var` | `[]` | The pairs: a list of `{ label, value, mono, copyable }`. |
+| `title` | `string` | `""` | A heading above the grid, styled like a `Section` title. Plain text. |

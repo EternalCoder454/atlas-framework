@@ -6,7 +6,8 @@ import org.kde.kirigami as Kirigami
 // An About page every Atlas app can drop in: the app's icon, name and
 // version, an optional description, the version, OS and Qt in use, links to
 // the source and the issue tracker, the licence, and a "Copy system info"
-// button for bug reports (`systemInfo()` returns the same text). All of it comes from
+// button for bug reports (`systemInfo()` returns the same text). `links`
+// replaces the two link rows and `showSystemRows` hides the OS and Qt rows. All of it comes from
 // AtlasApp, which reads the app's own name, version and desktop file name
 // (set them on the application object at startup) and its `atlasRepo`
 // property (a repository name under github.com/EternalCoder454/).
@@ -26,10 +27,43 @@ AtlasPage {
     // One or two sentences under the version. Hidden when empty.
     property string description
     property string license: "MIT"
+    // False hides the "Operating system" and "Qt" rows. `systemInfo()` and the
+    // copy button still report both.
+    property bool showSystemRows: true
+    // `[{title, url}]`: a non-empty list replaces the Source code and Report a
+    // problem rows. Only https, http and mailto URLs open.
+    property var links: []
     // Sections an app adds after the built-in ones.
     default property alias extraContent: extra.data
 
     title: qsTr("About")
+
+    // `links` as shown: entries with a title and a URL of an allowed scheme.
+    // App data decides the URL, so any other scheme (file:, a custom one) is
+    // skipped with a warning and never reaches the desktop.
+    readonly property var _links: {
+        const out = [];
+        if (!Array.isArray(page.links)) {
+            return out;
+        }
+        for (const entry of page.links) {
+            const title = typeof entry?.title === "string" ? entry.title : "";
+            const url = typeof entry?.url === "string" ? entry.url.trim() : "";
+            if (title.length === 0) {
+                continue;
+            }
+            if (!/^(https?|mailto):/i.test(url)) {
+                console.warn("AtlasAboutPage: link \"" + title + "\" skipped, its URL is not http, https or mailto");
+                continue;
+            }
+            out.push({
+                "title": title,
+                "url": url
+            });
+        }
+        return out;
+    }
+    readonly property bool _customLinks: Array.isArray(page.links) && page.links.length > 0
 
     // Plain text for a bug report: app, versions, OS and graphics platform.
     function systemInfo(): string {
@@ -111,11 +145,12 @@ AtlasPage {
         SectionRow {
             title: qsTr("Operating system")
             value: AtlasApp.osPrettyName
-            visible: AtlasApp.osPrettyName.length > 0
+            visible: page.showSystemRows && AtlasApp.osPrettyName.length > 0
         }
         SectionRow {
             title: qsTr("Qt")
             value: AtlasApp.qtVersion
+            visible: page.showSystemRows
         }
         SectionRow {
             //: The software licence of the app, as in "MIT License" (not a driving licence)
@@ -127,18 +162,27 @@ AtlasPage {
 
     Section {
         title: qsTr("Links")
-        visible: AtlasApp.sourceUrl.length > 0
+        visible: page._customLinks ? page._links.length > 0 : AtlasApp.sourceUrl.length > 0
         SectionRow {
             title: qsTr("Source code")
             chevron: true
-            visible: AtlasApp.sourceUrl.length > 0
+            visible: !page._customLinks && AtlasApp.sourceUrl.length > 0
             onClicked: Qt.openUrlExternally(AtlasApp.sourceUrl)
         }
         SectionRow {
             title: qsTr("Report a problem")
             chevron: true
-            visible: AtlasApp.issuesUrl.length > 0
+            visible: !page._customLinks && AtlasApp.issuesUrl.length > 0
             onClicked: Qt.openUrlExternally(AtlasApp.issuesUrl)
+        }
+        Repeater {
+            model: page._links
+            delegate: SectionRow {
+                required property var modelData
+                title: modelData.title
+                chevron: true
+                onClicked: Qt.openUrlExternally(modelData.url)
+            }
         }
     }
 
