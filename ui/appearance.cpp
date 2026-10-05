@@ -234,7 +234,7 @@ void Appearance::watchWindow(QQuickWindow *window)
     auto report = [self, window](std::optional<bool> result, int api, QString device) {
         // Queued to the GUI thread, with the window as the context object: a
         // window that is gone drops the call.
-        QMetaObject::invokeMethod(window, [self, result, api, device] {
+        QMetaObject::invokeMethod(window, [self, window, result, api, device] {
             if (self) {
                 self->applyRendering(window, result, api, device);
             }
