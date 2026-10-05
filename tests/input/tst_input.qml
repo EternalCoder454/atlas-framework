@@ -100,4 +100,72 @@ Item {
             compare(p._warned, true);
         }
     }
+
+    Component {
+        id: atlasButtonComp
+        AtlasButton {
+            text: "Sync"
+        }
+    }
+
+    TestCase {
+        name: "AtlasButtonBusy"
+        when: windowShown
+
+        function test_accessible_press_is_ignored_while_busy() {
+            const b = createTemporaryObject(atlasButtonComp, root);
+            let n = 0;
+            b.clicked.connect(() => n++);
+            verify(a11y.press(b), "the button offers a press action");
+            compare(n, 1, "an idle button clicks");
+            b.busy = true;
+            a11y.press(b);
+            compare(n, 1, "a busy button ignores the press action");
+            b.busy = false;
+            b.enabled = false;
+            a11y.press(b);
+            compare(n, 1, "a disabled button ignores it too");
+        }
+    }
+
+    TestCase {
+        name: "ProgressShimmer"
+        when: windowShown
+
+        // The shimmer is a gradient band over a flat fill: it must show as
+        // different pixels along the fill, also on the software renderer.
+        function distinctAlongFill(item) {
+            const img = grabImage(item);
+            const y = Math.round(item.height / 2);
+            const seen = {};
+            let count = 0;
+            for (let x = 4; x < Math.round(item.width * 0.7); x += 2) {
+                const c = img.pixel(x, y).toString();
+                if (!seen[c]) {
+                    seen[c] = true;
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        function test_progress_bar_shimmer_renders() {
+            const p = createTemporaryObject(barComp, root, {
+                "value": 0.8,
+                "animated": true
+            });
+            verify(waitForRendering(p));
+            tryVerify(() => distinctAlongFill(p) > 3, 3000, "the band shades the fill");
+        }
+
+        function test_progress_bar_without_shimmer_is_flat() {
+            const p = createTemporaryObject(barComp, root, {
+                "value": 0.8,
+                "animated": true,
+                "status": "paused"
+            });
+            verify(waitForRendering(p));
+            compare(distinctAlongFill(p), 1);
+        }
+    }
 }

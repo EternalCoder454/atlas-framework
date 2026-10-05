@@ -131,7 +131,7 @@ ColumnLayout {
         Layout.rightMargin: AtlasStyle.spacingLarge
         text: root.footer
         wrapMode: Text.Wrap
-        font.family: Kirigami.Theme.defaultFont.family
+        font.family: AtlasStyle.fontFamily
         font.pointSize: AtlasStyle.fontSizeCaption
         color: AtlasStyle.textMuted
         textFormat: Text.PlainText

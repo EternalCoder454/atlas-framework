@@ -63,7 +63,7 @@ T.AbstractButton {
         id: priv
         // The default font in bold; `font.bold` cannot be set beside `font:`.
         readonly property font strong: {
-            const f = Kirigami.Theme.defaultFont;
+            const f = Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeBody });
             const o = {
                 "family": f.family,
                 "bold": true
@@ -136,10 +136,10 @@ T.AbstractButton {
         Rectangle {
             id: card
             anchors.fill: parent
-            radius: 14
-            color: Qt.alpha(Kirigami.Theme.textColor, control.down ? 0.1 : control.hovered ? 0.07 : 0.04)
+            radius: AtlasStyle.radius
+            color: control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : AtlasStyle.control
             border.width: 1
-            border.color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+            border.color: AtlasStyle.separator
             Behavior on color {
                 ColorAnimation {
                     duration: AtlasStyle.durationShort
@@ -159,7 +159,7 @@ T.AbstractButton {
             Layout.preferredWidth: priv.iconSide
             Layout.preferredHeight: priv.iconSide
             Layout.alignment: Qt.AlignVCenter
-            radius: Math.round(priv.iconSide * 0.225)
+            radius: Math.round(priv.iconSide * 0.225) // proportional to the icon, an app-icon squircle, not a token
             color: priv.hasIcon ? "transparent" : Qt.alpha(AtlasStyle.accent, 0.14)
             Kirigami.Icon {
                 anchors.fill: parent
@@ -195,8 +195,9 @@ T.AbstractButton {
                 Layout.fillWidth: true
                 visible: control.summary.length > 0
                 text: control.summary
-                font: Kirigami.Theme.smallFont
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.7)
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeCaption
+                color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 maximumLineCount: 2
@@ -217,8 +218,9 @@ T.AbstractButton {
                 }
                 Text {
                     text: priv.meta
-                    font: Kirigami.Theme.smallFont
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeCaption
+                    color: AtlasStyle.textMuted
                     textFormat: Text.PlainText
                 }
             }

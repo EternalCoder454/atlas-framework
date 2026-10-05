@@ -36,12 +36,14 @@ T.DoubleSpinBox {
 
     TextMetrics {
         id: metricsFrom
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         text: control.textFromValue(control.from, null)
     }
     TextMetrics {
         id: metricsTo
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         text: control.textFromValue(control.to, null)
     }
 
@@ -113,7 +115,8 @@ T.DoubleSpinBox {
 
     contentItem: TextInput {
         text: control.displayText
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         color: control.enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
         selectionColor: AtlasStyle.accent
         selectedTextColor: AtlasStyle.accentText

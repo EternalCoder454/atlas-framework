@@ -121,7 +121,7 @@ T.Control {
                             anchors.fill: parent
                             icon: Symbols.Star
                             size: control.starSize
-                            color: Qt.alpha(Kirigami.Theme.textColor, 0.3)
+                            color: AtlasStyle.textDisabled
                         }
                         Symbol {
                             anchors.fill: parent
@@ -170,7 +170,7 @@ T.Control {
             visible: control.count > 0
             text: "(" + control._countText + ")"
             font.pointSize: AtlasStyle.fontSizeCaption
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
+            color: AtlasStyle.textMuted
             textFormat: Text.PlainText
             Accessible.ignored: true
         }

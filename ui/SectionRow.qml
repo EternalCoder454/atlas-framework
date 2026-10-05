@@ -246,7 +246,8 @@ FocusScope {
                 visible: root.subtitle.length > 0
                 text: root.subtitle
                 wrapMode: Text.Wrap
-                font: Kirigami.Theme.smallFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeCaption
                 opacity: 0.65
                 textFormat: Text.PlainText
                 Accessible.ignored: true

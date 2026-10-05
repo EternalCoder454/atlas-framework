@@ -69,7 +69,8 @@ T.CheckBox {
 
     contentItem: Text {
         text: control.text
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         color: control.enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
         elide: Text.ElideRight
         verticalAlignment: Text.AlignVCenter

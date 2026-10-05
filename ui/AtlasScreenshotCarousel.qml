@@ -150,10 +150,10 @@ T.Control {
             anchors.top: parent.top
             anchors.bottom: dots.top
             anchors.bottomMargin: dots.visible ? AtlasStyle.spacingSmall : 0
-            radius: 14
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
+            radius: AtlasStyle.radius
+            color: AtlasStyle.control
             border.width: 1
-            border.color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+            border.color: AtlasStyle.separator
 
             // Empty state.
             Column {
@@ -164,12 +164,13 @@ T.Control {
                     anchors.horizontalCenter: parent.horizontalCenter
                     icon: Symbols.ImageNotSupported
                     size: Kirigami.Units.iconSizes.large
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
+                    color: AtlasStyle.textDisabled
                 }
                 Text {
                     text: qsTr("No screenshots")
-                    font: Kirigami.Theme.defaultFont
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeBody
+                    color: AtlasStyle.textMuted
                     textFormat: Text.PlainText
                 }
             }
@@ -236,13 +237,14 @@ T.Control {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         icon: slide.failed ? Symbols.BrokenImage : Symbols.Image
                                         size: Kirigami.Units.iconSizes.large
-                                        color: Qt.alpha(Kirigami.Theme.textColor, 0.4)
+                                        color: AtlasStyle.textDisabled
                                     }
                                     Text {
                                         visible: slide.failed
                                         text: qsTr("Screenshot unavailable")
-                                        font: Kirigami.Theme.smallFont
-                                        color: Qt.alpha(Kirigami.Theme.textColor, 0.6)
+                                        font.family: AtlasStyle.fontFamily
+                                        font.pointSize: AtlasStyle.fontSizeCaption
+                                        color: AtlasStyle.textMuted
                                         textFormat: Text.PlainText
                                         Accessible.ignored: true
                                     }
@@ -279,9 +281,9 @@ T.Control {
                     }
                     background: Rectangle {
                         radius: AtlasStyle.radiusPill
-                        color: Qt.alpha(Kirigami.Theme.backgroundColor, nav.down ? 0.95 : 0.8)
+                        color: Qt.alpha(Kirigami.Theme.backgroundColor, nav.down ? 0.95 : 0.8) // floats over the screenshot, so it follows the window colour, not a token
                         border.width: 1
-                        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
+                        border.color: AtlasStyle.controlBorder
                     }
                     contentItem: Item {
                         Symbol {
@@ -324,7 +326,7 @@ T.Control {
                         width: Math.round(Kirigami.Units.gridUnit * (dot.current ? 0.5 : 0.4))
                         height: width
                         radius: width / 2
-                        color: dot.current ? AtlasStyle.accent : Qt.alpha(Kirigami.Theme.textColor, 0.3)
+                        color: dot.current ? AtlasStyle.accent : AtlasStyle.textDisabled
                         Behavior on color {
                             ColorAnimation {
                                 duration: AtlasStyle.durationShort
@@ -344,8 +346,9 @@ T.Control {
                 anchors.verticalCenter: parent.verticalCenter
                 //: Counter shown on a screenshot: %1 is its number, %2 how many there are ("2 / 5")
                 text: qsTr("%1 / %2").arg(control.currentIndex + 1).arg(control.count)
-                font: Kirigami.Theme.smallFont
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.7)
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeCaption
+                color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
             }
         }

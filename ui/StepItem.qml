@@ -69,8 +69,8 @@ T.AbstractButton {
                 anchors.centerIn: parent
                 visible: !control.done || control.current
                 text: control.number
-                font.family: Kirigami.Theme.defaultFont.family
-                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeCaption
                 font.weight: Font.DemiBold
                 color: control.current ? AtlasStyle.accentText : AtlasStyle.textMuted
             }
@@ -87,7 +87,7 @@ T.AbstractButton {
         Text {
             Layout.fillWidth: true
             text: control.text
-            font.family: Kirigami.Theme.defaultFont.family
+            font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody
             font.weight: control.current ? Font.DemiBold : Font.Medium
             textFormat: Text.PlainText

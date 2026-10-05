@@ -35,7 +35,7 @@ T.AbstractButton {
     // the application font for everything but the family name.
     readonly property font _nameFont: Qt.font({
         family: control.font.family,
-        pointSize: Kirigami.Theme.defaultFont.pointSize
+        pointSize: AtlasStyle.fontSizeBody
     })
 
     QtObject {
@@ -105,7 +105,8 @@ T.AbstractButton {
 
     TextMetrics {
         id: sizeMetrics
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         text: "0"
     }
 
@@ -145,7 +146,8 @@ T.AbstractButton {
         }
         Text {
             text: qsTr("%1 pt").arg(Math.round(control.font.pointSize * 10) / 10)
-            font: Kirigami.Theme.defaultFont
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeBody
             color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
             textFormat: Text.PlainText
         }
@@ -256,7 +258,7 @@ T.AbstractButton {
                     contentItem: Text {
                         text: row.modelData
                         font.family: row.modelData
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize
+                        font.pointSize: AtlasStyle.fontSizeBody
                         color: Kirigami.Theme.textColor
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
@@ -273,7 +275,8 @@ T.AbstractButton {
                         anchors.fill: parent
                         anchors.leftMargin: Kirigami.Units.largeSpacing
                         text: internals.scanning ? qsTr("Looking for fonts…") : qsTr("No matches")
-                        font: Kirigami.Theme.defaultFont
+                        font.family: AtlasStyle.fontFamily
+                        font.pointSize: AtlasStyle.fontSizeBody
                         color: Qt.alpha(Kirigami.Theme.textColor, 0.5)
                         verticalAlignment: Text.AlignVCenter
                         textFormat: Text.PlainText
@@ -285,7 +288,8 @@ T.AbstractButton {
                 spacing: Kirigami.Units.largeSpacing
                 Text {
                     text: qsTr("Size")
-                    font: Kirigami.Theme.defaultFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeBody
                     color: Kirigami.Theme.textColor
                     textFormat: Text.PlainText
                     Accessible.ignored: true
@@ -305,11 +309,31 @@ T.AbstractButton {
             }
         }
 
-        background: Rectangle {
-            radius: AtlasStyle.radiusLarge
-            color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.08))
-            border.width: 1
-            border.color: Qt.alpha(Kirigami.Theme.textColor, 0.16)
+        background: Item {
+            // Same card as ContextMenu. Soft shadow: faint outlines, no shader, so it also draws with the software renderer.
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -1
+                anchors.topMargin: 0
+                anchors.bottomMargin: -3
+                radius: AtlasStyle.radius + 1
+                color: Qt.alpha("black", 0.04)
+            }
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -2
+                anchors.topMargin: -1
+                anchors.bottomMargin: -5
+                radius: AtlasStyle.radius + 2
+                color: Qt.alpha("black", 0.025)
+            }
+            Rectangle {
+                anchors.fill: parent
+                radius: AtlasStyle.radius
+                color: AtlasStyle.floatingBackground
+                border.width: 1
+                border.color: AtlasStyle.separator
+            }
         }
 
         enter: Transition {

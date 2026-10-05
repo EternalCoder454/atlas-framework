@@ -93,7 +93,8 @@ Item {
         color: Kirigami.Theme.textColor
         selectionColor: AtlasStyle.accent
         selectedTextColor: AtlasStyle.accentText
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         selectByMouse: true
         inputMethodHints: Qt.ImhNoPredictiveText
         hoverEnabled: true
@@ -183,7 +184,8 @@ Item {
                     text: control.countText
                     elide: Text.ElideRight
                     textFormat: Text.PlainText
-                    font: Kirigami.Theme.smallFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeCaption
                     horizontalAlignment: Text.AlignHCenter
                     color: control.failed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
                     opacity: control.failed ? 1 : 0.7
@@ -284,7 +286,7 @@ Item {
     component TypeMark: Text {
         property bool on: false
         anchors.centerIn: parent
-        font.family: Kirigami.Theme.defaultFont.family
+        font.family: AtlasStyle.fontFamily
         font.pointSize: AtlasStyle.fontSizeBody
         font.weight: Font.Medium
         textFormat: Text.PlainText

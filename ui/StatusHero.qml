@@ -188,7 +188,8 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: root.showBar && root.barText.length > 0
         horizontalAlignment: Text.AlignHCenter
-        font: Kirigami.Theme.smallFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeCaption
         opacity: 0.7
         text: root.barText
         textFormat: Text.PlainText

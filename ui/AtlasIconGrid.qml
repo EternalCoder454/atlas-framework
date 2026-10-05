@@ -240,7 +240,8 @@ T.Control {
                     anchors.rightMargin: AtlasStyle.spacingLarge
                     Accessible.ignored: true // the cell carries the name
                     text: cell.title
-                    font: Kirigami.Theme.defaultFont
+                    font.family: AtlasStyle.fontFamily
+                    font.pointSize: AtlasStyle.fontSizeBody
                     color: AtlasStyle.text
                     textFormat: Text.PlainText
                     horizontalAlignment: Text.AlignHCenter
@@ -284,7 +285,8 @@ T.Control {
             }
             Text {
                 text: control.placeholderText
-                font: Kirigami.Theme.defaultFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeBody
                 color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
             }

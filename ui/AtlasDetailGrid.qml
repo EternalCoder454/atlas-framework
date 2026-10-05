@@ -79,7 +79,7 @@ Item {
                     visible: !cell.isValue
                     width: parent.width
                     text: cell.text
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
+                    color: AtlasStyle.textMuted
                     horizontalAlignment: grid._stacked ? Text.AlignLeft : Text.AlignRight
                     elide: Text.ElideRight
                     textFormat: Text.PlainText
@@ -98,7 +98,7 @@ Item {
                     activeFocusOnTab: false
                     wrapMode: Text.Wrap
                     textFormat: TextEdit.PlainText
-                    font: cell.entry.mono === true ? Kirigami.Theme.fixedWidthFont : Kirigami.Theme.defaultFont
+                    font: cell.entry.mono === true ? Qt.font({ "family": AtlasStyle.monoFamily, "pointSize": AtlasStyle.fontSizeBody }) : Qt.font({ "family": AtlasStyle.fontFamily, "pointSize": AtlasStyle.fontSizeBody })
                     color: Kirigami.Theme.textColor
                     selectionColor: AtlasStyle.accent
                     selectedTextColor: AtlasStyle.accentText
@@ -133,7 +133,7 @@ Item {
                     }
                     background: Rectangle {
                         radius: AtlasStyle.radiusSmall
-                        color: Qt.alpha(Kirigami.Theme.textColor, copyButton.down ? 0.16 : copyButton.hovered ? 0.1 : 0)
+                        color: copyButton.down ? AtlasStyle.pressed : copyButton.hovered ? AtlasStyle.hover : "transparent"
                         AtlasFocusRing {
                             radius: parent.radius
                             shown: copyButton.visualFocus
@@ -142,7 +142,7 @@ Item {
                     contentItem: Symbol {
                         icon: copyButton.copied ? Symbols.Check : Symbols.ContentCopy
                         size: Kirigami.Units.iconSizes.small
-                        color: copyButton.copied ? Kirigami.Theme.positiveTextColor : Qt.alpha(Kirigami.Theme.textColor, 0.65)
+                        color: copyButton.copied ? Kirigami.Theme.positiveTextColor : AtlasStyle.textMuted
                         anchors.centerIn: parent
                     }
                     QQC2.ToolTip.visible: hovered

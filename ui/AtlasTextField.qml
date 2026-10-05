@@ -55,11 +55,18 @@ T.TextField {
         id: internals
         // Grows when the text (large font) needs more than the control height.
         readonly property real fieldHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(control.contentHeight) + AtlasStyle.spacing)
-        // The user has typed in the field / the focus has left it or Return
-        // was pressed: from then on a validator error shows and follows live.
+        // The user has typed in the field / the error is armed: the focus left
+        // the field or Return was pressed with invalid text. An armed error
+        // follows live until the text is acceptable or empty; after that it
+        // shows again only at the next blur or Return.
         property bool touched: false
-        property bool left: false
-        readonly property bool invalidShown: control.invalidText.length > 0 && !control.acceptableInput && (left || (control.validateOn === "typing" && touched))
+        property bool armed: false
+        function arm() {
+            if (!control.acceptableInput) {
+                armed = true;
+            }
+        }
+        readonly property bool invalidShown: control.invalidText.length > 0 && !control.acceptableInput && (armed || (control.validateOn === "typing" && touched))
         // errorText set by the app wins over invalidText.
         readonly property string shownError: control.errorText.length > 0 ? control.errorText : invalidShown ? control.invalidText : ""
         onShownErrorChanged: {
@@ -92,7 +99,8 @@ T.TextField {
     color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
     selectionColor: AtlasStyle.accent
     selectedTextColor: AtlasStyle.accentText
-    font: Kirigami.Theme.defaultFont
+    font.family: AtlasStyle.fontFamily
+    font.pointSize: AtlasStyle.fontSizeBody
     selectByMouse: true
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -106,12 +114,22 @@ T.TextField {
     // Return reveals a validator error even when the validator refuses it.
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            internals.left = true;
+            internals.arm();
         }
     }
     onActiveFocusChanged: {
         if (!activeFocus) {
-            internals.left = true;
+            internals.arm();
+        }
+    }
+    onTextChanged: {
+        if (text.length === 0) {
+            internals.armed = false;
+        }
+    }
+    onAcceptableInputChanged: {
+        if (acceptableInput) {
+            internals.armed = false;
         }
     }
 
@@ -198,13 +216,15 @@ T.TextField {
     }
 
     // The error symbol, at the trailing edge (mirrored in RTL).
-    Symbol {
+    Loader {
+        active: control.hasError
         x: control.rtl ? internals.edgePad / 2 : control.width - width - internals.edgePad / 2
         y: Math.round((internals.fieldHeight - height) / 2)
-        visible: control.hasError
-        icon: Symbols.Error
-        size: internals.iconSize
-        color: AtlasStyle.error
+        sourceComponent: Symbol {
+            icon: Symbols.Error
+            size: internals.iconSize
+            color: AtlasStyle.error
+        }
     }
 
     Text {
@@ -215,7 +235,8 @@ T.TextField {
         width: control.width - AtlasStyle.spacingLarge * 2 - (internals.counterShown ? counter.implicitWidth + AtlasStyle.spacingLarge : 0)
         visible: control.hasError
         text: internals.shownError
-        font: Kirigami.Theme.smallFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeCaption
         color: AtlasStyle.error
         wrapMode: Text.Wrap
         textFormat: Text.PlainText
@@ -229,7 +250,8 @@ T.TextField {
         y: internals.fieldHeight + AtlasStyle.spacing
         visible: internals.counterShown
         text: control.length + "/" + control.maximumLength
-        font: Kirigami.Theme.smallFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeCaption
         color: control.length >= control.maximumLength ? AtlasStyle.error : AtlasStyle.textMuted
         textFormat: Text.PlainText
         Accessible.ignored: true

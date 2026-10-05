@@ -102,6 +102,12 @@ T.AbstractButton {
 
     Accessible.name: control.text
     Accessible.description: control.busy ? qsTr("Busy") : ""
+    // A screen reader's press must not click a busy or disabled button.
+    Accessible.onPressAction: {
+        if (control.enabled && !control.busy) {
+            control.click();
+        }
+    }
     Keys.onReturnPressed: event => {
         if (enabled && !busy && !event.isAutoRepeat) {
             control.clicked();
@@ -182,7 +188,8 @@ T.AbstractButton {
                 Accessible.ignored: true
                 anchors.verticalCenter: parent.verticalCenter
                 text: control.text
-                font: Kirigami.Theme.defaultFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeBody
                 color: control._fg
                 textFormat: Text.PlainText // no mnemonics
                 Behavior on color {

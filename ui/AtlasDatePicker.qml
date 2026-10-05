@@ -81,7 +81,8 @@ T.Control {
 
     contentItem: Text {
         text: control._hasDate ? control._text : control.placeholderText
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         color: !control.enabled ? AtlasStyle.textDisabled : control._hasDate ? AtlasStyle.text : AtlasStyle.textMuted
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft
@@ -207,11 +208,31 @@ T.Control {
             }
         }
 
-        background: Rectangle {
-            radius: AtlasStyle.radiusLarge
-            color: Appearance.effective ? Qt.alpha(AtlasStyle.surface, 0.85) : AtlasStyle.surface
-            border.width: 1
-            border.color: AtlasStyle.separator
+        background: Item {
+            // Same card as ContextMenu. Soft shadow: faint outlines, no shader, so it also draws with the software renderer.
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -1
+                anchors.topMargin: 0
+                anchors.bottomMargin: -3
+                radius: AtlasStyle.radius + 1
+                color: Qt.alpha("black", 0.04)
+            }
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -2
+                anchors.topMargin: -1
+                anchors.bottomMargin: -5
+                radius: AtlasStyle.radius + 2
+                color: Qt.alpha("black", 0.025)
+            }
+            Rectangle {
+                anchors.fill: parent
+                radius: AtlasStyle.radius
+                color: AtlasStyle.floatingBackground
+                border.width: 1
+                border.color: AtlasStyle.separator
+            }
         }
 
         enter: Transition {

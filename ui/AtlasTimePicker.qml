@@ -132,7 +132,8 @@ T.Control {
         }
         Text {
             text: ":"
-            font: Kirigami.Theme.defaultFont
+            font.family: AtlasStyle.fontFamily
+            font.pointSize: AtlasStyle.fontSizeBody
             color: AtlasStyle.text
             textFormat: Text.PlainText
             Accessible.ignored: true
@@ -177,17 +178,20 @@ T.Control {
             }
             TextMetrics {
                 id: amMetrics
-                font: Kirigami.Theme.defaultFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeBody
                 text: control.locale.amText || "AM"
             }
             TextMetrics {
                 id: pmMetrics
-                font: Kirigami.Theme.defaultFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeBody
                 text: control.locale.pmText || "PM"
             }
             contentItem: Text {
                 text: ampm.text
-                font: Kirigami.Theme.defaultFont
+                font.family: AtlasStyle.fontFamily
+                font.pointSize: AtlasStyle.fontSizeBody
                 color: AtlasStyle.text
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter

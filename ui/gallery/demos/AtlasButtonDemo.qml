@@ -10,19 +10,20 @@ Item {
 
     property bool animate: true
 
-    implicitWidth: 640
-    implicitHeight: 280
+    // Sized by its content, so 200% text still fits (three columns, not five).
+    implicitWidth: grid.implicitWidth + 24
+    implicitHeight: grid.implicitHeight + 24
     width: implicitWidth
     height: implicitHeight
 
-    // One row per variant; the columns are the states, which are the same
-    // layer for every variant: normal, with a symbol, checked, disabled, busy.
+    // Per variant: normal, with a symbol, checked, disabled, busy.
     GridLayout {
-        anchors.fill: parent
-        anchors.margins: 12
+        id: grid
+        x: 12
+        y: 12
         rowSpacing: 10
         columnSpacing: 10
-        columns: 5
+        columns: 3
         AtlasButton { text: "Default" }
         AtlasButton { text: "Symbol"; symbol: Symbols.codepoint("home") }
         AtlasButton { text: "Checked"; checkable: true; checked: true }

@@ -40,7 +40,7 @@ Row {
     // Tests switch the 120 ms colour fade off.
     property bool _animate: true
 
-    spacing: 4
+    spacing: AtlasStyle.spacingSmall
     Kirigami.Theme.colorSet: Kirigami.Theme.Header
     Kirigami.Theme.inherit: false
 
@@ -129,7 +129,7 @@ Row {
                 y: 3
                 width: 26
                 height: 26
-                radius: 7
+                radius: 7 // KWin button geometry, kept as the spec
                 color: btn._fill
                 Behavior on color {
                     enabled: root._animate

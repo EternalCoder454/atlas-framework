@@ -28,7 +28,8 @@ T.TextArea {
     color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
     selectionColor: AtlasStyle.accent
     selectedTextColor: AtlasStyle.accentText
-    font: Kirigami.Theme.defaultFont
+    font.family: AtlasStyle.fontFamily
+    font.pointSize: AtlasStyle.fontSizeBody
     selectByMouse: true
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus

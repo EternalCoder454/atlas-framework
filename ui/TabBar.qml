@@ -326,7 +326,7 @@ Item {
                         Accessible.ignored: true
                         Layout.fillWidth: true
                         text: tab.title
-                        font.family: Kirigami.Theme.defaultFont.family
+                        font.family: AtlasStyle.fontFamily
                         font.pointSize: AtlasStyle.fontSizeBody
                         font.weight: tab.current ? Font.Medium : Font.Normal
                         textFormat: Text.PlainText

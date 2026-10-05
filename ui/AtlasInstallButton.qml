@@ -133,7 +133,8 @@ T.AbstractButton {
 
     contentItem: Text {
         text: priv.label
-        font: Kirigami.Theme.defaultFont
+        font.family: AtlasStyle.fontFamily
+        font.pointSize: AtlasStyle.fontSizeBody
         color: priv.filled && control.enabled ? AtlasStyle.accentStrongText : priv.tint
         opacity: control.enabled ? 1 : 0.75
         textFormat: Text.PlainText // no mnemonics

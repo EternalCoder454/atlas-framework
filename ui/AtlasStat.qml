@@ -58,13 +58,13 @@ ColumnLayout {
             visible: root.symbol !== 0
             icon: root.symbol
             size: Kirigami.Units.iconSizes.small
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
+            color: AtlasStyle.textMuted
         }
         QQC2.Label {
             Layout.fillWidth: true
             text: root.label
             font.pointSize: AtlasStyle.fontSizeCaption
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
+            color: AtlasStyle.textMuted
             elide: Text.ElideRight
             textFormat: Text.PlainText
             Accessible.ignored: true
@@ -88,7 +88,7 @@ ColumnLayout {
         QQC2.Label {
             visible: root.unit.length > 0
             text: root.unit
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.65)
+            color: AtlasStyle.textMuted
             textFormat: Text.PlainText
             Layout.alignment: Qt.AlignBaseline
             Accessible.ignored: true
@@ -110,7 +110,7 @@ ColumnLayout {
             font.features: ({
                     "tnum": 1
                 })
-            color: root._hasTrend ? root._trendColor : Qt.alpha(Kirigami.Theme.textColor, 0.65)
+            color: root._hasTrend ? root._trendColor : AtlasStyle.textMuted
             textFormat: Text.PlainText
             Accessible.ignored: true
         }
