@@ -82,5 +82,6 @@ tools/check-api.sh /b/build
 step lint
 tools/lint-app.sh ui/gallery | tail -n 1
 step docs
+python3 tools/test_docs.py 2>&1 | tail -n 3
 python3 tools/docs.py check
 '

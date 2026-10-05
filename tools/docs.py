@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Check the reference docs in docs/reference and build what the site reads.
 
-    tools/docs.py check              fail on any broken page (CI runs this)
-    tools/docs.py build <out dir>    check, then write the pages, the images
-                                     and index.json into <out dir> (the
-                                     docs-published branch)
+    tools/docs.py [--root DIR] check              fail on any broken page (CI runs this)
+    tools/docs.py [--root DIR] build <out dir>    check, then write the pages, the
+                                                  images and index.json into
+                                                  <out dir> (docs-published)
 
-The AtlasOS site (atlasos.eterneon.net/docs) reads the docs-published branch.
+The AtlasOS site (atlasos.eterneon.net/framework) reads the docs-published branch.
 docs/reference/README.md is the contract: the layout, the frontmatter and the
 rules this script enforces. Only the standard library, so CI needs nothing
 installed.
@@ -19,33 +19,49 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REF = os.path.join(ROOT, "docs", "reference")
+REF = os.path.join(ROOT, "docs", "reference")  # `--root DIR` replaces it (the tests do)
 
-SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 KEYS = {"title", "summary", "order", "since", "section", "deprecated"}
 REQUIRED = ("title", "summary")
+TEXT_KEYS = ("title", "summary", "section", "deprecated")
 IMAGE_TYPES = (".png", ".webp", ".svg")
-# What the site accepts: longer fields or bigger files are skipped there.
+# What the site accepts: longer fields (in UTF-16 code units) or bigger files are skipped there.
 LIMITS = {"title": 160, "summary": 400, "section": 60, "deprecated": 300, "since": 32}
 LIBRARY_TITLE_LIMIT = 120
 PAGE_BYTES = 512 * 1024
 IMAGE_BYTES = 4 * 1024 * 1024
+IMAGES_TOTAL_BYTES = 32 * 1024 * 1024
 INDEX_BYTES = 1024 * 1024
 MAX_DELIMITERS = 8000  # * _ ~ [ ] outside code: the site's parser is quadratic on them
 MAX_PAGES = 500
 MAX_LIBRARIES = 50
 RESERVED = {"images", "index"}  # page and library slugs the site keeps for itself
 DEFAULT_ORDER = 1000
-FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
-# A tag or comment outside code: <b>, </div>, <br/>, <!-- -->. An autolink
-# (<https://...>, <me@example.org>) is not HTML.
-HTML = re.compile(r"<(/?[A-Za-z][A-Za-z0-9-]*(\s[^<>]*)?/?)>|<!--")
+FENCE = re.compile(r"^( *)(`{3,}|~{3,})(.*)$")
+LIST_ITEM = re.compile(r"^( {0,3})([-*+]|\d{1,9}[.)])( +|$)")
+QUOTE = re.compile(r"^ {0,3}> ?")
+# Control characters, line and paragraph separators and bidi controls: never in a title.
+BAD_CHARS = re.compile("[\x00-\x1f\x7f\u2028\u2029\u202a-\u202e\u2066-\u2069]")
+# A tag, comment, declaration or processing instruction outside code: <b>,
+# </div>, <br/>, <!-- -->, <!DOCTYPE>, <?php. An autolink is not HTML.
+HTML = re.compile(r"<(/?[A-Za-z][A-Za-z0-9-]*(\s[^<>]*)?/?)>|<!|<\?")
+# A tag start whose `>` is not on the same line (the tag is split across lines).
+HTML_SPLIT = re.compile(r"<(?:/?[A-Za-z][A-Za-z0-9-]*)(?:\s[^<>\n]*)?$", re.M)
 AUTOLINK = re.compile(r"<([a-zA-Z][a-zA-Z0-9+.-]{1,31}:[^\s<>]*|[^\s<>@]+@[^\s<>@]+)>")
-CODE_SPAN = re.compile(r"(`+)(.+?)\1")
-LINK = re.compile(r"(!?)\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\s*<?([^)\s>]*)>?(?:\s+\"[^\"]*\")?\s*\)")
+CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.S)
+TITLE = r"(?:\"[^\"]*\"|'[^']*'|\([^)]*\))"
+LINK = re.compile(r"(!?)\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\s*<?([^)\s>]*)>?(?:\s+" + TITLE + r")?\s*\)")
+REF_DEF = re.compile(r"^ {0,3}\[([^\]^][^\]]*)\]:[ \t]*<?([^\s>]*)>?", re.M)
+UNPARSED = re.compile(r"\]\(|!\[")
 HEADING = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
+SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+SVG_HREF = re.compile(r"(?:xlink:)?href\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))", re.I)
 
 
 class Page:
@@ -57,18 +73,29 @@ class Page:
         self.anchors = set()
 
 
+class Library:
+    def __init__(self, name):
+        self.name = name
+        self.pages = []
+        self.images = []  # absolute paths of the validated image files
+
+
+def u16(text):
+    """Length in UTF-16 code units, which is what the site counts."""
+    return len(text.encode("utf-16-le", "surrogatepass")) // 2
+
+
 def fail(errors, page, line, message):
     where = f"docs/reference/{page.rel}" + (f":{line}" if line else "")
     errors.append(f"{where}: {message}")
 
 
 def parse_scalar(raw):
+    """A frontmatter value as text: quotes removed, nothing else interpreted."""
     raw = raw.strip()
     if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "\"'":
         inner = raw[1:-1]
         return inner.replace('\\"', '"') if raw[0] == '"' else inner.replace("''", "'")
-    if re.fullmatch(r"-?\d+(\.\d+)?", raw):
-        return float(raw) if "." in raw else int(raw)
     return raw
 
 
@@ -102,19 +129,33 @@ def read_page(page, errors):
             fail(errors, page, i + 1, f"unknown frontmatter key `{key}` (allowed: {', '.join(sorted(KEYS))})")
         elif key in page.meta:
             fail(errors, page, i + 1, f"`{key}` given twice")
+        elif value == "" and key not in REQUIRED:
+            fail(errors, page, i + 1, f"`{key}` is empty: give it a value or remove the line")
         else:
             page.meta[key] = value
     for key in REQUIRED:
-        if not str(page.meta.get(key, "")).strip():
+        if not page.meta.get(key, "").strip():
             fail(errors, page, 0, f"missing `{key}`")
     for key, limit in LIMITS.items():
         if page.rel.endswith("/index.md") and key == "title":
             limit = LIBRARY_TITLE_LIMIT
-        if len(str(page.meta.get(key, ""))) > limit:
+        if u16(page.meta.get(key, "")) > limit:
             fail(errors, page, 0, f"`{key}` is longer than {limit} characters")
-    if "order" in page.meta and not isinstance(page.meta["order"], (int, float)):
-        fail(errors, page, 0, "`order` must be a number")
-    if "since" in page.meta and not re.fullmatch(r"\d+\.\d+\.\d+", str(page.meta["since"])):
+    for key in TEXT_KEYS:
+        value = page.meta.get(key, "")
+        if BAD_CHARS.search(value):
+            fail(errors, page, 0, f"`{key}` has a control, line-separator or bidi character")
+        plain = without_code(value)
+        if HTML.search(plain) or HTML_SPLIT.search(plain):
+            fail(errors, page, 0, f"`{key}` has raw HTML (put it in backticks)")
+    if "order" in page.meta:
+        raw = page.meta["order"]
+        if re.fullmatch(r"-?\d+(\.\d+)?", raw, re.A):
+            page.meta["order"] = float(raw) if "." in raw else int(raw)
+        else:
+            fail(errors, page, 0, "`order` must be a number")
+            del page.meta["order"]
+    if "since" in page.meta and not re.fullmatch(r"\d+\.\d+\.\d+", page.meta["since"], re.A):
         fail(errors, page, 0, "`since` must be a version like 1.4.0")
     page.body = [(i + 1, lines[i]) for i in range(end + 1, len(lines))]
 
@@ -129,124 +170,279 @@ def github_slug(text):
     return text.replace(" ", "-")
 
 
+def strip_quotes(line):
+    """The line without its blockquote markers (nested ones too)."""
+    while True:
+        m = QUOTE.match(line)
+        if not m:
+            return line
+        line = line[m.end():]
+
+
+def blank(text):
+    """The text with everything but newlines replaced by spaces: offsets stay."""
+    return re.sub(r"[^\n]", " ", text)
+
+
+def without_code(text):
+    return CODE_SPAN.sub(lambda m: blank(m.group(0)), text)
+
+
 def scan_body(page, errors):
-    """Fences, raw HTML, H1s and anchors. Returns the lines outside code."""
-    prose = []
-    fence = None
+    """Fences, raw HTML, H1s and anchors. Returns the paragraphs outside code
+    as (first line number, text with newlines)."""
+    paragraphs = []
+    para = []
+    fence = None  # (marker, indent)
     seen = {}
-    for number, line in page.body:
+    prev_blank = True
+    in_list = False
+
+    def flush():
+        if para:
+            paragraphs.append((para[0][0], "\n".join(t for _, t in para)))
+            para.clear()
+
+    for number, raw in page.body:
+        line = strip_quotes(raw.expandtabs(4))
         m = FENCE.match(line)
         if fence:
-            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not m.group(2).strip():
+            if m and m.group(2)[0] == fence[0][0] and len(m.group(2)) >= len(fence[0]) \
+                    and not m.group(3).strip() and len(m.group(1)) - fence[1] <= 3:
                 fence = None
+                prev_blank = True
             continue
-        if m:
-            fence = m.group(1)
-            info = m.group(2).strip()
-            if not info:
+        indent = len(line) - len(line.lstrip(" "))
+        item = LIST_ITEM.match(line)
+        if not m and item:  # a fence can open on a list item's own line
+            m = FENCE.match(" " * item.end() + line[item.end():])
+        if m and (len(m.group(1)) <= 3 or in_list or item) and not (m.group(2)[0] == "`" and "`" in m.group(3)):
+            flush()
+            fence = (m.group(2), len(m.group(1)))
+            if not m.group(3).strip():
                 fail(errors, page, number, "code fence without a language (```qml, ```rust, ```sh, ```text ...)")
+            if item:
+                in_list = True
             continue
-        if line.startswith("    ") and (not prose or not prose[-1][1].strip()):
+        if not line.strip():
+            flush()
+            prev_blank = True
+            continue
+        if indent >= 4 and prev_blank and not in_list:
+            flush()
             fail(errors, page, number, "indented code block: use a fence with a language")
             continue
-        prose.append((number, line))
         h = HEADING.match(line)
+        if item:
+            in_list = True
+        elif indent <= 1 and (prev_blank or h):
+            in_list = False
+        prev_blank = False
         if h:
+            flush()
             if len(h.group(1)) == 1:
                 fail(errors, page, number, "`#` heading: the title comes from frontmatter, start at ##")
             base = github_slug(h.group(2))
             n = seen.get(base, 0)
-            seen[base] = n + 1
-            page.anchors.add(base if n == 0 else f"{base}-{n}")
-        text = CODE_SPAN.sub("", AUTOLINK.sub("", line))
-        if HTML.search(text):
-            fail(errors, page, number, "raw HTML (the site removes it; use Markdown)")
+            candidate = base
+            while candidate in page.anchors:  # GitHub: keep counting until the name is free
+                n += 1
+                candidate = f"{base}-{n}"
+            seen[base] = n
+            page.anchors.add(candidate)
+        para.append((number, line))
+    flush()
     if fence:
         fail(errors, page, 0, "a code fence is never closed")
-    delimiters = sum(len(re.findall(r"[*_~\[\]]", line)) for _, line in prose)
+    delimiters = sum(len(re.findall(r"[*_~\[\]]", text)) for _, text in paragraphs)
     if delimiters > MAX_DELIMITERS:
         fail(errors, page, 0, f"{delimiters} of * _ ~ [ ] outside code (the site renders at most {MAX_DELIMITERS}): split the page")
-    return prose
+        return []
+    for start, text in paragraphs:
+        cleaned = AUTOLINK.sub(lambda m: blank(m.group(0)), without_code(text))
+        found = HTML.search(cleaned) or HTML_SPLIT.search(cleaned)
+        if found:
+            fail(errors, page, start + cleaned.count("\n", 0, found.start()),
+                 "raw HTML (the site removes it; put it in backticks or use Markdown)")
+    return paragraphs
 
 
-def check_links(page, prose, pages_by_path, errors):
+def scan_links(text, offset, found, unparsed):
+    """Every inline link and image in text, nested ones too. found gets
+    (offset, match); unparsed gets the offsets of `](` and `![` that no link
+    consumed."""
+    for m in LINK.finditer(text):
+        found.append((offset + m.start(), m))
+        scan_links(m.group(2), offset + m.start(2), found, unparsed)
+    rest = LINK.sub(lambda m: blank(m.group(0)), text)
+    unparsed.extend(offset + m.start() for m in UNPARSED.finditer(rest))
+
+
+def check_target(page, number, target, image, pages_by_path, images, errors):
     library_dir = page.rel.split("/")[0] if "/" in page.rel else None
-    for number, line in prose:
-        for m in LINK.finditer(CODE_SPAN.sub("", line)):
+    if SCHEME.match(target):
+        if target.startswith("http://"):
+            fail(errors, page, number, f"plain http link: {target} (use https)")
+        elif image:
+            fail(errors, page, number, f"remote image: {target} (put it in {library_dir}/images/)")
+        elif not re.match(r"^(https|mailto):", target):
+            fail(errors, page, number, f"link scheme not allowed: {target}")
+        return
+    path, _, anchor = target.partition("#")
+    path, anchor = urllib.parse.unquote(path), urllib.parse.unquote(anchor)
+    if BAD_CHARS.search(path + anchor) or "\\" in path:
+        fail(errors, page, number, f"link with a control or backslash character: {target!r}")
+        return
+    if path.startswith("/"):
+        fail(errors, page, number, f"absolute link: {target} (link to the .md file relatively)")
+        return
+    resolved = os.path.normpath(os.path.join(os.path.dirname(page.path), path)) if path else page.path
+    if not resolved.startswith(REF + os.sep):
+        fail(errors, page, number, f"link leaves docs/reference: {target}")
+        return
+    if image:
+        rel = os.path.relpath(resolved, REF).split(os.sep)
+        if resolved not in images:
+            if os.path.lexists(resolved):
+                fail(errors, page, number, f"not a valid image file: {target}")
+            else:
+                fail(errors, page, number, f"missing image: {target}")
+        elif len(rel) != 3 or rel[1] != "images":
+            fail(errors, page, number, f"images live in <library>/images/ as PNG, WebP or SVG: {target}")
+        return
+    target_page = pages_by_path.get(resolved)
+    if target_page is None:
+        fail(errors, page, number, f"link to a page that does not exist: {target}")
+    elif anchor and anchor not in target_page.anchors:
+        fail(errors, page, number, f"no heading `#{anchor}` in {target_page.rel}")
+
+
+def check_links(page, paragraphs, pages_by_path, images, errors):
+    for start, text in paragraphs:
+        cleaned = without_code(text)
+
+        def line_of(offset):
+            return start + cleaned.count("\n", 0, offset)
+
+        for m in AUTOLINK.finditer(cleaned):
+            inner = m.group(1)
+            if SCHEME.match(inner):
+                if inner.startswith("http://"):
+                    fail(errors, page, line_of(m.start()), f"plain http link: {inner} (use https)")
+                elif not re.match(r"^(https|mailto):", inner):
+                    fail(errors, page, line_of(m.start()), f"link scheme not allowed: {inner}")
+        cleaned = AUTOLINK.sub(lambda m: blank(m.group(0)), cleaned)
+        for m in REF_DEF.finditer(cleaned):
+            check_target(page, line_of(m.start()), m.group(2), False, pages_by_path, images, errors)
+        found, unparsed = [], []
+        scan_links(cleaned, 0, found, unparsed)
+        for offset, m in found:
             image, alt, target = m.group(1) == "!", m.group(2).strip(), m.group(3)
+            number = line_of(offset)
             if image and not alt:
                 fail(errors, page, number, f"image without alt text: {target}")
-            if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target):
-                if target.startswith("http://"):
-                    fail(errors, page, number, f"plain http link: {target} (use https)")
-                elif not image and not re.match(r"^(https|mailto):", target):
-                    fail(errors, page, number, f"link scheme not allowed: {target}")
-                elif image:
-                    fail(errors, page, number, f"remote image: {target} (put it in {library_dir}/images/)")
-                continue
-            path, _, anchor = target.partition("#")
-            if path.startswith("/"):
-                fail(errors, page, number, f"absolute link: {target} (link to the .md file relatively)")
-                continue
-            resolved = os.path.normpath(os.path.join(os.path.dirname(page.path), path)) if path else page.path
-            if not resolved.startswith(REF + os.sep):
-                fail(errors, page, number, f"link leaves docs/reference: {target}")
-                continue
-            if image:
-                rel = os.path.relpath(resolved, REF).split(os.sep)
-                if not os.path.isfile(resolved):
-                    fail(errors, page, number, f"missing image: {target}")
-                elif len(rel) != 3 or rel[1] != "images" or not resolved.lower().endswith(IMAGE_TYPES):
-                    fail(errors, page, number, f"images live in <library>/images/ as PNG, WebP or SVG: {target}")
-                continue
-            target_page = pages_by_path.get(resolved)
-            if target_page is None:
-                fail(errors, page, number, f"link to a page that does not exist: {target}")
-            elif anchor and anchor not in target_page.anchors:
-                fail(errors, page, number, f"no heading `#{anchor}` in {target_page.rel}")
+            check_target(page, number, target, image, pages_by_path, images, errors)
+        for offset in unparsed:
+            fail(errors, page, line_of(offset), "link the checker can't parse (spaces or brackets in the address?): write it plainly")
+
+
+def check_image(path, errors, name):
+    """The file really is what its extension says, and an SVG runs nothing."""
+    try:
+        size = os.path.getsize(path)
+        if size > IMAGE_BYTES:
+            errors.append(f"{name}: over {IMAGE_BYTES // 1048576} MiB")
+            return size
+        with open(path, "rb") as f:
+            data = f.read()
+    except OSError as e:
+        errors.append(f"{name}: cannot read: {e}")
+        return 0
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".png" and not data.startswith(PNG_MAGIC):
+        errors.append(f"{name}: not a PNG file")
+    elif ext == ".webp" and not (data[:4] == b"RIFF" and data[8:12] == b"WEBP"):
+        errors.append(f"{name}: not a WebP file")
+    elif ext == ".svg":
+        text = data.decode("utf-8", "replace")
+        low = text.lower()
+        if "<script" in low or "<foreignobject" in low or re.search(r"[\s\"'/]on\w+\s*=", low):
+            errors.append(f"{name}: an SVG must not hold scripts, event handlers or foreignObject")
+        for h in SVG_HREF.finditer(text):
+            if not next(g for g in h.groups() if g is not None).strip().startswith("#"):
+                errors.append(f"{name}: an SVG may only link to #anchors inside itself")
+                break
+    return size
 
 
 def collect(errors):
+    """Returns (overview, libraries). Every symlink is an error, and every
+    path must stay under the real docs/reference."""
     if not os.path.isdir(REF):
         errors.append("docs/reference does not exist")
         return None, []
+    real_ref = os.path.realpath(REF)
+
+    def safe(path, label):
+        if os.path.islink(path):
+            errors.append(f"{label}: symbolic links are not allowed")
+            return False
+        if not (os.path.realpath(path) + os.sep).startswith(real_ref + os.sep):
+            errors.append(f"{label}: leaves docs/reference")
+            return False
+        return True
+
     overview = None
     libraries = []
+    total_images = 0
     for name in sorted(os.listdir(REF)):
         full = os.path.join(REF, name)
+        if not safe(full, f"docs/reference/{name}"):
+            continue
         if os.path.isfile(full):
             if name == "index.md":
                 overview = Page(full)
             elif name != "README.md":
                 errors.append(f"docs/reference/{name}: only index.md and README.md go at the top; pages go in a library folder")
             continue
-        if not SLUG.match(name) or name in RESERVED:
+        if not SLUG.fullmatch(name) or name in RESERVED:
             errors.append(f"docs/reference/{name}: a library folder name must be lowercase-with-hyphens, not images or index")
             continue
-        pages = []
+        lib = Library(name)
         for entry in sorted(os.listdir(full)):
             path = os.path.join(full, entry)
+            label = f"docs/reference/{name}/{entry}"
+            if not safe(path, label):
+                continue
             if entry == "images" and os.path.isdir(path):
                 for img in sorted(os.listdir(path)):
                     img_path = os.path.join(path, img)
+                    img_label = f"{label}/{img}"
+                    if not safe(img_path, img_label):
+                        continue
                     if not img.lower().endswith(IMAGE_TYPES) or not os.path.isfile(img_path):
-                        errors.append(f"docs/reference/{name}/images/{img}: only PNG, WebP and SVG files")
-                    elif os.path.getsize(img_path) > IMAGE_BYTES:
-                        errors.append(f"docs/reference/{name}/images/{img}: over {IMAGE_BYTES // 1048576} MiB")
+                        errors.append(f"{img_label}: only PNG, WebP and SVG files")
+                        continue
+                    before = len(errors)
+                    total_images += check_image(img_path, errors, img_label)
+                    if len(errors) == before:
+                        lib.images.append(img_path)
                 continue
             if not entry.endswith(".md") or not os.path.isfile(path):
-                errors.append(f"docs/reference/{name}/{entry}: only .md pages and an images/ folder")
+                errors.append(f"{label}: only .md pages and an images/ folder")
                 continue
             if entry == "images.md":
-                errors.append(f"docs/reference/{name}/images.md: `images` is reserved, pick another name")
+                errors.append(f"{label}: `images` is reserved, pick another name")
                 continue
-            if not SLUG.match(entry[:-3]):
-                errors.append(f"docs/reference/{name}/{entry}: a page name must be lowercase-with-hyphens")
+            if not SLUG.fullmatch(entry[:-3]):
+                errors.append(f"{label}: a page name must be lowercase-with-hyphens")
                 continue
-            pages.append(Page(path))
-        if not any(p.rel.endswith("/index.md") for p in pages):
+            lib.pages.append(Page(path))
+        if not any(p.rel.endswith("/index.md") for p in lib.pages):
             errors.append(f"docs/reference/{name}: no index.md (the library's overview)")
-        libraries.append((name, pages))
+        libraries.append(lib)
+    if total_images > IMAGES_TOTAL_BYTES:
+        errors.append(f"docs/reference: images add up to {total_images // 1048576} MiB (at most {IMAGES_TOTAL_BYTES // 1048576})")
     return overview, libraries
 
 
@@ -254,18 +450,18 @@ def check():
     """Returns (overview, libraries, errors)."""
     errors = []
     overview, libraries = collect(errors)
-    every = ([overview] if overview else []) + [p for _, pages in libraries for p in pages]
+    every = ([overview] if overview else []) + [p for lib in libraries for p in lib.pages]
     if len(libraries) > MAX_LIBRARIES:
         errors.append(f"docs/reference: {len(libraries)} libraries (the site takes at most {MAX_LIBRARIES})")
-    page_count = sum(len(pages) for _, pages in libraries)
-    if page_count > MAX_PAGES:
-        errors.append(f"docs/reference: {page_count} pages (the site takes at most {MAX_PAGES})")
+    if len(every) > MAX_PAGES:
+        errors.append(f"docs/reference: {len(every)} pages (the site takes at most {MAX_PAGES})")
     for page in every:
         read_page(page, errors)
     prose = {page.path: scan_body(page, errors) for page in every}
     by_path = {page.path: page for page in every}
+    images = {path for lib in libraries for path in lib.images}
     for page in every:
-        check_links(page, prose[page.path], by_path, errors)
+        check_links(page, prose[page.path], by_path, images, errors)
     return overview, libraries, errors
 
 
@@ -301,10 +497,12 @@ def sort_key(entry):
 
 
 def build(out, overview, libraries):
+    """Writes into a temporary sibling directory, then renames it into place:
+    a failure leaves no half-written out directory. Only the validated files
+    are copied."""
     if os.path.lexists(out):
-        if not os.path.isdir(out) or os.listdir(out):
+        if not os.path.isdir(out) or os.path.islink(out) or os.listdir(out):
             sys.exit(f"docs: {out} must be a new or empty directory")
-    os.makedirs(out, exist_ok=True)
     version = project_version()
     commit = git("rev-parse", "HEAD")
     released = git("tag", "--points-at", "HEAD", "--list", f"v{version}") == f"v{version}"
@@ -315,45 +513,66 @@ def build(out, overview, libraries):
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "libraries": [],
     }
-    if overview:
-        index["overview"] = page_entry(overview)
-        shutil.copyfile(overview.path, os.path.join(out, "index.md"))
-    for name, pages in libraries:
-        lib_index = next(p for p in pages if p.rel == f"{name}/index.md")
-        library = {
-            "slug": name,
-            "title": str(lib_index.meta["title"]),
-            "summary": str(lib_index.meta["summary"]),
-            "order": lib_index.meta.get("order", DEFAULT_ORDER),
-            "pages": sorted((page_entry(p) for p in pages), key=sort_key),
-        }
-        index["libraries"].append(library)
-        os.makedirs(os.path.join(out, name))
-        for p in pages:
-            shutil.copyfile(p.path, os.path.join(out, p.rel))
-        images = os.path.join(REF, name, "images")
-        if os.path.isdir(images):
-            shutil.copytree(images, os.path.join(out, name, "images"))
-    index["libraries"].sort(key=sort_key)
-    data = json.dumps(index, indent=1, ensure_ascii=False) + "\n"
-    if len(data.encode("utf-8")) > INDEX_BYTES:
-        sys.exit(f"docs: index.json is over {INDEX_BYTES // 1024} KiB, which the site refuses")
-    with open(os.path.join(out, "index.json"), "w", encoding="utf-8") as f:
-        f.write(data)
-    count = sum(len(p) for _, p in libraries)
+    parent = os.path.dirname(out)
+    os.makedirs(parent, exist_ok=True)
+    tmp = tempfile.mkdtemp(prefix=os.path.basename(out) + ".tmp-", dir=parent)
+    try:
+        if overview:
+            index["overview"] = page_entry(overview)
+            shutil.copyfile(overview.path, os.path.join(tmp, "index.md"))
+        for lib in libraries:
+            lib_index = next(p for p in lib.pages if p.rel == f"{lib.name}/index.md")
+            index["libraries"].append({
+                "slug": lib.name,
+                "title": str(lib_index.meta["title"]),
+                "summary": str(lib_index.meta["summary"]),
+                "order": lib_index.meta.get("order", DEFAULT_ORDER),
+                "pages": sorted((page_entry(p) for p in lib.pages), key=sort_key),
+            })
+            os.makedirs(os.path.join(tmp, lib.name))
+            for p in lib.pages:
+                shutil.copyfile(p.path, os.path.join(tmp, p.rel))
+            if lib.images:
+                os.makedirs(os.path.join(tmp, lib.name, "images"))
+                for img in lib.images:
+                    shutil.copyfile(img, os.path.join(tmp, lib.name, "images", os.path.basename(img)))
+        index["libraries"].sort(key=sort_key)
+        data = json.dumps(index, indent=1, ensure_ascii=False) + "\n"
+        if len(data.encode("utf-8")) > INDEX_BYTES:
+            sys.exit(f"docs: index.json is over {INDEX_BYTES // 1024} KiB, which the site refuses")
+        with open(os.path.join(tmp, "index.json"), "w", encoding="utf-8") as f:
+            f.write(data)
+        os.chmod(tmp, 0o755)
+        if os.path.isdir(out):
+            os.rmdir(out)  # empty, checked above
+        os.rename(tmp, out)
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    count = sum(len(lib.pages) for lib in libraries)
     print(f"docs: {count} pages in {len(libraries)} libraries written to {out}")
 
 
 def main(argv):
+    global REF
+    argv = list(argv)
+    if "--root" in argv:  # the reference folder to check (the tests use it)
+        i = argv.index("--root")
+        if i + 1 >= len(argv):
+            sys.exit(__doc__.strip().split("\n\n")[1])
+        REF = os.path.abspath(argv[i + 1])
+        del argv[i:i + 2]
     if len(argv) < 2 or argv[1] not in ("check", "build") or (argv[1] == "build") != (len(argv) == 3):
         sys.exit(__doc__.strip().split("\n\n")[1])
     overview, libraries, errors = check()
+    if argv[1] == "build" and not libraries:
+        errors.append("docs/reference: no libraries to publish")
     if errors:
         for e in errors:
             print(e, file=sys.stderr)
         sys.exit(f"docs: {len(errors)} problem(s)")
     if argv[1] == "check":
-        print(f"docs: ok ({sum(len(p) for _, p in libraries)} pages in {len(libraries)} libraries)")
+        print(f"docs: ok ({sum(len(lib.pages) for lib in libraries)} pages in {len(libraries)} libraries)")
     else:
         build(os.path.abspath(argv[2]), overview, libraries)
 

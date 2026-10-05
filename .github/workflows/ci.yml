@@ -131,7 +131,7 @@ jobs:
         run: tools/check-app-names.sh "$RUNNER_TEMP"/apps/*
 
   docs:
-    # The reference docs (docs/reference, read by atlasos.eterneon.net/docs):
+    # The reference docs (docs/reference, read by atlasos.eterneon.net/framework):
     # broken links, missing frontmatter, raw HTML and the rest fail here.
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -141,12 +141,16 @@ jobs:
           persist-credentials: false
 
       - name: Check the docs
-        run: python3 tools/docs.py check
+        run: |
+          python3 tools/test_docs.py
+          python3 tools/docs.py check
 
   publish-docs:
-    # main only: rebuilds the docs-published branch (the pages, their images
-    # and index.json) that the site fetches. The only job that may write.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # main, and v* tags that point at main's tip: rebuilds the docs-published
+    # branch (the pages, their images and index.json) that the site fetches.
+    # The only job that may write. It needs `docs` but not `framework` on
+    # purpose: the docs describe the source, and the framework job takes far longer.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: docs
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -171,12 +175,24 @@ jobs:
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
         run: |
-          cd "$RUNNER_TEMP/docs-published"
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          # Only main's tip is published: a re-run or an out-of-order run of an
+          # older commit must not roll the branch back.
+          main=$(git -c http.extraheader="AUTHORIZATION: basic $auth" \
+            ls-remote "https://github.com/$REPO.git" refs/heads/main | cut -f1) || main=
+          if [ -z "$main" ]; then
+            echo "::error::cannot read main's tip from $REPO"
+            exit 1
+          fi
+          if [ "$main" != "$SHA" ]; then
+            echo "::notice::main is at $main, not $SHA: not publishing these docs"
+            exit 0
+          fi
+          cd "$RUNNER_TEMP/docs-published" || exit 1
           git init -q -b docs-published
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "Docs from $SHA"
-          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
-          echo "::add-mask::$auth"
           git -c http.extraheader="AUTHORIZATION: basic $auth" \
             push --force "https://github.com/$REPO.git" HEAD:refs/heads/docs-published

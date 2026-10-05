@@ -1,7 +1,7 @@
 # Reference docs
 
 The pages here are the Atlas Framework reference on
-<https://atlasos.eterneon.net/docs>. CI checks them (`tools/docs.py check`)
+<https://atlasos.eterneon.net/framework>. CI checks them (`tools/docs.py check`)
 on every push. On main it then rebuilds the `docs-published` branch
 (`tools/docs.py build`), and the site reads that branch within about five
 minutes, with no site deploy. This README is not published.
@@ -10,9 +10,9 @@ minutes, with no site deploy. This README is not published.
 
 ```text
 docs/reference/
-  index.md                  /docs: the framework overview and getting started
-  <library>/index.md        /docs/<library>: the library's overview
-  <library>/<page>.md       /docs/<library>/<page>
+  index.md                  /framework: the framework overview and getting started
+  <library>/index.md        /framework/<library>: the library's overview
+  <library>/<page>.md       /framework/<library>/<page>
   <library>/images/*.png    pictures for that library (PNG, WebP or SVG)
 ```
 
@@ -42,22 +42,27 @@ deprecated: Use AtlasFoo instead.
 - `title` and `summary` are required.
   - `title` is the page's heading, so the body never repeats it as `#`.
   - `summary` is one sentence. It's used for search, the meta description and llms.txt.
-  - Limits: title 160 characters (a library's 120), summary 400.
-- `order` sets the sidebar position (lowest first; default 1000). `section` is the sidebar group within the library, up to 60 characters.
+  - Limits (UTF-16 code units, as the site counts): title 160 (a library's 120), summary 400.
+- `order` (the only key read as a number) sets the sidebar position (lowest first; default 1000). `section` is the sidebar group within the library, up to 60 characters.
 - `since` is the version that added the page's subject. `deprecated` says what to use instead.
 
 ## Body
 
 The body is CommonMark plus GFM: tables, task lists, strikethrough and autolinks. The check rejects:
 
-- raw HTML of any kind;
+- raw HTML of any kind, including `<!` and `<?` and a tag split across lines (put it in backticks);
+- a symbolic link anywhere under `docs/reference`;
+- control, line-separator or bidi characters, or HTML, in `title`, `summary`, `section` or `deprecated`;
+- an empty optional frontmatter value (remove the line instead);
+- a link the checker can't parse (spaces or brackets in the address; reference-style images);
+- an image that isn't what its extension says (PNG and WebP magic bytes), an SVG with scripts, event handlers, `foreignObject` or a link outside itself, or more than 32 MiB of images in total;
 - a `#` heading (start at `##`);
 - a code fence without a language (`qml`, `rust`, `toml`, `sh`, `cmake`, `json`, `yaml`, `cpp`, `text`);
-- an indented code block;
+- an indented code block (tabs too; a list item's continuation paragraph is fine);
 - a relative link to a page or `#anchor` that doesn't exist;
 - a link out of `docs/reference`;
 - an image without alt text, or one stored anywhere other than `<library>/images/`;
-- a plain `http://` link.
+- a plain `http://` link, or a link or autolink scheme other than `https:` and `mailto:`.
 
 Callouts use GitHub alerts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`. Pages link to each other with relative `.md` links (`../atlas-ui/atlas-button.md#properties`); the site rewrites them.
 
