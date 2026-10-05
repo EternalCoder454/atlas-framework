@@ -154,19 +154,19 @@
 <context>
     <name>AtlasCalendar</name>
     <message>
-        <location filename="../AtlasCalendar.qml" line="146"/>
+        <location filename="../AtlasCalendar.qml" line="217"/>
         <source>Calendar</source>
         <extracomment>Spoken name of a month calendar</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasCalendar.qml" line="238"/>
+        <location filename="../AtlasCalendar.qml" line="309"/>
         <source>Previous month</source>
         <extracomment>Button that shows the previous month in a calendar</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasCalendar.qml" line="256"/>
+        <location filename="../AtlasCalendar.qml" line="327"/>
         <source>Next month</source>
         <extracomment>Button that shows the next month in a calendar</extracomment>
         <translation type="unfinished"></translation>
@@ -191,23 +191,23 @@
 <context>
     <name>AtlasColorField</name>
     <message>
-        <location filename="../AtlasColorField.qml" line="130"/>
+        <location filename="../AtlasColorField.qml" line="147"/>
         <source>Colour</source>
         <extracomment>Spoken name of a colour chooser that has no name of its own</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasColorField.qml" line="249"/>
+        <location filename="../AtlasColorField.qml" line="266"/>
         <source>Hex colour</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasColorField.qml" line="268"/>
+        <location filename="../AtlasColorField.qml" line="285"/>
         <source>Not a colour</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasColorField.qml" line="272"/>
+        <location filename="../AtlasColorField.qml" line="289"/>
         <source>More…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -215,14 +215,14 @@
 <context>
     <name>AtlasComboBox</name>
     <message>
-        <location filename="../AtlasComboBox.qml" line="215"/>
-        <location filename="../AtlasComboBox.qml" line="217"/>
+        <location filename="../AtlasComboBox.qml" line="239"/>
+        <location filename="../AtlasComboBox.qml" line="241"/>
         <source>Filter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasComboBox.qml" line="258"/>
-        <location filename="../AtlasComboBox.qml" line="264"/>
+        <location filename="../AtlasComboBox.qml" line="282"/>
+        <location filename="../AtlasComboBox.qml" line="288"/>
         <source>No choices</source>
         <extracomment>Shown in a drop-down list that has no choices
 ----------
@@ -230,8 +230,8 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasComboBox.qml" line="258"/>
-        <location filename="../AtlasComboBox.qml" line="264"/>
+        <location filename="../AtlasComboBox.qml" line="282"/>
+        <location filename="../AtlasComboBox.qml" line="288"/>
         <source>No matches</source>
         <translation type="unfinished"></translation>
     </message>
@@ -257,17 +257,15 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasCopyButton</name>
     <message>
-        <location filename="../AtlasCopyButton.qml" line="23"/>
-        <location filename="../AtlasCopyButton.qml" line="27"/>
+        <location filename="../AtlasCopyButton.qml" line="26"/>
+        <location filename="../AtlasCopyButton.qml" line="30"/>
         <source>Copy</source>
+        <extracomment>Tooltip of the copy button, once the text is on the clipboard</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasCopyButton.qml" line="25"/>
-        <location filename="../AtlasCopyButton.qml" line="27"/>
-        <location filename="../AtlasCopyButton.qml" line="34"/>
+        <location filename="../AtlasCopyButton.qml" line="15"/>
         <source>Copied</source>
-        <extracomment>Tooltip of the copy button, once the text is on the clipboard</extracomment>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -279,7 +277,7 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasDatePicker.qml" line="112"/>
+        <location filename="../AtlasDatePicker.qml" line="132"/>
         <source>Clear</source>
         <extracomment>Button that empties a date field</extracomment>
         <translation type="unfinished"></translation>
@@ -301,13 +299,13 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasDialog</name>
     <message>
-        <location filename="../AtlasDialog.qml" line="124"/>
+        <location filename="../AtlasDialog.qml" line="127"/>
         <source>Back</source>
         <extracomment>Name of the Back button in a dialog&apos;s title row</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasDialog.qml" line="148"/>
+        <location filename="../AtlasDialog.qml" line="151"/>
         <source>Close</source>
         <extracomment>Name of the Close button in a dialog&apos;s title row</extracomment>
         <translation type="unfinished"></translation>
@@ -351,12 +349,12 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasFileField</name>
     <message>
-        <location filename="../AtlasFileField.qml" line="103"/>
+        <location filename="../AtlasFileField.qml" line="127"/>
         <source>File path</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFileField.qml" line="110"/>
+        <location filename="../AtlasFileField.qml" line="133"/>
         <source>Browse…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -372,12 +370,12 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasFolderField</name>
     <message>
-        <location filename="../AtlasFolderField.qml" line="96"/>
+        <location filename="../AtlasFolderField.qml" line="120"/>
         <source>Folder path</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFolderField.qml" line="103"/>
+        <location filename="../AtlasFolderField.qml" line="126"/>
         <source>Browse…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -385,51 +383,51 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasFontPicker</name>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="122"/>
+        <location filename="../AtlasFontPicker.qml" line="149"/>
         <source>Font</source>
         <extracomment>Spoken name of a font chooser that has no name of its own</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="123"/>
+        <location filename="../AtlasFontPicker.qml" line="150"/>
         <source>%1, %2 pt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="148"/>
+        <location filename="../AtlasFontPicker.qml" line="175"/>
         <source>%1 pt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="200"/>
-        <location filename="../AtlasFontPicker.qml" line="202"/>
+        <location filename="../AtlasFontPicker.qml" line="227"/>
+        <location filename="../AtlasFontPicker.qml" line="229"/>
         <source>Search fonts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="273"/>
+        <location filename="../AtlasFontPicker.qml" line="300"/>
         <source>Looking for fonts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="273"/>
-        <location filename="../AtlasFontPicker.qml" line="277"/>
+        <location filename="../AtlasFontPicker.qml" line="300"/>
+        <location filename="../AtlasFontPicker.qml" line="304"/>
         <source>No matches</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="277"/>
+        <location filename="../AtlasFontPicker.qml" line="304"/>
         <source>Looking for fonts…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="290"/>
-        <location filename="../AtlasFontPicker.qml" line="303"/>
+        <location filename="../AtlasFontPicker.qml" line="317"/>
+        <location filename="../AtlasFontPicker.qml" line="330"/>
         <source>Size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasFontPicker.qml" line="301"/>
+        <location filename="../AtlasFontPicker.qml" line="328"/>
         <source> pt</source>
         <translation type="unfinished"></translation>
     </message>
@@ -437,132 +435,133 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasFormat</name>
     <message>
-        <location filename="../atlasformat.cpp" line="78"/>
+        <location filename="../atlasformat.cpp" line="80"/>
         <source>%1 B</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="105"/>
+        <location filename="../atlasformat.cpp" line="137"/>
         <source>%1/s</source>
         <comment>a size per second, e.g. 1.5 MiB/s</comment>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="177"/>
+        <location filename="../atlasformat.cpp" line="209"/>
         <source>%n day</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="177"/>
+        <location filename="../atlasformat.cpp" line="209"/>
         <source>%1 d</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="178"/>
+        <location filename="../atlasformat.cpp" line="210"/>
         <source>%n hour</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="178"/>
+        <location filename="../atlasformat.cpp" line="210"/>
         <source>%1 h</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="179"/>
+        <location filename="../atlasformat.cpp" line="211"/>
         <source>%n minute</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="179"/>
+        <location filename="../atlasformat.cpp" line="211"/>
         <source>%1 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="180"/>
+        <location filename="../atlasformat.cpp" line="212"/>
         <source>%n second</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="180"/>
+        <location filename="../atlasformat.cpp" line="212"/>
         <source>%1 s</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="222"/>
+        <location filename="../atlasformat.cpp" line="261"/>
         <source>today at %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="225"/>
+        <location filename="../atlasformat.cpp" line="264"/>
         <source>yesterday at %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="227"/>
+        <location filename="../atlasformat.cpp" line="244"/>
+        <location filename="../atlasformat.cpp" line="266"/>
         <source>%1 at %2</source>
         <comment>a date, then a time of day</comment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="235"/>
+        <location filename="../atlasformat.cpp" line="274"/>
         <source>just now</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="239"/>
+        <location filename="../atlasformat.cpp" line="278"/>
         <source>%n minute ago</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="239"/>
+        <location filename="../atlasformat.cpp" line="278"/>
         <source>in %n minute</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="244"/>
+        <location filename="../atlasformat.cpp" line="283"/>
         <source>%n hour ago</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="244"/>
+        <location filename="../atlasformat.cpp" line="283"/>
         <source>in %n hour</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="247"/>
+        <location filename="../atlasformat.cpp" line="286"/>
         <source>yesterday</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../atlasformat.cpp" line="250"/>
+        <location filename="../atlasformat.cpp" line="289"/>
         <source>tomorrow</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="253"/>
+        <location filename="../atlasformat.cpp" line="292"/>
         <source>%n day ago</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../atlasformat.cpp" line="256"/>
+        <location filename="../atlasformat.cpp" line="295"/>
         <source>in %n day</source>
         <translation type="unfinished">
             <numerusform></numerusform>
@@ -662,8 +661,8 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasNavigationStack</name>
     <message>
-        <location filename="../AtlasNavigationStack.qml" line="90"/>
-        <location filename="../AtlasNavigationStack.qml" line="99"/>
+        <location filename="../AtlasNavigationStack.qml" line="91"/>
+        <location filename="../AtlasNavigationStack.qml" line="100"/>
         <source>Back</source>
         <translation type="unfinished"></translation>
     </message>
@@ -758,18 +757,18 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasRating</name>
     <message>
-        <location filename="../AtlasRating.qml" line="66"/>
-        <location filename="../AtlasRating.qml" line="67"/>
+        <location filename="../AtlasRating.qml" line="83"/>
+        <location filename="../AtlasRating.qml" line="84"/>
         <source>%1 out of 5</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasRating.qml" line="66"/>
+        <location filename="../AtlasRating.qml" line="83"/>
         <source>Rating</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../AtlasRating.qml" line="67"/>
+        <location filename="../AtlasRating.qml" line="84"/>
         <source>%n rating(s)</source>
         <translation type="unfinished">
             <numerusform></numerusform>
@@ -915,7 +914,7 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasSidebar.qml" line="391"/>
+        <location filename="../AtlasSidebar.qml" line="392"/>
         <source>Sidebar entries</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1013,31 +1012,37 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>AtlasTimePicker</name>
     <message>
-        <location filename="../AtlasTimePicker.qml" line="88"/>
+        <location filename="../AtlasTimePicker.qml" line="90"/>
+        <source>Set to %1</source>
+        <extracomment>Spoken when a time picker raised the time to its earliest allowed time: %1 is that time (&quot;09:00&quot;)</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../AtlasTimePicker.qml" line="185"/>
         <source>Time</source>
         <extracomment>Spoken name of the control that sets a time of day</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasTimePicker.qml" line="114"/>
+        <location filename="../AtlasTimePicker.qml" line="236"/>
         <source>Day</source>
         <extracomment>Spoken name of the day-of-week drop-down of a time picker</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasTimePicker.qml" line="127"/>
+        <location filename="../AtlasTimePicker.qml" line="249"/>
         <source>Hours</source>
         <extracomment>Spoken name of the hours field of a time picker</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasTimePicker.qml" line="148"/>
+        <location filename="../AtlasTimePicker.qml" line="272"/>
         <source>Minutes</source>
         <extracomment>Spoken name of the minutes field of a time picker</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AtlasTimePicker.qml" line="166"/>
+        <location filename="../AtlasTimePicker.qml" line="292"/>
         <source>AM or PM</source>
         <extracomment>Spoken name of the button that switches a 12-hour time between morning and afternoon</extracomment>
         <translation type="unfinished"></translation>
@@ -1127,13 +1132,13 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>ConfirmDialog</name>
     <message>
-        <location filename="../ConfirmDialog.qml" line="28"/>
+        <location filename="../ConfirmDialog.qml" line="29"/>
         <source>OK</source>
         <extracomment>Default text of the confirming button of a dialog</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ConfirmDialog.qml" line="29"/>
+        <location filename="../ConfirmDialog.qml" line="30"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1154,88 +1159,88 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>FindBar</name>
     <message>
-        <location filename="../FindBar.qml" line="59"/>
+        <location filename="../FindBar.qml" line="128"/>
         <source>No results</source>
         <extracomment>Position of the current search hit: %1 is its number, %2 how many hits there are (&quot;3 of 12&quot;)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="59"/>
+        <location filename="../FindBar.qml" line="128"/>
         <source>%1 of %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="70"/>
-        <location filename="../FindBar.qml" line="176"/>
+        <location filename="../FindBar.qml" line="139"/>
+        <location filename="../FindBar.qml" line="245"/>
         <source>Find</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="158"/>
+        <location filename="../FindBar.qml" line="227"/>
         <source>Hide Replace</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="158"/>
+        <location filename="../FindBar.qml" line="227"/>
         <source>Show Replace</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="197"/>
+        <location filename="../FindBar.qml" line="271"/>
         <source>Previous Match</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="198"/>
+        <location filename="../FindBar.qml" line="272"/>
         <source>Shift+Enter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="204"/>
+        <location filename="../FindBar.qml" line="278"/>
         <source>Next Match</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="206"/>
+        <location filename="../FindBar.qml" line="280"/>
         <source>Enter</source>
         <extracomment>Name of the Enter key, as shown in a tooltip</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="211"/>
+        <location filename="../FindBar.qml" line="285"/>
         <source>Match Case</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="221"/>
+        <location filename="../FindBar.qml" line="299"/>
         <source>Whole Word</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="232"/>
+        <location filename="../FindBar.qml" line="314"/>
         <source>Regular Expression</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="243"/>
+        <location filename="../FindBar.qml" line="329"/>
         <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="245"/>
+        <location filename="../FindBar.qml" line="331"/>
         <source>Esc</source>
         <extracomment>Name of the Escape key, as shown in a tooltip</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="263"/>
-        <location filename="../FindBar.qml" line="270"/>
+        <location filename="../FindBar.qml" line="349"/>
+        <location filename="../FindBar.qml" line="361"/>
         <source>Replace</source>
         <extracomment>Button: replace the current match (a verb)</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../FindBar.qml" line="276"/>
+        <location filename="../FindBar.qml" line="367"/>
         <source>Replace All</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1243,17 +1248,17 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>InfoBanner</name>
     <message>
-        <location filename="../InfoBanner.qml" line="37"/>
+        <location filename="../InfoBanner.qml" line="39"/>
         <source>Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../InfoBanner.qml" line="37"/>
+        <location filename="../InfoBanner.qml" line="39"/>
         <source>Warning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../InfoBanner.qml" line="37"/>
+        <location filename="../InfoBanner.qml" line="39"/>
         <source>Information</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1325,12 +1330,12 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>SidebarItem</name>
     <message>
-        <location filename="../SidebarItem.qml" line="48"/>
+        <location filename="../SidebarItem.qml" line="50"/>
         <source>Expanded</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SidebarItem.qml" line="48"/>
+        <location filename="../SidebarItem.qml" line="50"/>
         <source>Collapsed</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1356,23 +1361,23 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>TabBar</name>
     <message>
-        <location filename="../TabBar.qml" line="49"/>
+        <location filename="../TabBar.qml" line="51"/>
         <source>Tabs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../TabBar.qml" line="202"/>
+        <location filename="../TabBar.qml" line="292"/>
         <source>%1, modified</source>
         <extracomment>Name of a tab with unsaved changes: %1 is the document title</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../TabBar.qml" line="345"/>
+        <location filename="../TabBar.qml" line="468"/>
         <source>Close Tab</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../TabBar.qml" line="363"/>
+        <location filename="../TabBar.qml" line="486"/>
         <source>New Tab</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1380,7 +1385,7 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
 <context>
     <name>ToolbarButton</name>
     <message>
-        <location filename="../ToolbarButton.qml" line="79"/>
+        <location filename="../ToolbarButton.qml" line="91"/>
         <source>%1 (%2)</source>
         <extracomment>Tooltip: %1 is the action (&quot;Bold&quot;), %2 its keyboard shortcut (&quot;Ctrl+B&quot;)</extracomment>
         <translation type="unfinished"></translation>
