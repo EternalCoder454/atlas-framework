@@ -103,7 +103,11 @@ Item {
         }
     }
     // The window is a kiosk (AtlasWindow.kiosk): no way to close it from here.
-    readonly property bool _kiosk: Window.window ? Window.window["kiosk"] === true : false
+    readonly property bool _kiosk: root._kioskOf(Window.window)
+    // `w` is untyped: only an AtlasWindow has `kiosk`, and a plain Window does not.
+    function _kioskOf(w: var): bool {
+        return w ? w["kiosk"] === true : false;
+    }
     function _close() {
         if (Window.window) {
             Window.window.close();

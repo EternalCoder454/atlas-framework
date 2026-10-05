@@ -12,7 +12,10 @@ Item {
     property bool animate: true
 
     implicitWidth: Kirigami.Units.gridUnit * 44
-    implicitHeight: Kirigami.Units.gridUnit * 48
+    // Two onboardings, about 280 px each: short enough for the 700 px test scene.
+    implicitHeight: Kirigami.Units.gridUnit * 34
+    width: implicitWidth
+    height: implicitHeight
 
     ColumnLayout {
         anchors.fill: parent

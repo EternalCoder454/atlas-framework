@@ -30,10 +30,15 @@ T.Control {
     readonly property color currentColor: control._colorAt(control.currentIndex)
     signal activated(int index)
 
-    readonly property int count: Array.isArray(control.model) ? control.model.length : 0
+    readonly property int count: control._length(control.model)
 
+    // A list from QML code, or one handed over from C++ (a QVariantList is not
+    // always seen as an Array): any object with a whole-number length.
+    function _length(m): int {
+        return m !== null && m !== undefined && typeof m === "object" && Number.isInteger(m.length) && m.length > 0 ? m.length : 0;
+    }
     function _entry(i) {
-        return Array.isArray(control.model) && i >= 0 && i < control.model.length ? control.model[i] : undefined;
+        return i >= 0 && i < control._length(control.model) ? control.model[i] : undefined;
     }
     // An object with a `color` is { color, name }; anything else is the colour itself.
     function _isObject(m) {

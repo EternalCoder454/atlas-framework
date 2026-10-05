@@ -309,8 +309,20 @@ QQC2.ApplicationWindow {
             // it to full screen).
             root._kioskApplied = false;
             if (root.visibility === Window.FullScreen) {
-                root.visibility = root.stateKey.length > 0 && root._state.value("Maximized", false) ? Window.Maximized : Window.Windowed;
+                root.visibility = root._leaveTarget();
             }
+        }
+    }
+    function _leaveTarget(): int {
+        return root.stateKey.length > 0 && root._state.value("Maximized", false) ? Window.Maximized : Window.Windowed;
+    }
+    // Shown again after kiosk was left while hidden: Qt shows it in the state it
+    // had when hidden (full screen), and that state can arrive after a
+    // callLater turn, so the state is set right here, not only checked later.
+    function _leaveKioskOnShow(): void {
+        if (!root.kiosk && root._kioskApplied && root.visibility !== Window.Minimized) {
+            root._kioskApplied = false;
+            root.visibility = root._leaveTarget();
         }
     }
     // A close request is refused in kiosk mode, Qt.quit()'s included.
@@ -411,6 +423,7 @@ QQC2.ApplicationWindow {
         syncBlur();
         _firstShow();
         // A kiosk change made while hidden counts now.
+        root._leaveKioskOnShow();
         root._applyKiosk();
     } else {
         root._finishAllConfirms(false);

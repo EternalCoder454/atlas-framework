@@ -422,7 +422,8 @@ Item {
 
         function test_keyboard() {
             const r = createTemporaryObject(cardsComp, root);
-            r.a.forceActiveFocus();
+            // visualFocus is only for focus that came by keyboard.
+            r.a.forceActiveFocus(Qt.TabFocusReason);
             keyClick(Qt.Key_Space);
             verify(r.a.checked);
             verify(r.a.visualFocus);
@@ -442,13 +443,15 @@ Item {
                 width: 200
             });
             compare(c.aspectRatio, 1.6);
+            // The layout inside sizes the card one turn after a change.
+            tryVerify(() => c.implicitHeight > 0);
             const wide = c.implicitHeight;
             c.aspectRatio = 1;
-            verify(c.implicitHeight > wide, "a squarer picture is taller");
+            tryVerify(() => c.implicitHeight > wide, 5000, "a squarer picture is taller");
             c.aspectRatio = 0;
-            compare(c.implicitHeight, wide, "a ratio of 0 uses the default");
+            tryCompare(c, "implicitHeight", wide, 5000, "a ratio of 0 uses the default");
             c.aspectRatio = NaN;
-            compare(c.implicitHeight, wide);
+            tryCompare(c, "implicitHeight", wide);
         }
 
         function test_bad_source_is_quiet() {
