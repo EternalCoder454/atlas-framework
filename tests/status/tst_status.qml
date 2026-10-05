@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtTest
 import Atlas.Ui
+import org.kde.kirigami as Kirigami
 
 // AtlasStatus on AtlasListView, DataTable, AtlasTreeView and AtlasPage.
 Item {
@@ -95,6 +96,66 @@ Item {
                 Layout.preferredHeight: 40
                 color: "red"
             }
+        }
+    }
+
+    Component {
+        id: emptyComp
+        AtlasEmptyState {
+            width: 300
+            symbol: Symbols.Error
+            title: "Something went wrong"
+            text: "The folder could not be read."
+            actionText: "Retry"
+        }
+    }
+
+    TestCase {
+        name: "AtlasEmptyStateFit"
+        when: windowShown
+
+        function parts(e) {
+            const found = [];
+            const walk = it => {
+                for (let i = 0; i < it.children.length; ++i) {
+                    found.push(it.children[i]);
+                    walk(it.children[i]);
+                }
+            };
+            walk(e);
+            return found;
+        }
+        function button(e) {
+            return parts(e).find(p => p.text === "Retry" && p.clicked !== undefined);
+        }
+        function symbolShown(e) {
+            return parts(e).some(p => p.Layout && p.Layout.preferredHeight === Kirigami.Units.iconSizes.huge && p.visible);
+        }
+
+        function test_roomy_shows_everything_without_scrolling() {
+            const e = createTemporaryObject(emptyComp, root, { height: 500 });
+            waitForRendering(e);
+            verify(symbolShown(e));
+            const flick = parts(e).find(p => p.contentHeight !== undefined);
+            verify(!flick.interactive);
+        }
+
+        function test_short_drops_the_symbol_and_stays_inside() {
+            const e = createTemporaryObject(emptyComp, root, { height: 220 });
+            waitForRendering(e);
+            verify(!symbolShown(e), "the symbol goes first");
+            const b = button(e);
+            verify(b);
+            const at = b.mapToItem(e, 0, 0);
+            verify(at.y >= 0 && at.y + b.height <= e.height, "the button is inside: " + at.y + "+" + b.height);
+        }
+
+        function test_very_short_scrolls_inside_its_area() {
+            const e = createTemporaryObject(emptyComp, root, { height: 60 });
+            waitForRendering(e);
+            const flick = parts(e).find(p => p.contentHeight !== undefined);
+            verify(flick.interactive);
+            verify(flick.clip, "nothing is drawn past the edges");
         }
     }
 
