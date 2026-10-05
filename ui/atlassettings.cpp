@@ -136,6 +136,65 @@ QVariant normalise(const QVariant &v)
     }
 }
 
+// Stored list items as the type of the default's first item (bool, int, real
+// or string); an empty or string-list default gives strings. One item that
+// does not fit gives `def` whole.
+QVariant typedList(const QStringList &raw, const QVariant &def)
+{
+    if (def.typeId() == QMetaType::QStringList) {
+        return raw;
+    }
+    const QVariantList defList = def.toList();
+    if (defList.isEmpty()) {
+        return raw;
+    }
+    const int kind = defList.first().typeId();
+    QVariantList out;
+    for (const QString &item : raw) {
+        const QString t = item.trimmed();
+        bool ok = false;
+        switch (kind) {
+        case QMetaType::Bool: {
+            const QString l = t.toLower();
+            if (l == QLatin1String("true") || l == QLatin1String("1") || l == QLatin1String("yes") || l == QLatin1String("on")) {
+                out << true;
+                ok = true;
+            } else if (l == QLatin1String("false") || l == QLatin1String("0") || l == QLatin1String("no") || l == QLatin1String("off")) {
+                out << false;
+                ok = true;
+            }
+            break;
+        }
+        case QMetaType::Int:
+        case QMetaType::UInt:
+        case QMetaType::LongLong:
+        case QMetaType::ULongLong: {
+            const qlonglong n = t.toLongLong(&ok);
+            if (ok) {
+                out << ((n >= INT_MIN && n <= INT_MAX) ? QVariant(int(n)) : QVariant(n));
+            }
+            break;
+        }
+        case QMetaType::Double:
+        case QMetaType::Float: {
+            const double d = t.toDouble(&ok);
+            ok = ok && qIsFinite(d);
+            if (ok) {
+                out << d;
+            }
+            break;
+        }
+        default:
+            out << item;
+            ok = true;
+        }
+        if (!ok) {
+            return def;
+        }
+    }
+    return out;
+}
+
 // `v` (a pending, normalised value) as the type `def` asks for, or `def`.
 QVariant coerce(const QVariant &def, const QVariant &v)
 {
@@ -162,7 +221,7 @@ QVariant coerce(const QVariant &def, const QVariant &v)
     }
     case QMetaType::QStringList:
     case QMetaType::QVariantList:
-        return v.typeId() == QMetaType::QStringList ? v : def;
+        return v.typeId() == QMetaType::QStringList ? typedList(v.toStringList(), def) : def;
     default:
         return v.typeId() == QMetaType::QStringList ? def : QVariant(v.toString());
     }
@@ -200,7 +259,7 @@ QVariant readTyped(const KConfigGroup &g, const QString &key, const QVariant &de
     }
     case QMetaType::QStringList:
     case QMetaType::QVariantList:
-        return g.readEntry(key, QStringList());
+        return typedList(g.readEntry(key, QStringList()), def);
     default:
         return g.readEntry(key, QString());
     }
