@@ -43,12 +43,28 @@ T.Control {
         const m = control.model[i];
         return m && typeof m === "object" && m.toolTip ? m.toolTip : _text(i);
     }
+    // A user choice is held by a Binding for one turn, so an app binding on
+    // `currentIndex` is kept (see docs/reference/atlas-ui/atlas-segmented-control.md).
+    property int _edit: 0
+    property bool _editing: false
+    readonly property Binding _hold: Binding {
+        target: control
+        property: "currentIndex"
+        value: control._edit
+        when: control._editing
+        restoreMode: Binding.RestoreBinding
+    }
+    function _release(): void {
+        control._editing = false;
+    }
     function _choose(i) {
         if (i < 0 || i >= count || i === currentIndex) {
             return;
         }
-        currentIndex = i;
+        _edit = i;
+        _editing = true;
         activated(i);
+        Qt.callLater(_release);
     }
 
     // The highlight's place in hundredths of a cell, so one spring setting

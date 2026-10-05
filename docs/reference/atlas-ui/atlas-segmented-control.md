@@ -28,6 +28,9 @@ AtlasSegmentedControl {
 | `currentIndex` | `int` | `0` | The selected segment. |
 | `model` | `var` | `[]` | A list of strings, or of objects `{ text, symbol, toolTip }`. `symbol` is a [Symbols](symbols.md) value. A segment with only a symbol takes its tooltip and accessible name from `toolTip`, else `text`. |
 
+> [!NOTE]
+> A user's choice does not end a binding on `currentIndex`. If `onActivated` stores it, the binding follows the model; if the app ignores it, `currentIndex` (and the highlight) returns to the model's one turn of the event loop later. A handler or `onXChanged` that reads it sees the new value at once. A literal value or no binding keeps the user's edit.
+
 ## Signals
 
 | Name | Description |
