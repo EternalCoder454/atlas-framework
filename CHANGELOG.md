@@ -54,6 +54,24 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   signal's handler, the binding follows the model; if it ignores it, the
   property returns to the model's value one event-loop turn later. A literal
   value or no binding keeps the edit, as before.
+- Fix: the same holds for `AtlasComboBox.currentIndex`, `AtlasFileField` and
+  `AtlasFolderField` `path`, and FindBar's `findText`, `replaceText`,
+  `matchCase`, `wholeWords` and `regularExpression` (their `onXChanged`
+  handlers still fire on every edit).
+- Fix: `InfoBanner`'s close button no longer writes `shown`, so an app's
+  `shown: x` binding keeps working; new read-only `dismissed`. A dismissed
+  banner comes back on a new `text` or `type`, or when the app writes
+  `shown = true`. This applies to every closable banner: one whose text
+  changes often (a count, progress) should not be closable.
+- Added: `AtlasTimePicker.minuteArrowStep`, `minimumHours`,
+  `minimumMinutes` and `adjusted()`: arrows, the wheel and screen-reader
+  steps move by the arrow step and stop at the minimum; an earlier time is
+  raised to it.
+- Added: `AtlasCopyButton.label` and `copiedLabel`, a button with text.
+- Added: `AtlasFormat.bytes` and `bytesPerSecond` take `system` ("iec", the
+  default, or "si"); `date()` has the styles `longAtTime`, `atTimeSentence`
+  and `relativeSentence`. A size that rounds up to the next unit is shown in
+  it ("1.0 MB", not "1000.0 kB").
 - Added (atlas-framework-flatpak): `list_updates_report` with `ListOptions`
   (refresh, no interaction, a `CancelToken`, a timeout per libflatpak call
   (60 s by default) and an overall deadline) returning `ListOutcome`
