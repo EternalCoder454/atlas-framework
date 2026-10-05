@@ -311,4 +311,7 @@ Item {
     // window buttons: the free span between the two groups, from the left edge.
     readonly property real _freeStart: root.LayoutMirroring.enabled ? rightRow.width + 9 : leftRow.width + 4
     readonly property real _freeEnd: root.LayoutMirroring.enabled ? leftRow.width + 4 : rightRow.width + 9
+    // The groups' margins from the window's left and right edges.
+    readonly property real _startMargin: root.LayoutMirroring.enabled ? 9 : 4
+    readonly property real _endMargin: root.LayoutMirroring.enabled ? 4 : 9
 }

@@ -157,9 +157,33 @@ Item {
             compare(resizeAt(w, W - 2, H - 14), [Qt.BottomEdge | Qt.RightEdge]);
             compare(resizeAt(w, 2, 14), [Qt.TopEdge | Qt.LeftEdge]);
             compare(resizeAt(w, W - 2, 14), [Qt.TopEdge | Qt.RightEdge]);
-            compare(resizeAt(w, W - 14, 2), [Qt.TopEdge | Qt.RightEdge]);
+            // Along the top edge the corners stop where the header's button
+            // groups begin (4 px from the left, 9 from the right).
+            compare(resizeAt(w, 3, 2), [Qt.TopEdge | Qt.LeftEdge]);
+            compare(resizeAt(w, W - 8, 2), [Qt.TopEdge | Qt.RightEdge]);
+            compare(resizeAt(w, 10, 3), []);
+            compare(resizeAt(w, 14, 2), []);
+            compare(resizeAt(w, W - 12, 3), []);
+            compare(resizeAt(w, W - 14, 2), []);
             compare(resizeAt(w, 10, H - 10), []);
             compare(resizeAt(w, W - 10, 10), []);
+        }
+
+        // A window smaller than two corners: the corners shrink to half of it
+        // and no handle gets a negative size.
+        function test_tiny_window_handles() {
+            const w = createTemporaryObject(framelessComp, root);
+            w.show();
+            tryVerify(() => w.visible && w.visibility === Window.Windowed);
+            w.minimumWidth = 0;
+            w.minimumHeight = 0;
+            w.width = 20;
+            w.height = 20;
+            tryCompare(w, "width", 20);
+            compare(resizeAt(w, 2, 18), [Qt.BottomEdge | Qt.LeftEdge]);
+            compare(resizeAt(w, 18, 18), [Qt.BottomEdge | Qt.RightEdge]);
+            compare(resizeAt(w, 18, 12), [Qt.BottomEdge | Qt.RightEdge]);
+            compare(resizeAt(w, 18, 8), [Qt.TopEdge | Qt.RightEdge]);
         }
 
         function test_handle_cursors() {

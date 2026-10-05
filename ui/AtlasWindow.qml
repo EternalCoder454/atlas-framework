@@ -143,17 +143,21 @@ QQC2.ApplicationWindow {
             readonly property bool _corner: (_left || _right) && (_top || _bottom)
 
             // Sides run between the corners. The top side stops short of the
-            // header's window buttons and menu button, so the handle never
-            // covers the top pixels of a button.
+            // header's window buttons and menu button, and so do the top
+            // corners' strips along the top edge (they stop at the group's
+            // margin), so no handle covers the top pixels of a button.
             readonly property bool _alongTop: handle._corner ? handle.modelData.axis === "h" : handle._top || handle._bottom
-            readonly property real _len: root._cornerGrip
+            // A corner's length, at most half the window so the corners never overlap.
+            readonly property real _len: Math.min(root._cornerGrip, root.width / 2, root.height / 2)
+            readonly property var _header: root._atlasHeader
+            readonly property real _arm: handle._corner && handle._top && handle._alongTop && handle._header ? (handle._left ? (handle._header._freeStart > handle._header._startMargin ? Math.min(_len, handle._header._startMargin) : _len) : (handle._header._freeEnd > handle._header._endMargin ? Math.min(_len, handle._header._endMargin) : _len)) : _len
             readonly property bool _topSide: handle._top && !handle._corner
-            readonly property real _from: _topSide && root._atlasHeader ? Math.max(_len, root._atlasHeader._freeStart) : _len
-            readonly property real _to: _topSide && root._atlasHeader ? Math.max(_from, root.width - Math.max(_len, root._atlasHeader._freeEnd)) : root.width - _len
-            x: handle._left ? 0 : handle._right ? root.width - (handle._corner && handle._alongTop ? _len : root._grip) : handle._from
+            readonly property real _from: _topSide && handle._header ? Math.max(_len, handle._header._freeStart) : _len
+            readonly property real _to: _topSide && handle._header ? Math.max(_from, root.width - Math.max(_len, handle._header._freeEnd)) : root.width - _len
+            x: handle._left ? 0 : handle._right ? root.width - (handle._corner && handle._alongTop ? _arm : root._grip) : handle._from
             y: handle._top ? 0 : handle._bottom ? root.height - (handle._corner && !handle._alongTop ? _len : root._grip) : _len
-            width: handle._corner ? (handle._alongTop ? _len : root._grip) : handle._left || handle._right ? root._grip : handle._to - handle._from
-            height: handle._corner ? (handle._alongTop ? root._grip : _len) : handle._top || handle._bottom ? root._grip : root.height - 2 * _len
+            width: handle._corner ? (handle._alongTop ? _arm : root._grip) : handle._left || handle._right ? root._grip : Math.max(0, handle._to - handle._from)
+            height: handle._corner ? (handle._alongTop ? root._grip : _len) : handle._top || handle._bottom ? root._grip : Math.max(0, root.height - 2 * _len)
             z: 1000
             acceptedButtons: Qt.LeftButton
             hoverEnabled: true
