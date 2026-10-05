@@ -1,0 +1,2 @@
+OldThing	1.4	NewThing
+oldProp	1.4	newProp

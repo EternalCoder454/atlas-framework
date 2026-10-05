@@ -112,6 +112,7 @@ Item {
 
             section.property: "group"
             section.criteria: ViewSection.FullString
+            // atlas-lint: allow the gallery shows Kirigami.Heading as is
             section.delegate: Kirigami.Heading {
                 required property string section
                 width: ListView.view.width
@@ -141,6 +142,7 @@ Item {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.largeSpacing
 
+                // atlas-lint: allow the gallery shows Kirigami.Heading as is
                 Kirigami.Heading {
                     Layout.fillWidth: true
                     level: 2

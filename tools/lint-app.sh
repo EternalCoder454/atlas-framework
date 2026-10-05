@@ -13,7 +13,15 @@
 #             SpinBox, ToolTip, BusyIndicator; Kirigami.PasswordField and a
 #             TextField or AtlasTextField with a Password `echoMode`
 #             (AtlasPasswordField); an AtlasPasswordField that sets
-#             `echoMode` or `inputMethodHints`.
+#             `echoMode` or `inputMethodHints`; Kirigami.PlaceholderMessage
+#             (AtlasEmptyState); Kirigami.Heading (AtlasLabel with a
+#             textStyle); a ToolTip (`ToolTip {` or `ToolTip.text:`) from
+#             QtQuick.Controls (AtlasToolTip); a hand-made tinted banner, a
+#             Rectangle whose colour is Qt.alpha or Qt.tint of a Kirigami
+#             negative, neutral or positive colour with a Label inside
+#             (InfoBanner); and every name in tools/deprecated.txt
+#             (`Name<TAB>since<TAB>replacement`; ATLAS_LINT_DEPRECATED names
+#             another list).
 # A finding is silenced by `// atlas-lint: allow <reason>` on its line or the
 # line before.
 set -uo pipefail
@@ -49,6 +57,19 @@ function setsOwn(n, re,   i, l, depth) {
     }
     return 0
 }
+# Does the item that opens on line n contain, anywhere inside, a line matching re?
+function blockHas(n, re,   i, l, depth) {
+    depth = 0
+    for (i = n; i <= NR; i++) {
+        l = lines[i]
+        if (l ~ /^[ \t]*\/\//) continue
+        sub(/[ \t]\/\/.*$/, "", l)
+        if (i > n && l ~ re) return 1
+        depth += gsub(/\{/, "{", l) - gsub(/\}/, "}", l)
+        if (depth <= 0) return 0
+    }
+    return 0
+}
 # Does line s use `Name {` for a type reached through import alias a (a == "" for unqualified)?
 function uses(s, a, name,   re) {
     re = "(^|[^A-Za-z0-9_.])" (a == "" ? "" : a "\\.") name "[ \t]*\\{"
@@ -63,6 +84,13 @@ BEGIN {
     # Any Password echo mode, also in a binding (`show ? TextInput.Normal : TextInput.Password`).
     PASSWORD = "(^|[^A-Za-z0-9_.])echoMode[ \t]*:.*Password"
     MASKING = "(^|[^A-Za-z0-9_.])(echoMode|inputMethodHints)[ \t]*:"
+    nd = split(ENVIRON["LINT_DEPRECATED"], D, "\n")
+    for (i = 1; i <= nd; i++) {
+        if (D[i] ~ /^[ \t]*(#|$)/) continue
+        split(D[i], F, "\t")
+        dn++; dname[dn] = F[1]; dsince[dn] = F[2]; drepl[dn] = F[3]
+        dre[dn] = F[1]; gsub(/\./, "\\.", dre[dn])
+    }
     errors = 0; warnings = 0; qq["-"] = 1; kq["-"] = 1; isLocal["-"] = 1
 }
 { lines[NR] = $0 }
@@ -101,12 +129,32 @@ END {
         for (a in kq) if (uses(s, a, "PasswordField")) hit = 1
         if (!hit && kunq && !("PasswordField" in isLocal) && uses(s, "", "PasswordField")) hit = 1
         if (hit) report(nr, "warning", "default Kirigami.PasswordField", ": use AtlasPasswordField from Atlas.Ui")
+        split("PlaceholderMessage Heading", KN, " ")
+        KM["PlaceholderMessage"] = "use AtlasEmptyState from Atlas.Ui"
+        KM["Heading"] = "use AtlasLabel from Atlas.Ui with textStyle Title or Heading"
+        for (i in KN) {
+            name = KN[i]
+            hit = 0
+            for (a in kq) if (uses(s, a, name)) hit = 1
+            if (!hit && kunq && !(name in isLocal) && uses(s, "", name)) hit = 1
+            if (hit) report(nr, "warning", "Kirigami." name, ": " KM[name])
+        }
+        if (s ~ /(^|[^A-Za-z0-9_.])Rectangle[ \t]*\{/ && setsOwn(nr, "(^|[^A-Za-z0-9_.])color[ \t]*:.*Qt\\.(alpha|tint).*Theme\\.(negative|neutral|positive)") && blockHas(nr, "(^|[ \t])([A-Za-z0-9_]+\\.)?(Atlas)?Label[ \t]*\\{"))
+            report(nr, "warning", "hand-made tinted banner", ": use InfoBanner from Atlas.Ui")
+        tt = 0
+        for (a in qq) if (s ~ ("(^|[^A-Za-z0-9_.])" a "\\.ToolTip\\.(text|visible|delay|timeout)[ \t]*:")) tt = 1
+        if (!tt && unq && !("ToolTip" in isLocal) && s ~ /(^|[^A-Za-z0-9_.])ToolTip\.(text|visible|delay|timeout)[ \t]*:/) tt = 1
+        if (tt) report(nr, "warning", "default ToolTip attached property", ": use AtlasToolTip from Atlas.Ui")
+        for (i = 1; i <= dn; i++)
+            if (s ~ ("(^|[^A-Za-z0-9_])" dre[i] "[ \t]*[{:]") || s ~ ("\\." dre[i] "([^A-Za-z0-9_]|$)"))
+                report(nr, "warning", dname[i] " is deprecated since " dsince[i], ": use " drepl[i])
         for (i in W) {
             name = W[i]
             hit = 0
             for (a in qq) if (uses(s, a, name)) hit = 1
             if (!hit && unq && !(name in isLocal) && uses(s, "", name)) hit = 1
             if (hit && name == "TextField" && setsOwn(nr, PASSWORD)) report(nr, "warning", "default TextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
+            else if (hit && name == "ToolTip") report(nr, "warning", "default ToolTip", ": use AtlasToolTip from Atlas.Ui")
             else if (hit) report(nr, "warning", "default " name, ": check whether Atlas.Ui has an equivalent")
         }
         if (s ~ /(^|[^A-Za-z0-9_])AtlasTextField[ \t]*\{/ && setsOwn(nr, PASSWORD)) report(nr, "warning", "AtlasTextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
@@ -116,6 +164,9 @@ END {
 }
 AWK
 
+deprecated_file=${ATLAS_LINT_DEPRECATED:-$(dirname "$0")/deprecated.txt}
+deprecated=""
+[ -r "$deprecated_file" ] && deprecated=$(cat "$deprecated_file")
 status=0
 total_errors=0
 total_warnings=0
@@ -130,7 +181,7 @@ for app in "$@"; do
         dir=$(dirname "$file")
         locals=$(find "$dir" -maxdepth 1 -name '*.qml' -printf '%f\n' | sed 's/\.qml$//')
         # Control characters in a name could forge CI log commands (::error::).
-        out=$(LINT_FILE=${file//[[:cntrl:]]/?} LINT_LOCALS=$locals awk "$program" "$file")
+        out=$(LINT_FILE=${file//[[:cntrl:]]/?} LINT_LOCALS=$locals LINT_DEPRECATED=$deprecated awk "$program" "$file")
         rc=$?
         if [ -n "$out" ]; then
             echo "$out"

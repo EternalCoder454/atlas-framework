@@ -1,0 +1,2 @@
+# Deprecated Atlas.Ui names: Name<TAB>since<TAB>replacement. A name here keeps working;
+# lint-app.sh warns when an app uses it. Empty for now.
