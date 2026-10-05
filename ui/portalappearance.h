@@ -49,6 +49,7 @@ private:
     QString m_service;
     QDBusServiceWatcher *m_watcher = nullptr;
     qulonglong m_generation = 0;
+    bool m_rereadQueued = false;
     bool m_highContrast = false;
     bool m_reducedMotion = false;
     QColor m_accent;

@@ -245,11 +245,20 @@ GlobalShortcutSession::GlobalShortcutSession(const QDBusConnection &bus, const Q
             dropSession(false); // the session went with the portal: nothing to close
             failAll(tr("The desktop portal stopped."));
         }
-        if (!newOwner.isEmpty()) {
-            m_failures = 0; // a portal that is back gets a fresh start
-        }
         if (!newOwner.isEmpty() && !m_items.isEmpty()) {
-            schedule();
+            // A retry still waiting would fire in the middle of the new bind.
+            m_retry.stop();
+            if (!m_lastFailure.isValid() || m_lastFailure.hasExpired(m_stableMs)) {
+                m_failures = 0; // a portal that is back after a quiet time: a fresh start
+                schedule();
+            } else if (m_failures >= 5) {
+                // Out of retries, but the portal is back: one more try, late, and
+                // postponed again by every flap, so a peer that drops and takes the
+                // name over and over gets nothing from it.
+                m_retry.start(m_retryBaseMs << 4);
+            } else {
+                scheduleRetry();
+            }
         }
     });
 }
@@ -553,6 +562,7 @@ void GlobalShortcutSession::fail(const QString &why)
     dropSession(true);
     m_dirty = false;
     failAll(why);
+    m_lastFailure.start();
     scheduleRetry();
 }
 
@@ -708,6 +718,7 @@ void GlobalShortcutSession::onSessionClosed(const QDBusMessage &message)
         m_failures = 0;
         schedule();
     } else {
+        m_lastFailure.start();
         scheduleRetry();
     }
 }

@@ -12,6 +12,7 @@
 #include <QPointer>
 #include <QSet>
 #include <QQmlParserStatus>
+#include <QElapsedTimer>
 #include <QTimer>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
@@ -158,6 +159,8 @@ private:
     QString m_actualPath;
     QTimer m_timeout;
     QTimer m_retry;
+    // When the last failure happened, for the flapping-portal rule.
+    QElapsedTimer m_lastFailure;
     int m_failures = 0;
     int m_retryBaseMs = 2000;
     int m_stableMs = 60000;

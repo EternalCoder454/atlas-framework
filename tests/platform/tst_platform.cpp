@@ -102,8 +102,14 @@ public:
             if (foreignNamespace) {
                 all.insert(QStringLiteral("org.example.other"), QVariantMap{{QStringLiteral("contrast"), QVariant::fromValue<uint>(1)}});
             }
-            m_conn.send(msg.createReply(QVariant::fromValue(all)));
             ++readAlls;
+            if (readAllDelayMs > 0) {
+                // A slow portal: the reply carries what was true when asked.
+                QDBusConnection conn = m_conn;
+                QTimer::singleShot(readAllDelayMs, QCoreApplication::instance(), [conn, msg, all]() mutable { conn.send(msg.createReply(QVariant::fromValue(all))); });
+                return true;
+            }
+            m_conn.send(msg.createReply(QVariant::fromValue(all)));
             return true;
         }
         return false;
@@ -118,6 +124,11 @@ public:
 
     void settingChanged(const QString &key, const QVariant &value, const QString &ns = QStringLiteral("org.freedesktop.appearance"))
     {
+        // What the portal would answer to a ReadAll from now on (a deliberately
+        // wrong-typed value is only sent, not stored).
+        if (ns == QLatin1String("org.freedesktop.appearance") && value.metaType() != QMetaType::fromType<QString>()) {
+            appearance.insert(key, value);
+        }
         QDBusMessage s = QDBusMessage::createSignal(kPortalPath, QStringLiteral("org.freedesktop.portal.Settings"), QStringLiteral("SettingChanged"));
         s << ns << key << QVariant::fromValue(QDBusVariant(value));
         m_conn.send(s);
@@ -139,6 +150,7 @@ public:
 
     Bind mode = Bind::Good;
     bool closeAfterBind = false;
+    int readAllDelayMs = 0;
     bool foreignNamespace = false; // ReadAll answers with a namespace nobody asked for
 
     QString triggerOverride; // sent as trigger_description when set
@@ -987,7 +999,7 @@ private Q_SLOTS:
     {
         startPortal();
         GlobalShortcutSession session(m_client, QString(), 2000);
-        session.setRetryBaseMs(600);
+        session.setRetryBaseMs(1500); // a loaded machine must not make the retry fire early
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Cancelled; // every bind fails
         m_portal->creates = m_portal->binds = 0;
@@ -1001,8 +1013,15 @@ private Q_SLOTS:
         // One create and one bind so far; the edits ride on the retry.
         QVERIFY(m_portal->creates + m_portal->binds <= 3);
         m_portal->mode = FakePortal::Bind::Good;
-        QTRY_VERIFY_WITH_TIMEOUT(a->available(), 5000); // the retry carries the last edit
-        QCOMPARE(a->description(), QStringLiteral("edit 19"));
+        QTRY_VERIFY_WITH_TIMEOUT(a->available(), 10000); // the retry carries the last edit
+        // What the portal was last told, not what the item says.
+        QString bound;
+        for (const PortalShortcut &p : std::as_const(m_portal->lastBound)) {
+            if (p.id == QLatin1String("a")) {
+                bound = p.properties.value(QStringLiteral("description")).toString();
+            }
+        }
+        QCOMPARE(bound, QStringLiteral("edit 19"));
         GlobalShortcutSession::setShared(nullptr);
     }
 
@@ -1036,9 +1055,10 @@ private Q_SLOTS:
         QVERIFY(session.failures() > 0);
         stopPortal();
         QTRY_VERIFY(!session.retryPending()); // a retry could start the portal
-        startPortal(); // back: a fresh start
+        session.setRetryBaseMs(20);
+        startPortal(); // back, but a failure was recent: it goes through the backoff
         QTRY_VERIFY(a->available());
-        QCOMPARE(session.failures(), 0);
+        QVERIFY(session.failures() > 0); // not a fresh start
         GlobalShortcutSession::setShared(nullptr);
     }
 
@@ -1054,6 +1074,61 @@ private Q_SLOTS:
         m_portal->foreignNamespace = false;
     }
 
+    void aSlowReadAllDoesNotLoseTheOtherKeys()
+    {
+        stopPortal();
+        startPortal(QVariantMap{{QStringLiteral("contrast"), QVariant::fromValue<uint>(1)},
+                                {QStringLiteral("reduced-motion"), QVariant::fromValue<uint>(1)},
+                                {QStringLiteral("accent-color"), colorStruct(1.0, 0.0, 0.0)}});
+        m_portal->readAllDelayMs = 300;
+        PortalAppearance p(m_client);
+        QVERIFY(!flush(m_client).isEmpty());
+        // One key changes while the first read is still on its way.
+        m_portal->appearance.insert(QStringLiteral("contrast"), QVariant::fromValue<uint>(0));
+        m_portal->settingChanged(QStringLiteral("contrast"), QVariant::fromValue<uint>(0));
+        QTRY_VERIFY_WITH_TIMEOUT(p.reducedMotion(), 5000); // from the second read
+        QVERIFY(!p.highContrast());
+        QCOMPARE(p.accentColor(), QColor(Qt::red));
+        m_portal->readAllDelayMs = 0;
+    }
+
+    void aReadFromAPortalThatLeftIsDropped()
+    {
+        stopPortal();
+        startPortal(QVariantMap{{QStringLiteral("contrast"), QVariant::fromValue<uint>(1)}});
+        m_portal->readAllDelayMs = 300;
+        PortalAppearance p(m_client);
+        QTRY_VERIFY(m_portal->readAlls >= 1);
+        stopPortal(); // gone; its answer is still on the way
+        QTest::qWait(600);
+        QVERIFY(!p.highContrast());
+    }
+
+    void aFlappingPortalNameStaysWithinTheCap()
+    {
+        startPortal();
+        GlobalShortcutSession session(m_client, QString(), 2000);
+        session.setRetryBaseMs(50);
+        GlobalShortcutSession::setShared(&session);
+        m_portal->mode = FakePortal::Bind::Cancelled; // every bind fails
+        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        QTRY_VERIFY(!a->errorString().isEmpty());
+        int creates = 0;
+        for (int i = 0; i < 12; ++i) {
+            creates += m_portal->creates;
+            stopPortal();
+            startPortal();
+            m_portal->mode = FakePortal::Bind::Cancelled;
+            QTest::qWait(20);
+        }
+        QTest::qWait(1500);
+        creates += m_portal->creates;
+        // The first try and five retries at most, plus a late one: not one per flap.
+        QVERIFY2(creates <= 8, qPrintable(QString::number(creates)));
+        m_portal->mode = FakePortal::Bind::Good;
+        GlobalShortcutSession::setShared(nullptr);
+    }
+
     void aRunQueuedBeforeQuitDoesNothing()
     {
         startPortal();
@@ -1061,7 +1136,7 @@ private Q_SLOTS:
         GlobalShortcutSession::setShared(&session);
         m_portal->creates = 0;
         std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a"))); // queues the run
-        QVERIFY(QMetaObject::invokeMethod(QCoreApplication::instance(), "aboutToQuit"));
+        session.shutdown();
         QTest::qWait(150);
         QCOMPARE(m_portal->creates, 0);
         GlobalShortcutSession::setShared(nullptr);

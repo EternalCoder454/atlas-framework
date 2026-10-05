@@ -45,6 +45,7 @@ PortalAppearance::PortalAppearance(const QDBusConnection &bus, const QString &se
     m_watcher = new QDBusServiceWatcher(m_service, m_bus, QDBusServiceWatcher::WatchForOwnerChange, this);
     connect(m_watcher, &QDBusServiceWatcher::serviceOwnerChanged, this, [this](const QString &, const QString &oldOwner, const QString &newOwner) {
         if (!oldOwner.isEmpty()) {
+            ++m_generation; // a read still on its way is from the old owner
             commit(Values());
         }
         if (!newOwner.isEmpty()) {
@@ -167,6 +168,18 @@ void PortalAppearance::onSettingChanged(const QDBusMessage &message)
         return;
     }
     ++m_generation; // a ReadAll still on its way is older than this change
+    // ... and has the other two keys; the one new read, however many changes
+    // come in a row, brings them all.
+    if (!m_rereadQueued) {
+        m_rereadQueued = true;
+        QMetaObject::invokeMethod(
+            this,
+            [this] {
+                m_rereadQueued = false;
+                readAll();
+            },
+            Qt::QueuedConnection);
+    }
     Values v{m_highContrast, m_reducedMotion, m_accent};
     apply(args.at(1).toString(), args.at(2).value<QDBusVariant>().variant(), v);
     commit(v);

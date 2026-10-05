@@ -79,7 +79,19 @@ fi
 # The test bus: no service directories, and its socket in this run's own
 # private directory (removed with $tmp by the trap above).
 busconf=$tmp/bus.conf
-sed "s|unix:tmpdir=/tmp|unix:dir=$tmp|" "$here/../private-bus.conf" >"$busconf"
+case $tmp in
+*[\<\>\&\"]*)
+    echo "run-variant: unsafe characters in $tmp" >&2
+    exit 1
+    ;;
+esac
+template=$(<"$here/../private-bus.conf")
+# printf, so nothing in $tmp is read as a replacement pattern.
+printf '%s\n' "${template%%@LISTEN@*}unix:dir=$tmp${template#*@LISTEN@}" >"$busconf"
+grep -q 'unix:dir=' "$busconf" || {
+    echo "run-variant: the test bus config has no listen address" >&2
+    exit 1
+}
 display=$((100 + $(printf '%s' "$ATLAS_TEST_BIN $variant $ATLAS_OUT_DIR" | cksum | cut -d' ' -f1) % 800))
 rc=0
 if [ "$variant" = contrast ]; then
