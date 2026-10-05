@@ -155,6 +155,8 @@ Every type has a page. The groups below are the sidebar sections.
 - [AtlasAppMenu](atlas-app-menu.md): The app's menus for the header bar or the desktop's global menu.
 - [AtlasAction](atlas-action.md): One user action shared by buttons, menus and the keyboard.
 - [AtlasDialog](atlas-dialog.md): The general modal dialog.
+- [AtlasPreferencesDialog](atlas-preferences-dialog.md): A preferences dialog of pages, with search.
+- [AtlasPreferencesPage](atlas-preferences-page.md): One page of a preferences dialog.
 - [ConfirmDialog](confirm-dialog.md): A modal question with small rounded buttons.
 - [AtlasPopover](atlas-popover.md): A raised card that opens next to a control.
 - [AtlasToolTip](atlas-tool-tip.md): A hint on a raised card.
@@ -197,6 +199,8 @@ Every type has a page. The groups below are the sidebar sections.
 
 - [Section](section.md): A rounded card of rows.
 - [SectionRow](section-row.md): One row of a section: title, subtitle, value and a switch, check mark or chevron.
+- [AtlasForm](atlas-form.md): A form of sections and entries that knows when it is valid.
+- [AtlasFormEntry](atlas-form-entry.md): One labelled form row with validation and a settings key.
 - [AtlasCard](atlas-card.md): A padded card with an optional header and footer.
 - [AtlasExpandableSection](atlas-expandable-section.md): A header row that folds its content.
 - [AtlasSplitView](atlas-split-view.md): Panes with a draggable divider.
