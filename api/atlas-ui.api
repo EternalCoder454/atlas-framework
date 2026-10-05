@@ -277,11 +277,21 @@ AtlasFileField.type
 AtlasFloatingToolbar.base QQuickItem
 AtlasFloatingToolbar.property accessibleName: QString
 AtlasFloatingToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
+AtlasFloatingToolbar.property autoDim: bool
 AtlasFloatingToolbar.property content: QQmlListProperty<QObject> [readonly]
+AtlasFloatingToolbar.property dimOpacity: double
+AtlasFloatingToolbar.property focusOnClick: bool
 AtlasFloatingToolbar.property focusable: bool
+AtlasFloatingToolbar.property keepActive: bool
 AtlasFloatingToolbar.property margin: double
+AtlasFloatingToolbar.property near: bool [readonly]
+AtlasFloatingToolbar.property nearDistance: double
+AtlasFloatingToolbar.property orientation: int
+AtlasFloatingToolbar.property overflow: int
+AtlasFloatingToolbar.property returnFocus: QQuickItem*
 AtlasFloatingToolbar.property shown: bool
 AtlasFloatingToolbar.property toolbar: AtlasToolbar_QMLTYPE* [readonly]
+AtlasFloatingToolbar.signal escaped()
 AtlasFloatingToolbar.type
 AtlasFlowLayout.base QQuickItem
 AtlasFlowLayout.property rowSpacing: double
