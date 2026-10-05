@@ -32,7 +32,15 @@ its goldens, nothing else. A window demo (`AtlasWindowDemo`) has an
 - Variants, each in its own temporary `XDG_CONFIG_HOME`: `light` (Breeze
   Light), `dark` (Breeze Dark), `accent` (Breeze Light with `#e5487a` as the
   accent in kdeglobals), `opaque` (`atlasrc` `Transparency=false`; only the
-  window-level demos).
+  window-level demos), `contrast` (the high-contrast scheme in
+  `visual/schemes/`, a Qt palette to match, and `visual/fake-portal.cpp`
+  answering "contrast: more" on the private bus: Qt takes
+  `Appearance.highContrast` from the settings portal only), `rtl` (the
+  application's layout direction, the stage and the window overlay mirrored),
+  `compact` (`AtlasStyle.density = Compact`), `text200` (Noto Sans 20, so
+  `textScale` is 2). `test_variant_is_on` fails when a variant is not really on.
+  Regenerate the four newest with
+  `ATLAS_UPDATE_GOLDENS=1 ctest --test-dir build -R 'visual-(contrast|rtl|compact|text200)'`.
 - Deterministic: `QT_QUICK_BACKEND=software`, `QT_SCALE_FACTOR=1`, Noto Sans 10,
   `org.kde.desktop`, `xvfb-run`, X11. The goldens are made in the dev
   container; another Qt or font version gives different pictures (`AtlasAboutPage`
@@ -45,6 +53,11 @@ its goldens, nothing else. A window demo (`AtlasWindowDemo`) has an
 - `a11y/`: loads every demo and fails on any visible, enabled item that Tab
   reaches without an `Accessible.role` or `Accessible.name`, naming the demo,
   the item type and its path. A new control with a demo is covered at once.
+  It also walks every demo with Tab (200 presses at most, else a focus trap):
+  each item reached must be visible and sized, the order must be reading order
+  (rows top to bottom, left to right, right to left under RTL; compared as a
+  ring) and Shift+Tab must retrace it. `tabOrderExceptions` at the top of
+  `tst_a11y.qml` lists the demos with another intended order, each with its reason.
 - `state/`: the state contract of docs/DESIGN.md on every demo, in 4 shards
   (`state-0` to `state-3`): with the root disabled Tab reaches nothing and the
   picture changes; each item Tab reaches looks different with keyboard focus
