@@ -112,7 +112,11 @@ control takes `iconName`.
 
 | Type | What it is |
 |---|---|
-| `AtlasWindow` | The application window: blur or opaque, following `Appearance`; `sidebarColor()` for a sidebar; `widthClass` (Compact < 30 gridUnits, Wide >= 60) and `sidebarCollapsed` (true in Compact) so every app collapses its sidebar alike (since 1.4.0) |
+| `AtlasWindow` | The application window: blur or opaque, following `Appearance`; `sidebarColor()` for a sidebar; `widthClass` (Compact < 30 gridUnits, Wide >= 60) and `sidebarCollapsed` (true in Compact) so every app collapses its sidebar alike With an `AtlasHeaderBar` as its `header` the window is frameless (`frameless`): it draws its own title row, has 6 px resize handles and a hairline border; without one nothing changes (since 1.4.0) |
+| `AtlasHeaderBar` | The merged header of a frameless `AtlasWindow` (`header:`): 32 px row with the window menu button, `leading`, `title`, `actions` in an `AtlasToolbar` (overflow), `trailing` and the window buttons, in KWin's button layout and the Header colours at the window's blur alpha; drags the window, double click maximises, right click or Alt+Space opens a Minimize/Maximize/Close menu; `centerTitle`, `windowButtons`, `openWindowMenu()` (since 1.4.0) |
+| `AtlasWindowButtons` | Minimise, maximise/restore and close drawn like the AtlasOS KWin decoration (26 px rounded squares in 32 px cells, accent hover, red close); `buttons`, `active`, `maximized`; never take the keyboard focus (since 1.4.0) |
+| `AtlasAppMenu` | The app's menus (`menus: [{title, actions}]`, `null` = separator) for `AtlasHeaderBar.leading`: exported natively through DBusMenu when the desktop has a global menu (`AtlasWindowChrome.globalMenu`), else a menu button in the header (since 1.4.0) |
+| `AtlasWindowChrome` | Singleton: KWin's caption button layout (`buttonsOnLeft`, `buttonsOnRight`) and `globalMenu` (the `com.canonical.AppMenu.Registrar` name has an owner), both live (since 1.4.0) |
 | `AtlasPage` | A scrolling page with a large bold title and centred margins; `headerTrailing` puts items at the end of the title row, `maxContentWidth` is writable (since 1.4.0) |
 | `PrimaryButton`, `SecondaryButton`, `TextButton`, `MenuButton` | Buttons (`AtlasButton` is their shared base) |
 | `AtlasSwitch` | Pill switch |

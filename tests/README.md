@@ -52,6 +52,10 @@ its goldens, nothing else. A window demo (`AtlasWindowDemo`) has an
   a failure go to `build/state-out-<n>/`). The allow-list at the top of
   `tst_state.qml` names the demos where a check cannot apply, with the reason;
   a listed demo that passes fails the test until the entry is removed.
+- `window/`: the frameless window: AtlasHeaderBar's drag (`_moveHook`) and
+  double click (`_toggleHook`), AtlasWindow's resize handles and cursors
+  (`_resizeHook`), AtlasWindowChrome's KWin button parsing. Real window moves
+  need a compositor and are not covered.
 - `i18n/`: with `LANGUAGE=de` and a throwaway `atlas-ui_de.qm` (built from
   `i18n/atlas-ui_de.ts`), a default `SearchField` must show the German string.
   Needs qt6-linguist; skipped without it.

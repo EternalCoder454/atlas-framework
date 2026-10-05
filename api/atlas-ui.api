@@ -54,6 +54,10 @@ AtlasAppCard.property symbol: int
 AtlasAppCard.signal actionClicked()
 AtlasAppCard.signal cancelRequested()
 AtlasAppCard.type
+AtlasAppMenu.method open(): QVariant
+AtlasAppMenu.property accessibleName: QString
+AtlasAppMenu.property menus: QVariant
+AtlasAppMenu.type
 AtlasAutocompleteField.property clearable: bool
 AtlasAutocompleteField.property errorText: QString
 AtlasAutocompleteField.property filter: QString
@@ -257,6 +261,17 @@ AtlasFormat.method percent(double fraction): QString
 AtlasFormat.method percent(double fraction, int precision): QString
 AtlasFormat.method percent(double fraction, int precision, QString locale): QString
 AtlasFormat.type
+AtlasHeaderBar.method openWindowMenu(): QVariant
+AtlasHeaderBar.property actions: QQmlListProperty<QQuickAction> [readonly]
+AtlasHeaderBar.property active: bool
+AtlasHeaderBar.property centerTitle: bool
+AtlasHeaderBar.property iconName: QString
+AtlasHeaderBar.property leading: QQmlListProperty<QObject> [readonly]
+AtlasHeaderBar.property title: QString
+AtlasHeaderBar.property titleCentered: bool [readonly]
+AtlasHeaderBar.property trailing: QQmlListProperty<QObject> [readonly]
+AtlasHeaderBar.property windowButtons: bool
+AtlasHeaderBar.type
 AtlasIconGrid.property count: int [readonly]
 AtlasIconGrid.property currentIndex: int
 AtlasIconGrid.property iconRole: QString
@@ -576,10 +591,20 @@ AtlasWindow.method syncBlur(): QVariant
 AtlasWindow.method tinted(QColor base, double factor): QColor
 AtlasWindow.property blurAlpha: double
 AtlasWindow.property blurred: bool [readonly]
+AtlasWindow.property frameless: bool [readonly]
 AtlasWindow.property sidebarCollapsed: bool [readonly]
 AtlasWindow.property sidebarFactor: double
 AtlasWindow.property widthClass: int [readonly]
 AtlasWindow.type
+AtlasWindowButtons.property active: bool
+AtlasWindowButtons.property buttons: QVariant
+AtlasWindowButtons.property maximized: bool [readonly]
+AtlasWindowButtons.type
+AtlasWindowChrome.method parseButtons(QString letters): QStringList
+AtlasWindowChrome.property buttonsOnLeft: QStringList [readonly]
+AtlasWindowChrome.property buttonsOnRight: QStringList [readonly]
+AtlasWindowChrome.property globalMenu: bool [readonly]
+AtlasWindowChrome.type
 ConfirmDialog.property acceptText: QString
 ConfirmDialog.property alternativeText: QString
 ConfirmDialog.property body: QQmlListProperty<QObject> [readonly]
