@@ -9,10 +9,10 @@ Every Atlas app follows these rules. Atlas.Ui implements them, so an app that bu
 
 ## 1. macOS-style controls
 
-- Pill buttons: [PrimaryButton](primary-button.md) (filled with the accent), [SecondaryButton](secondary-button.md) (soft and tinted) and [TextButton](text-button.md) (a link).
-- Pill switches: [AtlasSwitch](atlas-switch.md).
+- Small rounded-rectangle buttons (4 px corners): [PrimaryButton](primary-button.md) (filled with the accent), [SecondaryButton](secondary-button.md) (soft and tinted) and [TextButton](text-button.md) (a link).
+- Round switches: [AtlasSwitch](atlas-switch.md).
 - Settings grouped in rounded cards: [Section](section.md) of [SectionRow](section-row.md)s.
-- A sidebar of rounded selection pills: [SidebarItem](sidebar-item.md) and [SidebarGroup](sidebar-group.md).
+- A sidebar with a rounded-rectangle selection: [SidebarItem](sidebar-item.md) and [SidebarGroup](sidebar-group.md).
 - A large bold page title: [AtlasPage](atlas-page.md).
 - A big centred status: [StatusHero](status-hero.md).
 
@@ -67,7 +67,7 @@ Every control behaves the same way in each state, and the framework's tests chec
 | Read only | The value is shown normally (not dimmed) and cannot be edited. The control keeps focus, selection and copy. |
 | Error | The error colour (`AtlasStyle.error`) on the border or text, and a message beside the field. The message is announced to screen readers, not only coloured. |
 | Busy | A spinner replaces the value or chevron. The control stays enabled but does not act again until the work ends, and says it is busy to screen readers. |
-| Hover | A light tint of the text colour, only for a control that acts, never for a disabled or busy one. A clickable row or button shows a hand cursor. |
+| Hover | A grey tint of the text colour (never the accent), only for a control that acts, never for a disabled or busy one. A clickable row or button shows a hand cursor. |
 | Pressed | A stronger tint than hover, gone on release or when the pointer leaves. |
 | Focus | [AtlasFocusRing](atlas-focus-ring.md), only for keyboard focus, never after a click. |
 

@@ -59,10 +59,10 @@ Atlas.Ui follows the system colour scheme live. `Appearance.colorScheme` and `Ap
 |---|---|
 | `spacingXSmall`, `spacingSmall`, `spacing` | 2, 4, 8 |
 | `spacingLarge`, `spacingXLarge`, `spacingXXLarge` | 12, 16, 24 |
-| `radiusSmall` | 4: controls such as buttons, fields, combo boxes, menu items and list selections |
-| `radius` | 6: menus, cards, popovers and tooltips |
-| `radiusLarge` | 8: dialogs |
-| `radiusPill` | Switch tracks, badges and chips, at any height |
+| `radiusSmall` | 4: buttons, text and search fields, combo boxes, spin boxes, pickers, tabs, sidebar items, menu items and list selections. A button goes to 6 while pressed. |
+| `radius` | 6: cards, Sections, popovers, tooltips, menus and code views |
+| `radiusLarge` | 8: dialogs, the command palette, drop zones, the segmented control's track, and an unchecked checkable chip |
+| `radiusPill` | 1000, fully round: switch tracks, progress and usage bars, the floating toolbar, toasts and a checked chip. Badges use half their height. |
 | `controlHeight` | 28 px, or 24 px when compact. A control grows when its text needs more. |
 
 ## Fonts and sizes

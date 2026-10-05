@@ -1,10 +1,10 @@
 ---
 title: ConfirmDialog
-summary: A modal dialog in the Atlas look with pill buttons, an optional third button and a destructive style.
+summary: A modal dialog in the Atlas look with small rounded buttons, an optional third button and a destructive style.
 section: Menus, dialogs and popups
 ---
 
-ConfirmDialog asks the user to confirm or cancel something. It is a rounded card over a dimmed window with two buttons by default (`rejectText`, `acceptText`). A non-empty `alternativeText` ("Don't Save") adds a third button at the leading edge. For a dialog with its own content and buttons use [AtlasDialog](atlas-dialog.md).
+ConfirmDialog asks the user to confirm or cancel something. It is a card with 8 px corners over a dimmed window with two buttons by default (`rejectText`, `acceptText`). A non-empty `alternativeText` ("Don't Save") adds a third button at the leading edge. For a dialog with its own content and buttons use [AtlasDialog](atlas-dialog.md).
 
 ConfirmDialog is a Qt Quick Controls `Popup` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-popup.html)); its inherited properties work as usual. Items declared inside it go into `body` and are as wide as the card; the text and the body wrap, and scroll when they are taller than the window.
 
