@@ -3,4 +3,4 @@
 // See tests/README.md.
 #include <QtQuickTest/quicktest.h>
 
-QUICK_TEST_MAIN(atlas_window)
+QUICK_TEST_MAIN(atlas_chrome)
