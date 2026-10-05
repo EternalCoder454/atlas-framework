@@ -161,3 +161,64 @@ animation speed.
 
 Dropped: AtlasCoreGrid (AtlasCard and MiniBars cover it), AtlasHeading,
 AtlasCaption, AtlasBusyRow, AtlasNumberField, AtlasUrlField, AtlasBigStat.
+
+## 1.4.1: follow-ups from the 1.4.0 gates
+
+Non-blocking findings (Medium and Low) filed while shipping 1.4.0.
+
+### S gate (C++ and file/drop QML)
+- AtlasTreeModel: node() trusts internalPointer; add checkIndex()/model()==this. Document "small trees" (no node cap, items kept twice).
+- AtlasDropZone: compile nameFilters once per change, cap URLs examined (~10k), collapse repeated `*` (backtracking); say in docs that folders named *.png pass.
+- AtlasFileField/AtlasFolderField toUrl/fromUrl: reject control chars and lone surrogates; require file:/// in fromUrl; show an error when decode fails.
+- AtlasPathValidator.mustExist: stat on every keystroke can hang on a stale NFS/FUSE mount; check on commit or debounce; docs: not a containment check.
+- AtlasUrlValidator: consider rejecting userinfo (https://good@evil); docs: apps must check acceptableInput.
+- AtlasShortcuts::toSequence: range-check StandardKey ints, isfinite on doubles; conflicts() recomputes and emits from the getter.
+- Appearance.textScale: clamp to 0.5..4.
+
+### Earlier
+- AtlasSearchResults is allow-listed in tests/state.
+- AtlasShortcutField.conflictText doesn't refresh when another action's shortcut changes.
+- AtlasExpandableSection sets `expanded` itself (breaks a binding on it); consider Section's ask-the-page pattern.
+
+### Look
+- Stock Qt Quick/Kirigami controls used directly by apps still take Breeze's highlight: set Kirigami.Theme highlight/focus from AtlasStyle at the AtlasWindow root.
+
+## 1.4.1 (from the R gate, data controls)
+- AtlasListView: drag-reorder auto-scroll in long lists.
+- AtlasCodeView: wrapped lines vs line numbers over 5000 lines.
+- Selection API shapes: contextMenuRequested signatures differ (ListView/Tree point vs DataTable x,y); textRole default "text" vs "display".
+## 1.4.1 (S gate 2)
+- Settings: GUI-thread flock wait (now 1 s); consider a worker thread.
+- Settings symlink policy differs from Rust (documented).
+- AtlasSettings: new files briefly exist with default mode before fchmod 0600 (KConfig save); create with umask 077 around sync.
+
+### From chrome/popups review (Low)
+- AtlasWindow._saveState: maximize geometry may be saved as Windowed size if geometry arrives before visibility; debounce.
+- Alt+Space registered per AtlasHeaderBar: ambiguous with two headers in a window.
+- AtlasWindowButtons focusPolicy NoFocus: keyboard only via Alt+Space (a11y audit note).
+- AtlasPopover arrow seam at alpha 0.85 (arrow overlaps card 1px).
+- ConfirmDialog body now in a Flickable: fillHeight bodies behave differently.
+### From f5-3
+- Variant goldens exactly 700 high (AtlasEmptyState, AtlasTextArea, AtlasTextField, AtlasValidators) and AtlasCalendar 900 wide in the new variants: demos clip under text200/compact.
+
+### From F2/F3 review (Low, not in fix-pickers)
+- ShortcutField Shift+digit records shifted key; Calendar `today` stale after midnight; TimePicker use24Hour detection with bare "a"; TimePicker edited on snapped-same value
+- Sidebar empty-filter placeholder never shows; filter-expanded groups never collapse; SegmentedControl pill Behavior animates on resize/first show; no elide
+- ChipGroup overwrites app focusPolicy, _restoreFocus when window inactive; FlowLayout mirroring toggle relayout, stale child connections
+- NavigationStack popToRoot per-page signals, Alt+Left not mirrored, no focus after push/pop; SplitView handle not keyboard reachable
+- SplitButton halves scale separately; File/FolderField drop non-file URL silently; Onboarding accessible name not overridable; ColorField applies #abc mid-typing
+- FontPicker fixedOnly model reset during scan
+- AtlasAutocompleteField: no textEdited/editingFinished/validator/maximumLength/inputMethodHints forwarding (additive)
+### From F1 review (Low)
+- AtlasPathValidator mustExist stats on GUI thread per keystroke (documented in fix-input)
+- ToolbarButton checked icon accent, SectionRow disabled 0.5 opacity: compat notes
+
+### From gallery ui-check
+- "QQmlVMEMetaObject: Internal error - attempted to evaluate a function in an invalid context" x3 per gallery walk, page unknown (probably on page switch)
+- AtlasAvatar demo's deliberate missing image prints a QQuickImage warning
+- Window buttons vs real KWin unchecked (needs a WM)
+
+### P (from the 1.4.0 gate)
+- libatlasui.so is 28 MB in Release (43 MB with no build type): .dynstr/.dynsym hold every qmlcachegen AOT symbol. Try -fvisibility=hidden / a version script exporting only the plugin entry points; measure PSS (Release 1.4.0: ~110 MB vs 114.8 budget, startup 174-193 ms vs 190).
+- perf/measure.sh: first start in a run is cold and noisy (170 ms to 3 s); the median of 3 hides it. Consider 5 starts after one warm-up.
+- qmllint 162 warnings (baseline 161).
