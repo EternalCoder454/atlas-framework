@@ -79,7 +79,7 @@ Item {
                 sourceComponent: Symbol {
                     icon: control.symbol
                     size: Kirigami.Units.iconSizes.huge
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.45)
+                    color: AtlasStyle.textDisabled
                 }
             }
             Kirigami.Icon {
@@ -87,7 +87,7 @@ Item {
                 visible: control.symbol === 0 && control.iconName.length > 0
                 source: control.iconName
                 isMask: true
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.45)
+                color: AtlasStyle.textDisabled
             }
         }
         Text {
@@ -109,7 +109,7 @@ Item {
             text: control.text
             font.family: AtlasStyle.fontFamily
             font.pointSize: AtlasStyle.fontSizeBody
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.7)
+            color: AtlasStyle.textMuted
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
             textFormat: Text.PlainText
