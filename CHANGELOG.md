@@ -30,6 +30,15 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   working (`animated: false` holds it still; flat under reduced motion). New
   `AtlasEdgeGlow`: a soft violet-to-sakura glow along the edges of its parent,
   for one meaning only, "the system is doing something for you now" (since 1.4.0).
+- Buttons, switch, segmented control and chips follow the new design: small
+  corners (pressed 4 to 6 px), grey hover, `controlHeight`, readable disabled
+  text. `AtlasButton` gains `variant` (Default, Prominent, Destructive, Ghost;
+  `prominent` still works) and `busy` (spinner, presses ignored); a checked
+  button or toolbar button has a clear on state. The switch thumb slides with a
+  small overshoot and an off switch is visible when disabled. The segmented
+  control's highlight springs to the new segment, never on resize, and elides
+  long text. `AtlasSpinner` gains `color`. `AtlasSpringAnimation` is tuned:
+  standard settles in about 240 ms, expressive overshoots about 7%.
 - Atlas.Ui fixes to 1.3.0 controls: `ToolbarButton` with `focusable` now takes
   Return/Enter through the normal click path, so a bound `action` fires and a
   `checked` binding survives. `AtlasProgressBar` fills its height again when it

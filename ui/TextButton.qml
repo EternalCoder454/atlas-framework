@@ -7,7 +7,7 @@ T.AbstractButton {
     id: control
 
     implicitWidth: label.implicitWidth + leftPadding + rightPadding
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
+    implicitHeight: Math.max(AtlasStyle.controlHeight, label.implicitHeight + AtlasStyle.spacingSmall * 2)
     leftPadding: AtlasStyle.spacingSmall
     rightPadding: leftPadding
     hoverEnabled: true
@@ -31,8 +31,7 @@ T.AbstractButton {
         text: control.text
         font: Kirigami.Theme.defaultFont
         textFormat: Text.PlainText
-        color: control.down ? Qt.darker(AtlasStyle.accent, 1.2) : control.hovered ? Qt.lighter(AtlasStyle.accent, 1.15) : AtlasStyle.accent
-        opacity: control.enabled ? 1 : 0.45
+        color: control.enabled ? AtlasStyle.accent : AtlasStyle.textDisabled
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
@@ -41,8 +40,16 @@ T.AbstractButton {
     }
     background: Rectangle {
         radius: AtlasStyle.radiusSmall
-        color: "transparent"
-        border.width: control.visualFocus ? 2 : 0
-        border.color: Qt.alpha(AtlasStyle.focus, 0.85)
+        // Grey hover and press, never the accent.
+        color: !control.enabled ? "transparent" : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
+        Behavior on color {
+            ColorAnimation {
+                duration: AtlasStyle.durationShort
+            }
+        }
+        AtlasFocusRing {
+            radius: parent.radius + gap
+            shown: control.visualFocus
+        }
     }
 }

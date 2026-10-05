@@ -34,11 +34,10 @@ Item {
 
     readonly property string _text: text.length > 0 || !action ? text : action.text.replace(/&(&|.)/g, "$1")
     readonly property int _symbol: symbol !== 0 || !action ? symbol : ((action as AtlasAction)?.symbol ?? 0)
-    readonly property color _fill: prominent ? AtlasStyle.accent : Kirigami.Theme.textColor
-    readonly property color _fg: prominent && enabled ? AtlasStyle.accentText : Kirigami.Theme.textColor
+    readonly property color _fg: !enabled ? AtlasStyle.textDisabled : prominent ? AtlasStyle.accentStrongText : Kirigami.Theme.textColor
 
     implicitWidth: mainPart.implicitWidth + arrowPart.implicitWidth
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.7)
+    implicitHeight: AtlasStyle.controlHeight
 
     function openMenu() {
         menu.popup(arrowPart, arrowPart.width - menu.implicitWidth, arrowPart.height + 4);
@@ -67,17 +66,26 @@ Item {
                 anchors.fill: parent
                 // Round at the outer end only: the inner end meets the other half.
                 radius: 0
-                topLeftRadius: part.atLeft ? height / 2 : 0
+                topLeftRadius: part.atLeft ? AtlasStyle.radiusSmall : 0
                 bottomLeftRadius: topLeftRadius
-                topRightRadius: part.atLeft ? 0 : height / 2
+                topRightRadius: part.atLeft ? 0 : AtlasStyle.radiusSmall
                 bottomRightRadius: topRightRadius
                 color: part.fillColor
-                border.width: part.owner.prominent ? 0 : 1
-                border.color: Qt.alpha(Kirigami.Theme.textColor, 0.14)
+                border.width: part.owner.prominent && part.enabled ? 0 : 1
+                border.color: AtlasStyle.controlBorder
                 Behavior on color {
                     ColorAnimation {
                         duration: AtlasStyle.durationShort
                     }
+                }
+                // The grey state layer, as on AtlasButton.
+                Rectangle {
+                    anchors.fill: parent
+                    topLeftRadius: parent.topLeftRadius
+                    bottomLeftRadius: parent.bottomLeftRadius
+                    topRightRadius: parent.topRightRadius
+                    bottomRightRadius: parent.bottomRightRadius
+                    color: !part.enabled ? "transparent" : part.down ? AtlasStyle.pressed : part.hovered ? AtlasStyle.hover : "transparent"
                 }
             }
             // A hairline between the halves.
@@ -86,21 +94,15 @@ Item {
                 width: 1
                 height: parent.height - 8
                 y: 4
-                color: part.owner.prominent ? Qt.alpha(AtlasStyle.accentText, 0.35) : Qt.alpha(Kirigami.Theme.textColor, 0.18)
+                color: part.owner.prominent && part.enabled ? Qt.alpha(AtlasStyle.accentStrongText, 0.35) : AtlasStyle.controlBorder
             }
             AtlasFocusRing {
-                radius: shape.height / 2
+                radius: AtlasStyle.radiusSmall + gap
                 shown: part.visualFocus
             }
         }
         readonly property color fillColor: {
-            if (owner.prominent) {
-                if (!enabled) {
-                    return Qt.alpha(Kirigami.Theme.textColor, 0.12);
-                }
-                return down ? Qt.darker(AtlasStyle.accent, 1.2) : hovered ? Qt.lighter(AtlasStyle.accent, 1.12) : AtlasStyle.accent;
-            }
-            return Qt.alpha(Kirigami.Theme.textColor, down ? 0.2 : hovered ? 0.12 : 0.07);
+            return owner.prominent && enabled ? AtlasStyle.accentStrong : AtlasStyle.control;
         }
     }
 
@@ -156,7 +158,6 @@ Item {
                         text: control._text
                         font: Kirigami.Theme.defaultFont
                         color: control._fg
-                        opacity: mainPart.enabled ? 1 : 0.75
                         textFormat: Text.PlainText
                     }
                 }
@@ -178,7 +179,6 @@ Item {
                     icon: Symbols.ExpandMore
                     size: Math.round(Kirigami.Units.iconSizes.small * 1.2)
                     color: control._fg
-                    opacity: arrowPart.enabled ? 1 : 0.75
                 }
             }
         }

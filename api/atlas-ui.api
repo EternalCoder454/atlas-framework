@@ -89,10 +89,16 @@ AtlasBreadcrumb.property count: int [readonly]
 AtlasBreadcrumb.property segments: QVariant
 AtlasBreadcrumb.signal activated(int index)
 AtlasBreadcrumb.type
+AtlasButton.enum Variant: Default = 0
+AtlasButton.enum Variant: Destructive = 2
+AtlasButton.enum Variant: Ghost = 3
+AtlasButton.enum Variant: Prominent = 1
 AtlasButton.property accent: QColor [readonly]
+AtlasButton.property busy: bool
 AtlasButton.property prominent: bool
 AtlasButton.property symbol: int
 AtlasButton.property textTint: QColor [readonly]
+AtlasButton.property variant: int
 AtlasButton.type
 AtlasCalendar.method showDate(QDateTime d): QVariant
 AtlasCalendar.property maximumDate: QDateTime
@@ -500,6 +506,7 @@ AtlasSpinBox.property showButtons: bool
 AtlasSpinBox.property suffix: QString
 AtlasSpinBox.type
 AtlasSpinner.property animated: bool
+AtlasSpinner.property color: QColor
 AtlasSpinner.type
 AtlasSplitButton.method openMenu(): QVariant
 AtlasSplitButton.property action: QQuickAction*
@@ -823,11 +830,17 @@ LiveChartItem.property valueText: QString
 LiveChartItem.property values2: QList<double>
 LiveChartItem.property values: QList<double>
 LiveChartItem.type
+MenuButton.enum Variant: Default = 0
+MenuButton.enum Variant: Destructive = 2
+MenuButton.enum Variant: Ghost = 3
+MenuButton.enum Variant: Prominent = 1
 MenuButton.property accent: QColor [readonly]
+MenuButton.property busy: bool
 MenuButton.property items: QQmlListProperty<QObject> [readonly]
 MenuButton.property prominent: bool
 MenuButton.property symbol: int
 MenuButton.property textTint: QColor [readonly]
+MenuButton.property variant: int
 MenuButton.type
 MiniBars.property barHeight: double
 MiniBars.property barWidth: double
@@ -846,10 +859,16 @@ NotesText.property html: QString
 NotesText.property plain: QString
 NotesText.signal linkClicked(QString link)
 NotesText.type
+PrimaryButton.enum Variant: Default = 0
+PrimaryButton.enum Variant: Destructive = 2
+PrimaryButton.enum Variant: Ghost = 3
+PrimaryButton.enum Variant: Prominent = 1
 PrimaryButton.property accent: QColor [readonly]
+PrimaryButton.property busy: bool
 PrimaryButton.property prominent: bool
 PrimaryButton.property symbol: int
 PrimaryButton.property textTint: QColor [readonly]
+PrimaryButton.property variant: int
 PrimaryButton.type
 RepaintArea.property content: QVariantList
 RepaintArea.type
@@ -857,10 +876,16 @@ SearchField.property delay: int
 SearchField.property query: QString
 SearchField.property rtl: bool [readonly]
 SearchField.type
+SecondaryButton.enum Variant: Default = 0
+SecondaryButton.enum Variant: Destructive = 2
+SecondaryButton.enum Variant: Ghost = 3
+SecondaryButton.enum Variant: Prominent = 1
 SecondaryButton.property accent: QColor [readonly]
+SecondaryButton.property busy: bool
 SecondaryButton.property prominent: bool
 SecondaryButton.property symbol: int
 SecondaryButton.property textTint: QColor [readonly]
+SecondaryButton.property variant: int
 SecondaryButton.type
 Section.property content: QQmlListProperty<QObject> [readonly]
 Section.property foldable: bool

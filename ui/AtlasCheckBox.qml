@@ -22,7 +22,6 @@ T.CheckBox {
     rightPadding: control.mirrored ? indicator.width + spacing : 0
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    opacity: enabled ? 1 : 0.5
 
     Accessible.name: text
     Accessible.role: Accessible.CheckBox
@@ -36,9 +35,9 @@ T.CheckBox {
         x: control.mirrored ? control.width - width : 0
         y: Math.round((control.height - height) / 2)
         radius: AtlasStyle.radiusSmall
-        color: control.checkState !== Qt.Unchecked ? (control.enabled ? AtlasStyle.accent : control.palette.active.highlight) : Qt.alpha(Kirigami.Theme.textColor, control.hovered ? 0.12 : 0.07)
-        border.width: 1
-        border.color: control.checkState !== Qt.Unchecked ? "transparent" : Qt.alpha(Kirigami.Theme.textColor, 0.3)
+        color: control.checkState !== Qt.Unchecked ? (control.enabled ? AtlasStyle.accent : Qt.alpha(AtlasStyle.accent, 0.4)) : control.enabled && control.hovered ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        border.width: control.checkState !== Qt.Unchecked ? 0 : 1
+        border.color: AtlasStyle.controlBorder
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
@@ -71,7 +70,7 @@ T.CheckBox {
     contentItem: Text {
         text: control.text
         font: Kirigami.Theme.defaultFont
-        color: Kirigami.Theme.textColor
+        color: control.enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
         elide: Text.ElideRight
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft

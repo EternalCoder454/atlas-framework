@@ -3,8 +3,9 @@ import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
 // A small pill for a tag, a filter or a value. Plain (just `text`), checkable
-// (a filter: the checked chip is accent-tinted and shows a check mark instead
-// of its symbol) and/or `closable` (an x button, or Delete/Backspace while the
+// (a filter: the checked chip has the selection fill, an accent border and a
+// check mark instead of its symbol, and is a full pill while an unchecked one
+// is a little less round) and/or `closable` (an x button, or Delete/Backspace while the
 // chip has focus, emits `closeRequested()`; the app removes the chip).
 //
 //   AtlasChip { text: qsTr("Unread"); checkable: true; onToggled: app.filterUnread = checked }
@@ -69,8 +70,7 @@ T.AbstractButton {
             anchors.verticalCenter: parent.verticalCenter
             text: control.text
             font: Kirigami.Theme.defaultFont
-            color: control.tint
-            opacity: control.enabled ? 1 : 0.6
+            color: !control.enabled ? AtlasStyle.textDisabled : control.showsCheck ? AtlasStyle.accent : control.tint
             textFormat: Text.PlainText
         }
         // Room for the close button, which sits over it.
@@ -82,23 +82,33 @@ T.AbstractButton {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusPill
-        color: {
-            if (control.showsCheck) {
-                return Qt.alpha(AtlasStyle.accent, control.down ? 0.34 : control.hovered ? 0.28 : 0.22);
-            }
-            return Qt.alpha(control.tint, control.down ? 0.2 : control.hovered ? 0.12 : 0.07);
-        }
+        // Checkable chips: the checked one is a full pill, the others a little less round.
+        radius: control.checkable && !control.checked ? AtlasStyle.radiusLarge : height / 2
+        color: control.showsCheck ? AtlasStyle.selection : AtlasStyle.control
         border.width: 1
-        border.color: control.showsCheck ? Qt.alpha(AtlasStyle.accent, 0.6) : Qt.alpha(control.tint, 0.14)
-        opacity: control.enabled ? 1 : 0.6
+        border.color: control.showsCheck && control.enabled ? AtlasStyle.accent : AtlasStyle.controlBorder
         Behavior on color {
             ColorAnimation {
                 duration: AtlasStyle.durationShort
             }
         }
-        AtlasFocusRing {
+        Behavior on radius {
+            NumberAnimation {
+                duration: AtlasStyle.durationShort
+            }
+        }
+        Rectangle {
+            anchors.fill: parent
             radius: parent.radius
+            color: !control.enabled ? "transparent" : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
+            Behavior on color {
+                ColorAnimation {
+                    duration: AtlasStyle.durationShort
+                }
+            }
+        }
+        AtlasFocusRing {
+            radius: parent.radius + gap
             shown: control.visualFocus
         }
     }
@@ -117,14 +127,13 @@ T.AbstractButton {
         Accessible.name: qsTr("Remove %1").arg(control.text)
         onClicked: control.closeRequested()
         background: Rectangle {
-            radius: AtlasStyle.radiusPill
-            color: Qt.alpha(control.tint, closeButton.down ? 0.25 : closeButton.hovered ? 0.15 : 0)
+            radius: height / 2
+            color: closeButton.down ? AtlasStyle.pressed : closeButton.hovered ? AtlasStyle.hover : "transparent"
         }
         contentItem: Symbol {
             icon: Symbols.Close
             size: Math.round(Kirigami.Units.iconSizes.small * 0.9)
-            color: control.tint
-            opacity: control.enabled ? 0.8 : 0.5
+            color: control.enabled ? control.tint : AtlasStyle.textDisabled
             anchors.centerIn: parent
         }
     }

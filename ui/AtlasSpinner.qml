@@ -14,6 +14,8 @@ T.BusyIndicator {
 
     // Turn the arc. Off for a fixed arc, e.g. in screenshots.
     property bool animated: true
+    // The arc's colour: the accent, or a button's text colour on a filled button.
+    property color color: AtlasStyle.accent
 
     QtObject {
         id: internals
@@ -58,7 +60,7 @@ T.BusyIndicator {
             }
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: AtlasStyle.accent
+                strokeColor: control.color
                 strokeWidth: internals.stroke
                 capStyle: ShapePath.RoundCap
                 PathAngleArc {
