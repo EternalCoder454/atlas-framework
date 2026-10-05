@@ -109,6 +109,20 @@ set_tests_properties(dates PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-dates-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/dates-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
+# AtlasTreeView and AtlasTreeModel: keyboard navigation, expand and collapse,
+# selection modes, type-ahead, signals (tests/tree).
+add_executable(atlas-tree-tests tree/main.cpp)
+target_compile_definitions(atlas-tree-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tree")
+target_link_libraries(atlas-tree-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-tree-tests atlasui)
+add_test(NAME tree
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(tree PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-tree-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/tree-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
 # The shortcut registry (ui/atlasshortcuts.cpp, compiled into the test):
 # add, remove, conflicts, destroyed actions.
 find_package(Qt6 6.11 REQUIRED COMPONENTS Test)

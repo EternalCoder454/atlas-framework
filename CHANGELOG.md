@@ -8,6 +8,9 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasTreeView, a tree on Qt Quick's TreeView in the Atlas list
+  look (single or multi selection, keyboard, type-ahead, RTL), and
+  AtlasTreeModel, a tree model built from nested JS objects.
 - Atlas.Ui: AtlasUrlValidator, AtlasEmailValidator, AtlasPathValidator and
   AtlasNumberValidator, validators for an AtlasTextField; AtlasDoubleSpinBox
   (AtlasSpinBox with decimals and locale-formatted text); AtlasShortcutField,
