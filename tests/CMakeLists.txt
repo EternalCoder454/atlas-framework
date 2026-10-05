@@ -141,3 +141,16 @@ target_include_directories(atlas-validators-tests PRIVATE ${PROJECT_SOURCE_DIR}/
 target_link_libraries(atlas-validators-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
 add_test(NAME validators COMMAND atlas-validators-tests)
 set_tests_properties(validators PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# AtlasSettings and AtlasPortal's rules (ui/atlassettings.cpp and
+# ui/atlasportal.cpp, compiled into the test): typed values, the shared file
+# and lock, immutable keys, symlink escapes, bad names, the URL scheme filter.
+# Runs in a temporary XDG_CONFIG_HOME and never opens a URL or sends a
+# notification.
+add_executable(atlas-settings-tests settings/tst_settings.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlassettings.h ${PROJECT_SOURCE_DIR}/ui/atlassettings.cpp
+    ${PROJECT_SOURCE_DIR}/ui/atlasportal.h ${PROJECT_SOURCE_DIR}/ui/atlasportal.cpp)
+target_include_directories(atlas-settings-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(atlas-settings-tests PRIVATE Qt6::Test Qt6::Gui Qt6::Qml Qt6::DBus KF6::ConfigCore)
+add_test(NAME settings COMMAND atlas-settings-tests)
+set_tests_properties(settings PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

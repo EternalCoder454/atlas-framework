@@ -8,6 +8,12 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui: AtlasSettings (an app's settings file, shared with the Rust
+  `settings` module, same lock; typed values, batched atomic writes,
+  `changed(key)` from other writers), AtlasWindow.stateKey (saves and restores
+  the window's size and maximised state) and AtlasPortal (`openUrl` for http,
+  https, mailto and existing file URLs only; `notify` with actions and
+  `actionInvoked`). A second launch already raises the running window.
 - Atlas.Ui: AtlasTreeView, a tree on Qt Quick's TreeView in the Atlas list
   look (single or multi selection, keyboard, type-ahead, RTL), and
   AtlasTreeModel, a tree model built from nested JS objects.

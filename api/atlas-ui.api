@@ -275,6 +275,14 @@ AtlasPopover.property content: QQmlListProperty<QObject> [readonly]
 AtlasPopover.property showArrow: bool
 AtlasPopover.property target: QQuickItem*
 AtlasPopover.type
+AtlasPortal.method escape(QString text): QString
+AtlasPortal.method notify(QString title, QString body): QString
+AtlasPortal.method notify(QString title, QString body, QVariantList actions): QString
+AtlasPortal.method notify(QString title, QString body, QVariantList actions, QVariantMap options): QString
+AtlasPortal.method openUrl(QUrl url): bool
+AtlasPortal.property extraSchemes: QStringList
+AtlasPortal.signal actionInvoked(QString notificationId, QString actionId)
+AtlasPortal.type
 AtlasProgressBar.property indeterminate: bool
 AtlasProgressBar.property status: QString
 AtlasProgressBar.property text: QString
@@ -307,6 +315,16 @@ AtlasSegmentedControl.property currentIndex: int
 AtlasSegmentedControl.property model: QVariant
 AtlasSegmentedControl.signal activated(int index)
 AtlasSegmentedControl.type
+AtlasSettings.method contains(QString key): bool
+AtlasSettings.method flush(): bool
+AtlasSettings.method remove(QString key): bool
+AtlasSettings.method setValue(QString key, QVariant value): bool
+AtlasSettings.method value(QString key): QVariant
+AtlasSettings.method value(QString key, QVariant defaultValue): QVariant
+AtlasSettings.property fileName: QString
+AtlasSettings.property group: QString
+AtlasSettings.signal changed(QString key)
+AtlasSettings.type
 AtlasShortcutField.method startRecording(): QVariant
 AtlasShortcutField.property conflictText: QString [readonly]
 AtlasShortcutField.property ignoreAction: QObject*
@@ -469,6 +487,7 @@ AtlasWindow.property blurAlpha: double
 AtlasWindow.property blurred: bool [readonly]
 AtlasWindow.property sidebarCollapsed: bool [readonly]
 AtlasWindow.property sidebarFactor: double
+AtlasWindow.property stateKey: QString
 AtlasWindow.property widthClass: int [readonly]
 AtlasWindow.type
 ConfirmDialog.property acceptText: QString
