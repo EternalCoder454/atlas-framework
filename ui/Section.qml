@@ -59,6 +59,9 @@ ColumnLayout {
         focusPolicy: Qt.StrongFocus
         text: root.title
         onClicked: root.foldRequested(!root.folded)
+        // A button takes Space only; a fold header also takes Return and Enter.
+        Keys.onReturnPressed: root.foldRequested(!root.folded)
+        Keys.onEnterPressed: root.foldRequested(!root.folded)
         Accessible.role: Accessible.Button
         Accessible.name: root.title
         // As SidebarGroup's header says it: QML's Accessible has no

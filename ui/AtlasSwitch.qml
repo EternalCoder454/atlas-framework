@@ -12,6 +12,8 @@ T.Switch {
     focusPolicy: Qt.StrongFocus
     // The label beside the switch is the app's: name it with `text` or Accessible.name.
     Accessible.name: control.text
+    // Screen readers say "switch, on" rather than "check box, checked".
+    Accessible.role: Accessible.Switch
 
     indicator: Rectangle {
         implicitWidth: 40

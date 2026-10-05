@@ -63,8 +63,20 @@ void LiveChartItem::itemChange(ItemChange change, const ItemChangeData &data)
     QQuickPaintedItem::itemChange(change, data);
 }
 
+// Equal lists, a NaN (a gap) counting as equal to a NaN.
+static bool sameValues(const QList<qreal> &a, const QList<qreal> &b)
+{
+    return std::equal(a.cbegin(), a.cend(), b.cbegin(), b.cend(), [](qreal x, qreal y) {
+        return x == y || (std::isnan(x) && std::isnan(y));
+    });
+}
+
 void LiveChartItem::setValues(const QList<qreal> &v)
 {
+    // A poll that brings the same numbers repaints nothing.
+    if (sameValues(v, m_values)) {
+        return;
+    }
     m_values = v;
     updateTop();
     update();
@@ -73,6 +85,10 @@ void LiveChartItem::setValues(const QList<qreal> &v)
 
 void LiveChartItem::setValues2(const QList<qreal> &v)
 {
+    // A poll that brings the same numbers repaints nothing.
+    if (sameValues(v, m_values2)) {
+        return;
+    }
     m_values2 = v;
     updateTop();
     update();
