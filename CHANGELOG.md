@@ -8,6 +8,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.5.0 (unreleased)
 
+- Fix: `AtlasEmptyState` (and every view's `AtlasStatus`) in an area too
+  short for it leaves out its symbol, then scrolls, instead of drawing past
+  the area's edges (a table's empty state covered its frame; a short page
+  showed only the top of the symbol).
 - Fix: `ConfirmDialog` with `destructive: true` draws the accept button in
   AtlasButton's Destructive look again (error text and border on a faint
   error fill); since 1.4.0 it was drawn in the accent.
