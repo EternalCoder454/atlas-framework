@@ -14,6 +14,10 @@ AtlasAboutPage.property license: QString
 AtlasAboutPage.property maxContentWidth: double [readonly]
 AtlasAboutPage.property title: QString
 AtlasAboutPage.type
+AtlasAction.property section: QString
+AtlasAction.property symbol: int
+AtlasAction.property toolTip: QString
+AtlasAction.type
 AtlasApp.property id: QString [readonly]
 AtlasApp.property issuesUrl: QString [readonly]
 AtlasApp.property name: QString [readonly]
@@ -121,6 +125,19 @@ AtlasSearchResults.property symbolRole: QString
 AtlasSearchResults.property textRole: QString
 AtlasSearchResults.signal activated(int index)
 AtlasSearchResults.type
+AtlasShortcutLabel.property sequence: QVariant
+AtlasShortcutLabel.type
+AtlasShortcuts.method add(QObject* action): void
+AtlasShortcuts.method keys(QVariant sequence): QVariantList
+AtlasShortcuts.method plainText(QString text): QString
+AtlasShortcuts.method portable(QVariant sequence): QString
+AtlasShortcuts.method readable(QVariant sequence): QString
+AtlasShortcuts.method remove(QObject* action): void
+AtlasShortcuts.property actions: QList<QObject*> [readonly]
+AtlasShortcuts.property conflicts: QVariantList [readonly]
+AtlasShortcuts.type
+AtlasShortcutsDialog.property title: QString
+AtlasShortcutsDialog.type
 AtlasSlider.type
 AtlasSpinBox.property prefix: QString
 AtlasSpinBox.property suffix: QString

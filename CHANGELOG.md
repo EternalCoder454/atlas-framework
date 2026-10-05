@@ -12,6 +12,10 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   that hides the text again when focus leaves, the window goes to the
   background, or the field is hidden or disabled. `lint-app.sh` points
   Kirigami.PasswordField and password TextFields to it.
+- Atlas.Ui: AtlasAction (Qt's Action with `symbol`, `toolTip` and `section`),
+  the AtlasShortcuts registry that warns about shortcut conflicts,
+  AtlasShortcutLabel (keycaps) and AtlasShortcutsDialog (searchable list of an
+  app's shortcuts).
 
 ## 1.3.0
 

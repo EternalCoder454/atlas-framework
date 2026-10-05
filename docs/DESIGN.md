@@ -135,6 +135,10 @@ control takes `iconName`.
 | `ToolbarButton` | Small icon button for a formatting toolbar that never takes the editor's focus; can be checkable (since 1.2.0) |
 | `AtlasTextField`, `AtlasTextArea` | Rounded text fields: placeholder, `errorText` under the field, `clearable`; the area moves focus on Tab (since 1.3.0) |
 | `AtlasPasswordField` | Rounded password field like `AtlasTextField` (placeholder, `errorText`) with an eye that shows the text; it hides again when focus leaves, the window goes to the background, or the field is hidden or disabled (`revealed`, `reveal()` only while focused); copy and cut are off while hidden. No `clearable`; don't set `echoMode` or `inputMethodHints` (since 1.4.0) |
+| `AtlasAction` | Qt's `Action` plus `symbol` (`Symbols.<Name>`, 0 none), `toolTip` (the text without its `&` unless set) and `section` (its group in `AtlasShortcutsDialog`). Registers itself with `AtlasShortcuts`; declare it inside an Item so the window is known (since 1.4.0) |
+| `AtlasShortcuts` | Singleton: `actions` (every registered `AtlasAction`), `conflicts` (`[{ shortcut, texts }]`: enabled actions sharing a shortcut in one window, or of unknown window), `conflictsChanged()`; each new conflict is logged with `qWarning`. Helpers `readable()`, `keys()`, `portable()`, `plainText()` (since 1.4.0) |
+| `AtlasShortcutLabel` | A shortcut (`sequence`: "Ctrl+S" or a `StandardKey` number) as keycaps in the platform's spelling; no size when empty, follows RTL (since 1.4.0) |
+| `AtlasShortcutsDialog` | Modal list of the registered shortcuts grouped by `section`, with search, scrolling, an empty state and a Close button; `title` (since 1.4.0) |
 | `AtlasComboBox` | Rounded drop-down on a pill, the choices in a ContextMenu-style card; `placeholderText` (since 1.3.0) |
 | `AtlasCheckBox`, `AtlasRadioButton` | Check box (can be `tristate`) and radio button; radios with one parent are a group, arrows move the choice (since 1.3.0) |
 | `AtlasSlider`, `AtlasSpinBox` | Accent pill slider (Page, Home, End keys); number field with minus and plus, `prefix` and `suffix` (since 1.3.0) |
