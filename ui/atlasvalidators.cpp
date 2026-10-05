@@ -281,7 +281,7 @@ void AtlasNumberValidator::setLocaleName(const QString &name)
         return;
     }
     setLocale(wanted);
-    Q_EMIT localeNameChanged();
+    Q_EMIT localeNameChanged(); // QValidator::setLocale() emits changed() itself
 }
 
 void AtlasNumberValidator::configure(QDoubleValidator &inner) const
@@ -312,7 +312,20 @@ QValidator::State AtlasNumberValidator::validate(QString &input, int &pos) const
 
 void AtlasNumberValidator::fixup(QString &input) const
 {
-    QDoubleValidator inner;
-    configure(inner);
-    inner.fixup(input);
+    // Enter or focus-out must never leave the user stuck: drop a trailing
+    // decimal point ("1." becomes "1") and pull a number outside the range back
+    // to the nearest end of it.
+    input = input.trimmed();
+    if (input.endsWith(locale().decimalPoint())) {
+        input.chop(locale().decimalPoint().size());
+    }
+    bool ok = false;
+    const double v = locale().toDouble(input, &ok);
+    if (!ok || std::isnan(v)) {
+        return;
+    }
+    const double clamped = qBound(m_bottom, v, m_top);
+    if (clamped != v) {
+        input = locale().toString(clamped, 'f', QLocale::FloatingPointShortest);
+    }
 }

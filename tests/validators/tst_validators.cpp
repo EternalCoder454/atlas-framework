@@ -148,9 +148,12 @@ private Q_SLOTS:
         QCOMPARE(check(v, "-"), QValidator::Intermediate);
         QCOMPARE(check(v, "-7"), QValidator::Acceptable);
         QCOMPARE(check(v, "1,234"), QValidator::Acceptable);
-        QCOMPARE(check(v, "1.5"), QValidator::Invalid); // no decimals
+        QCOMPARE(check(v, "1.5"), QValidator::Acceptable); // decimals are allowed by default
         QCOMPARE(check(v, "abc"), QValidator::Invalid);
         QCOMPARE(check(v, "1e5"), QValidator::Invalid);
+        v.setDecimals(0);
+        QCOMPARE(check(v, "1.5"), QValidator::Invalid);
+        v.setDecimals(15);
         QCOMPARE(check(v, QString::fromLatin1("1\0" "2", 3)), QValidator::Invalid);
         QCOMPARE(check(v, QString(500, '1')), QValidator::Invalid);
         QCOMPARE(check(v, QString::fromUtf8("٣")), QValidator::Invalid);
@@ -176,10 +179,32 @@ private Q_SLOTS:
         QCOMPARE(check(v, "1,"), QValidator::Intermediate);
         QCOMPARE(check(v, "1.234,5"), QValidator::Acceptable);
     }
+    void numberFixup()
+    {
+        AtlasNumberValidator v;
+        v.setLocale(QLocale(QLocale::English, QLocale::UnitedStates));
+        v.setBottom(0);
+        v.setTop(100);
+        const auto fix = [&](const QString &text) {
+            QString t = text;
+            v.fixup(t);
+            return t;
+        };
+        QCOMPARE(fix("1."), QString("1"));
+        QCOMPARE(fix("250"), QString("100"));
+        QCOMPARE(fix("-5"), QString("0"));
+        QCOMPARE(fix("100.5"), QString("100"));
+        QCOMPARE(fix("12.5"), QString("12.5"));
+        QCOMPARE(fix("abc"), QString("abc"));
+    }
     void numberSignals()
     {
         AtlasNumberValidator v;
         QSignalSpy changed(&v, &QValidator::changed);
+        v.setLocaleName("de_DE");
+        QCOMPARE(changed.size(), 1);
+        QCOMPARE(v.localeName(), QString("de_DE"));
+        changed.clear();
         v.setTop(5);
         v.setTop(5);
         v.setDecimals(3);

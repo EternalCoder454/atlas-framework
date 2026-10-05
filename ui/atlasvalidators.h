@@ -55,7 +55,9 @@ public:
     void fixup(QString &input) const override;
 };
 
-// A file path; "~" and "~/" stand for the home directory.
+// A file path; "~" and "~/" stand for the home directory. With `mustExist`
+// every validate() call (so every keystroke) stats the path on disk: leave it
+// off for paths on slow or network file systems.
 class AtlasPathValidator : public QValidator
 {
     Q_OBJECT
@@ -88,8 +90,10 @@ private:
     bool m_directory = false;
 };
 
-// A number between `bottom` and `top` with at most `decimals` decimals, written
-// the way the validator's locale writes numbers (group separators accepted).
+// A number between `bottom` and `top` with at most `decimals` decimals (default
+// 15, the most; set 0 for whole numbers), written the way the validator's
+// locale writes numbers (group separators accepted). fixup() drops a trailing
+// decimal point and clamps a number to `bottom`/`top`.
 class AtlasNumberValidator : public QValidator
 {
     Q_OBJECT
@@ -128,5 +132,5 @@ private:
 
     qreal m_bottom;
     qreal m_top;
-    int m_decimals = 0;
+    int m_decimals = 15;
 };

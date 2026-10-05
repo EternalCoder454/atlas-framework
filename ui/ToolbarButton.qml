@@ -58,16 +58,16 @@ T.AbstractButton {
 
     Keys.onReturnPressed: event => {
         if (control.focusable && control.enabled && !event.isAutoRepeat) {
-            control.toggle();
-            control.clicked();
+            // The normal trigger path: toggles, fires a bound action, emits clicked().
+            control.click();
         } else {
             event.accepted = false;
         }
     }
     Keys.onEnterPressed: event => {
         if (control.focusable && control.enabled && !event.isAutoRepeat) {
-            control.toggle();
-            control.clicked();
+            // The normal trigger path: toggles, fires a bound action, emits clicked().
+            control.click();
         } else {
             event.accepted = false;
         }

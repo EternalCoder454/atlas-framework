@@ -25,9 +25,11 @@ QQC2.Popup {
     QtObject {
         id: priv
         // [{ section, text, sequence, readable }] for what the dialog shows now.
-        readonly property var entries: dialog.visible ? priv.build(AtlasShortcuts.actions, search.query) : []
+        readonly property var entries: dialog.visible ? priv.build(AtlasShortcuts.actions, search.query, AtlasShortcuts.conflicts) : []
 
-        function build(actions: var, query: string): var {
+        // `conflicts` is only a dependency: it changes (after each change of an
+        // action's shortcut, text or enabled) so the list is rebuilt.
+        function build(actions: var, query: string, conflicts: var): var {
             const q = query.trim().toLowerCase();
             const general = qsTr("General");
             const groups = [];

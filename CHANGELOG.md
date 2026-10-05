@@ -8,6 +8,17 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.4.0 (unreleased)
 
+- Atlas.Ui fixes to 1.3.0 controls: `ToolbarButton` with `focusable` now takes
+  Return/Enter through the normal click path, so a bound `action` fires and a
+  `checked` binding survives. `AtlasProgressBar` fills its height again when it
+  has no `text` (the thin centred track only beside a label), no longer
+  overflows when narrower than its label room, follows `LayoutMirroring` for
+  the fill side, and warns once about an unknown `status`. `AtlasSettings.value()`
+  reads the file on first use, so a binding evaluated while the tree is built
+  sees the saved value. `AtlasNumberValidator.decimals` now defaults to 15 (was
+  0, which rejected "1.5"); `fixup()` drops a trailing decimal point and clamps
+  to `bottom`/`top`. `AtlasShortcuts` no longer counts an action whose Item has
+  no window yet as a conflict, and `conflicts` is a plain read.
 - Atlas.Ui: AtlasSettings (an app's settings file, shared with the Rust
   `settings` module, same lock; typed values, batched atomic writes,
   `changed(key)` from other writers), AtlasWindow.stateKey (saves and restores

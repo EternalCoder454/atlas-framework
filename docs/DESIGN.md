@@ -142,7 +142,7 @@ control takes `iconName`.
 | `AtlasSidebar` | A scrolling sidebar for SidebarItem/SidebarGroup (or a model): keeps the selected and focused entry in view, `filterText` with an optional search field and a placeholder, `contextMenuRequested`, drop targets, Tab lands on the selected entry (since 1.4.0) |
 | `StepItem` | One step in a setup sidebar (done, current or to come) |
 | `StatusHero` | Big centred status: an icon badge with a busy or progress ring, a headline, a subtitle, actions |
-| `AtlasProgressBar` | Rounded accent progress bar, or an indeterminate one; `text` beside it, `status` "normal", "paused" or "error" (`text`, `status` since 1.4.0) |
+| `AtlasProgressBar` | Rounded accent progress bar, or an indeterminate one; `text` beside it, `status` "normal", "paused" or "error" (a free-form string; other values count as "normal" and warn once); the track fills the height when there is no `text` (`text`, `status` since 1.4.0) |
 | `ConfirmDialog` | Modal dialog with pill buttons; `alternativeText` adds a third button (`alternative()`), `defaultButton` ("accept", "reject", "alternative") takes the focus and Return, `destructive` draws accept in the error colour, and a long body scrolls instead of outgrowing the window (since 1.4.0) |
 | `NotesText` | Release notes from a safe HTML fragment |
 | `LiveChart`, `UsageBar`, `MiniBars` | A live chart, a stacked usage bar, a row of small bars |

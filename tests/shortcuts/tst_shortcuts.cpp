@@ -62,24 +62,26 @@ private Q_SLOTS:
         QVERIFY(reg.conflicts().isEmpty());
         QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict: .*Ctrl\\+S.*Save.*Sort"));
         reg.add(&b);
+        // Reading never recomputes: the answer is the one of the last turn.
+        QVERIFY(reg.conflicts().isEmpty());
+        QTRY_COMPARE(spy.count(), 1);
         const QVariantList list = reg.conflicts();
         QCOMPARE(list.size(), 1);
         const QVariantMap m = list.first().toMap();
         QCOMPARE(m["shortcut"].toString(), QStringLiteral("Ctrl+S"));
         QCOMPARE(m["texts"].toStringList(), (QStringList{"&Save", "Sort"}).replaceInStrings("&", ""));
-        QTRY_COMPARE(spy.count(), 1);
 
         // Disabled actions do not conflict.
         b.setEnabled(false);
-        QVERIFY(reg.conflicts().isEmpty());
         QTRY_COMPARE(spy.count(), 2);
+        QVERIFY(reg.conflicts().isEmpty());
         // Back on: a new conflict, warned again.
         QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict"));
         b.setEnabled(true);
-        QCOMPARE(reg.conflicts().size(), 1);
+        QTRY_COMPARE(reg.conflicts().size(), 1);
         // Changing the shortcut resolves it.
         b.setShortcut("Ctrl+Shift+S");
-        QVERIFY(reg.conflicts().isEmpty());
+        QTRY_VERIFY(reg.conflicts().isEmpty());
     }
 
     void standardKey()
@@ -89,7 +91,17 @@ private Q_SLOTS:
         reg.add(&a);
         QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict"));
         reg.add(&b);
-        QCOMPARE(reg.conflicts().size(), QKeySequence(QKeySequence::Save).toString(QKeySequence::PortableText) == "Ctrl+S" ? 1 : 0);
+        const int expected = QKeySequence(QKeySequence::Save).toString(QKeySequence::PortableText) == "Ctrl+S" ? 1 : 0;
+        QTRY_COMPARE(reg.conflicts().size(), expected);
+    }
+
+    void keyCodesAreNotStandardKeys()
+    {
+        // Qt.Key_Escape and friends are far above the StandardKey numbers.
+        QCOMPARE(AtlasShortcuts::toSequence(int(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel)), QKeySequence(QKeySequence::Cancel));
+        QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel) + 1), QKeySequence(int(QKeySequence::Cancel) + 1));
+        QCOMPARE(AtlasShortcuts::toSequence(0), QKeySequence());
     }
 
     void windows()
@@ -101,11 +113,17 @@ private Q_SLOTS:
         reg.add(&b);
         // Different windows: no conflict.
         QVERIFY(reg.conflicts().isEmpty());
-        // An action of unknown window meets both.
-        FakeAction c("Three", "Ctrl+K");
-        QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict"));
+        // An action whose Item has no window yet takes part in nothing, and
+        // warns of nothing; it joins when the Item gets a window.
+        QQuickItem loose;
+        FakeAction c("Three", "Ctrl+K", &loose);
         reg.add(&c);
-        QCOMPARE(reg.conflicts().first().toMap()["texts"].toStringList().size(), 3);
+        QTest::qWait(20);
+        QVERIFY(reg.conflicts().isEmpty());
+        QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict"));
+        loose.setParentItem(w1.contentItem());
+        QTRY_COMPARE(reg.conflicts().size(), 1);
+        QCOMPARE(reg.conflicts().first().toMap()["texts"].toStringList().size(), 2);
     }
 
     void destroyed()
@@ -116,10 +134,10 @@ private Q_SLOTS:
         reg.add(a);
         QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict"));
         reg.add(&b);
-        QCOMPARE(reg.conflicts().size(), 1);
+        QTRY_COMPARE(reg.conflicts().size(), 1);
         delete a;
         QCOMPARE(reg.actions(), (QList<QObject *>{&b}));
-        QVERIFY(reg.conflicts().isEmpty());
+        QTRY_VERIFY(reg.conflicts().isEmpty());
     }
 
     void keys()
