@@ -272,7 +272,7 @@ QtObject {
             property: "shortcut"
             value: root._overrides[modelData?.objectName ?? ""]
             when: modelData !== null && modelData !== undefined && (modelData.objectName ?? "").length > 0 && Object.prototype.hasOwnProperty.call(root._overrides, modelData.objectName)
-            restoreMode: Binding.RestoreBinding
+            restoreMode: Binding.RestoreBindingOrValue
         }
     }
     readonly property Connections _watch: Connections {

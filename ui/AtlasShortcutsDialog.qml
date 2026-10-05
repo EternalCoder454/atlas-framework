@@ -250,6 +250,38 @@ QQC2.Popup {
                     list.contentY = Math.min(list._y, Math.max(0, list.contentHeight - list.height));
                     list._restoring = false;
                 }
+                // A row's button or field that takes the focus (Tab) is
+                // scrolled into view, and that position is kept.
+                function _follow(): void {
+                    const f = list.Window.activeFocusItem;
+                    let p = f;
+                    while (p && p !== list.contentItem) {
+                        p = p.parent;
+                    }
+                    if (!p) {
+                        return;
+                    }
+                    const at = f.mapToItem(list, 0, 0);
+                    const max = Math.max(0, list.contentHeight - list.height);
+                    let y = list.contentY;
+                    if (at.y < 0) {
+                        y += at.y;
+                    } else if (at.y + f.height > list.height) {
+                        y += at.y + f.height - list.height;
+                    }
+                    y = Math.max(0, Math.min(max, y));
+                    if (y !== list.contentY) {
+                        list.contentY = y;
+                        list._y = y;
+                        list._yQuery = search.query;
+                    }
+                }
+                readonly property Connections _focusWatch: Connections {
+                    target: list.Window.window
+                    function onActiveFocusItemChanged(): void {
+                        list._follow();
+                    }
+                }
                 spacing: 0
                 QQC2.ScrollBar.vertical: QQC2.ScrollBar {
                     id: bar

@@ -430,22 +430,58 @@ Item {
             }
             src += "}";
             const c = Qt.createQmlObject(src, root);
-            const d = createTemporaryObject(dialogComp, root, { collection: c, parent: root });
-            d.open();
-            tryCompare(d, "visible", true);
-            const lists = walk(d.contentItem, it => it.contentY !== undefined && it.model !== undefined && it.section !== undefined, []);
-            verify(lists.length > 0);
-            const list = lists[0];
-            tryVerify(() => list.contentHeight > list.height);
-            mouseWheel(list, list.width / 2, list.height / 2, 0, -240);
-            tryVerify(() => list.contentY > 0);
-            tryVerify(() => !list.moving);
-            const before = list.contentY;
-            verify(c.setShortcut("a0", "Ctrl+Alt+Home"));
-            wait(100);
-            tryVerify(() => Math.abs(list.contentY - before) < 1);
-            d.close();
-            c.destroy();
+            // Its 26 shortcuts are registered for the whole run: a failure
+            // here must not leave them to conflict with the later tests.
+            try {
+                const d = createTemporaryObject(dialogComp, root, { collection: c, parent: root });
+                d.open();
+                tryCompare(d, "visible", true);
+                const lists = walk(d.contentItem, it => it.contentY !== undefined && it.model !== undefined && it.section !== undefined, []);
+                verify(lists.length > 0);
+                const list = lists[0];
+                tryVerify(() => list.contentHeight > list.height);
+                // Scrolled as far as it goes, which a rebuilt model would reset.
+                list.contentY = list.contentHeight - list.height;
+                const before = list.contentY;
+                verify(before > 0);
+                verify(c.setShortcut("a0", "Ctrl+Alt+Home"));
+                wait(100);
+                tryVerify(() => Math.abs(list.contentY - before) < 1);
+                d.close();
+            } finally {
+                c.destroy();
+                wait(0);
+            }
+        }
+
+        function test_dialog_scrolls_a_focused_row_into_view() {
+            let src = "import QtQuick\nimport Atlas.Ui\nAtlasActionCollection {\n shortcutsEditable: true\n";
+            for (let i = 0; i < 26; ++i) {
+                src += ` AtlasAction { objectName: "f${i}"; text: "Row ${i}"; shortcut: "Ctrl+Shift+Alt+${"ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i]}" }\n`;
+            }
+            src += "}";
+            const c = Qt.createQmlObject(src, root);
+            try {
+                const d = createTemporaryObject(dialogComp, root, { collection: c, parent: root });
+                d.open();
+                tryCompare(d, "visible", true);
+                const list = walk(d.contentItem, it => it.contentY !== undefined && it.model !== undefined && it.section !== undefined, [])[0];
+                tryVerify(() => list.contentHeight > list.height);
+                compare(list.contentY, 0);
+                // The lowest Change button made so far, below the visible rows.
+                const buttons = walk(list.contentItem, it => it.text === "Change" && it.clicked !== undefined && it.visible, []);
+                buttons.sort((a, b) => b.mapToItem(list, 0, 0).y - a.mapToItem(list, 0, 0).y);
+                const low = buttons[0];
+                verify(low.mapToItem(list, 0, 0).y + low.height > list.height, "the button starts out of view");
+                low.forceActiveFocus(Qt.TabFocusReason);
+                tryVerify(() => list.contentY > 0);
+                const at = low.mapToItem(list, 0, 0);
+                verify(at.y >= 0 && at.y + low.height <= list.height + 0.5, "the focused button is in view");
+                d.close();
+            } finally {
+                c.destroy();
+                wait(0);
+            }
         }
 
         function test_media_key_is_refused_unless_declared() {
