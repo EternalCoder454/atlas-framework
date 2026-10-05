@@ -29,6 +29,15 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   choices). AtlasTextField gains `showCounter`, `prefix`, `suffix`,
   `invalidText` and `validateOn`. A compact SidebarItem shows its title and
   value as a tooltip.
+- Atlas.Ui: ToolbarButton gets `symbol`, a clearer checked style (accent fill
+  and icon) and `focusable` (Tab reaches it, with the focus ring). It, and
+  ContextMenuItem and MenuButton, follow an `action` (`symbol`, tooltip,
+  shortcut), a plain Qt Action included.
+- Atlas.Ui: ContextMenuItem `radio` (a dot, exclusive through a ButtonGroup or
+  ActionGroup); a ContextMenu taller than the window scrolls and keeps the
+  current row in view.
+- Atlas.Ui: StatusBarItem `symbol`; its `menu` opens above the cell from its
+  leading edge, kept inside the window.
 
 ## 1.3.0
 

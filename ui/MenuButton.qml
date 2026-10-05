@@ -3,8 +3,13 @@ import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 
 // SecondaryButton with a chevron that opens a menu. Put QQC2.MenuItem children inside.
+// With an `action` it shows the action's text and, when it has one, its symbol.
 SecondaryButton {
     id: control
+
+    // Read duck-typed, so a plain Qt Action works too.
+    readonly property var actionObject: control.action
+    symbol: actionObject && actionObject.symbol !== undefined ? actionObject.symbol : 0
 
     default property alias items: menu.contentData
 
