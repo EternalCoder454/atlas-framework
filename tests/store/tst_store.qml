@@ -305,7 +305,10 @@ Item {
             tryVerify(() => list.itemAtIndex(1) && list.itemAtIndex(1).activeFocus);
             keyClick(Qt.Key_End);
             tryVerify(() => list.itemAtIndex(7) && list.itemAtIndex(7).activeFocus);
-            compare(list.currentIndex, 7);
+            // The ring shows: nothing refocuses the card with no reason.
+            verify(list.itemAtIndex(7).visualFocus, "card 7 shows keyboard focus");
+            list.itemAtIndex(6).forceActiveFocus(Qt.TabFocusReason);
+            verify(list.itemAtIndex(6).visualFocus, "a card focused from outside shows keyboard focus");
             verify(list.contentX > list.originX, "the last card was scrolled into view");
             keyClick(Qt.Key_Home);
             tryVerify(() => list.itemAtIndex(0) && list.itemAtIndex(0).activeFocus);

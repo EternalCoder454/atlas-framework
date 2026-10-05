@@ -68,6 +68,10 @@ T.Control {
 
     QtObject {
         id: priv
+        // The card that has (or last had) the focus. Kept here, not in the
+        // list's currentIndex: a ListView refocuses a new current card with
+        // no reason, which hides a Tab focus ring.
+        property int current: 0
         // As high as the tallest card made so far.
         property real rowHeight: 0
         // The tallest of the cards made so far.
@@ -151,9 +155,7 @@ T.Control {
             list.positionViewAtIndex(i, ListView.Contain);
             list.forceLayout();
             priv.order();
-            // Current first: a ListView gives the focus to a new current
-            // card, which would take it back from a stop inside the card.
-            list.currentIndex = i;
+            priv.current = i;
             const card = list.itemAtIndex(i);
             const target = last === true ? priv.lastStop(card) : priv.focusTarget(card);
             if (target) {
@@ -326,7 +328,7 @@ T.Control {
                 switch (event.key) {
                 case Qt.Key_Left:
                 case Qt.Key_Right:
-                    target = list.currentIndex + ((toRight !== control.mirrored) ? 1 : -1);
+                    target = priv.current + ((toRight !== control.mirrored) ? 1 : -1);
                     break;
                 case Qt.Key_Home:
                     target = 0;
@@ -355,7 +357,7 @@ T.Control {
                 }
                 const i = priv.indexOfCard(card);
                 if (i >= 0) {
-                    list.currentIndex = i;
+                    priv.current = i;
                     scrollAnim.stop();
                     list.positionViewAtIndex(i, ListView.Contain);
                     priv.order();
