@@ -16,6 +16,16 @@ import org.kde.kirigami as Kirigami
 // fires. `showSteps: false` hides the column; it also hides when the window is
 // narrow, and then a "Step 2 of 3" line shows above the page.
 //
+// For a first-run setup: `nextText`, `finishText` and `backText` replace the
+// built-in button labels (empty keeps them). `busy` shows a spinner on Next and
+// ignores it (and Alt+Left, Back and Skip) while the app works. Every use of
+// Next emits `advanceRequested(index)`; with `autoAdvance: false` the control
+// then stays, and the app calls `next()` itself when its work is done.
+// `canGoBack: false` hides Back and turns Alt+Left off. `stepStyle` is `Column`
+// (the default) or `Dots`: a row of dots above the page, the current one wider
+// and in the accent colour. `showSteps: false` hides either.
+// See docs/reference/atlas-ui/atlas-onboarding.md.
+//
 //   AtlasOnboarding {
 //       anchors.fill: parent
 //       onFinished: window.close()
@@ -31,7 +41,22 @@ Item {
     readonly property int count: pages.length
     property bool showSteps: true
     property bool showSkip: false
+    property string nextText
+    property string finishText
+    property string backText
+    property bool busy: false
+    property bool autoAdvance: true
+    property bool canGoBack: true
+    property int stepStyle: AtlasOnboarding.Column
+    // Whether the busy spinner turns; false for a still arc (screenshots).
+    property bool _spinnerAnimated: true
 
+    enum StepStyle {
+        Column,
+        Dots
+    }
+
+    signal advanceRequested(int index)
     signal finished
     signal skipped(int index)
 
@@ -49,6 +74,18 @@ Item {
             control.finished();
         } else {
             control.currentIndex++;
+        }
+    }
+
+    // The Next button: tells the app, then moves on unless the app keeps the
+    // turn. next() itself is the move and does not signal.
+    function _nextPressed(): void {
+        if (control.busy || !priv.canAdvanceNow) {
+            return;
+        }
+        control.advanceRequested(control.currentIndex);
+        if (control.autoAdvance) {
+            control.next();
         }
     }
 
@@ -103,7 +140,8 @@ Item {
         readonly property bool canAdvanceNow: page !== null && page["canAdvance"] !== false
         readonly property bool pageSkippable: page !== null && page["skippable"] === true
         readonly property bool narrow: control.width < Kirigami.Units.gridUnit * 34
-        readonly property bool stepsShown: control.showSteps && !narrow
+        readonly property bool stepsShown: control.showSteps && !narrow && control.stepStyle === AtlasOnboarding.Column
+        readonly property bool dotsShown: control.showSteps && control.stepStyle === AtlasOnboarding.Dots && control.count > 0
 
         function titleOf(i: int): string {
             const t = i >= 0 && i < control.count ? control.pages[i]["title"] : undefined;
@@ -124,6 +162,15 @@ Item {
                 fade.restart();
             }
         }
+    }
+
+    // Alt+Left goes back, as in a browser; off with canGoBack, while busy and
+    // on the first page.
+    Shortcut {
+        sequence: "Alt+Left"
+        context: Qt.WindowShortcut
+        enabled: control.visible && control.canGoBack && !control.busy && control.currentIndex > 0
+        onActivated: control.back()
     }
 
     RowLayout {
@@ -168,12 +215,50 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                visible: !priv.stepsShown && control.count > 0
+                visible: !priv.stepsShown && !priv.dotsShown && control.count > 0
                 Layout.preferredHeight: visible ? implicitHeight : 0
                 text: qsTr("Step %1 of %2").arg(control.currentIndex + 1).arg(control.count)
                 font.pointSize: AtlasStyle.fontSizeCaption
                 color: AtlasStyle.textMuted
                 textFormat: Text.PlainText
+            }
+
+            // The dots: past ones the accent at 45 %, the current one wider
+            // and the accent, future ones the text colour at 20 % (the
+            // control border in high contrast, where 20 % would vanish).
+            Row {
+                id: dots
+                Layout.alignment: Qt.AlignHCenter
+                visible: priv.dotsShown
+                Layout.preferredHeight: visible ? implicitHeight : 0
+                spacing: AtlasStyle.spacing
+                Accessible.role: Accessible.StaticText
+                Accessible.name: qsTr("Step %1 of %2").arg(control.currentIndex + 1).arg(control.count)
+                Repeater {
+                    model: control.count
+                    Rectangle {
+                        id: dot
+                        required property int index
+                        readonly property bool isCurrent: dot.index === control.currentIndex
+                        width: dot.isCurrent ? AtlasStyle.spacingXXLarge : AtlasStyle.spacing
+                        height: AtlasStyle.spacing
+                        radius: height / 2
+                        color: dot.isCurrent ? AtlasStyle.accent : dot.index < control.currentIndex ? (AtlasStyle.highContrast ? AtlasStyle.accent : Qt.alpha(AtlasStyle.accent, 0.45)) : (AtlasStyle.highContrast ? AtlasStyle.controlBorder : Qt.alpha(AtlasStyle.text, 0.2))
+                        Accessible.ignored: true
+                        Behavior on width {
+                            enabled: !AtlasStyle.reducedMotion
+                            NumberAnimation {
+                                duration: AtlasStyle.durationShort
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: AtlasStyle.durationShort
+                            }
+                        }
+                    }
+                }
             }
 
             Item {
@@ -202,8 +287,9 @@ Item {
                 spacing: AtlasStyle.spacing
 
                 SecondaryButton {
-                    visible: control.currentIndex > 0
-                    text: qsTr("Back")
+                    visible: control.canGoBack && control.currentIndex > 0
+                    enabled: !control.busy
+                    text: control.backText.length > 0 ? control.backText : qsTr("Back")
                     onClicked: control.back()
                 }
                 Item {
@@ -211,13 +297,16 @@ Item {
                 }
                 TextButton {
                     visible: control.showSkip || priv.pageSkippable
+                    enabled: !control.busy
                     text: qsTr("Skip")
                     onClicked: control.skip()
                 }
                 PrimaryButton {
-                    text: priv.last ? qsTr("Finish") : qsTr("Next")
+                    text: priv.last ? (control.finishText.length > 0 ? control.finishText : qsTr("Finish")) : (control.nextText.length > 0 ? control.nextText : qsTr("Next"))
                     enabled: priv.canAdvanceNow
-                    onClicked: control.next()
+                    busy: control.busy
+                    _spinnerAnimated: control._spinnerAnimated
+                    onClicked: control._nextPressed()
                 }
             }
         }

@@ -82,6 +82,11 @@ lowers it again.
   double click (`_toggleHook`), AtlasWindow's resize handles and cursors
   (`_resizeHook`), AtlasWindowChrome's KWin button parsing. Real window moves
   need a compositor and are not covered.
+- `wizard/`: the first-run setup controls of item 42: AtlasOnboarding's labels,
+  busy state, `advanceRequested`, `canGoBack` and dots; AtlasPasswordStrength;
+  AtlasChoiceCard and AtlasAccentPicker (selection, keys, mirrored layout, the
+  edit rule in the three app styles); AtlasWindow.`kiosk` (full screen, a close
+  request refused, no close button).
 - `i18n/`: with `LANGUAGE=de` and a throwaway `atlas-ui_de.qm` (built from
   `i18n/atlas-ui_de.ts`), a default `SearchField` must show the German string.
   Needs qt6-linguist; skipped without it.

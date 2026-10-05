@@ -302,6 +302,21 @@ set_tests_properties(window PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-window-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/window-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
+# The first-run setup controls of 1.5.0 item 42 (tests/wizard): AtlasOnboarding's
+# labels, busy state, advanceRequested, canGoBack and dots; AtlasPasswordStrength;
+# AtlasChoiceCard; AtlasAccentPicker; AtlasWindow.kiosk.
+add_executable(atlas-wizard-tests wizard/main.cpp)
+target_compile_definitions(atlas-wizard-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/wizard")
+target_link_libraries(atlas-wizard-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(atlas-wizard-tests atlasui)
+add_test(NAME wizard
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(wizard PROPERTIES
+    TIMEOUT 120
+    ENVIRONMENT "ATLAS_TEST_BIN=$<TARGET_FILE:atlas-wizard-tests>;ATLAS_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;ATLAS_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;ATLAS_OUT_DIR=${CMAKE_BINARY_DIR}/wizard-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
 # No test may reach a real desktop portal: Appearance and AccessibilityState
 # read the portal's settings from the session bus, so every test runs with the
 # bus disabled (the platform test starts a private one of its own and says so).

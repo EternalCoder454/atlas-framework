@@ -99,6 +99,8 @@ Item {
             Window.window.showMinimized();
         }
     }
+    // The window is a kiosk (AtlasWindow.kiosk): no way to close it from here.
+    readonly property bool _kiosk: Window.window ? Window.window["kiosk"] === true : false
     function _close() {
         if (Window.window) {
             Window.window.close();
@@ -189,8 +191,11 @@ Item {
             text: root._maximized ? qsTr("Restore") : qsTr("Maximize")
             onTriggered: root._toggleMaximize()
         }
-        ContextMenuSeparator {}
+        ContextMenuSeparator {
+            visible: !root._kiosk
+        }
         ContextMenuItem {
+            visible: !root._kiosk
             text: qsTr("Close")
             destructive: true
             onTriggered: root._close()

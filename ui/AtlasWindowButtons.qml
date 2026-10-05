@@ -105,6 +105,8 @@ Row {
                 }
             }
 
+            // No close button in a kiosk window (AtlasWindow.kiosk).
+            visible: !(_isClose && Window.window && Window.window["kiosk"] === true)
             implicitWidth: 32
             implicitHeight: 32
             focusPolicy: Qt.NoFocus

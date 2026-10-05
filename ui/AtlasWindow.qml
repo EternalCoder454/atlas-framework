@@ -47,6 +47,10 @@ import org.kde.kirigami as Kirigami
 // above the content, as with any ApplicationWindow `header`, so it composes
 // with Kirigami page stacks inside (their global toolbars are separate).
 // Without an AtlasHeaderBar nothing changes: KWin decorates the window.
+//
+// `kiosk: true` is for a first-run setup or a locked-down screen: the window
+// is full screen, has no close button (the header's too), and a close request
+// (Alt+F4, the compositor) is refused. The app ends it with Qt.quit().
 QQC2.ApplicationWindow {
     id: root
 
@@ -67,6 +71,9 @@ QQC2.ApplicationWindow {
 
     // Names the saved window state; empty keeps none.
     property string stateKey
+
+    // Full screen, no close button, and a close request is refused.
+    property bool kiosk: false
 
     // True while the window is drawn over blur.
     readonly property bool blurred: Appearance.effective
@@ -275,7 +282,24 @@ QQC2.ApplicationWindow {
     readonly property bool frameless: root._atlasHeader !== null
     // The window can be resized by the handles: frameless and in a normal state.
     readonly property bool _resizable: root.frameless && root.visibility !== Window.Maximized && root.visibility !== Window.FullScreen
-    flags: root.frameless ? Qt.Window | Qt.FramelessWindowHint : Qt.Window
+    flags: (root.frameless ? Qt.Window | Qt.FramelessWindowHint : Qt.Window) | (root.kiosk ? Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint : 0)
+    onKioskChanged: root._applyKiosk()
+    // Only while shown: setting `visibility` on a hidden window would show it.
+    function _applyKiosk(): void {
+        if (root.kiosk) {
+            if (root.visible) {
+                root.visibility = Window.FullScreen;
+            }
+        } else if (root.visibility === Window.FullScreen) {
+            root.visibility = Window.Windowed;
+        }
+    }
+    // A close request is refused in kiosk mode. Qt.quit() from the app still ends it.
+    onClosing: close => {
+        if (root.kiosk) {
+            close.accepted = false;
+        }
+    }
 
     // Test hook: replaces startSystemResize(edges).
     property var _resizeHook: null
@@ -417,7 +441,9 @@ QQC2.ApplicationWindow {
             return;
         }
         root._shown = true;
-        if (root.stateKey.length > 0 && root._state.value("Maximized", false)) {
+        if (root.kiosk) {
+            root._applyKiosk();
+        } else if (root.stateKey.length > 0 && root._state.value("Maximized", false)) {
             root.visibility = Window.Maximized;
         }
     }
