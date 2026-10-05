@@ -36,22 +36,12 @@ T.AbstractButton {
     // action's symbol when it has one.
     property int symbol: _actionObject && _actionObject.symbol !== undefined ? _actionObject.symbol : 0
     // The action, read duck-typed so a plain Qt Action works too.
-    readonly property var _actionObject: control.action ? control.action : control._source
+    readonly property var _actionObject: control.action
     readonly property var _menu: _actionObject && _actionObject.menu ? _actionObject.menu : null
     readonly property var _popover: _actionObject && _actionObject.popover ? _actionObject.popover : null
     // What a click opens; the menu wins.
     readonly property var _opener: control._menu ? control._menu : control._popover
     readonly property bool _opened: control._opener ? control._opener.visible : false
-    onActionChanged: {
-        const a = control._actionObject;
-        if (control.action && a && (a.menu || a.popover)) {
-            // Opening is not triggering: keep the action out of the click.
-            control._source = a;
-            control.action = null;
-        } else if (control.action) {
-            control._source = null;
-        }
-    }
     // True lets Tab reach the button; false (the default) keeps the editor's focus.
     property bool focusable: false
     // False with `focusable` keeps Tab but a click does not take the focus.
@@ -68,9 +58,6 @@ T.AbstractButton {
     property int tipSide: ToolbarButton.Below
     // The tooltip's name part, in place of the action's or the button's text.
     property string toolTipText
-    // An action with a menu or popover, which has no `action` of its own (a
-    // click must not trigger it).
-    property var _source: null
 
     // The shortcut shown: shortcutText, else the action's.
     readonly property string _effectiveShortcut: {
@@ -103,8 +90,42 @@ T.AbstractButton {
     Accessible.checkable: control.checkable
     Accessible.checked: control.checked
 
+    // An action with a menu or popover opens it: the click is handled here and
+    // never reaches the action, so `triggered()` stays silent and `action` stays as set.
+    Keys.onSpacePressed: event => {
+        if (control._opener && control.enabled) {
+            if (!event.isAutoRepeat) {
+                control._open();
+            }
+        } else {
+            event.accepted = false;
+        }
+    }
+    Accessible.onPressAction: control._opener ? control._open() : control.click()
+    MouseArea {
+        id: openArea
+        anchors.fill: parent
+        enabled: control._opener !== null
+        acceptedButtons: Qt.LeftButton
+        onPressed: {
+            control._used = true;
+            control._pressedAt = Date.now();
+        }
+        onClicked: control._open()
+    }
+    Binding {
+        target: control
+        property: "down"
+        value: openArea.pressed
+        when: control._opener !== null
+    }
+
     Keys.onReturnPressed: event => {
-        if (control.focusable && control.enabled && !event.isAutoRepeat) {
+        if (control._opener && control.enabled) {
+            if (!event.isAutoRepeat) {
+                control._open();
+            }
+        } else if (control.focusable && control.enabled && !event.isAutoRepeat) {
             // The normal trigger path: toggles, fires a bound action, emits clicked().
             control.click();
         } else {
@@ -112,7 +133,11 @@ T.AbstractButton {
         }
     }
     Keys.onEnterPressed: event => {
-        if (control.focusable && control.enabled && !event.isAutoRepeat) {
+        if (control._opener && control.enabled) {
+            if (!event.isAutoRepeat) {
+                control._open();
+            }
+        } else if (control.focusable && control.enabled && !event.isAutoRepeat) {
             // The normal trigger path: toggles, fires a bound action, emits clicked().
             control.click();
         } else {
@@ -130,10 +155,7 @@ T.AbstractButton {
         control._used = true;
         control._pressedAt = Date.now();
     }
-    onClicked: {
-        control._used = true;
-        control._open();
-    }
+    onClicked: control._used = true
 
     // A click that only closed the menu (a press outside closes it first) must not reopen it.
     property double _closedAt: 0

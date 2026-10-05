@@ -107,6 +107,7 @@ Item {
                 action: withMenu
             });
             compare(b.Accessible.role, Accessible.ButtonMenu);
+            verify(b.action === withMenu);
             mouseClick(b);
             tryVerify(() => withMenu.menu.visible);
             verify(b.checked);
@@ -119,6 +120,7 @@ Item {
             const b = createTemporaryObject(buttonComp, root, {
                 action: withPopover
             });
+            verify(b.action === withPopover);
             mouseClick(b);
             tryVerify(() => withPopover.popover.visible);
             compare(withPopover.popover.target, b);
