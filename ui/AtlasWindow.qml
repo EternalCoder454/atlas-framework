@@ -56,8 +56,15 @@ QQC2.ApplicationWindow {
         Wide
     }
 
-    // Compact below 30 grid units wide, Wide from 60, Medium between.
-    readonly property int widthClass: root.width < Kirigami.Units.gridUnit * 30 ? AtlasWindow.WidthClass.Compact : root.width >= Kirigami.Units.gridUnit * 60 ? AtlasWindow.WidthClass.Wide : AtlasWindow.WidthClass.Medium
+    // The widths, in grid units, where the class changes: Compact below
+    // `compactBreakpoint`, Wide from `wideBreakpoint`, Medium between. A value
+    // that is not a number above 0 uses the default; with `compactBreakpoint`
+    // not below `wideBreakpoint` there is no Medium.
+    property real compactBreakpoint: 30
+    property real wideBreakpoint: 60
+    readonly property real _compactAt: (Number.isFinite(root.compactBreakpoint) && root.compactBreakpoint > 0 ? root.compactBreakpoint : 30) * Kirigami.Units.gridUnit
+    readonly property real _wideAt: (Number.isFinite(root.wideBreakpoint) && root.wideBreakpoint > 0 ? root.wideBreakpoint : 60) * Kirigami.Units.gridUnit
+    readonly property int widthClass: root.width < root._compactAt ? AtlasWindow.WidthClass.Compact : root._compactAt >= root._wideAt || root.width >= root._wideAt ? AtlasWindow.WidthClass.Wide : AtlasWindow.WidthClass.Medium
     // True in Compact: show the sidebar as icons only (AtlasSidebar.compact).
     readonly property bool sidebarCollapsed: root.widthClass === AtlasWindow.WidthClass.Compact
 
@@ -78,6 +85,149 @@ QQC2.ApplicationWindow {
     function sidebarColor(base: color): color {
         return tinted(base, root.sidebarFactor);
     }
+
+    // Queues a toast in this window; shown one at a time, in order. `options`:
+    // actionText, onAction (a function), timeout (ms), kind ("info", "error").
+    // The same text twice in a row is shown once.
+    function toast(text: var, options: var): void {
+        const t = text === undefined || text === null ? "" : String(text);
+        const o = options !== null && typeof options === "object" ? options : ({});
+        if (t.length === 0) {
+            return;
+        }
+        const last = root._toasts.length > 0 ? root._toasts[root._toasts.length - 1].text : root._toastNow;
+        if (last !== null && last === t) {
+            return;
+        }
+        const error = o.kind === "error";
+        const timeout = typeof o.timeout === "number" && Number.isFinite(o.timeout) && o.timeout > 0 ? o.timeout : (error ? 5000 : 2500);
+        root._toasts.push({
+            text: t,
+            actionText: typeof o.actionText === "string" ? o.actionText : "",
+            onAction: typeof o.onAction === "function" ? o.onAction : null,
+            timeout: timeout
+        });
+        root._nextToast();
+    }
+    // Opens a ConfirmDialog (options: title, text, acceptText, rejectText,
+    // destructive) and calls done(true) or done(false) once, also when the
+    // window closes. Returns the dialog.
+    function confirm(options: var, done: var): var {
+        const o = options !== null && typeof options === "object" ? options : ({});
+        const dlg = _confirmComponent.createObject(root.contentItem) as ConfirmDialog;
+        if (!dlg) {
+            if (typeof done === "function") {
+                done(false);
+            }
+            return null;
+        }
+        if (typeof o.title === "string") {
+            dlg.title = o.title;
+        }
+        if (typeof o.text === "string") {
+            dlg.text = o.text;
+        }
+        if (typeof o.acceptText === "string") {
+            dlg.acceptText = o.acceptText;
+        }
+        if (typeof o.rejectText === "string") {
+            dlg.rejectText = o.rejectText;
+        }
+        dlg.destructive = o.destructive === true;
+        dlg.focusReject = dlg.destructive;
+        const entry = {
+            dialog: dlg,
+            done: typeof done === "function" ? done : null,
+            result: false,
+            finished: false
+        };
+        root._confirms.push(entry);
+        dlg.accepted.connect(() => {
+            entry.result = true;
+        });
+        dlg.closed.connect(() => root._finishConfirm(entry));
+        dlg.open();
+        return dlg;
+    }
+
+    // Toast and confirm state; the host items are made on first use.
+    property var _toasts: []
+    property var _toastNow: null
+    property var _toastItem: null
+    property var _confirms: []
+    readonly property Component _toastComponent: Component {
+        Toast {
+            id: host
+            property var current: null
+            onVisibleChanged: {
+                if (!host.visible && host.current !== null) {
+                    host.current = null;
+                    root._toastNow = null;
+                    root._nextToast();
+                }
+            }
+            onActionTriggered: {
+                const cb = host.current ? host.current.onAction : null;
+                if (cb) {
+                    try {
+                        cb();
+                    } catch (e) {
+                        console.warn("AtlasWindow.toast: onAction failed:", e);
+                    }
+                }
+            }
+        }
+    }
+    readonly property Component _confirmComponent: Component {
+        ConfirmDialog {}
+    }
+    function _nextToast(): void {
+        if (root._toastNow !== null || root._toasts.length === 0) {
+            return;
+        }
+        if (root._toastItem === null) {
+            root._toastItem = root._toastComponent.createObject(root.contentItem);
+            if (root._toastItem === null) {
+                root._toasts = [];
+                return;
+            }
+        }
+        const next = root._toasts.shift();
+        root._toastNow = next.text;
+        root._toastItem.current = next;
+        root._toastItem.interval = next.timeout;
+        if (next.actionText.length > 0) {
+            root._toastItem.showAction(next.text, next.actionText);
+        } else {
+            root._toastItem.show(next.text);
+        }
+    }
+    function _finishConfirm(entry: var): void {
+        if (entry.finished) {
+            return;
+        }
+        entry.finished = true;
+        const i = root._confirms.indexOf(entry);
+        if (i >= 0) {
+            root._confirms.splice(i, 1);
+        }
+        if (entry.done) {
+            try {
+                entry.done(entry.result);
+            } catch (e) {
+                console.warn("AtlasWindow.confirm: done failed:", e);
+            }
+        }
+        entry.dialog.destroy();
+    }
+    // A closing window answers every open confirmation with false.
+    function _finishAllConfirms(): void {
+        for (const e of root._confirms.slice()) {
+            e.result = false;
+            root._finishConfirm(e);
+        }
+    }
+    onClosing: root._finishAllConfirms()
 
     // The header, when it is an AtlasHeaderBar: the window is then frameless.
     readonly property AtlasHeaderBar _atlasHeader: root.header as AtlasHeaderBar
@@ -176,6 +326,8 @@ QQC2.ApplicationWindow {
         Appearance.refresh();
         syncBlur();
         _firstShow();
+    } else {
+        root._finishAllConfirms();
     }
     onActiveChanged: if (active) {
         Appearance.refresh();

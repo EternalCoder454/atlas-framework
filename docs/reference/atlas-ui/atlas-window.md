@@ -28,18 +28,22 @@ AtlasWindow {
 |---|---|---|---|
 | `blurAlpha` | `real` | `0.80` | The window background's alpha over the blur. |
 | `blurred` | `bool` (read-only) | — | True while the window is drawn over blur (`Appearance.effective`). |
+| `compactBreakpoint` | `real` | `30` | Below this width, in grid units, `widthClass` is `Compact` (and `sidebarCollapsed` is true). A value that is not a finite number above 0 uses the default. Since 1.5.0. |
 | `frameless` | `bool` (read-only) | — | True when `header` is an [AtlasHeaderBar](atlas-header-bar.md): the window then draws its own title row. |
 | `sidebarCollapsed` | `bool` (read-only) | — | True when `widthClass` is `Compact`; bind `AtlasSidebar.compact` to it. |
 | `sidebarFactor` | `real` | `0.8` | How much more see-through the sidebar is, as a factor on `blurAlpha`. |
 | `stateKey` | `string` | `""` | Names the saved window state; empty keeps none. |
-| `widthClass` | `int` (read-only) | — | How roomy the window is (`AtlasWindow.WidthClass`). |
+| `wideBreakpoint` | `real` | `60` | From this width, in grid units, `widthClass` is `Wide`. When `compactBreakpoint` is not below it there is no `Medium`. A value that is not a finite number above 0 uses the default. Since 1.5.0. |
+| `widthClass` | `int` (read-only) | — | How roomy the window is (`AtlasWindow.WidthClass`), from `compactBreakpoint` and `wideBreakpoint`. |
 
 ## Methods
 
 | Signature | Description |
 |---|---|
+| `confirm(var options, var done): var` | Opens a [ConfirmDialog](confirm-dialog.md) with `options.title`, `text`, `acceptText`, `rejectText` and `destructive` (a destructive dialog starts on Cancel), and calls `done(true)` or `done(false)` exactly once: `true` for the accept button, `false` for Cancel, Escape, a click outside, or the window closing. Returns the dialog. The dialog item is made on first use. Since 1.5.0. |
 | `sidebarColor(color base): color` | Returns `base` with the sidebar's alpha (`blurAlpha` times `sidebarFactor`), or `base` unchanged when there is no blur. |
 | `syncBlur(): var` | Asks the compositor to blur behind the window or stops it, following `Appearance`. Called when the window shows, gets focus or `blurred` changes. |
+| `toast(string text, var options)` | Queues a toast at the bottom of the window. Toasts show one at a time, in order, and are announced to screen readers; the same text twice in a row is shown once. `options`: `actionText` (a button label), `onAction` (a function called when it is clicked), `timeout` (ms, default 2500; 5000 for an error) and `kind` (`"info"`, the default, or `"error"`). The host item is made on first use. Since 1.5.0. |
 | `tinted(color base, real factor): color` | Returns `base` with the alpha `blurAlpha` times `factor`, or `base` unchanged when there is no blur. |
 
 ## Enums
@@ -48,9 +52,9 @@ AtlasWindow {
 
 | Value | Description |
 |---|---|
-| `AtlasWindow.Compact` | Narrower than 30 grid units. |
+| `AtlasWindow.Compact` | Narrower than `compactBreakpoint` (30 grid units). |
 | `AtlasWindow.Medium` | From 30 up to 60 grid units. |
-| `AtlasWindow.Wide` | 60 grid units or wider. |
+| `AtlasWindow.Wide` | `wideBreakpoint` (60 grid units) or wider. |
 
 ## Frameless mode
 
