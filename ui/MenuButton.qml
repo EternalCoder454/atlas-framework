@@ -21,12 +21,29 @@ SecondaryButton {
     Accessible.description: menu.visible ? qsTr("Expanded") : qsTr("Collapsed")
     QtObject {
         id: priv
+        // When the menu last began to close, and whether it was open when the
+        // current press began.
+        property real hiddenAt: 0
+        property bool openAtPress: false
         function announceState() {
             control.Accessible.announce(menu.visible ? qsTr("Expanded") : qsTr("Collapsed"));
         }
     }
-    // The menu opens under the end the label starts from: mirrored, flush right.
-    onClicked: menu.popup(control, control.mirrored ? control.width - menu.implicitWidth : 0, control.height + 4)
+    // A second click on the button closes the menu. Before, the press closed
+    // it (CloseOnPressOutside) and the click that followed opened it again,
+    // so the menu could only be closed from somewhere else. The press that
+    // closes the menu runs just before the button sees it, hence the short
+    // window on hiddenAt.
+    onPressed: priv.openAtPress = menu.opened || Date.now() - priv.hiddenAt < 150
+    onClicked: {
+        if (priv.openAtPress) {
+            priv.openAtPress = false;
+            menu.close();
+            return;
+        }
+        // The menu opens under the end the label starts from: mirrored, flush right.
+        menu.popup(control, control.mirrored ? control.width - menu.implicitWidth : 0, control.height + 4);
+    }
 
     Kirigami.Icon {
         x: control.mirrored ? AtlasStyle.spacingSmall + 2 : parent.width - width - AtlasStyle.spacingSmall - 2
@@ -43,6 +60,7 @@ SecondaryButton {
     QQC2.Menu {
         id: menu
         onVisibleChanged: priv.announceState()
+        onAboutToHide: priv.hiddenAt = Date.now()
         delegate: QQC2.MenuItem {
             Kirigami.MnemonicData.enabled: false
         }
