@@ -6,6 +6,16 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
+## 1.5.2 (unreleased)
+
+- Fix: every `AtlasWindow` asks for an alpha surface from the start
+  (`color` is always transparent; its background paints the opaque base
+  colour when nothing should show through). The surface's format is fixed
+  when the window is created, and the blur state settles only after that,
+  so on Wayland's CPU path (Qt Quick's software backend, Notepad's default)
+  a frameless window kept an opaque buffer: its rounded corners and its
+  edge showed black.
+
 ## 1.5.1
 
 - Fix: a frameless `AtlasWindow` (one with an `AtlasHeaderBar`) rounds its

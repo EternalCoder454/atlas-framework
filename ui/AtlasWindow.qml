@@ -371,9 +371,14 @@ QQC2.ApplicationWindow {
     // AtlasHeaderBar and Appearance.applyBlur read it.
     readonly property real _cornerRadius: root._resizable ? AtlasStyle.radiusLarge : 0
 
-    // An alpha surface while blurred, and always when frameless, whose
-    // rounded corners must show what is behind them; opaque otherwise.
-    color: root.blurred || root.frameless ? "transparent" : AtlasStyle.base
+    // Always an alpha surface: the background below paints the opaque base
+    // colour when nothing should show through. The surface's format is fixed
+    // when the window is first created, and `blurred` (and so the frameless
+    // corners' need) can settle only after that, once Appearance has asked
+    // KWin; on Wayland's CPU path (Qt Quick's software backend, Notepad's
+    // default) a window that turned transparent after its first show kept an
+    // opaque buffer, so its rounded corners and edges showed black.
+    color: "transparent"
     background: Rectangle {
         color: root.tinted(AtlasStyle.base, 1)
         topLeftRadius: root._cornerRadius
