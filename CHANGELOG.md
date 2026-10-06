@@ -6,6 +6,12 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
+## Unreleased
+
+- Fix: a second click on a `MenuButton` closes its menu. Before, the press
+  closed the menu and the click that followed opened it again, so it could
+  only be closed from outside (seen on Atlas Monitor's Apps page, View).
+
 ## 1.5.0
 
 - Memory: the template app's PSS grew from about 111 to 118 MB (RSS 117 to
