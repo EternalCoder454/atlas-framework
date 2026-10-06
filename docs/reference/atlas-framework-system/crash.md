@@ -80,7 +80,7 @@ A GlitchTip DSN of the form `https://<key>@<host>[/prefix]/<project>`. `store_ur
 | `app_name` | `String` | The app ID (or the crashed program) |
 | `app_version` | `Option<String>` | |
 | `category` | `String` | `Plasma`, `KWin`, `Atlas app` or `other` |
-| `message`, `stacktrace` | `String` | Scrubbed |
+| `message`, `stacktrace` | `String` | Scrubbed. `message` is at most 64 KiB: a longer one is cut on a character boundary and ends with `[... cut: the message was <n> bytes]` |
 | `kernel`, `gpu`, `gpu_driver`, `cpu_model` | `Option<String>` | |
 | `uptime_secs`, `ram_total_kb`, `mem_used_kb` | `u64` | |
 | `sent_event_id` | `Option<String>` | The server's event ID, once sent |
@@ -118,7 +118,7 @@ A GlitchTip DSN of the form `https://<key>@<host>[/prefix]/<project>`. `store_ur
 | `send` | `pub fn send(report: &Report) -> io::Result<()>` | POSTs the payload to the endpoint (the Sentry store API) with `/usr/bin/curl` (https only, no proxy, no redirects, 30 s limit) and moves the report to `sent/`. The caller must have shown the user the payload and got a yes. Fails with `PermissionDenied` when reporting is off and `NotFound` ("no endpoint configured") without an endpoint. A failed POST carries a [`SendFailure`](#sendfailure) (read it with `send_failure`) |
 | `send_failure` | `pub fn send_failure(e: &io::Error) -> Option<&SendFailure>` | The `SendFailure` inside an error from `send`, or `None` for the other errors (reporting off, no endpoint, a file error) |
 | `is_issue_url` | `pub fn is_issue_url(u: &str) -> bool` | Whether `u` is an issue of the AtlasOS project (`https://github.com/EternalCoder454/AtlasOS/issues/<number>`): the only link a sent report may carry |
-| `github_issue_url` | `pub fn github_issue_url(r: &Report, repo: &str) -> String` | A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...` URL, at most about 7 KB (the trace is cut to fit). A secondary route to `send` |
+| `github_issue_url` | `pub fn github_issue_url(r: &Report, repo: &str) -> String` | A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...` URL, at most about 7 KB: the trace is cut to fit, a message too long on its own is cut too, and as a last resort the URL itself (never inside a character). A secondary route to `send` |
 
 ## SendFailure
 

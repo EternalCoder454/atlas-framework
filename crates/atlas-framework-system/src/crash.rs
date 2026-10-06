@@ -1258,7 +1258,7 @@ pub(crate) fn build_report(
         app_name: s(crash.app_name),
         app_version: crash.app_version.map(s),
         category: category_of(crash.app_name).to_string(),
-        message: scrubber.scrub_message(crash.message),
+        message: scrubber.scrub_message(&cap_message(crash.message)),
         stacktrace: scrubber.scrub_message(&filter_trace(crash.stacktrace)),
         kernel: Some(read("/proc/sys/kernel/osrelease").trim().to_string())
             .filter(|k| !k.is_empty()),
@@ -1846,6 +1846,22 @@ fn lock_file(path: &Path, wait: Duration) -> Option<fs::File> {
     }
 }
 
+/// The longest message a report keeps, in bytes.
+const MAX_MESSAGE: usize = 64 * 1024;
+
+/// `s` cut to [`MAX_MESSAGE`] bytes on a char boundary, with a note saying
+/// so; copies at most that much.
+fn cap_message(s: &str) -> String {
+    if s.len() <= MAX_MESSAGE {
+        return s.to_string();
+    }
+    let mut end = MAX_MESSAGE;
+    while !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}\n[... cut: the message was {} bytes]", &s[..end], s.len())
+}
+
 /// Drop the frames of the hook itself (everything up to the panic runtime).
 fn skip_hook_frames(trace: &str) -> String {
     let lines: Vec<&str> = trace.lines().collect();
@@ -1875,14 +1891,15 @@ pub fn install(app: AppInfo) {
             return;
         }
         // No panic is possible in here: it would abort the process.
-        let message = match info.payload().downcast_ref::<&str>() {
-            Some(s) => (*s).to_string(),
-            None => info
-                .payload()
-                .downcast_ref::<String>()
-                .cloned()
-                .unwrap_or_else(|| "Box<dyn Any>".to_string()),
-        };
+        let payload = info.payload();
+        let message = payload
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+            .unwrap_or("Box<dyn Any>");
+        // cut before any copy: a huge payload would cost many times its
+        // size in the scrubber
+        let message = cap_message(message);
         let at = info
             .location()
             .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()));
@@ -1902,6 +1919,7 @@ fn save(kind: &str, message: &str, at: Option<&str>) -> Option<PathBuf> {
         return None;
     }
     let app = APP.get()?;
+    let message = &cap_message(message);
     let key = crash_key(message, at);
     if !lock(&LIMITER).allow(Instant::now(), key) {
         return None;
@@ -2707,7 +2725,8 @@ fn is_event_type(t: &str) -> bool {
 }
 
 /// A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...`
-/// URL, at most about 7 KB (the trace is cut to fit). Secondary to [`send`].
+/// URL, at most about 7 KB (the trace is cut to fit, and a message too long
+/// on its own too). Secondary to [`send`].
 pub fn github_issue_url(r: &Report, repo: &str) -> String {
     let is_event = r.stacktrace.trim().is_empty() && is_event_type(&r.report_type);
     let first: String = r
@@ -2737,22 +2756,47 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         percent_encode(&title)
     );
     let na = |o: &Option<String>| o.clone().unwrap_or_else(|| "unknown".into());
-    let head = format!(
-        "**App:** {} {}\n**AtlasOS:** {} ({})\n**Kernel:** {}\n**GPU:** {} ({})\n**Type:** {}\n**Message:** {}\n\n",
-        r.app_name,
-        na(&r.app_version),
-        na(&r.atlasos_version),
-        na(&r.channel),
-        na(&r.kernel),
-        na(&r.gpu),
-        na(&r.gpu_driver),
-        r.report_type,
-        r.message
-    );
+    let head_with = |message: &str| {
+        format!(
+            "**App:** {} {}\n**AtlasOS:** {} ({})\n**Kernel:** {}\n**GPU:** {} ({})\n**Type:** {}\n**Message:** {}\n\n",
+            r.app_name,
+            na(&r.app_version),
+            na(&r.atlasos_version),
+            na(&r.channel),
+            na(&r.kernel),
+            na(&r.gpu),
+            na(&r.gpu_driver),
+            r.report_type,
+            message
+        )
+    };
     let trace = filter_trace(&r.stacktrace);
-    if trace.trim().is_empty() {
+    let has_trace = !trace.trim().is_empty();
+    // The message alone may be over the budget (up to 64 KiB): cut it until
+    // the head with an empty trace block fits.
+    let chars: Vec<(usize, char)> = r.message.char_indices().collect();
+    let mut keep = chars.len();
+    let head = loop {
+        let msg = if keep < chars.len() {
+            let end = chars.get(keep).map_or(r.message.len(), |c| c.0);
+            format!("{} ... (message truncated)", &r.message[..end])
+        } else {
+            r.message.clone()
+        };
+        let head = head_with(&msg);
+        let empty = if has_trace {
+            format!("{head}```\n\n```\n")
+        } else {
+            head.trim_end().to_string()
+        };
+        if base.len() + percent_encode(&empty).len() <= MAX_URL || keep == 0 {
+            break head;
+        }
+        keep -= (keep / 10).max(1);
+    };
+    if !has_trace {
         // no stack trace (an event report): no empty code block
-        return format!("{base}{}", percent_encode(head.trim_end()));
+        return cap_url(format!("{base}{}", percent_encode(head.trim_end())));
     }
     let head = format!("{head}```\n");
     let lines: Vec<&str> = trace.lines().collect();
@@ -2765,10 +2809,39 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         };
         let body = percent_encode(&format!("{head}{}{cut}\n```\n", lines[..keep].join("\n")));
         if base.len() + body.len() <= MAX_URL || keep == 0 {
-            return format!("{base}{body}");
+            return cap_url(format!("{base}{body}"));
         }
         keep -= (keep / 10).max(1);
     }
+}
+
+/// The last resort when the other fields alone are too long (a long
+/// program path): cut the URL to [`MAX_URL`], never inside a `%XX` or a
+/// UTF-8 sequence.
+fn cap_url(mut url: String) -> String {
+    if url.len() <= MAX_URL {
+        return url;
+    }
+    let b = url.as_bytes();
+    let continuation = |i: usize| {
+        b.get(i) == Some(&b'%')
+            && b.get(i + 1..i + 3)
+                .and_then(|h| u8::from_str_radix(std::str::from_utf8(h).ok()?, 16).ok())
+                .is_some_and(|v| v & 0xC0 == 0x80)
+    };
+    let mut end = MAX_URL;
+    // not in the middle of a `%XX`
+    if b[end - 1] == b'%' {
+        end -= 1;
+    } else if b[end - 2] == b'%' {
+        end -= 2;
+    }
+    // not before a continuation byte: back to the start of its character
+    while end > 0 && continuation(end) {
+        end -= 3;
+    }
+    url.truncate(end);
+    url
 }
 
 #[cfg(test)]
@@ -4356,5 +4429,64 @@ mod tests {
         let mut f = b.clone();
         f.app_name = "/usr/bin/bar".into();
         assert_ne!(coredump_key(&a), coredump_key(&f));
+    }
+
+    #[test]
+    fn a_huge_message_is_cut_on_a_char_boundary() {
+        assert_eq!(cap_message("short"), "short");
+        // 2-byte chars, so the byte limit falls inside one
+        let big = format!("x{}", "é".repeat(MAX_MESSAGE));
+        let c = cap_message(&big);
+        assert!(c.len() <= MAX_MESSAGE + 64, "{}", c.len());
+        assert!(c.starts_with("xéé"));
+        assert!(c.ends_with(&format!("[... cut: the message was {} bytes]", big.len())));
+        let c = Crash {
+            report_type: "panic",
+            app_name: "net.eterneon.atlas.updater",
+            app_version: Some("0.1.0"),
+            message: &"a".repeat(4 * 1024 * 1024),
+            stacktrace: "",
+        };
+        let r = build_report(&c, &sc(), None).unwrap();
+        assert!(r.message.len() <= MAX_MESSAGE + 64, "{}", r.message.len());
+    }
+
+    /// `%XX` decoding, for checking the issue URL's body.
+    fn percent_decode(s: &str) -> Vec<u8> {
+        let b = s.as_bytes();
+        let mut out = Vec::new();
+        let mut i = 0;
+        while i < b.len() {
+            if b[i] == b'%' && i + 3 <= b.len() {
+                out.push(u8::from_str_radix(std::str::from_utf8(&b[i + 1..i + 3]).unwrap(), 16).unwrap());
+                i += 3;
+            } else {
+                out.push(b[i]);
+                i += 1;
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn issue_url_shortens_a_long_message_and_other_long_fields() {
+        let mut r = report("  0: f\n  1: g\n");
+        r.message = format!("{}{}", "m".repeat(20_000), "ü".repeat(3000));
+        let url = github_issue_url(&r, "AtlasOS");
+        assert!(url.len() <= MAX_URL, "{}", url.len());
+        assert!(url.contains("message%20truncated"), "{url}");
+        assert!(std::str::from_utf8(&percent_decode(&url)).is_ok());
+        // an event report without a trace too
+        let mut e = event_report("update-failed");
+        e.message = "ü".repeat(MAX_MESSAGE / 2);
+        let url = github_issue_url(&e, "AtlasOS");
+        assert!(url.len() <= MAX_URL, "{}", url.len());
+        // a field that is not the message: the URL is cut, still valid
+        let mut l = report("  0: f\n");
+        l.app_name = format!("/usr/bin/{}", "ü".repeat(3000));
+        let url = github_issue_url(&l, "AtlasOS");
+        assert!(url.len() <= MAX_URL, "{}", url.len());
+        assert!(!url.ends_with('%') && !url[..url.len() - 1].ends_with('%'));
+        assert!(std::str::from_utf8(&percent_decode(&url)).is_ok());
     }
 }

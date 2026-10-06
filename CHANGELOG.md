@@ -27,6 +27,11 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   an hour across all apps (`crash-reports/recent`), and `pending/` keeps at
   most 50 reports, dropping the oldest.
 
+- Fix: a crash report's message is cut to 64 KiB (on a character boundary,
+  with a note). A 50 MB panic payload made the panic hook allocate about
+  1 GB. `crash::github_issue_url` now also cuts a message that alone is over
+  its 7 KB budget, which it used to return whole.
+
 - Fix: every `AtlasWindow` asks for an alpha surface from the start
   (`color` is always transparent; its background paints the opaque base
   colour when nothing should show through). The surface's format is fixed

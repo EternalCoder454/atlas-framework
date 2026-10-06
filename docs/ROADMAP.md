@@ -566,7 +566,7 @@ that lands, then go in one batch.
 - [x] crash.rs: the 5-an-hour limit is per process and `pending/` has no cap
   (a restart loop queues 5 per launch); dedupe by crash key, an on-disk hour
   counter, cap about 50 files.
-- [ ] crash.rs: no length cap on `message` (a 50 MB panic payload allocates
+- [x] crash.rs: no length cap on `message` (a 50 MB panic payload allocates
   about 1 GB in the hook); `github_issue_url` never shortens `head` past 7 KB.
 - [ ] crash.rs: `journalctl` and `rpm -qf` (waits on the rpmdb lock during an
   update, up to 500 times) have no timeout; document that `collect_*` block.
