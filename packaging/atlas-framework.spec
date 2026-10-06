@@ -9,7 +9,7 @@
 %endif
 
 Name:           atlas-framework
-Version:        1.5.0
+Version:        1.5.1
 Release:        1%{?dist}
 Summary:        The shared base of Atlas apps: Atlas.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -187,6 +187,9 @@ fi
 %{_datadir}/applications/net.eterneon.atlas.symbols.desktop
 
 %changelog
+* Tue Oct 06 2026 Atlas <atlas@eterneon.net> - 1.5.1-1
+- Atlas.Ui: a frameless AtlasWindow rounds its top corners; a second click
+  on a MenuButton closes its menu; see CHANGELOG.md
 * Mon Oct 05 2026 Atlas <atlas@eterneon.net> - 1.5.0-1
 - Atlas.Ui: AtlasForm, AtlasFormEntry, AtlasPreferencesDialog and
   AtlasPreferencesPage; AtlasShelf and the store card states; AtlasTextView;

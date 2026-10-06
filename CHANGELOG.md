@@ -6,7 +6,7 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
-## Unreleased
+## 1.5.1
 
 - Fix: a frameless `AtlasWindow` (one with an `AtlasHeaderBar`) rounds its
   top corners as the AtlasOS window decoration rounds every other window's

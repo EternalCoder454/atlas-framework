@@ -13,7 +13,7 @@
 cmake_minimum_required(VERSION 3.24)
 # The version is the Atlas.Ui version: AtlasApp.uiVersion reports it, and apps
 # name the oldest one they work with (`ui:` in atlas_framework_ui::app!).
-project(atlas-framework VERSION 1.5.0 LANGUAGES CXX)
+project(atlas-framework VERSION 1.5.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
