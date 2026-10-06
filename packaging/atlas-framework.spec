@@ -9,7 +9,7 @@
 %endif
 
 Name:           atlas-framework
-Version:        1.5.1
+Version:        1.6.0
 Release:        1%{?dist}
 Summary:        The shared base of Atlas apps: Atlas.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -187,6 +187,14 @@ fi
 %{_datadir}/applications/net.eterneon.atlas.symbols.desktop
 
 %changelog
+* Tue Oct 06 2026 Atlas <atlas@eterneon.net> - 1.6.0-1
+- Atlas.Ui: every AtlasWindow has an alpha surface from the start (no black
+  corners or grey content on Wayland's CPU path); apps that ask for the
+  software renderer draw on the GPU on HiDPI screens.
+- crash: SendFailure says why a send failed; reports and markers are written
+  atomically, limits hold across processes, messages are capped, journalctl
+  and rpm have deadlines, one sender per report, private paths redacted.
+
 * Tue Oct 06 2026 Atlas <atlas@eterneon.net> - 1.5.1-1
 - Atlas.Ui: a frameless AtlasWindow rounds its top corners; a second click
   on a MenuButton closes its menu; see CHANGELOG.md

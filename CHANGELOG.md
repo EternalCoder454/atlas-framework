@@ -6,7 +6,7 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
-## 1.6.0 (unreleased)
+## 1.6.0
 
 - Change: an app that asks for Qt Quick's software renderer (most Atlas apps
   do, to save memory) draws on the GPU when a screen is HiDPI (any device
