@@ -6,7 +6,13 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
-## 1.5.2 (unreleased)
+## 1.6.0 (unreleased)
+
+- New: `crash::SendFailure` and `crash::send_failure`. A failed `crash::send`
+  now says why, in words an app can show as they are (no connection, too
+  many reports today, server trouble, a report the server will never take,
+  refused with an HTTP status, an answer it could not read), instead of
+  curl's raw error; the `io::ErrorKind` says whether trying later can help.
 
 - Fix: every `AtlasWindow` asks for an alpha surface from the start
   (`color` is always transparent; its background paints the opaque base

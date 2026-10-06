@@ -2135,6 +2135,9 @@ fn curl_args(ep: &Endpoint, body_file: &Path) -> Vec<String> {
         "--fail",
         "--silent",
         "--show-error",
+        // after curl's error text, on stderr: the HTTP status, last line
+        "--write-out",
+        "%{stderr}\n%{http_code}\n",
         "--max-time",
         "30",
         "--max-redirs",
@@ -2205,9 +2208,102 @@ fn parse_server_answer(body: &[u8]) -> Server {
     }
 }
 
+/// Why a send failed, in words the app can show as they are (after "Could
+/// not send the crash report: " or alone). Found in the [`io::Error`] that
+/// [`send`] returns; see [`send_failure`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SendFailure {
+    /// No answer: no connection, DNS failure, timeout.
+    Unreachable,
+    /// 429: too many reports (rate limit or daily quota).
+    RateLimited,
+    /// 5xx: the relay or GitHub behind it is having trouble or is busy.
+    ServerTrouble,
+    /// 400 or 413: the server will never take this report.
+    Rejected,
+    /// Anything else (401, 403, ...), with its HTTP status.
+    Refused(u16),
+    /// Some answer came but curl failed on it (cut off, too big, redirect).
+    BadAnswer,
+}
+
+impl SendFailure {
+    /// `http` is the status curl saw; 0 when there was no answer.
+    fn from_http(http: u16) -> Self {
+        match http {
+            0 => Self::Unreachable,
+            // a status below 400 with curl failed: the answer broke
+            1..=399 => Self::BadAnswer,
+            429 => Self::RateLimited,
+            500..=599 => Self::ServerTrouble,
+            400 | 413 => Self::Rejected,
+            n => Self::Refused(n),
+        }
+    }
+
+    fn kind(self) -> io::ErrorKind {
+        match self {
+            Self::Unreachable => io::ErrorKind::ConnectionRefused,
+            Self::RateLimited | Self::ServerTrouble => io::ErrorKind::WouldBlock,
+            Self::Rejected => io::ErrorKind::InvalidData,
+            Self::Refused(_) | Self::BadAnswer => io::ErrorKind::Other,
+        }
+    }
+}
+
+impl std::fmt::Display for SendFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unreachable => f.write_str(
+                "the crash report server could not be reached. Check the internet connection and try again later.",
+            ),
+            Self::RateLimited => f.write_str(
+                "the crash report server has had too many reports today. Try again tomorrow.",
+            ),
+            Self::ServerTrouble => {
+                f.write_str("the crash report server is having trouble. Try again later.")
+            }
+            Self::Rejected => f.write_str(
+                "the server can't accept this report. You can delete it with Don't Send.",
+            ),
+            Self::BadAnswer => {
+                f.write_str("the server's answer was not understood. Try again later.")
+            }
+            Self::Refused(n) => write!(
+                f,
+                "the crash report server refused it (HTTP {n}). Try again after the next update."
+            ),
+        }
+    }
+}
+
+impl std::error::Error for SendFailure {}
+
+/// The [`SendFailure`] inside an error from [`send`], if it is one.
+pub fn send_failure(e: &io::Error) -> Option<&SendFailure> {
+    e.get_ref()?.downcast_ref::<SendFailure>()
+}
+
+/// The status from the `--write-out` line, the last line of curl's stderr;
+/// 0 when there is none (curl failed before an answer).
+fn http_status(stderr: &str) -> u16 {
+    stderr
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find(|l| l.len() == 3 && l.bytes().all(|b| b.is_ascii_digit()))
+        .and_then(|l| l.parse().ok())
+        .unwrap_or(0)
+}
+
 fn post(report: &Report, ep: &Endpoint) -> io::Result<Server> {
-    let body = serde_json::to_vec(&report.payload()).map_err(io::Error::other)?;
     let dir = state_dir().ok_or_else(|| io::Error::other("no state directory"))?;
+    post_in(&dir, report, ep)
+}
+
+/// [`post`] with the body file made in `dir`.
+fn post_in(dir: &Path, report: &Report, ep: &Endpoint) -> io::Result<Server> {
+    let body = serde_json::to_vec(&report.payload()).map_err(io::Error::other)?;
     let tmp = dir.join(format!("send-{}.json", random_hex(8)?));
     write_private(&tmp, &body, false)?;
     let out = run_curl(ep, &tmp);
@@ -2219,9 +2315,15 @@ fn post(report: &Report, ep: &Endpoint) -> io::Result<Server> {
         return Ok(Server::default());
     }
     if !status.success() {
-        return Err(io::Error::other(
-            String::from_utf8_lossy(&stderr).trim().to_string(),
-        ));
+        let text = String::from_utf8_lossy(&stderr);
+        let http = http_status(&text);
+        let failure = SendFailure::from_http(http);
+        eprintln!(
+            "atlas-core: crash report not sent: {failure} (curl exit {:?}, HTTP {http:?}): {}",
+            status.code(),
+            text.trim()
+        );
+        return Err(io::Error::new(failure.kind(), failure));
     }
     Ok(parse_server_answer(&stdout))
 }
@@ -2672,6 +2774,142 @@ mod tests {
     fn send_without_endpoint_fails_cleanly() {
         let e = send_with(&report(""), true, None).unwrap_err();
         assert_eq!(e.to_string(), "no endpoint configured");
+    }
+
+    #[test]
+    fn failure_mapping_and_wording() {
+        use SendFailure::*;
+        for (code, want) in [
+            (0, Unreachable),
+            (429, RateLimited),
+            (500, ServerTrouble),
+            (502, ServerTrouble),
+            (503, ServerTrouble),
+            (400, Rejected),
+            (413, Rejected),
+            (401, Refused(401)),
+            (200, BadAnswer),
+            (302, BadAnswer),
+            (403, Refused(403)),
+            (404, Refused(404)),
+        ] {
+            assert_eq!(SendFailure::from_http(code), want, "{code}");
+        }
+        assert_eq!(
+            Unreachable.to_string(),
+            "the crash report server could not be reached. Check the internet connection and try again later."
+        );
+        assert_eq!(
+            RateLimited.to_string(),
+            "the crash report server has had too many reports today. Try again tomorrow."
+        );
+        assert_eq!(
+            Refused(401).to_string(),
+            "the crash report server refused it (HTTP 401). Try again after the next update."
+        );
+        assert_eq!(
+            http_status("curl: (22) The requested URL returned error: 429\n\n429\n"),
+            429
+        );
+        assert_eq!(http_status("curl: (7) Failed to connect\n\n000\n"), 0);
+        assert_eq!(http_status("curl: (22) 404 not found\n\n404\nextra\n"), 404);
+        assert_eq!(http_status("curl: (22) error 4040\n"), 0);
+        for f in [
+            SendFailure::Unreachable,
+            SendFailure::RateLimited,
+            SendFailure::ServerTrouble,
+            SendFailure::Rejected,
+            SendFailure::Refused(401),
+            SendFailure::BadAnswer,
+        ] {
+            // the app shows these kinds as other things ("turned off", ...)
+            assert!(!matches!(
+                f.kind(),
+                io::ErrorKind::NotFound | io::ErrorKind::PermissionDenied
+            ));
+        }
+        assert_eq!(http_status(""), 0);
+    }
+
+    /// One-shot HTTP server on loopback answering `status` to every request.
+    fn serve(status: u16) -> (String, std::thread::JoinHandle<()>) {
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        l.set_nonblocking(true).unwrap();
+        let port = l.local_addr().unwrap().port();
+        let h = std::thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(10);
+            let mut c = loop {
+                match l.accept() {
+                    Ok((c, _)) => break c,
+                    Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        assert!(Instant::now() < deadline, "curl never connected");
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(e) => panic!("accept: {e}"),
+                }
+            };
+            c.set_nonblocking(false).unwrap();
+            c.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+            let mut buf = [0u8; 65536];
+            let mut got = Vec::new();
+            // read until the headers and the whole body are in
+            while let Ok(n) = c.read(&mut buf) {
+                if n == 0 {
+                    break;
+                }
+                got.extend_from_slice(&buf[..n]);
+                let t = String::from_utf8_lossy(&got).to_string();
+                if let Some(i) = t.find("\r\n\r\n") {
+                    let len = t
+                        .lines()
+                        .find_map(|l| {
+                            l.to_ascii_lowercase()
+                                .strip_prefix("content-length:")
+                                .map(|v| v.trim().parse::<usize>().unwrap_or(0))
+                        })
+                        .unwrap_or(0);
+                    if got.len() >= i + 4 + len {
+                        break;
+                    }
+                }
+            }
+            let body = "{\"detail\":\"no\"}";
+            let _ = write!(
+                c,
+                "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+        });
+        (format!("http://k@127.0.0.1:{port}/1"), h)
+    }
+
+    #[test]
+    fn post_maps_http_failures() {
+        let d = tempfile::tempdir().unwrap();
+        for (status, want) in [
+            (429, SendFailure::RateLimited),
+            (503, SendFailure::ServerTrouble),
+            (400, SendFailure::Rejected),
+            (401, SendFailure::Refused(401)),
+        ] {
+            let (dsn, h) = serve(status);
+            let ep = Endpoint::parse(&dsn).unwrap();
+            let e = post_in(d.path(), &report(""), &ep).unwrap_err();
+            h.join().unwrap();
+            assert_eq!(send_failure(&e), Some(&want), "{status}: {e}");
+        }
+    }
+
+    #[test]
+    fn post_to_closed_port_is_unreachable() {
+        let d = tempfile::tempdir().unwrap();
+        let port = {
+            let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            l.local_addr().unwrap().port()
+        };
+        let ep = Endpoint::parse(&format!("http://k@127.0.0.1:{port}/1")).unwrap();
+        let e = post_in(d.path(), &report(""), &ep).unwrap_err();
+        assert_eq!(send_failure(&e), Some(&SendFailure::Unreachable), "{e}");
     }
 
     #[test]

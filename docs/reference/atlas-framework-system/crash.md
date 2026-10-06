@@ -115,9 +115,23 @@ A GlitchTip DSN of the form `https://<key>@<host>[/prefix]/<project>`. `store_ur
 | `discard` | `pub fn discard(report: &Report) -> io::Result<()>` | "Don't send": deletes the pending report's file. The report needs a `path` (the ones from `pending` have one) |
 | `collect_coredumps` | `pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report>` | New systemd-coredump crashes of the user's own processes since the last call (or since `since_micros`), queued as pending and returned. The first call after opting in starts at "now". Tries the user journal, then the system journal filtered to the user's UID (readable for members of `wheel` or `systemd-journal`). Empty when disabled |
 | `collect_events` | `pub fn collect_events(since: Option<&str>) -> Vec<Report>` | Reports for helper failures (`update-failed`, `rollback-failed`, `channel-switch-failed`, `automatic-rollback`, `health-check-failed`) newer than the last call (or `since`, an RFC 3339 time), queued as pending. Successes are skipped. Strings copied from the log are scrubbed again. Empty when disabled |
-| `send` | `pub fn send(report: &Report) -> io::Result<()>` | POSTs the payload to the endpoint (the Sentry store API) with `/usr/bin/curl` (https only, no proxy, no redirects, 30 s limit) and moves the report to `sent/`. The caller must have shown the user the payload and got a yes. Fails with `PermissionDenied` when reporting is off and `NotFound` ("no endpoint configured") without an endpoint |
+| `send` | `pub fn send(report: &Report) -> io::Result<()>` | POSTs the payload to the endpoint (the Sentry store API) with `/usr/bin/curl` (https only, no proxy, no redirects, 30 s limit) and moves the report to `sent/`. The caller must have shown the user the payload and got a yes. Fails with `PermissionDenied` when reporting is off and `NotFound` ("no endpoint configured") without an endpoint. A failed POST carries a [`SendFailure`](#sendfailure) (read it with `send_failure`) |
+| `send_failure` | `pub fn send_failure(e: &io::Error) -> Option<&SendFailure>` | The `SendFailure` inside an error from `send`, or `None` for the other errors (reporting off, no endpoint, a file error) |
 | `is_issue_url` | `pub fn is_issue_url(u: &str) -> bool` | Whether `u` is an issue of the AtlasOS project (`https://github.com/EternalCoder454/AtlasOS/issues/<number>`): the only link a sent report may carry |
 | `github_issue_url` | `pub fn github_issue_url(r: &Report, repo: &str) -> String` | A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...` URL, at most about 7 KB (the trace is cut to fit). A secondary route to `send` |
+
+## SendFailure
+
+Why a send failed, in words an app shows as they are (after "Could not send the crash report: ", or alone). Its `Display` is that sentence. Each variant also sets the `io::Error`'s kind: `ConnectionRefused` for `Unreachable`, `WouldBlock` for `RateLimited` and `ServerTrouble` (try later), `InvalidData` for `Rejected`, `Other` for the rest; never `NotFound` or `PermissionDenied`, which mean "no endpoint" and "reporting is off". The HTTP status is read from curl's `--write-out`. The full curl error goes to stderr (the journal), never to the user.
+
+| Variant | When | Shown as |
+|---|---|---|
+| `Unreachable` | No answer: no connection, DNS failure, timeout | "the crash report server could not be reached. Check the internet connection and try again later." |
+| `RateLimited` | HTTP 429: the relay's hourly or daily limit | "the crash report server has had too many reports today. Try again tomorrow." |
+| `ServerTrouble` | HTTP 5xx | "the crash report server is having trouble. Try again later." |
+| `Rejected` | HTTP 400 or 413: the server will never take this report | "the server can't accept this report. You can delete it with Don't Send." |
+| `Refused(u16)` | Any other HTTP error (401, 403, 404...) | "the crash report server refused it (HTTP n). Try again after the next update." |
+| `BadAnswer` | An answer came but curl failed on it (cut off, too big, a redirect) | "the server's answer was not understood. Try again later." |
 
 ## Constants and re-exports
 
