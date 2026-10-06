@@ -65,7 +65,7 @@ ScheduledAt=1700000000
 
 ## Crash reporting
 
-All user files except `crash-reporting.toml` (0644) are under XDG directories and written with mode 0600 in directories of mode 0700, without following symlinks.
+All user files except `crash-reporting.toml` (0644) are under XDG directories and written with mode 0600 in directories of mode 0700, without following symlinks. Each is written atomically: a temp file `.<name>.<hex>.tmp` beside it, fsync, a rename (or, for a new report, a link that never replaces one) and a directory fsync. Temp files left by a killed process are swept after 10 minutes.
 
 | Path | Contents |
 |---|---|
@@ -74,9 +74,10 @@ All user files except `crash-reporting.toml` (0644) are under XDG directories an
 | `/usr/share/atlas/crash-reporting.toml` | The shipped default endpoint; used only when `/etc` has no `dsn` key |
 | `$XDG_STATE_HOME/atlas/crash-reports/pending/<time>-<nn>.json` | Reports waiting for the user's decision. `<time>` is the report's RFC 3339 time and `<nn>` a counter from `00` for reports in the same second |
 | `$XDG_STATE_HOME/atlas/crash-reports/sent/<time>-<nn>.json` | Sent reports, with `sent_event_id` and `issue_url` filled in. Removed after 90 days |
+| `$XDG_STATE_HOME/atlas/crash-reports/quarantine/<file name>` | Files from `pending/` or `sent/` that are not reports (damaged or cut short), unchanged for a minute when found; a clash gets `.<n>` appended. Never listed or sent; removed after 90 days or when reporting is turned off |
 | `$XDG_STATE_HOME/atlas/crash-id` | The rotating anonymous ID: line 1 is 32 hex characters, line 2 the creation time in Unix seconds. Replaced after 30 days |
-| `$XDG_STATE_HOME/atlas/coredump-last` | The coredump marker: a Unix time in microseconds |
-| `$XDG_STATE_HOME/atlas/events-last` | The event marker: an RFC 3339 time, a space, and how many events at that time were already taken |
+| `$XDG_STATE_HOME/atlas/coredump-last` | The coredump marker: a Unix time in microseconds. An empty or damaged one counts as its modification time |
+| `$XDG_STATE_HOME/atlas/events-last` | The event marker: an RFC 3339 time, a space, and how many events at that time were already taken. An empty or damaged one counts as its modification time, the events of that second taken |
 | `$XDG_STATE_HOME/atlas/send-*.json` | A transient curl body file during a send; stale ones (older than 10 minutes) are swept |
 
 `$XDG_STATE_HOME` defaults to `~/.local/state`.

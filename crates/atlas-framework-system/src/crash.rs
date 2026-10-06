@@ -264,14 +264,12 @@ impl Settings {
         if !self.enabled {
             prune_sent();
             // Off means off: reports still waiting were queued under the old
-            // opt-in and are not kept.
+            // opt-in and are not kept, nor are unreadable ones.
             if let Some(d) = reports_dir() {
-                for e in fs::read_dir(d.join("pending"))
-                    .into_iter()
-                    .flatten()
-                    .flatten()
-                {
-                    let _ = fs::remove_file(e.path());
+                for sub in ["pending", QUARANTINE] {
+                    for e in fs::read_dir(d.join(sub)).into_iter().flatten().flatten() {
+                        let _ = fs::remove_file(e.path());
+                    }
                 }
             }
         }
@@ -1324,23 +1322,95 @@ fn crash_id_in(dir: &Path, now: SystemTime) -> io::Result<String> {
     Ok(id)
 }
 
+/// Write `data` to `path` (0600; the directory becomes 0700) atomically: a
+/// temp file beside it, fsync, then a rename (`overwrite`) or a link that
+/// fails with `AlreadyExists` if `path` is taken, then a directory fsync. A
+/// crash leaves the old file or the new one, never a cut one. A symlink at
+/// `path` is replaced, never written through.
 fn write_private(path: &Path, data: &[u8], overwrite: bool) -> io::Result<()> {
-    if let Some(d) = path.parent() {
-        fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(d)?;
-        // an older version or a backup may have left it wider
-        fs::set_permissions(d, fs::Permissions::from_mode(0o700))?;
+    let dir = path
+        .parent()
+        .filter(|d| !d.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)?;
+    // an older version or a backup may have left it wider
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o700))?;
+    let name = path
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "path has no file name"))?;
+    // `.<name>.<random>.tmp`: not `*.json`, so no reader ever sees it
+    let mut tmp_name = std::ffi::OsString::from(".");
+    tmp_name.push(name);
+    tmp_name.push(format!(".{}{TMP_SUFFIX}", random_hex(6)?));
+    let tmp = dir.join(tmp_name);
+    let res = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(&tmp)
+        .and_then(|mut f| {
+            f.write_all(data)?;
+            f.sync_all()
+        })
+        .and_then(|()| {
+            if overwrite {
+                fs::rename(&tmp, path)
+            } else {
+                // a link never replaces: `AlreadyExists` like `create_new`
+                match fs::hard_link(&tmp, path) {
+                    Err(e)
+                        if e.kind() != io::ErrorKind::AlreadyExists
+                            && fs::symlink_metadata(path).is_err() =>
+                    {
+                        // a file system without hard links
+                        fs::rename(&tmp, path)
+                    }
+                    r => r,
+                }
+            }
+        });
+    let _ = fs::remove_file(&tmp);
+    res?;
+    sync_dir(dir);
+    Ok(())
+}
+
+/// The suffix of [`write_private`]'s temp files.
+const TMP_SUFFIX: &str = ".tmp";
+
+/// Make a rename or link in `dir` durable (best effort: some file systems
+/// refuse to sync a directory).
+fn sync_dir(dir: &Path) {
+    if let Ok(d) = fs::File::open(dir) {
+        let _ = d.sync_all();
     }
-    let mut o = fs::OpenOptions::new();
-    o.write(true).mode(0o600).custom_flags(libc::O_NOFOLLOW);
-    if overwrite {
-        o.create(true).truncate(true);
-    } else {
-        o.create_new(true);
+}
+
+/// Remove [`write_private`] temp files (`.<name>.<hex>.tmp`) left in `dir` by
+/// a process killed mid-write, once they are clearly not in use any more.
+fn sweep_temp_files(dir: &Path, now: SystemTime) {
+    for e in fs::read_dir(dir).into_iter().flatten().flatten() {
+        let name = e.file_name();
+        let name = name.to_string_lossy();
+        if !(name.starts_with('.') && name.ends_with(TMP_SUFFIX)) {
+            continue;
+        }
+        if is_stale(&e, now) {
+            let _ = fs::remove_file(e.path());
+        }
     }
-    o.open(path)?.write_all(data)
+}
+
+/// Older than 10 minutes (or dated in the future).
+fn is_stale(e: &fs::DirEntry, now: SystemTime) -> bool {
+    e.metadata().and_then(|m| m.modified()).is_ok_and(|t| {
+        now.duration_since(t)
+            .map_or(true, |a| a > Duration::from_secs(600))
+    })
 }
 
 /// Save `report` in `dir` as `<time>-<nn>.json` (0600; `dir` becomes 0700).
@@ -1405,6 +1475,50 @@ fn read_pending(dir: &Path) -> Vec<Report> {
         .collect()
 }
 
+/// Where unreadable report files go, beside `pending/` and `sent/`.
+const QUARANTINE: &str = "quarantine";
+
+/// A file that is not a report and has not changed for a minute (so not one
+/// an older version is still writing in place) is moved to `quarantine/`
+/// beside `dir`: out of the list, but kept to look at (90 days).
+fn quarantine(path: &Path, now: SystemTime) {
+    let settled = fs::symlink_metadata(path)
+        .and_then(|m| m.modified())
+        .is_ok_and(|t| now.duration_since(t).map_or(true, |a| a > Duration::from_secs(60)));
+    let (Some(dir), Some(name)) = (path.parent().and_then(Path::parent), path.file_name()) else {
+        return;
+    };
+    if !settled {
+        return;
+    }
+    let q = dir.join(QUARANTINE);
+    let made = fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(&q)
+        .and_then(|()| fs::set_permissions(&q, fs::Permissions::from_mode(0o700)));
+    if made.is_err() {
+        return;
+    }
+    for n in 0..100 {
+        let mut to = name.to_os_string();
+        if n > 0 {
+            to.push(format!(".{n}"));
+        }
+        let to = q.join(to);
+        if fs::symlink_metadata(&to).is_ok() {
+            continue;
+        }
+        if fs::rename(path, &to).is_ok() {
+            sync_dir(&q);
+            if let Some(d) = path.parent() {
+                sync_dir(d);
+            }
+        }
+        return;
+    }
+}
+
 fn read_reports(dir: &Path) -> Vec<Report> {
     let mut paths: Vec<PathBuf> = fs::read_dir(dir)
         .into_iter()
@@ -1414,11 +1528,12 @@ fn read_reports(dir: &Path) -> Vec<Report> {
         .filter(|p| p.extension().is_some_and(|e| e == "json"))
         .collect();
     paths.sort();
+    let now = SystemTime::now();
     paths
         .into_iter()
         .filter_map(|p| {
-            let text = fs::read_to_string(&p).ok()?;
-            match serde_json::from_str::<Report>(&text) {
+            let bytes = fs::read(&p).ok()?;
+            match serde_json::from_slice::<Report>(&bytes) {
                 Ok(mut r) => {
                     r.path = Some(p);
                     Some(r)
@@ -1426,11 +1541,14 @@ fn read_reports(dir: &Path) -> Vec<Report> {
                 Err(_) => {
                     // A report from before schema 2 (no event_id) can never
                     // be shown or sent: remove it instead of skipping it forever.
-                    let old = serde_json::from_str::<Value>(&text)
+                    let old = serde_json::from_slice::<Value>(&bytes)
                         .ok()
-                        .is_some_and(|v| v.get("event_id").is_none());
+                        .is_some_and(|v| v.is_object() && v.get("event_id").is_none());
                     if old {
                         let _ = fs::remove_file(&p);
+                    } else {
+                        // cut short, damaged or not UTF-8: out of the list
+                        quarantine(&p, now);
                     }
                     None
                 }
@@ -1465,13 +1583,20 @@ pub fn discard(report: &Report) -> io::Result<()> {
     )
 }
 
-/// Delete sent reports older than 90 days.
+/// Delete sent and quarantined reports older than 90 days, and leftovers of
+/// writes and sends that were cut short.
 fn prune_sent() {
+    let now = SystemTime::now();
     if let Some(d) = state_dir() {
-        sweep_send_files(&d, SystemTime::now());
+        sweep_send_files(&d, now);
+        sweep_temp_files(&d, now);
     }
     if let Some(d) = reports_dir() {
-        prune_older_than(&d.join("sent"), SENT_KEEP, SystemTime::now());
+        for sub in ["pending", "sent", QUARANTINE] {
+            sweep_temp_files(&d.join(sub), now);
+        }
+        prune_older_than(&d.join("sent"), SENT_KEEP, now);
+        prune_older_than(&d.join(QUARANTINE), SENT_KEEP, now);
     }
 }
 
@@ -1484,11 +1609,7 @@ fn sweep_send_files(dir: &Path, now: SystemTime) {
         if !(name.starts_with("send-") && name.ends_with(".json")) {
             continue;
         }
-        let stale = e.metadata().and_then(|m| m.modified()).is_ok_and(|t| {
-            now.duration_since(t)
-                .map_or(true, |a| a > Duration::from_secs(600))
-        });
-        if stale {
+        if is_stale(&e, now) {
             let _ = fs::remove_file(e.path());
         }
     }
@@ -1852,10 +1973,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     let Some(marker) = last_seen_path("coredump-last") else {
         return Vec::new();
     };
-    let stored = fs::read_to_string(&marker)
-        .ok()
-        .and_then(|t| t.trim().parse::<u64>().ok());
-    let Some(since) = since_micros.or(stored) else {
+    let Some(since) = since_micros.or_else(|| read_coredump_marker(&marker)) else {
         reset_markers(); // first run: only crashes from now on
         return Vec::new();
     };
@@ -1903,6 +2021,35 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
         let _ = write_private(&marker, newest.to_string().as_bytes(), true);
     }
     out
+}
+
+/// The coredump marker in microseconds; `None` only when there is none. An
+/// empty or damaged one (an older version wrote it in place and was cut
+/// short) counts from when it was last written, its modification time, so
+/// it neither restarts at "now" (skipping every crash since) nor reads the
+/// whole journal again.
+fn read_coredump_marker(marker: &Path) -> Option<u64> {
+    let text = match fs::read(marker) {
+        Ok(t) => t,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return None,
+        Err(_) => Vec::new(),
+    };
+    if let Some(n) = std::str::from_utf8(&text)
+        .ok()
+        .and_then(|t| t.trim().parse::<u64>().ok())
+    {
+        return Some(n);
+    }
+    marker_mtime(marker).map(|d| d.as_micros() as u64)
+}
+
+/// When a marker file was last written, since the epoch.
+fn marker_mtime(marker: &Path) -> Option<Duration> {
+    fs::symlink_metadata(marker)
+        .and_then(|m| m.modified())
+        .ok()?
+        .duration_since(UNIX_EPOCH)
+        .ok()
 }
 
 /// Delete the pending files of reports a collector just wrote.
@@ -1974,11 +2121,10 @@ fn collect_events_in(
     since: Option<&str>,
     enabled: &dyn Fn() -> bool,
 ) -> Option<Vec<Report>> {
-    let stored = fs::read_to_string(marker)
-        .ok()
-        .map(|t| parse_event_marker(&t, events))
-        .filter(|m| !m.0.is_empty());
-    let start = since.map(|s| (s.to_string(), 0)).or(stored)?;
+    let start = match since {
+        Some(s) => (s.to_string(), 0),
+        None => read_event_marker(marker, events)?,
+    };
     let mut marker_now = start.clone();
     let mut out = Vec::new();
     for e in pick_events(events, &start, now) {
@@ -2045,6 +2191,35 @@ fn collect_events_in(
 /// with exactly that time were taken (second resolution; the helper may append
 /// another one in the same second later).
 type EventMarker = (String, usize);
+
+/// The events marker; `None` only when there is none. An empty or damaged
+/// one counts from its modification time (see [`read_coredump_marker`]),
+/// the events of that second taken.
+fn read_event_marker(marker: &Path, events: &[crate::events::Event]) -> Option<EventMarker> {
+    let text = match fs::read(marker) {
+        Ok(t) => String::from_utf8(t).unwrap_or_default(),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return None,
+        Err(_) => String::new(),
+    };
+    let m = parse_event_marker(&text, events);
+    if looks_like_time(&m.0) {
+        return Some(m);
+    }
+    let at = history::rfc3339_from_unix(marker_mtime(marker)?.as_secs());
+    Some(parse_event_marker(&at, events))
+}
+
+/// Starts like an RFC 3339 time: `dddd-dd-ddTdd:dd:dd`.
+fn looks_like_time(t: &str) -> bool {
+    let b = t.as_bytes();
+    b.len() >= 19
+        && b[..19].iter().enumerate().all(|(i, c)| match i {
+            4 | 7 => *c == b'-',
+            10 => *c == b'T',
+            13 | 16 => *c == b':',
+            _ => c.is_ascii_digit(),
+        })
+}
 
 fn parse_event_marker(text: &str, events: &[crate::events::Event]) -> EventMarker {
     let mut it = text.split_whitespace();
@@ -3813,5 +3988,130 @@ mod tests {
         // a real crash keeps its block and title
         let c = github_issue_url(&report("  0: f\n"), "AtlasOS");
         assert!(c.contains("%60%60%60") && c.contains("Crash%20in"), "{c}");
+    }
+
+    // ---- 1.6.0: crash.rs batch (study 5)
+
+    fn set_mtime(p: &Path, t: SystemTime) {
+        fs::File::options()
+            .write(true)
+            .open(p)
+            .unwrap()
+            .set_modified(t)
+            .unwrap();
+    }
+
+    fn names(dir: &Path) -> Vec<String> {
+        let mut v: Vec<String> = fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn markers_and_reports_are_replaced_not_rewritten_in_place() {
+        let d = tempfile::tempdir().unwrap();
+        let dir = d.path().join("atlas");
+        let m = dir.join("coredump-last");
+        write_private(&m, b"1", true).unwrap();
+        // a second name for the same file: an in-place write would change it
+        let other = d.path().join("other");
+        fs::hard_link(&m, &other).unwrap();
+        write_private(&m, b"2", true).unwrap();
+        assert_eq!(fs::read_to_string(&m).unwrap(), "2");
+        assert_eq!(fs::read_to_string(&other).unwrap(), "1");
+        assert_eq!(fs::metadata(&m).unwrap().permissions().mode() & 0o777, 0o600);
+        // a new file never replaces one
+        let e = write_private(&m, b"3", false).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::AlreadyExists);
+        assert_eq!(fs::read_to_string(&m).unwrap(), "2");
+        // and no temp file is left either way
+        assert_eq!(names(&dir), ["coredump-last"]);
+        let p = write_report(&dir.join("pending"), &report("")).unwrap();
+        assert_eq!(names(&dir.join("pending")).len(), 1);
+        assert_eq!(read_reports(&dir.join("pending"))[0].path.as_ref(), Some(&p));
+    }
+
+    #[test]
+    fn leftover_temp_files_are_swept() {
+        let d = tempfile::tempdir().unwrap();
+        let t = d.path().join(".x.json.0011aa.tmp");
+        fs::write(&t, "{").unwrap();
+        fs::write(d.path().join("keep.json"), "{}").unwrap();
+        sweep_temp_files(d.path(), SystemTime::now());
+        assert!(t.exists(), "fresh: maybe being written");
+        sweep_temp_files(d.path(), SystemTime::now() + Duration::from_secs(3600));
+        assert!(!t.exists());
+        assert!(d.path().join("keep.json").exists());
+    }
+
+    #[test]
+    fn unreadable_reports_are_quarantined() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let good = write_report(&pend, &report("")).unwrap();
+        let cut = pend.join("2026-10-01T00:00:00Z-00.json");
+        fs::write(&cut, "{\"schema\": 2, \"event_id\": \"ab").unwrap();
+        let binary = pend.join("2026-10-01T00:00:01Z-00.json");
+        fs::write(&binary, [0xff, 0xfe, 0x00]).unwrap();
+        let fresh = pend.join("2026-10-01T00:00:02Z-00.json");
+        fs::write(&fresh, "{").unwrap();
+        let old = SystemTime::now() - Duration::from_secs(600);
+        set_mtime(&cut, old);
+        set_mtime(&binary, old);
+        let got = read_reports(&pend);
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].path.as_ref(), Some(&good));
+        let q = d.path().join(QUARANTINE);
+        assert_eq!(
+            names(&q),
+            ["2026-10-01T00:00:00Z-00.json", "2026-10-01T00:00:01Z-00.json"]
+        );
+        assert_eq!(fs::metadata(&q).unwrap().permissions().mode() & 0o777, 0o700);
+        // one still being written by an older version is left for now
+        assert!(fresh.exists());
+        // a second damaged file of the same name does not replace the first
+        fs::write(&cut, "{").unwrap();
+        set_mtime(&cut, old);
+        read_reports(&pend);
+        assert_eq!(names(&q).len(), 3);
+    }
+
+    #[test]
+    fn a_damaged_marker_counts_from_when_it_was_written() {
+        let d = tempfile::tempdir().unwrap();
+        let m = d.path().join("coredump-last");
+        assert_eq!(read_coredump_marker(&m), None, "none: start at now");
+        fs::write(&m, "1790000000000000\n").unwrap();
+        assert_eq!(read_coredump_marker(&m), Some(1_790_000_000_000_000));
+        for bad in ["", "17900000", "x"] {
+            fs::write(&m, bad).unwrap();
+            if bad == "17900000" {
+                // a cut number is still a number: earlier, never later
+                assert_eq!(read_coredump_marker(&m), Some(17_900_000));
+                continue;
+            }
+            set_mtime(&m, UNIX_EPOCH + Duration::from_secs(1_790_000_000));
+            assert_eq!(read_coredump_marker(&m), Some(1_790_000_000_000_000), "{bad:?}");
+        }
+
+        // the events marker: an empty one used to restart at "now"
+        let (marker, pending) = (d.path().join("events-last"), d.path().join("pending"));
+        fs::write(&marker, "").unwrap();
+        // 2026-10-02T09:30:00Z
+        set_mtime(&marker, UNIX_EPOCH + Duration::from_secs(1_790_933_400));
+        let log = vec![ev("2026-10-02T09:00:00Z"), ev("2026-10-02T10:00:00Z")];
+        let sc = Scrubber::new(&[], &[], &[]);
+        let on = || true;
+        let out = collect_events_in(&log, &marker, &pending, &sc, "2026-10-02T12:00:00Z", None, &on)
+            .expect("a damaged marker is not a missing one");
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].time, "2026-10-02T10:00:00Z");
+        assert!(looks_like_time("2026-10-02T10:00:00Z"));
+        assert!(!looks_like_time("2026-10-0"));
     }
 }

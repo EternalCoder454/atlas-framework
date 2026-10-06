@@ -570,7 +570,7 @@ that lands, then go in one batch.
   about 1 GB in the hook); `github_issue_url` never shortens `head` past 7 KB.
 - [ ] crash.rs: `journalctl` and `rpm -qf` (waits on the rpmdb lock during an
   update, up to 500 times) have no timeout; document that `collect_*` block.
-- [ ] crash.rs: reports and markers are written in place (no temp, fsync,
+- [x] crash.rs: reports and markers are written in place (no temp, fsync,
   rename): a crash leaves a truncated report that stays invisible, or an empty
   coredump marker that skips every crash since. Quarantine unparsable files.
 - [ ] crash.rs Low: `--noproxy "*"`; two senders of one report file two

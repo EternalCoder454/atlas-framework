@@ -14,6 +14,12 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   refused with an HTTP status, an answer it could not read), instead of
   curl's raw error; the `io::ErrorKind` says whether trying later can help.
 
+- Fix: crash reports and the coredump and event markers are written
+  atomically (temp file, fsync, rename). A crash while saving left a cut
+  report that never showed up, or an empty marker that skipped every crash
+  since; a damaged marker now counts from when it was written, and a file in
+  the queue that is not a report moves to `crash-reports/quarantine/`.
+
 - Fix: every `AtlasWindow` asks for an alpha surface from the start
   (`color` is always transparent; its background paints the opaque base
   colour when nothing should show through). The surface's format is fixed
