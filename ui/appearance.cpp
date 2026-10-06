@@ -13,6 +13,8 @@
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
 #include <QPointer>
+#include <QRegion>
+#include <QtMath>
 #include <QSGRendererInterface>
 #include <QtGui/qtguiglobal.h>
 #if QT_CONFIG(vulkan)
@@ -425,8 +427,19 @@ void Appearance::refresh()
 
 void Appearance::applyBlur(QWindow *window)
 {
-    if (window) {
-        // An empty region is the whole window.
-        KWindowEffects::enableBlurBehind(window, effective());
+    if (!window) {
+        return;
     }
+    // An empty region is the whole window. A frameless AtlasWindow rounds its
+    // top corners (its _cornerRadius): the blur leaves them out too, or a
+    // square of blur would show behind each one.
+    QRegion region;
+    const int r = qCeil(window->property("_cornerRadius").toReal());
+    const int w = window->width();
+    const int h = window->height();
+    if (r > 0 && w > 2 * r && h > 2 * r) {
+        region = QRegion(0, r, w, h - r) + QRegion(r, 0, w - 2 * r, r) + QRegion(0, 0, 2 * r, 2 * r, QRegion::Ellipse)
+            + QRegion(w - 2 * r, 0, 2 * r, 2 * r, QRegion::Ellipse);
+    }
+    KWindowEffects::enableBlurBehind(window, effective(), region);
 }

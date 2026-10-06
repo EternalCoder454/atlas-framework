@@ -363,10 +363,21 @@ QQC2.ApplicationWindow {
     readonly property real _grip: 6
     readonly property real _cornerGrip: 16
 
-    // An alpha surface only while blurred: an opaque window otherwise, as before.
-    color: root.blurred ? "transparent" : AtlasStyle.base
+    // A frameless window's top corners, rounded as the AtlasOS decoration
+    // rounds every other window's (radiusLarge, top only), while it can be
+    // resized: maximized and full screen stay square. KWin draws no
+    // decoration for a frameless window, so before this a window with an
+    // AtlasHeaderBar (Notepad) was the one square window on the desktop.
+    // AtlasHeaderBar and Appearance.applyBlur read it.
+    readonly property real _cornerRadius: root._resizable ? AtlasStyle.radiusLarge : 0
+
+    // An alpha surface while blurred, and always when frameless, whose
+    // rounded corners must show what is behind them; opaque otherwise.
+    color: root.blurred || root.frameless ? "transparent" : AtlasStyle.base
     background: Rectangle {
         color: root.tinted(AtlasStyle.base, 1)
+        topLeftRadius: root._cornerRadius
+        topRightRadius: root._cornerRadius
         border.width: root._resizable ? 1 : 0
         border.color: AtlasStyle.separator
     }
@@ -416,6 +427,14 @@ QQC2.ApplicationWindow {
         Appearance.applyBlur(root);
     }
     onBlurredChanged: syncBlur()
+    // The blur leaves the rounded corners out, so its region follows the
+    // corners and the size (once per event loop turn while resizing).
+    on_CornerRadiusChanged: syncBlur()
+    function _syncRoundedBlur(): void {
+        if (root._cornerRadius > 0 && root.blurred) {
+            Qt.callLater(root.syncBlur);
+        }
+    }
     // Nothing tells us when KWin's blur effect is switched on or off:
     // check again when the window shows and when it gets focus.
     onVisibleChanged: if (visible) {
@@ -495,8 +514,14 @@ QQC2.ApplicationWindow {
             root._state.setValue("Maximized", true);
         }
     }
-    onWidthChanged: _saveState()
-    onHeightChanged: _saveState()
+    onWidthChanged: {
+        _saveState();
+        _syncRoundedBlur();
+    }
+    onHeightChanged: {
+        _saveState();
+        _syncRoundedBlur();
+    }
     onVisibilityChanged: {
         _saveState();
         // KWin's F11, a Restore from a menu: kiosk puts it back. Each change

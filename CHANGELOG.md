@@ -8,6 +8,13 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## Unreleased
 
+- Fix: a frameless `AtlasWindow` (one with an `AtlasHeaderBar`) rounds its
+  top corners as the AtlasOS window decoration rounds every other window's
+  (`radiusLarge`), and its header and blur follow; maximised and full screen
+  stay square. It was the one square window on the desktop (Notepad). Its
+  surface is now always see-through, so an app must not force the software
+  renderer's partial updates at a fractional scale (Qt keeps them off there
+  by itself): the edge pixels would keep old frames.
 - Fix: a second click on a `MenuButton` closes its menu. Before, the press
   closed the menu and the click that followed opened it again, so it could
   only be closed from outside (seen on Atlas Monitor's Apps page, View).
