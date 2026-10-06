@@ -17,7 +17,7 @@ A GUI app started through [atlas-framework-ui](../atlas-framework-ui/startup.md)
 
 What a report holds: AtlasOS version, channel and previous version; app name, version and category; the stack trace; kernel; GPU model and driver; uptime; CPU model, RAM total and use; a timestamp and the report type. A rotating random ID (new every 30 days, never `/etc/machine-id`) stays on the machine and is not sent, so public reports cannot be linked to each other. Never collected: core dumps, user names, host names, MAC or IP addresses, serials, email addresses, credentials and tokens, installed apps, file contents, command lines, environment or working directory. Every string is scrubbed with [`Scrubber`](#scrubber).
 
-Panic reports are limited to 5 an hour, and the same crash (same message and location) is saved once.
+Limits hold across every app of the user, so an app in a restart loop queues one report, not some per start. Panic and fatal reports are limited to 5 an hour, and the same crash (same message and location) is saved once a day. The same coredump (same program, signal and top five frames of the crashed thread) is also queued once a day. At most 50 reports wait in `pending/`; past that the oldest are deleted.
 
 ## Example
 

@@ -563,7 +563,7 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 crash.rs has uncommitted work from another session: its items wait until
 that lands, then go in one batch.
 
-- [ ] crash.rs: the 5-an-hour limit is per process and `pending/` has no cap
+- [x] crash.rs: the 5-an-hour limit is per process and `pending/` has no cap
   (a restart loop queues 5 per launch); dedupe by crash key, an on-disk hour
   counter, cap about 50 files.
 - [ ] crash.rs: no length cap on `message` (a 50 MB panic payload allocates

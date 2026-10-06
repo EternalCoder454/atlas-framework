@@ -20,6 +20,13 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   since; a damaged marker now counts from when it was written, and a file in
   the queue that is not a report moves to `crash-reports/quarantine/`.
 
+- Fix: the crash report limits hold across processes. An app in a restart
+  loop queued up to 5 panic reports per start, and every coredump of it;
+  now the same crash is queued once a day (a coredump is the same crash when
+  its program, signal and top five frames match), at most 5 panic reports
+  an hour across all apps (`crash-reports/recent`), and `pending/` keeps at
+  most 50 reports, dropping the oldest.
+
 - Fix: every `AtlasWindow` asks for an alpha surface from the start
   (`color` is always transparent; its background paints the opaque base
   colour when nothing should show through). The surface's format is fixed

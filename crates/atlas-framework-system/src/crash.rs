@@ -26,9 +26,7 @@
 //! ([`Scrubber`]).
 
 use std::cell::Cell;
-use std::collections::hash_map::DefaultHasher;
 use std::fs;
-use std::hash::{Hash, Hasher};
 use std::io::{self, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
@@ -1660,7 +1658,40 @@ fn queue(report: &Report) -> Option<PathBuf> {
     if !Settings::load().enabled {
         return None;
     }
-    write_report(&reports_dir()?.join("pending"), report).ok()
+    let pending = reports_dir()?.join("pending");
+    let p = write_report(&pending, report).ok();
+    cap_pending(&pending, MAX_PENDING);
+    p
+}
+
+/// At most this many reports wait in `pending/`.
+const MAX_PENDING: usize = 50;
+
+/// Delete the oldest pending reports (by file name: the report's time) until
+/// at most `max` are left.
+fn cap_pending(dir: &Path, max: usize) {
+    let mut paths: Vec<PathBuf> = fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|e| e == "json"))
+        .collect();
+    if paths.len() <= max {
+        return;
+    }
+    paths.sort();
+    let extra = paths.len() - max;
+    for p in &paths[..extra] {
+        let _ = fs::remove_file(p);
+    }
+}
+
+/// Keep the reports whose pending file is still there (the cap may have
+/// taken the oldest of a large batch).
+fn still_pending(mut out: Vec<Report>) -> Vec<Report> {
+    out.retain(|r| r.path.as_ref().is_some_and(|p| p.exists()));
+    out
 }
 
 // -------------------------------------------------------------------- hooks
@@ -1669,7 +1700,9 @@ static APP: OnceLock<AppInfo> = OnceLock::new();
 
 const MAX_PER_HOUR: usize = 5;
 
-/// At most 5 reports an hour, and the same crash (same top frames) once.
+/// At most 5 reports an hour, and the same crash (same message and place)
+/// once, in this process; [`ledger_allow`] holds the same limits across
+/// processes.
 #[derive(Default)]
 struct RateLimiter {
     recent: Vec<(Instant, u64)>,
@@ -1694,12 +1727,123 @@ thread_local! {
 }
 
 /// The same crash is the same message at the same place (the frames of a
-/// trace taken inside the hook are no help: they are hook code).
+/// trace taken inside the hook are no help: they are hook code). Stable
+/// across processes and builds: it is stored in [`RECENT`].
 fn crash_key(message: &str, at: Option<&str>) -> u64 {
-    let mut h = DefaultHasher::new();
-    message.hash(&mut h);
-    at.hash(&mut h);
-    h.finish()
+    fnv1a(&[message.as_bytes(), at.unwrap_or("").as_bytes()])
+}
+
+/// FNV-1a over the parts, each followed by a 0 byte.
+fn fnv1a(parts: &[&[u8]]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for p in parts {
+        for b in p.iter().chain([&0u8]) {
+            h ^= u64::from(*b);
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    h
+}
+
+/// A coredump's crash key: the program, the signal and the top
+/// [`KEY_FRAMES`] frames of the crashed thread (functions and modules, not
+/// addresses, which move with every start). A restart loop is one crash.
+fn coredump_key(r: &Report) -> u64 {
+    // the first thread in systemd-coredump's trace is the one that crashed
+    let first: Vec<&str> = r
+        .stacktrace
+        .lines()
+        .enumerate()
+        .take_while(|(i, l)| *i == 0 || !l.trim_start().starts_with("Stack trace of thread"))
+        .map(|x| x.1)
+        .collect();
+    let frames = parse_frames(&first.join("\n"));
+    let mut parts: Vec<String> = vec![r.app_name.clone(), r.message.clone()];
+    for f in frames.iter().rev().take(KEY_FRAMES) {
+        parts.push(format!(
+            "{} {}",
+            f["function"].as_str().unwrap_or(""),
+            f["module"].as_str().unwrap_or("")
+        ));
+    }
+    fnv1a(&parts.iter().map(|p| p.as_bytes()).collect::<Vec<_>>())
+}
+
+const KEY_FRAMES: usize = 5;
+
+/// The crashes queued in the last day, shared by every process of the user:
+/// `crash-reports/recent`, one `<unix seconds> <16 hex key>` per line.
+const RECENT: &str = "recent";
+const DEDUPE_FOR: Duration = Duration::from_secs(86_400);
+
+/// Whether a crash with `key` may be queued at `now`, recorded in
+/// `dir/recent` if so: the same key at most once a day and, with `cap`, at
+/// most [`MAX_PER_HOUR`] reports in the last hour, across processes (an app
+/// in a restart loop is a new process each time). Lines are locked with
+/// `recent.lock` (waiting at most 200 ms) and written atomically. When the
+/// file cannot be used the crash is allowed: the in-process limit remains.
+fn ledger_allow(dir: &Path, now: SystemTime, key: u64, cap: bool) -> bool {
+    let secs = |t: SystemTime| t.duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
+    let now_s = secs(now);
+    let _lock = lock_file(&dir.join(format!("{RECENT}.lock")), Duration::from_millis(200));
+    let path = dir.join(RECENT);
+    let mut recent: Vec<(u64, u64)> = fs::read(&path)
+        .map(|b| String::from_utf8_lossy(&b).into_owned())
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| {
+            let (t, k) = l.split_once(' ')?;
+            Some((t.parse().ok()?, u64::from_str_radix(k, 16).ok()?))
+        })
+        // in the last day; a time ahead of the clock (it was set back)
+        // counts as now, unless it is more than a day ahead
+        .filter(|(t, _)| {
+            now_s.saturating_sub(*t) < DEDUPE_FOR.as_secs()
+                && t.saturating_sub(now_s) < DEDUPE_FOR.as_secs()
+        })
+        .collect();
+    if recent.iter().any(|(_, k)| *k == key) {
+        return false;
+    }
+    if cap && recent.iter().filter(|(t, _)| now_s.saturating_sub(*t) < 3600).count() >= MAX_PER_HOUR {
+        return false;
+    }
+    recent.push((now_s, key));
+    let text: String = recent.iter().map(|(t, k)| format!("{t} {k:016x}\n")).collect();
+    let _ = write_private(&path, text.as_bytes(), true);
+    true
+}
+
+/// An exclusive `flock` on `path` (made 0600 if missing), tried until
+/// `wait` has passed; `None` if it could not be had. Released on drop.
+fn lock_file(path: &Path, wait: Duration) -> Option<fs::File> {
+    use std::os::fd::AsRawFd;
+    let dir = path.parent()?;
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)
+        .ok()?;
+    let f = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(path)
+        .ok()?;
+    let end = Instant::now() + wait;
+    loop {
+        // SAFETY: a valid open descriptor; flock has no other preconditions.
+        if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+            return Some(f);
+        }
+        if Instant::now() >= end {
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
 
 /// Drop the frames of the hook itself (everything up to the panic runtime).
@@ -1718,7 +1862,7 @@ fn skip_hook_frames(trace: &str) -> String {
 /// Install the panic hook for `app`. Call once, early in `main`. The previous
 /// hook (the default one prints the panic) runs first; then, only when crash
 /// reporting is enabled, a report is queued (not for a panic inside the hook
-/// itself, and at most 5 an hour, each crash once).
+/// itself, at most 5 an hour across all processes, each crash once a day).
 pub fn install(app: AppInfo) {
     if APP.set(app).is_err() {
         return;
@@ -1760,6 +1904,12 @@ fn save(kind: &str, message: &str, at: Option<&str>) -> Option<PathBuf> {
     let app = APP.get()?;
     let key = crash_key(message, at);
     if !lock(&LIMITER).allow(Instant::now(), key) {
+        return None;
+    }
+    // the same limits across processes: a restart loop is one crash
+    if let Some(d) = reports_dir()
+        && !ledger_allow(&d, SystemTime::now(), key, true)
+    {
         return None;
     }
     let msg = match at {
@@ -2001,6 +2151,11 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
         if !Settings::load().enabled {
             break;
         }
+        // the same crash again (a restart loop): seen, not queued
+        if !ledger_allow(&d, SystemTime::now(), coredump_key(&report), false) {
+            newest = newest.max(ts);
+            continue;
+        }
         let mut r = report;
         match write_report(&d.join("pending"), &r) {
             Ok(path) => r.path = Some(path),
@@ -2020,7 +2175,10 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     if newest > since {
         let _ = write_private(&marker, newest.to_string().as_bytes(), true);
     }
-    out
+    if let Some(d) = reports_dir() {
+        cap_pending(&d.join("pending"), MAX_PENDING);
+    }
+    still_pending(out)
 }
 
 /// The coredump marker in microseconds; `None` only when there is none. An
@@ -2184,7 +2342,8 @@ fn collect_events_in(
             true,
         );
     }
-    Some(out)
+    cap_pending(pending, MAX_PENDING);
+    Some(still_pending(out))
 }
 
 /// The events marker: the time of the last collected event and how many events
@@ -4113,5 +4272,89 @@ mod tests {
         assert_eq!(out[0].time, "2026-10-02T10:00:00Z");
         assert!(looks_like_time("2026-10-02T10:00:00Z"));
         assert!(!looks_like_time("2026-10-0"));
+    }
+
+    #[test]
+    fn the_hourly_limit_and_dedupe_hold_across_processes() {
+        // every call reads the file again, as a new process would
+        let d = tempfile::tempdir().unwrap();
+        let dir = d.path().join("crash-reports");
+        let t = UNIX_EPOCH + Duration::from_secs(1_790_000_000);
+        let hour = Duration::from_secs(3601);
+        assert!(ledger_allow(&dir, t, 1, true));
+        assert!(!ledger_allow(&dir, t, 1, true), "a restart loop: same crash");
+        for k in 2..=5 {
+            assert!(ledger_allow(&dir, t, k, true));
+        }
+        assert!(!ledger_allow(&dir, t, 6, true), "sixth in the hour");
+        // without the cap (coredumps) only the dedupe applies
+        assert!(ledger_allow(&dir, t, 7, false));
+        assert!(!ledger_allow(&dir, t, 7, false));
+        assert!(ledger_allow(&dir, t + hour, 6, true), "the next hour");
+        assert!(!ledger_allow(&dir, t + hour, 1, true), "same crash: once a day");
+        assert!(ledger_allow(&dir, t + DEDUPE_FOR + hour, 1, true));
+        let text = fs::read_to_string(dir.join(RECENT)).unwrap();
+        assert!(text.lines().count() <= 8, "old lines go: {text}");
+        assert_eq!(
+            fs::metadata(dir.join(RECENT)).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        // a damaged file does not stop reports
+        fs::write(dir.join(RECENT), "garbage\n\u{0}\n").unwrap();
+        assert!(ledger_allow(&dir, t, 1, true));
+        // the key is stable (stored on disk, compared across builds)
+        assert_eq!(crash_key("boom", None), 0x4d37_8e81_1928_ea9a);
+    }
+
+    #[test]
+    fn pending_is_capped_oldest_first() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        for i in 0..MAX_PENDING + 3 {
+            let mut r = report("");
+            r.time = format!("2026-10-02T10:{:02}:{:02}Z", i / 60, i % 60);
+            write_report(&pend, &r).unwrap();
+        }
+        cap_pending(&pend, MAX_PENDING);
+        let left = names(&pend);
+        assert_eq!(left.len(), MAX_PENDING);
+        assert_eq!(left[0], "2026-10-02T10:00:03Z-00.json", "the oldest went");
+        // events collected in one go are capped too
+        let (marker, ev_pend) = (d.path().join("events-last"), d.path().join("ev"));
+        fs::write(&marker, "2026-10-02T09:00:00Z 0").unwrap();
+        let log: Vec<_> = (0..MAX_PENDING + 2)
+            .map(|i| ev(&format!("2026-10-02T10:{:02}:{:02}Z", i / 60, i % 60)))
+            .collect();
+        let sc = Scrubber::new(&[], &[], &[]);
+        let on = || true;
+        let out = collect_events_in(&log, &marker, &ev_pend, &sc, "2026-10-02T12:00:00Z", None, &on)
+            .unwrap();
+        assert_eq!(names(&ev_pend).len(), MAX_PENDING);
+        assert_eq!(out.len(), MAX_PENDING, "only what is still pending is returned");
+    }
+
+    #[test]
+    fn a_coredump_restart_loop_is_one_crash() {
+        let trace = |a: &str| {
+            format!(
+                "Stack trace of thread 7:\n#0  0x{a}1 raise (libc.so.6 + 0x9a)\n#1  0x{a}2 main (foo + 0x10)\nStack trace of thread 8:\n#0  0x{a}3 poll (libc.so.6 + 0x1)\n"
+            )
+        };
+        let mut a = report(&trace("7f00"));
+        a.report_type = "coredump".into();
+        let mut b = report(&trace("7e11"));
+        b.report_type = "coredump".into();
+        b.time = "2026-10-02T10:05:00Z".into();
+        assert_eq!(coredump_key(&a), coredump_key(&b), "only addresses differ");
+        let mut c = b.clone();
+        c.stacktrace = c.stacktrace.replace("main (foo", "other (foo");
+        assert_ne!(coredump_key(&a), coredump_key(&c));
+        // other threads do not count
+        let mut e = b.clone();
+        e.stacktrace = e.stacktrace.replace("poll", "select");
+        assert_eq!(coredump_key(&a), coredump_key(&e));
+        let mut f = b.clone();
+        f.app_name = "/usr/bin/bar".into();
+        assert_ne!(coredump_key(&a), coredump_key(&f));
     }
 }
