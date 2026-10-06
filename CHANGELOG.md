@@ -8,6 +8,16 @@ something it added. The packaging spec's `%changelog` repeats the package side.
 
 ## 1.6.0 (unreleased)
 
+- Change: an app that asks for Qt Quick's software renderer (most Atlas apps
+  do, to save memory) draws on the GPU when a screen is HiDPI (any device
+  pixel ratio above 1; Wayland reports a fractional scale's ceiling, so 1.7
+  shows as 2). At fractional scales the CPU path leaves the last device pixel
+  row and column unpainted: a dark line along the content's edge (Files), a
+  border left behind while a window is dragged (Notepad on a 4K screen at
+  1.7x). Chosen once as the module loads, before any window.
+  `QT_QUICK_BACKEND` still wins, and `ATLAS_SOFTWARE_RENDERING=1` keeps the
+  CPU. Apps need no change; `AtlasStyle.softwareRendering` follows.
+
 - New: `crash::SendFailure` and `crash::send_failure`. A failed `crash::send`
   now says why, in words an app can show as they are (no connection, too
   many reports today, server trouble, a report the server will never take,
