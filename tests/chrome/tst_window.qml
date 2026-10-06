@@ -121,6 +121,40 @@ Item {
             compare(p.flags & Qt.FramelessWindowHint, 0);
         }
 
+        // A frameless window rounds its top corners like the decoration does
+        // every other window's, on a see-through surface, and its header
+        // follows; maximized, they are square again.
+        function test_frameless_window_has_rounded_top_corners() {
+            const w = createTemporaryObject(framelessComp, root);
+            w.show();
+            tryVerify(() => w.visible && w.visibility === Window.Windowed);
+            compare(w._cornerRadius, AtlasStyle.radiusLarge);
+            compare(w.color.a, 0);
+            compare(w.background.topLeftRadius, AtlasStyle.radiusLarge);
+            compare(w.background.topRightRadius, AtlasStyle.radiusLarge);
+            compare(w.background.bottomLeftRadius, 0);
+            let bar = null;
+            for (const c of w.header.children) {
+                if (c instanceof Rectangle) {
+                    bar = c;
+                    break;
+                }
+            }
+            verify(bar);
+            compare(bar.topLeftRadius, AtlasStyle.radiusLarge);
+            w.showMaximized();
+            tryVerify(() => w.visibility === Window.Maximized);
+            compare(w._cornerRadius, 0);
+            compare(bar.topLeftRadius, 0);
+        }
+
+        function test_plain_window_is_not_rounded() {
+            const p = createTemporaryObject(plainComp, root);
+            p.show();
+            tryVerify(() => p.visible);
+            compare(p._cornerRadius, 0);
+        }
+
         function test_edges_map_to_handles() {
             const w = createTemporaryObject(framelessComp, root);
             w.show();

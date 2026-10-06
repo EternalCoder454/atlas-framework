@@ -135,9 +135,12 @@ Item {
         onActivated: root.openWindowMenu()
     }
 
-    // The bar: the Header colour at the window's alpha, a hairline below.
+    // The bar: the Header colour at the window's alpha, a hairline below. In
+    // a frameless AtlasWindow its top corners follow the window's rounded ones.
     Rectangle {
         anchors.fill: parent
+        topLeftRadius: (root.Window.window as AtlasWindow)?._cornerRadius ?? 0
+        topRightRadius: topLeftRadius
         color: {
             return AtlasStyle.chromeBackground;
         }

@@ -6,6 +6,16 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
+## Unreleased
+
+- Fix: a frameless `AtlasWindow` (one with an `AtlasHeaderBar`) rounds its
+  top corners as the AtlasOS window decoration rounds every other window's
+  (`radiusLarge`), and its header and blur follow; maximised and full screen
+  stay square. It was the one square window on the desktop (Notepad). Its
+  surface is now always see-through, so an app must not force the software
+  renderer's partial updates at a fractional scale (Qt keeps them off there
+  by itself): the edge pixels would keep old frames.
+
 ## 1.5.0
 
 - Memory: the template app's PSS grew from about 111 to 118 MB (RSS 117 to

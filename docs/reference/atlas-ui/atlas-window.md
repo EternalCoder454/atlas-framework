@@ -67,7 +67,7 @@ AtlasWindow {
 }
 ```
 
-The window then has `Qt.FramelessWindowHint`, a hairline border (none when maximised or full screen) and invisible handles along its edges (6 px deep, with 16 px L-shaped corners; along the top edge a corner stops where the header's buttons begin) that resize it through the compositor. Without an `AtlasHeaderBar` nothing changes and KWin decorates the window.
+The window then has `Qt.FramelessWindowHint`, top corners rounded like the AtlasOS decoration's (`AtlasStyle.radiusLarge`; the surface is always see-through so the corners show what is behind, and the blur leaves them out), a hairline border (no border and square corners when maximised or full screen) and invisible handles along its edges (6 px deep, with 16 px L-shaped corners; along the top edge a corner stops where the header's buttons begin) that resize it through the compositor. Without an `AtlasHeaderBar` nothing changes and KWin decorates the window.
 
 > [!NOTE]
 > A second launch of an app started with `atlas_app_run` raises this window and exits; nothing is needed in QML.
