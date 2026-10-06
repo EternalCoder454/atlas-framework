@@ -4,7 +4,7 @@ summary: A SecondaryButton with a chevron that opens a menu of the items inside 
 section: Buttons
 ---
 
-MenuButton is a [SecondaryButton](secondary-button.md) with a chevron that opens a menu on a click. Put `QQC2.MenuItem` children inside it; they become the menu's items. With an `action` it shows the action's text and, when it has one, its symbol. For a main action joined to a menu use [AtlasSplitButton](atlas-split-button.md).
+MenuButton is a [SecondaryButton](secondary-button.md) with a chevron that opens a menu on a click; a second click on the button closes it. Put `QQC2.MenuItem` children inside it; they become the menu's items. With an `action` it shows the action's text and, when it has one, its symbol. For a main action joined to a menu use [AtlasSplitButton](atlas-split-button.md).
 
 MenuButton is a Qt Quick Templates `AbstractButton` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-abstractbutton.html)); the properties it shares with [AtlasButton](atlas-button.md) are described there.
 
