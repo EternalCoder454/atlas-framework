@@ -24,6 +24,45 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   refused with an HTTP status, an answer it could not read), instead of
   curl's raw error; the `io::ErrorKind` says whether trying later can help.
 
+- Fix: crash reports and the coredump and event markers are written
+  atomically (temp file, fsync, rename). A crash while saving left a cut
+  report that never showed up, or an empty marker that skipped every crash
+  since; a damaged marker now counts from when it was written, and a file in
+  the queue that is not a report moves to `crash-reports/quarantine/`.
+
+- Fix: the crash report limits hold across processes. An app in a restart
+  loop queued up to 5 panic reports per start, and every coredump of it;
+  now the same crash is queued once a day (a coredump is the same crash when
+  its program, signal and top five frames match), at most 5 panic reports
+  an hour across all apps (`crash-reports/recent`), and `pending/` keeps at
+  most 50 reports, dropping the oldest.
+
+- Fix: a crash report's message is cut to 64 KiB (on a character boundary,
+  with a note). A 50 MB panic payload made the panic hook allocate about
+  1 GB. `crash::github_issue_url` now also cuts a message that alone is over
+  its 7 KB budget, which it used to return whole.
+
+- Fix: `crash::collect_coredumps` runs `journalctl` and `rpm -qf` with a
+  deadline (10 s and 5 s; killed past it). `rpm` waits on the rpmdb lock
+  while an update runs, and was asked once per crash, up to 500 times.
+  Now each program is asked once, and after one timeout no more. Both
+  `collect_*` functions block: the reference now says to call them from a
+  worker thread.
+
+- Fix: two senders of one crash report (two windows, a double click) filed
+  two public issues. `crash::send` now takes the pending file for the time
+  of the POST (`<name>.json.sending`); a second sender fails with
+  `AlreadyExists`, and a failed send puts the report back. A report file
+  with a huge `ram_total_kb` no longer overflows `Report::payload`.
+
+- Privacy: a coredump report's `app_name` was the crashed program's whole
+  path, so `/mnt/clients/<name>/...` reached the public issue. A path
+  outside the system directories (`/usr`, `/opt`, `/app`, ...) is now
+  `<home>/<program>` or `<path>/<program>`.
+- Fix: `crash::discard` (and `crash::send`, when it removes a sent report)
+  deletes only a report file in `pending/`; it deleted whatever `path` a
+  `Report` held. Any other path fails with `InvalidInput`.
+
 - Fix: every `AtlasWindow` asks for an alpha surface from the start
   (`color` is always transparent; its background paints the opaque base
   colour when nothing should show through). The surface's format is fixed

@@ -13,11 +13,11 @@ A GUI app started through [atlas-framework-ui](../atlas-framework-ui/startup.md)
 - **Switch:** [`Settings`](#settings), per user, in `~/.config/atlas/crash-reporting.toml` (`enabled = false`).
 - **Endpoint:** a Sentry-compatible DSN from `/etc/atlas/crash-reporting.toml`, default `/usr/share/atlas/crash-reporting.toml`. It is the AtlasOS relay, which posts each report it receives as a **public** issue in `github.com/EternalCoder454/AtlasOS`. An empty `dsn` in `/etc` turns sending off: `send` then fails with "no endpoint configured".
 - **Sources:** Rust panics (`install`), fatal errors that are not panics (`record_fatal`), systemd-coredump entries of the user's own processes (`collect_coredumps`) and update and rollback failures from the helper (`collect_events`).
-- **Queue:** reports wait in `$XDG_STATE_HOME/atlas/crash-reports/pending/` for the user's decision (`pending`, `discard`). Sent ones move to `sent/` and are pruned after 90 days.
+- **Queue:** reports wait in `$XDG_STATE_HOME/atlas/crash-reports/pending/` for the user's decision (`pending`, `discard`). Sent ones move to `sent/` and are pruned after 90 days. Every report and marker is written atomically (a temp file, fsync, rename), so a crash while saving leaves the old file or the new one, never a cut one. A file in `pending/` or `sent/` that is not a report (damaged, cut short by an older version) is moved to `quarantine/` and kept there for 90 days; it is never listed or sent.
 
 What a report holds: AtlasOS version, channel and previous version; app name, version and category; the stack trace; kernel; GPU model and driver; uptime; CPU model, RAM total and use; a timestamp and the report type. A rotating random ID (new every 30 days, never `/etc/machine-id`) stays on the machine and is not sent, so public reports cannot be linked to each other. Never collected: core dumps, user names, host names, MAC or IP addresses, serials, email addresses, credentials and tokens, installed apps, file contents, command lines, environment or working directory. Every string is scrubbed with [`Scrubber`](#scrubber).
 
-Panic reports are limited to 5 an hour, and the same crash (same message and location) is saved once.
+Limits hold across every app of the user, so an app in a restart loop queues one report, not some per start. Panic and fatal reports are limited to 5 an hour, and the same crash (same message and location) is saved once a day. The same coredump (same program, signal and top five frames of the crashed thread) is also queued once a day. At most 50 reports wait in `pending/`; past that the oldest are deleted.
 
 ## Example
 
@@ -37,7 +37,7 @@ for report in crash::pending() {
 }
 ```
 
-Collect on a timer or at start-up: `crash::collect_coredumps(None)` and `crash::collect_events(None)` queue what is new since the last call (both return nothing when reporting is off).
+Collect on a timer or at start-up, on a worker thread (both block): `crash::collect_coredumps(None)` and `crash::collect_events(None)` queue what is new since the last call (both return nothing when reporting is off).
 
 ## Settings
 
@@ -50,7 +50,7 @@ Off unless the file says `enabled = true`.
 | `fn path() -> Option<PathBuf>` | `$XDG_CONFIG_HOME/atlas/crash-reporting.toml` (or `~/.config/...`); `None` without an absolute config directory |
 | `fn load() -> Settings` | Reads the switch; missing or unreadable means off |
 | `fn load_from(path: &Path) -> Settings` | Reads another file |
-| `fn save(&self) -> io::Result<()>` | Saves the switch. Turning reporting **on** starts the coredump and event markers at "now", so nothing from before the opt-in is queued. Turning it **off** deletes every pending report and removes sent reports older than 90 days (as `pending()` and `sent()` also do) |
+| `fn save(&self) -> io::Result<()>` | Saves the switch. Turning reporting **on** starts the coredump and event markers at "now", so nothing from before the opt-in is queued. Turning it **off** deletes every pending and quarantined report and removes sent reports older than 90 days (as `pending()` and `sent()` also do) |
 | `fn save_to(&self, path: &Path) -> io::Result<()>` | Writes one file: a temp file beside it (never through a symlink), then a rename |
 
 ## Endpoint
@@ -77,10 +77,10 @@ A GlitchTip DSN of the form `https://<key>@<host>[/prefix]/<project>`. `store_ur
 | `time` | `String` | RFC 3339 UTC |
 | `crash_id` | `String` | The rotating anonymous ID |
 | `atlasos_version`, `channel`, `previous_version` | `Option<String>` | From `bootc status` and the boot history |
-| `app_name` | `String` | The app ID (or the crashed program) |
+| `app_name` | `String` | The app ID, or for a coredump the crashed program: its whole path under `/usr`, `/bin`, `/sbin`, `/lib`, `/lib64`, `/opt`, `/app` or `/var/lib/flatpak`; otherwise `<home>/<program>` for one in a home directory and `<path>/<program>` for any other place |
 | `app_version` | `Option<String>` | |
 | `category` | `String` | `Plasma`, `KWin`, `Atlas app` or `other` |
-| `message`, `stacktrace` | `String` | Scrubbed |
+| `message`, `stacktrace` | `String` | Scrubbed. `message` is at most 64 KiB: a longer one is cut on a character boundary and ends with `[... cut: the message was <n> bytes]` |
 | `kernel`, `gpu`, `gpu_driver`, `cpu_model` | `Option<String>` | |
 | `uptime_secs`, `ram_total_kb`, `mem_used_kb` | `u64` | |
 | `sent_event_id` | `Option<String>` | The server's event ID, once sent |
@@ -112,17 +112,17 @@ A GlitchTip DSN of the form `https://<key>@<host>[/prefix]/<project>`. `store_ur
 | `record_fatal` | `pub fn record_fatal(message: &str) -> Option<PathBuf>` | Queues a report for a fatal error that is not a Rust panic (a Qt fatal message handler). Needs `install`; does nothing when disabled |
 | `pending` | `pub fn pending() -> Vec<Report>` | Reports waiting for the user's decision, oldest first. Also prunes old sent reports |
 | `sent` | `pub fn sent() -> Vec<Report>` | Reports already sent, oldest first: the history list |
-| `discard` | `pub fn discard(report: &Report) -> io::Result<()>` | "Don't send": deletes the pending report's file. The report needs a `path` (the ones from `pending` have one) |
-| `collect_coredumps` | `pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report>` | New systemd-coredump crashes of the user's own processes since the last call (or since `since_micros`), queued as pending and returned. The first call after opting in starts at "now". Tries the user journal, then the system journal filtered to the user's UID (readable for members of `wheel` or `systemd-journal`). Empty when disabled |
-| `collect_events` | `pub fn collect_events(since: Option<&str>) -> Vec<Report>` | Reports for helper failures (`update-failed`, `rollback-failed`, `channel-switch-failed`, `automatic-rollback`, `health-check-failed`) newer than the last call (or `since`, an RFC 3339 time), queued as pending. Successes are skipped. Strings copied from the log are scrubbed again. Empty when disabled |
-| `send` | `pub fn send(report: &Report) -> io::Result<()>` | POSTs the payload to the endpoint (the Sentry store API) with `/usr/bin/curl` (https only, no proxy, no redirects, 30 s limit) and moves the report to `sent/`. The caller must have shown the user the payload and got a yes. Fails with `PermissionDenied` when reporting is off and `NotFound` ("no endpoint configured") without an endpoint. A failed POST carries a [`SendFailure`](#sendfailure) (read it with `send_failure`) |
+| `discard` | `pub fn discard(report: &Report) -> io::Result<()>` | "Don't send": deletes the pending report's file. The report needs a `path` (the ones from `pending` have one), and only a report file (`*.json`, not a symlink) directly in `pending/` is deleted: any other path fails with `InvalidInput` |
+| `collect_coredumps` | `pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report>` | New systemd-coredump crashes of the user's own processes since the last call (or since `since_micros`), queued as pending and returned. The first call after opting in starts at "now"; an empty or damaged marker counts from when it was last written. Tries the user journal, then the system journal filtered to the user's UID (readable for members of `wheel` or `systemd-journal`). Empty when disabled. **Blocks** for up to about 25 s: `journalctl` gets 10 s a call (two at most) and `rpm -qf`, asked for a program without a package field, 5 s; past its limit a command is killed, and after one `rpm` timeout (an update holding the rpmdb lock) the call asks no more. Call it from a worker thread |
+| `collect_events` | `pub fn collect_events(since: Option<&str>) -> Vec<Report>` | Reports for helper failures (`update-failed`, `rollback-failed`, `channel-switch-failed`, `automatic-rollback`, `health-check-failed`) newer than the last call (or `since`, an RFC 3339 time), queued as pending. Successes are skipped. Strings copied from the log are scrubbed again. Empty when disabled. Blocks on file I/O: call it from a worker thread |
+| `send` | `pub fn send(report: &Report) -> io::Result<()>` | POSTs the payload to the endpoint (the Sentry store API) with `/usr/bin/curl` (https only, no proxy, no redirects, 30 s limit) and moves the report to `sent/`. The caller must have shown the user the payload and got a yes. For the time of the POST the pending file is taken (renamed to `<name>.json.sending`, so no list shows it): a second sender of the same report, or a report no longer pending, fails with `AlreadyExists` instead of filing a second public issue. A failed POST puts it back. A report whose `path` is not a file in `pending/` is sent, but its file is neither taken nor deleted. Fails with `PermissionDenied` when reporting is off and `NotFound` ("no endpoint configured") without an endpoint. A failed POST carries a [`SendFailure`](#sendfailure) (read it with `send_failure`) |
 | `send_failure` | `pub fn send_failure(e: &io::Error) -> Option<&SendFailure>` | The `SendFailure` inside an error from `send`, or `None` for the other errors (reporting off, no endpoint, a file error) |
 | `is_issue_url` | `pub fn is_issue_url(u: &str) -> bool` | Whether `u` is an issue of the AtlasOS project (`https://github.com/EternalCoder454/AtlasOS/issues/<number>`): the only link a sent report may carry |
-| `github_issue_url` | `pub fn github_issue_url(r: &Report, repo: &str) -> String` | A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...` URL, at most about 7 KB (the trace is cut to fit). A secondary route to `send` |
+| `github_issue_url` | `pub fn github_issue_url(r: &Report, repo: &str) -> String` | A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...` URL, at most about 7 KB: the trace is cut to fit, a message too long on its own is cut too, and as a last resort the URL itself (never inside a character). A secondary route to `send` |
 
 ## SendFailure
 
-Why a send failed, in words an app shows as they are (after "Could not send the crash report: ", or alone). Its `Display` is that sentence. Each variant also sets the `io::Error`'s kind: `ConnectionRefused` for `Unreachable`, `WouldBlock` for `RateLimited` and `ServerTrouble` (try later), `InvalidData` for `Rejected`, `Other` for the rest; never `NotFound` or `PermissionDenied`, which mean "no endpoint" and "reporting is off". The HTTP status is read from curl's `--write-out`. The full curl error goes to stderr (the journal), never to the user.
+Why a send failed, in words an app shows as they are (after "Could not send the crash report: ", or alone). Its `Display` is that sentence. Each variant also sets the `io::Error`'s kind: `ConnectionRefused` for `Unreachable`, `WouldBlock` for `RateLimited` and `ServerTrouble` (try later), `InvalidData` for `Rejected`, `Other` for the rest; never `NotFound`, `PermissionDenied` or `AlreadyExists`, which mean "no endpoint", "reporting is off" and "already being sent". The HTTP status is read from curl's `--write-out`. The full curl error goes to stderr (the journal), never to the user.
 
 | Variant | When | Shown as |
 |---|---|---|

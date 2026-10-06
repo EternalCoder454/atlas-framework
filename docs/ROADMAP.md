@@ -560,22 +560,24 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 
 #### Crates (study 5)
 
-crash.rs has uncommitted work from another session: its items wait until
-that lands, then go in one batch.
+crash.rs's items went in one batch after its other work (SendFailure,
+a644aba) landed.
 
-- [ ] crash.rs: the 5-an-hour limit is per process and `pending/` has no cap
+- [x] crash.rs: the 5-an-hour limit is per process and `pending/` has no cap
   (a restart loop queues 5 per launch); dedupe by crash key, an on-disk hour
   counter, cap about 50 files.
-- [ ] crash.rs: no length cap on `message` (a 50 MB panic payload allocates
+- [x] crash.rs: no length cap on `message` (a 50 MB panic payload allocates
   about 1 GB in the hook); `github_issue_url` never shortens `head` past 7 KB.
-- [ ] crash.rs: `journalctl` and `rpm -qf` (waits on the rpmdb lock during an
+- [x] crash.rs: `journalctl` and `rpm -qf` (waits on the rpmdb lock during an
   update, up to 500 times) have no timeout; document that `collect_*` block.
-- [ ] crash.rs: reports and markers are written in place (no temp, fsync,
+- [x] crash.rs: reports and markers are written in place (no temp, fsync,
   rename): a crash leaves a truncated report that stays invisible, or an empty
   coredump marker that skips every crash since. Quarantine unparsable files.
-- [ ] crash.rs Low: `--noproxy "*"`; two senders of one report file two
-  issues; `ram_total_kb * 1024` overflow; the "prunes the sent history"
-  comment; the C++ `alarm(10)` turns a hung save into SIGALRM (no core).
+- [x] crash.rs Low: `--noproxy "*"` (already passed); two senders of one
+  report file two issues; `ram_total_kb * 1024` overflow; the "prunes the
+  sent history" comment.
+- [ ] atlas-framework-ui Low: the fatal handler's `alarm(10)`
+  (`atlas_framework_ui_fatal`) turns a hung save into SIGALRM (no core).
 - [x] flatpak: one failing installation (an unmounted extra one) fails all of
   `list_updates`; failed remote refreshes are dropped without a log line.
 - [x] flatpak: no Cancellable or deadline on any libflatpak call; a stalled
@@ -637,11 +639,13 @@ that lands, then go in one batch.
 
 ### S-phase notes (from the studies; handled in the S pass)
 
-- crash.rs: a coredump's `app_name` is the full exe path, not redacted
-  (`/mnt/clients/acme/...` reaches the public issue); scrub gaps
+- crash.rs: ~~a coredump's `app_name` is the full exe path, not redacted
+  (`/mnt/clients/acme/...` reaches the public issue)~~ (done: `<home>/` and
+  `<path>/` placeholders); scrub gaps
   (`--password x`, single name parts, a deny-list of private prefixes, Event
   scrubbed for hosts only); markers not reset when reporting is turned on by
-  hand; `discard()` deletes any `Report.path`.
+  hand; ~~`discard()` deletes any `Report.path`~~ (done: only files in
+  `pending/`).
 - Unpinned `fedora:44` base image; no dependabot for the pinned action SHAs;
   app-checks.yml tracks main by default.
 

@@ -26,9 +26,7 @@
 //! ([`Scrubber`]).
 
 use std::cell::Cell;
-use std::collections::hash_map::DefaultHasher;
 use std::fs;
-use std::hash::{Hash, Hasher};
 use std::io::{self, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
@@ -118,8 +116,9 @@ impl Report {
                 "os": {"name": "AtlasOS", "version": tag(&self.atlasos_version),
                        "kernel_version": tag(&self.kernel)},
                 "gpu": {"name": tag(&self.gpu), "version": tag(&self.gpu_driver)},
-                "device": {"cpu": tag(&self.cpu_model), "memory_size": self.ram_total_kb * 1024,
-                           "free_memory": (self.ram_total_kb.saturating_sub(self.mem_used_kb)) * 1024},
+                // saturating: a report file is only JSON, any number may be in it
+                "device": {"cpu": tag(&self.cpu_model), "memory_size": self.ram_total_kb.saturating_mul(1024),
+                           "free_memory": self.ram_total_kb.saturating_sub(self.mem_used_kb).saturating_mul(1024)},
                 "runtime": {"uptime_secs": self.uptime_secs},
             },
         });
@@ -252,8 +251,10 @@ impl Settings {
     }
 
     /// Save the setting. Turning reporting on starts the coredump and event
-    /// markers at "now", so nothing from before the opt-in is ever queued;
-    /// turning it off prunes the sent history.
+    /// markers at "now", so nothing from before the opt-in is ever queued.
+    /// Turning it off deletes every pending and quarantined report; of the
+    /// sent history only reports older than 90 days go, as on every
+    /// `pending()` and `sent()`.
     pub fn save(&self) -> io::Result<()> {
         let p = Self::path().ok_or_else(|| io::Error::other("no config directory"))?;
         let was = Self::load_from(&p).enabled;
@@ -264,14 +265,12 @@ impl Settings {
         if !self.enabled {
             prune_sent();
             // Off means off: reports still waiting were queued under the old
-            // opt-in and are not kept.
+            // opt-in and are not kept, nor are unreadable ones.
             if let Some(d) = reports_dir() {
-                for e in fs::read_dir(d.join("pending"))
-                    .into_iter()
-                    .flatten()
-                    .flatten()
-                {
-                    let _ = fs::remove_file(e.path());
+                for sub in ["pending", QUARANTINE] {
+                    for e in fs::read_dir(d.join(sub)).into_iter().flatten().flatten() {
+                        let _ = fs::remove_file(e.path());
+                    }
                 }
             }
         }
@@ -1262,7 +1261,7 @@ pub(crate) fn build_report(
         app_name: s(crash.app_name),
         app_version: crash.app_version.map(s),
         category: category_of(crash.app_name).to_string(),
-        message: scrubber.scrub_message(crash.message),
+        message: scrubber.scrub_message(&cap_message(crash.message)),
         stacktrace: scrubber.scrub_message(&filter_trace(crash.stacktrace)),
         kernel: Some(read("/proc/sys/kernel/osrelease").trim().to_string())
             .filter(|k| !k.is_empty()),
@@ -1324,23 +1323,95 @@ fn crash_id_in(dir: &Path, now: SystemTime) -> io::Result<String> {
     Ok(id)
 }
 
+/// Write `data` to `path` (0600; the directory becomes 0700) atomically: a
+/// temp file beside it, fsync, then a rename (`overwrite`) or a link that
+/// fails with `AlreadyExists` if `path` is taken, then a directory fsync. A
+/// crash leaves the old file or the new one, never a cut one. A symlink at
+/// `path` is replaced, never written through.
 fn write_private(path: &Path, data: &[u8], overwrite: bool) -> io::Result<()> {
-    if let Some(d) = path.parent() {
-        fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(d)?;
-        // an older version or a backup may have left it wider
-        fs::set_permissions(d, fs::Permissions::from_mode(0o700))?;
+    let dir = path
+        .parent()
+        .filter(|d| !d.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)?;
+    // an older version or a backup may have left it wider
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o700))?;
+    let name = path
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "path has no file name"))?;
+    // `.<name>.<random>.tmp`: not `*.json`, so no reader ever sees it
+    let mut tmp_name = std::ffi::OsString::from(".");
+    tmp_name.push(name);
+    tmp_name.push(format!(".{}{TMP_SUFFIX}", random_hex(6)?));
+    let tmp = dir.join(tmp_name);
+    let res = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(&tmp)
+        .and_then(|mut f| {
+            f.write_all(data)?;
+            f.sync_all()
+        })
+        .and_then(|()| {
+            if overwrite {
+                fs::rename(&tmp, path)
+            } else {
+                // a link never replaces: `AlreadyExists` like `create_new`
+                match fs::hard_link(&tmp, path) {
+                    Err(e)
+                        if e.kind() != io::ErrorKind::AlreadyExists
+                            && fs::symlink_metadata(path).is_err() =>
+                    {
+                        // a file system without hard links
+                        fs::rename(&tmp, path)
+                    }
+                    r => r,
+                }
+            }
+        });
+    let _ = fs::remove_file(&tmp);
+    res?;
+    sync_dir(dir);
+    Ok(())
+}
+
+/// The suffix of [`write_private`]'s temp files.
+const TMP_SUFFIX: &str = ".tmp";
+
+/// Make a rename or link in `dir` durable (best effort: some file systems
+/// refuse to sync a directory).
+fn sync_dir(dir: &Path) {
+    if let Ok(d) = fs::File::open(dir) {
+        let _ = d.sync_all();
     }
-    let mut o = fs::OpenOptions::new();
-    o.write(true).mode(0o600).custom_flags(libc::O_NOFOLLOW);
-    if overwrite {
-        o.create(true).truncate(true);
-    } else {
-        o.create_new(true);
+}
+
+/// Remove [`write_private`] temp files (`.<name>.<hex>.tmp`) left in `dir` by
+/// a process killed mid-write, once they are clearly not in use any more.
+fn sweep_temp_files(dir: &Path, now: SystemTime) {
+    for e in fs::read_dir(dir).into_iter().flatten().flatten() {
+        let name = e.file_name();
+        let name = name.to_string_lossy();
+        if !(name.starts_with('.') && name.ends_with(TMP_SUFFIX)) {
+            continue;
+        }
+        if is_stale(&e, now) {
+            let _ = fs::remove_file(e.path());
+        }
     }
-    o.open(path)?.write_all(data)
+}
+
+/// Older than 10 minutes (or dated in the future).
+fn is_stale(e: &fs::DirEntry, now: SystemTime) -> bool {
+    e.metadata().and_then(|m| m.modified()).is_ok_and(|t| {
+        now.duration_since(t)
+            .map_or(true, |a| a > Duration::from_secs(600))
+    })
 }
 
 /// Save `report` in `dir` as `<time>-<nn>.json` (0600; `dir` becomes 0700).
@@ -1405,6 +1476,50 @@ fn read_pending(dir: &Path) -> Vec<Report> {
         .collect()
 }
 
+/// Where unreadable report files go, beside `pending/` and `sent/`.
+const QUARANTINE: &str = "quarantine";
+
+/// A file that is not a report and has not changed for a minute (so not one
+/// an older version is still writing in place) is moved to `quarantine/`
+/// beside `dir`: out of the list, but kept to look at (90 days).
+fn quarantine(path: &Path, now: SystemTime) {
+    let settled = fs::symlink_metadata(path)
+        .and_then(|m| m.modified())
+        .is_ok_and(|t| now.duration_since(t).map_or(true, |a| a > Duration::from_secs(60)));
+    let (Some(dir), Some(name)) = (path.parent().and_then(Path::parent), path.file_name()) else {
+        return;
+    };
+    if !settled {
+        return;
+    }
+    let q = dir.join(QUARANTINE);
+    let made = fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(&q)
+        .and_then(|()| fs::set_permissions(&q, fs::Permissions::from_mode(0o700)));
+    if made.is_err() {
+        return;
+    }
+    for n in 0..100 {
+        let mut to = name.to_os_string();
+        if n > 0 {
+            to.push(format!(".{n}"));
+        }
+        let to = q.join(to);
+        if fs::symlink_metadata(&to).is_ok() {
+            continue;
+        }
+        if fs::rename(path, &to).is_ok() {
+            sync_dir(&q);
+            if let Some(d) = path.parent() {
+                sync_dir(d);
+            }
+        }
+        return;
+    }
+}
+
 fn read_reports(dir: &Path) -> Vec<Report> {
     let mut paths: Vec<PathBuf> = fs::read_dir(dir)
         .into_iter()
@@ -1414,11 +1529,12 @@ fn read_reports(dir: &Path) -> Vec<Report> {
         .filter(|p| p.extension().is_some_and(|e| e == "json"))
         .collect();
     paths.sort();
+    let now = SystemTime::now();
     paths
         .into_iter()
         .filter_map(|p| {
-            let text = fs::read_to_string(&p).ok()?;
-            match serde_json::from_str::<Report>(&text) {
+            let bytes = fs::read(&p).ok()?;
+            match serde_json::from_slice::<Report>(&bytes) {
                 Ok(mut r) => {
                     r.path = Some(p);
                     Some(r)
@@ -1426,11 +1542,14 @@ fn read_reports(dir: &Path) -> Vec<Report> {
                 Err(_) => {
                     // A report from before schema 2 (no event_id) can never
                     // be shown or sent: remove it instead of skipping it forever.
-                    let old = serde_json::from_str::<Value>(&text)
+                    let old = serde_json::from_slice::<Value>(&bytes)
                         .ok()
-                        .is_some_and(|v| v.get("event_id").is_none());
+                        .is_some_and(|v| v.is_object() && v.get("event_id").is_none());
                     if old {
                         let _ = fs::remove_file(&p);
+                    } else {
+                        // cut short, damaged or not UTF-8: out of the list
+                        quarantine(&p, now);
                     }
                     None
                 }
@@ -1455,23 +1574,61 @@ pub fn sent() -> Vec<Report> {
         .unwrap_or_default()
 }
 
-/// "Don't send": delete the pending report's file.
+/// "Don't send": delete the pending report's file. Only a report file in
+/// `pending/` is deleted: any other `path` fails with `InvalidInput`.
 pub fn discard(report: &Report) -> io::Result<()> {
-    fs::remove_file(
-        report
-            .path
-            .as_ref()
-            .ok_or_else(|| io::Error::other("report has no path"))?,
-    )
+    let dir = reports_dir()
+        .ok_or_else(|| io::Error::other("no state directory"))?
+        .join("pending");
+    discard_in(&dir, report)
 }
 
-/// Delete sent reports older than 90 days.
+fn discard_in(pending: &Path, report: &Report) -> io::Result<()> {
+    let p = report
+        .path
+        .as_ref()
+        .ok_or_else(|| io::Error::other("report has no path"))?;
+    if !is_pending_file(pending, p) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "not a pending crash report",
+        ));
+    }
+    fs::remove_file(p)
+}
+
+/// Whether `p` names a report file (`*.json`, not hidden) directly in the
+/// directory `pending`, and is no symlink or directory if it exists. The
+/// directories are compared resolved, so `..` and links lead nowhere else.
+fn is_pending_file(pending: &Path, p: &Path) -> bool {
+    let (Some(parent), Some(name)) = (p.parent(), p.file_name().and_then(|n| n.to_str())) else {
+        return false;
+    };
+    let same_dir = match (fs::canonicalize(parent), fs::canonicalize(pending)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    };
+    same_dir
+        && name.ends_with(".json")
+        && !name.starts_with('.')
+        && fs::symlink_metadata(p).map_or(true, |m| m.file_type().is_file())
+}
+
+/// Delete sent and quarantined reports older than 90 days, and leftovers of
+/// writes and sends that were cut short.
 fn prune_sent() {
+    let now = SystemTime::now();
     if let Some(d) = state_dir() {
-        sweep_send_files(&d, SystemTime::now());
+        sweep_send_files(&d, now);
+        sweep_temp_files(&d, now);
     }
     if let Some(d) = reports_dir() {
-        prune_older_than(&d.join("sent"), SENT_KEEP, SystemTime::now());
+        for sub in ["pending", "sent", QUARANTINE] {
+            sweep_temp_files(&d.join(sub), now);
+        }
+        sweep_claims(&d.join("pending"), now);
+        prune_older_than(&d.join("sent"), SENT_KEEP, now);
+        prune_older_than(&d.join(QUARANTINE), SENT_KEEP, now);
     }
 }
 
@@ -1484,11 +1641,7 @@ fn sweep_send_files(dir: &Path, now: SystemTime) {
         if !(name.starts_with("send-") && name.ends_with(".json")) {
             continue;
         }
-        let stale = e.metadata().and_then(|m| m.modified()).is_ok_and(|t| {
-            now.duration_since(t)
-                .map_or(true, |a| a > Duration::from_secs(600))
-        });
-        if stale {
+        if is_stale(&e, now) {
             let _ = fs::remove_file(e.path());
         }
     }
@@ -1521,7 +1674,9 @@ fn move_to_sent(sent_dir: &Path, report: &Report, server: Server) {
     r.sent_event_id = server.id;
     r.issue_url = server.url;
     let _ = write_report(sent_dir, &r);
-    if let Some(p) = &report.path
+    // only a file in the `pending/` beside `sent/`
+    let pending = sent_dir.with_file_name("pending");
+    if let Some(p) = report.path.as_ref().filter(|p| is_pending_file(&pending, p))
         && let Err(e) = fs::remove_file(p)
         && e.kind() != io::ErrorKind::NotFound
     {
@@ -1539,7 +1694,40 @@ fn queue(report: &Report) -> Option<PathBuf> {
     if !Settings::load().enabled {
         return None;
     }
-    write_report(&reports_dir()?.join("pending"), report).ok()
+    let pending = reports_dir()?.join("pending");
+    let p = write_report(&pending, report).ok();
+    cap_pending(&pending, MAX_PENDING);
+    p
+}
+
+/// At most this many reports wait in `pending/`.
+const MAX_PENDING: usize = 50;
+
+/// Delete the oldest pending reports (by file name: the report's time) until
+/// at most `max` are left.
+fn cap_pending(dir: &Path, max: usize) {
+    let mut paths: Vec<PathBuf> = fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|e| e == "json"))
+        .collect();
+    if paths.len() <= max {
+        return;
+    }
+    paths.sort();
+    let extra = paths.len() - max;
+    for p in &paths[..extra] {
+        let _ = fs::remove_file(p);
+    }
+}
+
+/// Keep the reports whose pending file is still there (the cap may have
+/// taken the oldest of a large batch).
+fn still_pending(mut out: Vec<Report>) -> Vec<Report> {
+    out.retain(|r| r.path.as_ref().is_some_and(|p| p.exists()));
+    out
 }
 
 // -------------------------------------------------------------------- hooks
@@ -1548,7 +1736,9 @@ static APP: OnceLock<AppInfo> = OnceLock::new();
 
 const MAX_PER_HOUR: usize = 5;
 
-/// At most 5 reports an hour, and the same crash (same top frames) once.
+/// At most 5 reports an hour, and the same crash (same message and place)
+/// once, in this process; [`ledger_allow`] holds the same limits across
+/// processes.
 #[derive(Default)]
 struct RateLimiter {
     recent: Vec<(Instant, u64)>,
@@ -1573,12 +1763,139 @@ thread_local! {
 }
 
 /// The same crash is the same message at the same place (the frames of a
-/// trace taken inside the hook are no help: they are hook code).
+/// trace taken inside the hook are no help: they are hook code). Stable
+/// across processes and builds: it is stored in [`RECENT`].
 fn crash_key(message: &str, at: Option<&str>) -> u64 {
-    let mut h = DefaultHasher::new();
-    message.hash(&mut h);
-    at.hash(&mut h);
-    h.finish()
+    fnv1a(&[message.as_bytes(), at.unwrap_or("").as_bytes()])
+}
+
+/// FNV-1a over the parts, each followed by a 0 byte.
+fn fnv1a(parts: &[&[u8]]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for p in parts {
+        for b in p.iter().chain([&0u8]) {
+            h ^= u64::from(*b);
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    h
+}
+
+/// A coredump's crash key: the program, the signal and the top
+/// [`KEY_FRAMES`] frames of the crashed thread (functions and modules, not
+/// addresses, which move with every start). A restart loop is one crash.
+fn coredump_key(r: &Report) -> u64 {
+    // the first thread in systemd-coredump's trace is the one that crashed
+    let first: Vec<&str> = r
+        .stacktrace
+        .lines()
+        .enumerate()
+        .take_while(|(i, l)| *i == 0 || !l.trim_start().starts_with("Stack trace of thread"))
+        .map(|x| x.1)
+        .collect();
+    let frames = parse_frames(&first.join("\n"));
+    let mut parts: Vec<String> = vec![r.app_name.clone(), r.message.clone()];
+    for f in frames.iter().rev().take(KEY_FRAMES) {
+        parts.push(format!(
+            "{} {}",
+            f["function"].as_str().unwrap_or(""),
+            f["module"].as_str().unwrap_or("")
+        ));
+    }
+    fnv1a(&parts.iter().map(|p| p.as_bytes()).collect::<Vec<_>>())
+}
+
+const KEY_FRAMES: usize = 5;
+
+/// The crashes queued in the last day, shared by every process of the user:
+/// `crash-reports/recent`, one `<unix seconds> <16 hex key>` per line.
+const RECENT: &str = "recent";
+const DEDUPE_FOR: Duration = Duration::from_secs(86_400);
+
+/// Whether a crash with `key` may be queued at `now`, recorded in
+/// `dir/recent` if so: the same key at most once a day and, with `cap`, at
+/// most [`MAX_PER_HOUR`] reports in the last hour, across processes (an app
+/// in a restart loop is a new process each time). Lines are locked with
+/// `recent.lock` (waiting at most 200 ms) and written atomically. When the
+/// file cannot be used the crash is allowed: the in-process limit remains.
+fn ledger_allow(dir: &Path, now: SystemTime, key: u64, cap: bool) -> bool {
+    let secs = |t: SystemTime| t.duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
+    let now_s = secs(now);
+    let _lock = lock_file(&dir.join(format!("{RECENT}.lock")), Duration::from_millis(200));
+    let path = dir.join(RECENT);
+    let mut recent: Vec<(u64, u64)> = fs::read(&path)
+        .map(|b| String::from_utf8_lossy(&b).into_owned())
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| {
+            let (t, k) = l.split_once(' ')?;
+            Some((t.parse().ok()?, u64::from_str_radix(k, 16).ok()?))
+        })
+        // in the last day; a time ahead of the clock (it was set back)
+        // counts as now, unless it is more than a day ahead
+        .filter(|(t, _)| {
+            now_s.saturating_sub(*t) < DEDUPE_FOR.as_secs()
+                && t.saturating_sub(now_s) < DEDUPE_FOR.as_secs()
+        })
+        .collect();
+    if recent.iter().any(|(_, k)| *k == key) {
+        return false;
+    }
+    if cap && recent.iter().filter(|(t, _)| now_s.saturating_sub(*t) < 3600).count() >= MAX_PER_HOUR {
+        return false;
+    }
+    recent.push((now_s, key));
+    let text: String = recent.iter().map(|(t, k)| format!("{t} {k:016x}\n")).collect();
+    let _ = write_private(&path, text.as_bytes(), true);
+    true
+}
+
+/// An exclusive `flock` on `path` (made 0600 if missing), tried until
+/// `wait` has passed; `None` if it could not be had. Released on drop.
+fn lock_file(path: &Path, wait: Duration) -> Option<fs::File> {
+    use std::os::fd::AsRawFd;
+    let dir = path.parent()?;
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)
+        .ok()?;
+    let f = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(path)
+        .ok()?;
+    let end = Instant::now() + wait;
+    loop {
+        // SAFETY: a valid open descriptor; flock has no other preconditions.
+        if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+            return Some(f);
+        }
+        if Instant::now() >= end {
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+/// The longest message a report keeps, in bytes.
+const MAX_MESSAGE: usize = 64 * 1024;
+
+/// `s` cut to [`MAX_MESSAGE`] bytes on a char boundary, with a note saying
+/// so; copies at most that much.
+fn cap_message(s: &str) -> String {
+    if s.len() <= MAX_MESSAGE {
+        return s.to_string();
+    }
+    let mut end = MAX_MESSAGE;
+    while !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}\n[... cut: the message was {} bytes]", &s[..end], s.len())
 }
 
 /// Drop the frames of the hook itself (everything up to the panic runtime).
@@ -1597,7 +1914,7 @@ fn skip_hook_frames(trace: &str) -> String {
 /// Install the panic hook for `app`. Call once, early in `main`. The previous
 /// hook (the default one prints the panic) runs first; then, only when crash
 /// reporting is enabled, a report is queued (not for a panic inside the hook
-/// itself, and at most 5 an hour, each crash once).
+/// itself, at most 5 an hour across all processes, each crash once a day).
 pub fn install(app: AppInfo) {
     if APP.set(app).is_err() {
         return;
@@ -1610,14 +1927,15 @@ pub fn install(app: AppInfo) {
             return;
         }
         // No panic is possible in here: it would abort the process.
-        let message = match info.payload().downcast_ref::<&str>() {
-            Some(s) => (*s).to_string(),
-            None => info
-                .payload()
-                .downcast_ref::<String>()
-                .cloned()
-                .unwrap_or_else(|| "Box<dyn Any>".to_string()),
-        };
+        let payload = info.payload();
+        let message = payload
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+            .unwrap_or("Box<dyn Any>");
+        // cut before any copy: a huge payload would cost many times its
+        // size in the scrubber
+        let message = cap_message(message);
         let at = info
             .location()
             .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()));
@@ -1637,8 +1955,15 @@ fn save(kind: &str, message: &str, at: Option<&str>) -> Option<PathBuf> {
         return None;
     }
     let app = APP.get()?;
+    let message = &cap_message(message);
     let key = crash_key(message, at);
     if !lock(&LIMITER).allow(Instant::now(), key) {
+        return None;
+    }
+    // the same limits across processes: a restart loop is one crash
+    if let Some(d) = reports_dir()
+        && !ledger_allow(&d, SystemTime::now(), key, true)
+    {
         return None;
     }
     let msg = match at {
@@ -1747,7 +2072,7 @@ fn coredump_report(
     let name = if exe.is_empty() {
         comm.clone()
     } else {
-        exe.clone()
+        redact_exe(&exe, scrubber)
     };
     let version = match (
         field(entry, "COREDUMP_PACKAGE_NAME"),
@@ -1768,6 +2093,38 @@ fn coredump_report(
     Some((ts, build_report(&crash, scrubber, Some(&time)).ok()?))
 }
 
+/// Where installed programs live: a crashed program's path under one of
+/// these is kept whole.
+const SYSTEM_PREFIXES: &[&str] = &[
+    "/usr/",
+    "/bin/",
+    "/sbin/",
+    "/lib/",
+    "/lib64/",
+    "/opt/",
+    "/app/",
+    "/var/lib/flatpak/",
+];
+
+/// A crashed program's path as it may be shown: a system path whole; under
+/// a home directory `<home>/<program>`; anywhere else (`/mnt/clients/...`,
+/// `/srv/...`, a build tree) `<path>/<program>`. The program name stays: it
+/// is the crash's subject, and the message has it already.
+fn redact_exe(exe: &str, scrubber: &Scrubber) -> String {
+    if SYSTEM_PREFIXES.iter().any(|p| exe.starts_with(p)) {
+        return exe.to_string();
+    }
+    let base = exe.rsplit('/').next().unwrap_or("");
+    // `/home/`, `/var/home/` and the same inside an ostree deployment
+    let home = exe.contains("/home/")
+        || ["/root/", "/var/roothome/"].iter().any(|p| exe.starts_with(p))
+        || scrubber
+            .homes
+            .iter()
+            .any(|h| exe.strip_prefix(h.as_str()).is_some_and(|r| r.starts_with('/')));
+    format!("{}/{base}", if home { "<home>" } else { "<path>" })
+}
+
 fn own_uid() -> String {
     read("/proc/self/status")
         .lines()
@@ -1780,16 +2137,91 @@ fn own_uid() -> String {
         .unwrap_or_default()
 }
 
-fn journal(args: &[String]) -> Vec<Value> {
-    let out = Command::new("/usr/bin/journalctl")
-        .args(args)
+/// How long one `journalctl` call may take.
+const JOURNAL_LIMIT: Duration = Duration::from_secs(10);
+/// How long one `rpm -qf` may take: it waits on the rpmdb lock while an
+/// update runs.
+const RPM_LIMIT: Duration = Duration::from_secs(5);
+/// The most of journalctl's output that is kept (500 entries of capped
+/// fields are far less).
+const JOURNAL_MAX_OUT: usize = 16 * 1024 * 1024;
+
+/// Run `cmd` (no stdin or stderr, a clean environment) for at most `limit`.
+/// Past it the command's whole process group is killed and `None` returned.
+/// At most `max_out` bytes of its output are kept; the rest is read and
+/// dropped, so it never blocks on a full pipe.
+fn output_within(
+    cmd: &mut Command,
+    limit: Duration,
+    max_out: usize,
+) -> Option<(std::process::ExitStatus, Vec<u8>)> {
+    use std::os::unix::process::CommandExt;
+    let end = Instant::now() + limit;
+    let mut child = cmd
         .env_clear()
         .env("PATH", "/usr/bin")
         .stdin(Stdio::null())
+        .stdout(Stdio::piped())
         .stderr(Stdio::null())
-        .output();
-    match out {
-        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
+        // its own group, so a child it started dies with it
+        .process_group(0)
+        .spawn()
+        .ok()?;
+    let Some(mut stdout) = child.stdout.take() else {
+        kill_group(&mut child);
+        return None;
+    };
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let _ = (&mut stdout).take(max_out as u64).read_to_end(&mut buf);
+        let _ = io::copy(&mut stdout, &mut io::sink());
+        let _ = tx.send(buf);
+    });
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(s)) => break s,
+            Ok(None) if Instant::now() < end => std::thread::sleep(Duration::from_millis(5)),
+            _ => {
+                kill_group(&mut child);
+                return None;
+            }
+        }
+    };
+    // The output is whole once the pipe closes; something it left running
+    // that holds the pipe gets until the deadline.
+    let wait = end
+        .saturating_duration_since(Instant::now())
+        .max(Duration::from_millis(100));
+    match rx.recv_timeout(wait) {
+        Ok(out) => Some((status, out)),
+        Err(_) => {
+            kill_group(&mut child);
+            None
+        }
+    }
+}
+
+/// SIGKILL to the group `child` leads (see [`output_within`]), then reap it.
+fn kill_group(child: &mut std::process::Child) {
+    if let Ok(pid) = i32::try_from(child.id()) {
+        // SAFETY: kill has no memory preconditions; -pid is the process
+        // group the child was made the leader of.
+        unsafe { libc::kill(-pid, libc::SIGKILL) };
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+fn journal(args: &[String]) -> Vec<Value> {
+    journal_with(Path::new("/usr/bin/journalctl"), args, JOURNAL_LIMIT)
+}
+
+/// The JSON lines `program args` prints within `limit`; nothing on an
+/// error or past the limit.
+fn journal_with(program: &Path, args: &[String], limit: Duration) -> Vec<Value> {
+    match output_within(Command::new(program).args(args), limit, JOURNAL_MAX_OUT) {
+        Some((status, out)) if status.success() => String::from_utf8_lossy(&out)
             .lines()
             .filter_map(|l| serde_json::from_str(l).ok())
             .collect(),
@@ -1824,19 +2256,55 @@ fn journal_args(since_micros: u64, uid: Option<&str>) -> Vec<String> {
     a
 }
 
-fn rpm_version(exe: &str) -> Option<String> {
-    let o = Command::new("/usr/bin/rpm")
-        .args(["-qf", "--qf", "%{NAME} %{VERSION}-%{RELEASE}", "--", exe])
-        .env_clear()
-        .env("PATH", "/usr/bin")
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    o.status
+/// The package owning `exe`; `Err` (`TimedOut`) when rpm took longer than
+/// [`RPM_LIMIT`].
+fn rpm_version(exe: &str) -> io::Result<Option<String>> {
+    let mut cmd = Command::new("/usr/bin/rpm");
+    cmd.args(["-qf", "--qf", "%{NAME} %{VERSION}-%{RELEASE}", "--", exe]);
+    let (status, out) = output_within(&mut cmd, RPM_LIMIT, 4096)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "rpm took too long"))?;
+    Ok(status
         .success()
-        .then(|| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .filter(|s| !s.is_empty())
+        .then(|| String::from_utf8_lossy(&out).trim().to_string())
+        .filter(|s| !s.is_empty()))
+}
+
+/// Package lookups for one collection run: each program is asked once, and
+/// after a lookup times out (the rpmdb is locked by an update) none is
+/// asked again, so a run of many crashes costs one timeout, not one each.
+struct RpmLookup<F: Fn(&str) -> io::Result<Option<String>>> {
+    query: F,
+    seen: std::cell::RefCell<std::collections::HashMap<String, Option<String>>>,
+    off: Cell<bool>,
+}
+
+impl<F: Fn(&str) -> io::Result<Option<String>>> RpmLookup<F> {
+    fn new(query: F) -> Self {
+        RpmLookup {
+            query,
+            seen: Default::default(),
+            off: Cell::new(false),
+        }
+    }
+
+    fn version(&self, exe: &str) -> Option<String> {
+        if self.off.get() {
+            return None;
+        }
+        if let Some(v) = self.seen.borrow().get(exe) {
+            return v.clone();
+        }
+        match (self.query)(exe) {
+            Ok(v) => {
+                self.seen.borrow_mut().insert(exe.to_string(), v.clone());
+                v
+            }
+            Err(_) => {
+                self.off.set(true);
+                None
+            }
+        }
+    }
 }
 
 /// New systemd-coredump crashes of the user's own processes since the last
@@ -1844,6 +2312,11 @@ fn rpm_version(exe: &str) -> Option<String> {
 /// The first call after opting in starts at "now": nothing older is read.
 /// Tries the user journal, then the system journal filtered to our UID
 /// (readable for members of `wheel`/`systemd-journal`). Empty when disabled.
+///
+/// Blocks: it runs `journalctl` (up to twice, 10 s each at most) and
+/// `rpm -qf` for programs without a package field (5 s at most; after one
+/// timeout, as when an update holds the rpmdb lock, no more this call), so
+/// up to about 25 s. Call it from a worker thread, never the GUI thread.
 pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     if !Settings::load().enabled {
         return Vec::new();
@@ -1852,10 +2325,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     let Some(marker) = last_seen_path("coredump-last") else {
         return Vec::new();
     };
-    let stored = fs::read_to_string(&marker)
-        .ok()
-        .and_then(|t| t.trim().parse::<u64>().ok());
-    let Some(since) = since_micros.or(stored) else {
+    let Some(since) = since_micros.or_else(|| read_coredump_marker(&marker)) else {
         reset_markers(); // first run: only crashes from now on
         return Vec::new();
     };
@@ -1865,6 +2335,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     }
     let scrubber = Scrubber::from_env();
     let uid = own_uid();
+    let rpm = RpmLookup::new(rpm_version);
     let mut newest = since;
     let mut out = Vec::new();
     for e in &entries {
@@ -1875,13 +2346,18 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
         if ts <= since {
             continue;
         }
-        let Some((_, report)) = coredump_report(e, &scrubber, &uid, rpm_version) else {
+        let Some((_, report)) = coredump_report(e, &scrubber, &uid, |x| rpm.version(x)) else {
             continue;
         };
         let Some(d) = reports_dir() else { break };
         // opted out while collecting: write nothing more
         if !Settings::load().enabled {
             break;
+        }
+        // the same crash again (a restart loop): seen, not queued
+        if !ledger_allow(&d, SystemTime::now(), coredump_key(&report), false) {
+            newest = newest.max(ts);
+            continue;
         }
         let mut r = report;
         match write_report(&d.join("pending"), &r) {
@@ -1902,7 +2378,39 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     if newest > since {
         let _ = write_private(&marker, newest.to_string().as_bytes(), true);
     }
-    out
+    if let Some(d) = reports_dir() {
+        cap_pending(&d.join("pending"), MAX_PENDING);
+    }
+    still_pending(out)
+}
+
+/// The coredump marker in microseconds; `None` only when there is none. An
+/// empty or damaged one (an older version wrote it in place and was cut
+/// short) counts from when it was last written, its modification time, so
+/// it neither restarts at "now" (skipping every crash since) nor reads the
+/// whole journal again.
+fn read_coredump_marker(marker: &Path) -> Option<u64> {
+    let text = match fs::read(marker) {
+        Ok(t) => t,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return None,
+        Err(_) => Vec::new(),
+    };
+    if let Some(n) = std::str::from_utf8(&text)
+        .ok()
+        .and_then(|t| t.trim().parse::<u64>().ok())
+    {
+        return Some(n);
+    }
+    marker_mtime(marker).map(|d| d.as_micros() as u64)
+}
+
+/// When a marker file was last written, since the epoch.
+fn marker_mtime(marker: &Path) -> Option<Duration> {
+    fs::symlink_metadata(marker)
+        .and_then(|m| m.modified())
+        .ok()?
+        .duration_since(UNIX_EPOCH)
+        .ok()
 }
 
 /// Delete the pending files of reports a collector just wrote.
@@ -1920,6 +2428,9 @@ fn discard_written(reports: &[Report]) {
 /// last call (or `since`, an RFC 3339 time), queued as pending. The first call
 /// after opting in starts at "now". Every string copied from the event log is
 /// scrubbed again. Empty when disabled.
+///
+/// Blocks on file I/O (the event log, the history, `/proc` and `/sys`):
+/// call it from a worker thread, like [`collect_coredumps`].
 pub fn collect_events(since: Option<&str>) -> Vec<Report> {
     if !Settings::load().enabled {
         return Vec::new();
@@ -1974,11 +2485,10 @@ fn collect_events_in(
     since: Option<&str>,
     enabled: &dyn Fn() -> bool,
 ) -> Option<Vec<Report>> {
-    let stored = fs::read_to_string(marker)
-        .ok()
-        .map(|t| parse_event_marker(&t, events))
-        .filter(|m| !m.0.is_empty());
-    let start = since.map(|s| (s.to_string(), 0)).or(stored)?;
+    let start = match since {
+        Some(s) => (s.to_string(), 0),
+        None => read_event_marker(marker, events)?,
+    };
     let mut marker_now = start.clone();
     let mut out = Vec::new();
     for e in pick_events(events, &start, now) {
@@ -2038,13 +2548,43 @@ fn collect_events_in(
             true,
         );
     }
-    Some(out)
+    cap_pending(pending, MAX_PENDING);
+    Some(still_pending(out))
 }
 
 /// The events marker: the time of the last collected event and how many events
 /// with exactly that time were taken (second resolution; the helper may append
 /// another one in the same second later).
 type EventMarker = (String, usize);
+
+/// The events marker; `None` only when there is none. An empty or damaged
+/// one counts from its modification time (see [`read_coredump_marker`]),
+/// the events of that second taken.
+fn read_event_marker(marker: &Path, events: &[crate::events::Event]) -> Option<EventMarker> {
+    let text = match fs::read(marker) {
+        Ok(t) => String::from_utf8(t).unwrap_or_default(),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return None,
+        Err(_) => String::new(),
+    };
+    let m = parse_event_marker(&text, events);
+    if looks_like_time(&m.0) {
+        return Some(m);
+    }
+    let at = history::rfc3339_from_unix(marker_mtime(marker)?.as_secs());
+    Some(parse_event_marker(&at, events))
+}
+
+/// Starts like an RFC 3339 time: `dddd-dd-ddTdd:dd:dd`.
+fn looks_like_time(t: &str) -> bool {
+    let b = t.as_bytes();
+    b.len() >= 19
+        && b[..19].iter().enumerate().all(|(i, c)| match i {
+            4 | 7 => *c == b'-',
+            10 => *c == b'T',
+            13 | 16 => *c == b':',
+            _ => c.is_ascii_digit(),
+        })
+}
 
 fn parse_event_marker(text: &str, events: &[crate::events::Event]) -> EventMarker {
     let mut it = text.split_whitespace();
@@ -2101,10 +2641,17 @@ fn pick_events<'a>(
 /// payload and got a yes. Fails when crash reporting is off or no endpoint is
 /// configured. Uses `/usr/bin/curl`.
 pub fn send(report: &Report) -> io::Result<()> {
-    send_with(report, Settings::load().enabled, Endpoint::load())
+    let pending = reports_dir().map(|d| d.join("pending"));
+    send_with(report, Settings::load().enabled, Endpoint::load(), pending.as_deref())
 }
 
-fn send_with(report: &Report, enabled: bool, ep: Option<Endpoint>) -> io::Result<()> {
+/// [`send`] with every input given; `pending` is the pending directory.
+fn send_with(
+    report: &Report,
+    enabled: bool,
+    ep: Option<Endpoint>,
+    pending: Option<&Path>,
+) -> io::Result<()> {
     if !enabled {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
@@ -2112,9 +2659,104 @@ fn send_with(report: &Report, enabled: bool, ep: Option<Endpoint>) -> io::Result
         ));
     }
     let ep = ep.ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no endpoint configured"))?;
+    // Two senders of one report (two windows, a double click) would file
+    // two public issues: the first to claim it sends it.
+    // Only a file in `pending/` is taken (and later removed); a report
+    // whose path points anywhere else is sent and its file left alone.
+    let claim = report
+        .path
+        .as_deref()
+        .filter(|p| pending.is_some_and(|d| is_pending_file(d, p)))
+        .map(Claim::take)
+        .transpose()?;
+    // a failed POST drops the claim, which puts the report back
     let server = post(report, &ep)?;
     finish_sent(report, server);
+    if let Some(c) = claim {
+        c.finish();
+    }
     Ok(())
+}
+
+/// The suffix of a pending report taken for sending.
+const CLAIM_SUFFIX: &str = ".sending";
+
+/// A pending report taken by one sender: renamed to `<name>.sending`, which
+/// no list shows and no other sender can take. Dropped without
+/// [`finish`](Claim::finish), it is renamed back; one left by a killed
+/// process is put back after 10 minutes ([`sweep_claims`]).
+struct Claim {
+    from: PathBuf,
+    held: PathBuf,
+    sent: bool,
+}
+
+impl Claim {
+    fn take(path: &Path) -> io::Result<Claim> {
+        let mut held = path.as_os_str().to_os_string();
+        held.push(CLAIM_SUFFIX);
+        let held = PathBuf::from(held);
+        match fs::rename(path, &held) {
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "the report is being sent, or is no longer pending",
+                ));
+            }
+            Err(e) => return Err(e),
+        }
+        // a rename keeps the old time: mark when the claim was taken
+        if let Ok(f) = fs::File::open(&held) {
+            let _ = f.set_modified(SystemTime::now());
+        }
+        Ok(Claim {
+            from: path.to_path_buf(),
+            held,
+            sent: false,
+        })
+    }
+
+    /// Sent: the claimed file goes.
+    fn finish(mut self) {
+        self.sent = true;
+        let _ = fs::remove_file(&self.held);
+        if let Some(d) = self.held.parent() {
+            sync_dir(d);
+        }
+    }
+}
+
+impl Drop for Claim {
+    fn drop(&mut self) {
+        // (gone if reporting was turned off meanwhile: then it stays gone)
+        if !self.sent {
+            let _ = fs::rename(&self.held, &self.from);
+        }
+    }
+}
+
+/// Put back the claims of senders that were killed (older than 10 minutes:
+/// a send takes 30 s at most).
+fn sweep_claims(dir: &Path, now: SystemTime) {
+    for e in fs::read_dir(dir).into_iter().flatten().flatten() {
+        let p = e.path();
+        let Some(name) = p.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let Some(orig) = name.strip_suffix(CLAIM_SUFFIX) else {
+            continue;
+        };
+        if !orig.ends_with(".json") || !is_stale(&e, now) {
+            continue;
+        }
+        let to = dir.join(orig);
+        if fs::symlink_metadata(&to).is_ok() {
+            let _ = fs::remove_file(&p);
+        } else {
+            let _ = fs::rename(&p, &to);
+        }
+    }
 }
 
 /// curl's arguments: no config file, https only (http only for a loopback
@@ -2373,7 +3015,8 @@ fn is_event_type(t: &str) -> bool {
 }
 
 /// A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...`
-/// URL, at most about 7 KB (the trace is cut to fit). Secondary to [`send`].
+/// URL, at most about 7 KB (the trace is cut to fit, and a message too long
+/// on its own too). Secondary to [`send`].
 pub fn github_issue_url(r: &Report, repo: &str) -> String {
     let is_event = r.stacktrace.trim().is_empty() && is_event_type(&r.report_type);
     let first: String = r
@@ -2403,22 +3046,47 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         percent_encode(&title)
     );
     let na = |o: &Option<String>| o.clone().unwrap_or_else(|| "unknown".into());
-    let head = format!(
-        "**App:** {} {}\n**AtlasOS:** {} ({})\n**Kernel:** {}\n**GPU:** {} ({})\n**Type:** {}\n**Message:** {}\n\n",
-        r.app_name,
-        na(&r.app_version),
-        na(&r.atlasos_version),
-        na(&r.channel),
-        na(&r.kernel),
-        na(&r.gpu),
-        na(&r.gpu_driver),
-        r.report_type,
-        r.message
-    );
+    let head_with = |message: &str| {
+        format!(
+            "**App:** {} {}\n**AtlasOS:** {} ({})\n**Kernel:** {}\n**GPU:** {} ({})\n**Type:** {}\n**Message:** {}\n\n",
+            r.app_name,
+            na(&r.app_version),
+            na(&r.atlasos_version),
+            na(&r.channel),
+            na(&r.kernel),
+            na(&r.gpu),
+            na(&r.gpu_driver),
+            r.report_type,
+            message
+        )
+    };
     let trace = filter_trace(&r.stacktrace);
-    if trace.trim().is_empty() {
+    let has_trace = !trace.trim().is_empty();
+    // The message alone may be over the budget (up to 64 KiB): cut it until
+    // the head with an empty trace block fits.
+    let chars: Vec<(usize, char)> = r.message.char_indices().collect();
+    let mut keep = chars.len();
+    let head = loop {
+        let msg = if keep < chars.len() {
+            let end = chars.get(keep).map_or(r.message.len(), |c| c.0);
+            format!("{} ... (message truncated)", &r.message[..end])
+        } else {
+            r.message.clone()
+        };
+        let head = head_with(&msg);
+        let empty = if has_trace {
+            format!("{head}```\n\n```\n")
+        } else {
+            head.trim_end().to_string()
+        };
+        if base.len() + percent_encode(&empty).len() <= MAX_URL || keep == 0 {
+            break head;
+        }
+        keep -= (keep / 10).max(1);
+    };
+    if !has_trace {
         // no stack trace (an event report): no empty code block
-        return format!("{base}{}", percent_encode(head.trim_end()));
+        return cap_url(format!("{base}{}", percent_encode(head.trim_end())));
     }
     let head = format!("{head}```\n");
     let lines: Vec<&str> = trace.lines().collect();
@@ -2431,10 +3099,39 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         };
         let body = percent_encode(&format!("{head}{}{cut}\n```\n", lines[..keep].join("\n")));
         if base.len() + body.len() <= MAX_URL || keep == 0 {
-            return format!("{base}{body}");
+            return cap_url(format!("{base}{body}"));
         }
         keep -= (keep / 10).max(1);
     }
+}
+
+/// The last resort when the other fields alone are too long (a long
+/// program path): cut the URL to [`MAX_URL`], never inside a `%XX` or a
+/// UTF-8 sequence.
+fn cap_url(mut url: String) -> String {
+    if url.len() <= MAX_URL {
+        return url;
+    }
+    let b = url.as_bytes();
+    let continuation = |i: usize| {
+        b.get(i) == Some(&b'%')
+            && b.get(i + 1..i + 3)
+                .and_then(|h| u8::from_str_radix(std::str::from_utf8(h).ok()?, 16).ok())
+                .is_some_and(|v| v & 0xC0 == 0x80)
+    };
+    let mut end = MAX_URL;
+    // not in the middle of a `%XX`
+    if b[end - 1] == b'%' {
+        end -= 1;
+    } else if b[end - 2] == b'%' {
+        end -= 2;
+    }
+    // not before a continuation byte: back to the start of its character
+    while end > 0 && continuation(end) {
+        end -= 3;
+    }
+    url.truncate(end);
+    url
 }
 
 #[cfg(test)]
@@ -2744,7 +3441,7 @@ mod tests {
         assert_ne!(p, write_report(&pend, &r).unwrap());
         let got = read_reports(&pend);
         assert_eq!(got.len(), 2);
-        discard(&got[0]).unwrap();
+        discard_in(&pend, &got[0]).unwrap();
         move_to_sent(
             &d.path().join("sent"),
             &got[1],
@@ -2772,7 +3469,7 @@ mod tests {
 
     #[test]
     fn send_without_endpoint_fails_cleanly() {
-        let e = send_with(&report(""), true, None).unwrap_err();
+        let e = send_with(&report(""), true, None, None).unwrap_err();
         assert_eq!(e.to_string(), "no endpoint configured");
     }
 
@@ -3001,7 +3698,7 @@ mod tests {
     #[test]
     fn send_is_refused_when_disabled() {
         let ep = Endpoint::parse("https://k@glitch.example/1");
-        let e = send_with(&report(""), false, ep).unwrap_err();
+        let e = send_with(&report(""), false, ep, None).unwrap_err();
         assert_eq!(e.kind(), io::ErrorKind::PermissionDenied);
     }
 
@@ -3813,5 +4510,470 @@ mod tests {
         // a real crash keeps its block and title
         let c = github_issue_url(&report("  0: f\n"), "AtlasOS");
         assert!(c.contains("%60%60%60") && c.contains("Crash%20in"), "{c}");
+    }
+
+    // ---- 1.6.0: crash.rs batch (study 5)
+
+    fn set_mtime(p: &Path, t: SystemTime) {
+        fs::File::options()
+            .write(true)
+            .open(p)
+            .unwrap()
+            .set_modified(t)
+            .unwrap();
+    }
+
+    fn names(dir: &Path) -> Vec<String> {
+        let mut v: Vec<String> = fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn markers_and_reports_are_replaced_not_rewritten_in_place() {
+        let d = tempfile::tempdir().unwrap();
+        let dir = d.path().join("atlas");
+        let m = dir.join("coredump-last");
+        write_private(&m, b"1", true).unwrap();
+        // a second name for the same file: an in-place write would change it
+        let other = d.path().join("other");
+        fs::hard_link(&m, &other).unwrap();
+        write_private(&m, b"2", true).unwrap();
+        assert_eq!(fs::read_to_string(&m).unwrap(), "2");
+        assert_eq!(fs::read_to_string(&other).unwrap(), "1");
+        assert_eq!(fs::metadata(&m).unwrap().permissions().mode() & 0o777, 0o600);
+        // a new file never replaces one
+        let e = write_private(&m, b"3", false).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::AlreadyExists);
+        assert_eq!(fs::read_to_string(&m).unwrap(), "2");
+        // and no temp file is left either way
+        assert_eq!(names(&dir), ["coredump-last"]);
+        let p = write_report(&dir.join("pending"), &report("")).unwrap();
+        assert_eq!(names(&dir.join("pending")).len(), 1);
+        assert_eq!(read_reports(&dir.join("pending"))[0].path.as_ref(), Some(&p));
+    }
+
+    #[test]
+    fn leftover_temp_files_are_swept() {
+        let d = tempfile::tempdir().unwrap();
+        let t = d.path().join(".x.json.0011aa.tmp");
+        fs::write(&t, "{").unwrap();
+        fs::write(d.path().join("keep.json"), "{}").unwrap();
+        sweep_temp_files(d.path(), SystemTime::now());
+        assert!(t.exists(), "fresh: maybe being written");
+        sweep_temp_files(d.path(), SystemTime::now() + Duration::from_secs(3600));
+        assert!(!t.exists());
+        assert!(d.path().join("keep.json").exists());
+    }
+
+    #[test]
+    fn unreadable_reports_are_quarantined() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let good = write_report(&pend, &report("")).unwrap();
+        let cut = pend.join("2026-10-01T00:00:00Z-00.json");
+        fs::write(&cut, "{\"schema\": 2, \"event_id\": \"ab").unwrap();
+        let binary = pend.join("2026-10-01T00:00:01Z-00.json");
+        fs::write(&binary, [0xff, 0xfe, 0x00]).unwrap();
+        let fresh = pend.join("2026-10-01T00:00:02Z-00.json");
+        fs::write(&fresh, "{").unwrap();
+        let old = SystemTime::now() - Duration::from_secs(600);
+        set_mtime(&cut, old);
+        set_mtime(&binary, old);
+        let got = read_reports(&pend);
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].path.as_ref(), Some(&good));
+        let q = d.path().join(QUARANTINE);
+        assert_eq!(
+            names(&q),
+            ["2026-10-01T00:00:00Z-00.json", "2026-10-01T00:00:01Z-00.json"]
+        );
+        assert_eq!(fs::metadata(&q).unwrap().permissions().mode() & 0o777, 0o700);
+        // one still being written by an older version is left for now
+        assert!(fresh.exists());
+        // a second damaged file of the same name does not replace the first
+        fs::write(&cut, "{").unwrap();
+        set_mtime(&cut, old);
+        read_reports(&pend);
+        assert_eq!(names(&q).len(), 3);
+    }
+
+    #[test]
+    fn a_damaged_marker_counts_from_when_it_was_written() {
+        let d = tempfile::tempdir().unwrap();
+        let m = d.path().join("coredump-last");
+        assert_eq!(read_coredump_marker(&m), None, "none: start at now");
+        fs::write(&m, "1790000000000000\n").unwrap();
+        assert_eq!(read_coredump_marker(&m), Some(1_790_000_000_000_000));
+        for bad in ["", "17900000", "x"] {
+            fs::write(&m, bad).unwrap();
+            if bad == "17900000" {
+                // a cut number is still a number: earlier, never later
+                assert_eq!(read_coredump_marker(&m), Some(17_900_000));
+                continue;
+            }
+            set_mtime(&m, UNIX_EPOCH + Duration::from_secs(1_790_000_000));
+            assert_eq!(read_coredump_marker(&m), Some(1_790_000_000_000_000), "{bad:?}");
+        }
+
+        // the events marker: an empty one used to restart at "now"
+        let (marker, pending) = (d.path().join("events-last"), d.path().join("pending"));
+        fs::write(&marker, "").unwrap();
+        // 2026-10-02T09:30:00Z
+        set_mtime(&marker, UNIX_EPOCH + Duration::from_secs(1_790_933_400));
+        let log = vec![ev("2026-10-02T09:00:00Z"), ev("2026-10-02T10:00:00Z")];
+        let sc = Scrubber::new(&[], &[], &[]);
+        let on = || true;
+        let out = collect_events_in(&log, &marker, &pending, &sc, "2026-10-02T12:00:00Z", None, &on)
+            .expect("a damaged marker is not a missing one");
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].time, "2026-10-02T10:00:00Z");
+        assert!(looks_like_time("2026-10-02T10:00:00Z"));
+        assert!(!looks_like_time("2026-10-0"));
+    }
+
+    #[test]
+    fn the_hourly_limit_and_dedupe_hold_across_processes() {
+        // every call reads the file again, as a new process would
+        let d = tempfile::tempdir().unwrap();
+        let dir = d.path().join("crash-reports");
+        let t = UNIX_EPOCH + Duration::from_secs(1_790_000_000);
+        let hour = Duration::from_secs(3601);
+        assert!(ledger_allow(&dir, t, 1, true));
+        assert!(!ledger_allow(&dir, t, 1, true), "a restart loop: same crash");
+        for k in 2..=5 {
+            assert!(ledger_allow(&dir, t, k, true));
+        }
+        assert!(!ledger_allow(&dir, t, 6, true), "sixth in the hour");
+        // without the cap (coredumps) only the dedupe applies
+        assert!(ledger_allow(&dir, t, 7, false));
+        assert!(!ledger_allow(&dir, t, 7, false));
+        assert!(ledger_allow(&dir, t + hour, 6, true), "the next hour");
+        assert!(!ledger_allow(&dir, t + hour, 1, true), "same crash: once a day");
+        assert!(ledger_allow(&dir, t + DEDUPE_FOR + hour, 1, true));
+        let text = fs::read_to_string(dir.join(RECENT)).unwrap();
+        assert!(text.lines().count() <= 8, "old lines go: {text}");
+        assert_eq!(
+            fs::metadata(dir.join(RECENT)).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        // a damaged file does not stop reports
+        fs::write(dir.join(RECENT), "garbage\n\u{0}\n").unwrap();
+        assert!(ledger_allow(&dir, t, 1, true));
+        // the key is stable (stored on disk, compared across builds)
+        assert_eq!(crash_key("boom", None), 0x4d37_8e81_1928_ea9a);
+    }
+
+    #[test]
+    fn pending_is_capped_oldest_first() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        for i in 0..MAX_PENDING + 3 {
+            let mut r = report("");
+            r.time = format!("2026-10-02T10:{:02}:{:02}Z", i / 60, i % 60);
+            write_report(&pend, &r).unwrap();
+        }
+        cap_pending(&pend, MAX_PENDING);
+        let left = names(&pend);
+        assert_eq!(left.len(), MAX_PENDING);
+        assert_eq!(left[0], "2026-10-02T10:00:03Z-00.json", "the oldest went");
+        // events collected in one go are capped too
+        let (marker, ev_pend) = (d.path().join("events-last"), d.path().join("ev"));
+        fs::write(&marker, "2026-10-02T09:00:00Z 0").unwrap();
+        let log: Vec<_> = (0..MAX_PENDING + 2)
+            .map(|i| ev(&format!("2026-10-02T10:{:02}:{:02}Z", i / 60, i % 60)))
+            .collect();
+        let sc = Scrubber::new(&[], &[], &[]);
+        let on = || true;
+        let out = collect_events_in(&log, &marker, &ev_pend, &sc, "2026-10-02T12:00:00Z", None, &on)
+            .unwrap();
+        assert_eq!(names(&ev_pend).len(), MAX_PENDING);
+        assert_eq!(out.len(), MAX_PENDING, "only what is still pending is returned");
+    }
+
+    #[test]
+    fn a_coredump_restart_loop_is_one_crash() {
+        let trace = |a: &str| {
+            format!(
+                "Stack trace of thread 7:\n#0  0x{a}1 raise (libc.so.6 + 0x9a)\n#1  0x{a}2 main (foo + 0x10)\nStack trace of thread 8:\n#0  0x{a}3 poll (libc.so.6 + 0x1)\n"
+            )
+        };
+        let mut a = report(&trace("7f00"));
+        a.report_type = "coredump".into();
+        let mut b = report(&trace("7e11"));
+        b.report_type = "coredump".into();
+        b.time = "2026-10-02T10:05:00Z".into();
+        assert_eq!(coredump_key(&a), coredump_key(&b), "only addresses differ");
+        let mut c = b.clone();
+        c.stacktrace = c.stacktrace.replace("main (foo", "other (foo");
+        assert_ne!(coredump_key(&a), coredump_key(&c));
+        // other threads do not count
+        let mut e = b.clone();
+        e.stacktrace = e.stacktrace.replace("poll", "select");
+        assert_eq!(coredump_key(&a), coredump_key(&e));
+        let mut f = b.clone();
+        f.app_name = "/usr/bin/bar".into();
+        assert_ne!(coredump_key(&a), coredump_key(&f));
+    }
+
+    #[test]
+    fn journal_and_rpm_calls_have_a_deadline() {
+        let sh = Path::new("/bin/sh");
+        let args = |s: &str| vec!["-c".to_string(), s.to_string()];
+        // a hung journalctl (or rpm on a locked rpmdb): killed at the limit,
+        // with the child it started, which holds the pipe
+        let t = Instant::now();
+        let got = journal_with(sh, &args("sleep 30; echo '{}'"), Duration::from_millis(300));
+        assert!(got.is_empty());
+        assert!(t.elapsed() < Duration::from_secs(5), "{:?}", t.elapsed());
+        let t = Instant::now();
+        assert!(
+            output_within(
+                Command::new("/usr/bin/sleep").arg("30"),
+                Duration::from_millis(200),
+                10
+            )
+            .is_none()
+        );
+        assert!(t.elapsed() < Duration::from_secs(5));
+        // a quick one is read whole, even past the pipe's buffer
+        let got = journal_with(
+            sh,
+            &args("i=0; while [ $i -lt 3000 ]; do echo '{\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}'; i=$((i+1)); done"),
+            Duration::from_secs(20),
+        );
+        assert_eq!(got.len(), 3000);
+        // more than the cap is dropped, not waited on
+        let (status, out) = output_within(
+            Command::new("/bin/sh").args(["-c", "head -c 1000000 /dev/zero"]),
+            Duration::from_secs(20),
+            100,
+        )
+        .unwrap();
+        assert!(status.success() && out.len() == 100);
+        // a failed one gives nothing
+        assert!(journal_with(sh, &args("echo '{}'; exit 1"), Duration::from_secs(5)).is_empty());
+    }
+
+    #[test]
+    fn rpm_is_asked_once_per_program_and_not_after_a_timeout() {
+        let calls = Cell::new(0);
+        let l = RpmLookup::new(|exe: &str| {
+            calls.set(calls.get() + 1);
+            match exe {
+                "/usr/bin/a" => Ok(Some("a 1-1".to_string())),
+                "/usr/bin/b" => Ok(None),
+                _ => Err(io::Error::new(io::ErrorKind::TimedOut, "locked")),
+            }
+        });
+        assert_eq!(l.version("/usr/bin/a").as_deref(), Some("a 1-1"));
+        assert_eq!(l.version("/usr/bin/a").as_deref(), Some("a 1-1"));
+        assert_eq!(l.version("/usr/bin/b"), None);
+        assert_eq!(l.version("/usr/bin/b"), None);
+        assert_eq!(calls.get(), 2);
+        assert_eq!(l.version("/usr/bin/locked"), None);
+        assert_eq!(l.version("/usr/bin/c"), None);
+        assert_eq!(l.version("/usr/bin/d"), None);
+        assert_eq!(calls.get(), 3, "no rpm after a timeout");
+    }
+
+    #[test]
+    fn huge_memory_numbers_do_not_overflow_the_payload() {
+        // a report file is plain JSON: any number may be in it
+        let mut r = report("");
+        r.ram_total_kb = u64::MAX;
+        r.mem_used_kb = 1;
+        let p = r.payload();
+        assert_eq!(p["contexts"]["device"]["memory_size"], u64::MAX);
+        assert_eq!(p["contexts"]["device"]["free_memory"], u64::MAX);
+    }
+
+    #[test]
+    fn one_report_is_sent_by_one_sender() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let p = write_report(&pend, &report("")).unwrap();
+        let a = Claim::take(&p).unwrap();
+        // while claimed: not listed, and nobody else can take it
+        assert!(read_reports(&pend).is_empty());
+        let e = Claim::take(&p).err().expect("a second claim");
+        assert_eq!(e.kind(), io::ErrorKind::AlreadyExists);
+        let mut r = report("");
+        r.path = Some(p.clone());
+        let ep = Endpoint::parse("http://k@127.0.0.1:9/1");
+        let e = send_with(&r, true, ep, Some(&pend)).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::AlreadyExists, "{e}");
+        // a failed send gives it back
+        drop(a);
+        assert_eq!(read_reports(&pend).len(), 1);
+        // a sent one is gone
+        Claim::take(&p).unwrap().finish();
+        assert!(names(&pend).is_empty());
+        // two at once: exactly one wins
+        let p = write_report(&pend, &report("")).unwrap();
+        let barrier = std::sync::Barrier::new(2);
+        let wins: usize = std::thread::scope(|s| {
+            let hs: Vec<_> = (0..2)
+                .map(|_| {
+                    s.spawn(|| {
+                        barrier.wait();
+                        usize::from(Claim::take(&p).map(Claim::finish).is_ok())
+                    })
+                })
+                .collect();
+            hs.into_iter().map(|h| h.join().unwrap()).sum()
+        });
+        assert_eq!(wins, 1);
+    }
+
+    #[test]
+    fn claims_of_killed_senders_are_put_back() {
+        let d = tempfile::tempdir().unwrap();
+        let held = d.path().join("2026-10-02T10:00:00Z-00.json.sending");
+        fs::write(&held, "{}").unwrap();
+        sweep_claims(d.path(), SystemTime::now());
+        assert!(held.exists(), "fresh: a send may be running");
+        sweep_claims(d.path(), SystemTime::now() + Duration::from_secs(3600));
+        assert_eq!(names(d.path()), ["2026-10-02T10:00:00Z-00.json"]);
+        // a claim keeps the time it was taken, not the report's
+        let p = d.path().join("2026-10-02T10:00:00Z-00.json");
+        set_mtime(&p, SystemTime::now() - Duration::from_secs(86_400));
+        let c = Claim::take(&p).unwrap();
+        sweep_claims(d.path(), SystemTime::now());
+        assert!(c.held.exists(), "a running send is not put back");
+    }
+
+    #[test]
+    fn a_coredump_names_its_program_without_a_private_path() {
+        let s = Scrubber::new(&["zach"], &[], &["/data/zach"]);
+        for (exe, want) in [
+            ("/usr/bin/plasmashell", "/usr/bin/plasmashell"),
+            ("/opt/vendor/bin/tool", "/opt/vendor/bin/tool"),
+            ("/app/bin/net.example.App", "/app/bin/net.example.App"),
+            ("/mnt/clients/acme/bin/billing", "<path>/billing"),
+            ("/srv/acme-payroll/run", "<path>/run"),
+            ("/var/home/zach/src/proj/target/debug/proj", "<home>/proj"),
+            ("/home/other/bin/x", "<home>/x"),
+            ("/root/x", "<home>/x"),
+            ("/data/zach/bin/y", "<home>/y"),
+            ("/usrlocal/x", "<path>/x"),
+        ] {
+            assert_eq!(redact_exe(exe, &s), want, "{exe}");
+        }
+        let mut e = real_entry();
+        e["COREDUMP_EXE"] = json!("/mnt/clients/acme/bin/billing");
+        e["COREDUMP_COMM"] = json!("billing");
+        let (_, r) = coredump_report(&e, &sc(), "1000", |_| None).unwrap();
+        assert_eq!(r.app_name, "<path>/billing");
+        let all = format!("{}{}", serde_json::to_string(&r).unwrap(), r.payload());
+        assert!(!all.contains("acme") && !all.contains("clients"), "{all}");
+        // rpm is still asked with the real path
+        let asked = std::cell::RefCell::new(String::new());
+        coredump_report(&e, &sc(), "1000", |x| {
+            *asked.borrow_mut() = x.to_string();
+            None
+        });
+        assert_eq!(*asked.borrow(), "/mnt/clients/acme/bin/billing");
+    }
+
+    #[test]
+    fn discard_deletes_only_report_files_in_pending() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let p = write_report(&pend, &report("")).unwrap();
+        let victim = d.path().join("victim.json");
+        fs::write(&victim, "keep").unwrap();
+        let mut r = report("");
+        for bad in [
+            victim.clone(),
+            pend.join("../victim.json"),
+            d.path().join("sent").join(p.file_name().unwrap()),
+            pend.join(".hidden.json"),
+            pend.join("x.txt"),
+        ] {
+            r.path = Some(bad.clone());
+            let e = discard_in(&pend, &r).unwrap_err();
+            assert_eq!(e.kind(), io::ErrorKind::InvalidInput, "{}", bad.display());
+        }
+        assert_eq!(fs::read_to_string(&victim).unwrap(), "keep");
+        // a symlink in pending/ is not followed or deleted
+        let link = pend.join("link.json");
+        std::os::unix::fs::symlink(&victim, &link).unwrap();
+        r.path = Some(link.clone());
+        assert!(discard_in(&pend, &r).is_err());
+        assert!(link.exists() && victim.exists());
+        // a real one goes; a second discard says it is gone
+        r.path = Some(p.clone());
+        discard_in(&pend, &r).unwrap();
+        assert!(!p.exists());
+        assert_eq!(discard_in(&pend, &r).unwrap_err().kind(), io::ErrorKind::NotFound);
+        // a sent report's move never deletes a file outside pending/
+        r.path = Some(victim.clone());
+        move_to_sent(&d.path().join("sent"), &r, Server::default());
+        assert!(victim.exists());
+    }
+
+    #[test]
+    fn a_huge_message_is_cut_on_a_char_boundary() {
+        assert_eq!(cap_message("short"), "short");
+        // 2-byte chars, so the byte limit falls inside one
+        let big = format!("x{}", "é".repeat(MAX_MESSAGE));
+        let c = cap_message(&big);
+        assert!(c.len() <= MAX_MESSAGE + 64, "{}", c.len());
+        assert!(c.starts_with("xéé"));
+        assert!(c.ends_with(&format!("[... cut: the message was {} bytes]", big.len())));
+        let c = Crash {
+            report_type: "panic",
+            app_name: "net.eterneon.atlas.updater",
+            app_version: Some("0.1.0"),
+            message: &"a".repeat(4 * 1024 * 1024),
+            stacktrace: "",
+        };
+        let r = build_report(&c, &sc(), None).unwrap();
+        assert!(r.message.len() <= MAX_MESSAGE + 64, "{}", r.message.len());
+    }
+
+    /// `%XX` decoding, for checking the issue URL's body.
+    fn percent_decode(s: &str) -> Vec<u8> {
+        let b = s.as_bytes();
+        let mut out = Vec::new();
+        let mut i = 0;
+        while i < b.len() {
+            if b[i] == b'%' && i + 3 <= b.len() {
+                out.push(u8::from_str_radix(std::str::from_utf8(&b[i + 1..i + 3]).unwrap(), 16).unwrap());
+                i += 3;
+            } else {
+                out.push(b[i]);
+                i += 1;
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn issue_url_shortens_a_long_message_and_other_long_fields() {
+        let mut r = report("  0: f\n  1: g\n");
+        r.message = format!("{}{}", "m".repeat(20_000), "ü".repeat(3000));
+        let url = github_issue_url(&r, "AtlasOS");
+        assert!(url.len() <= MAX_URL, "{}", url.len());
+        assert!(url.contains("message%20truncated"), "{url}");
+        assert!(std::str::from_utf8(&percent_decode(&url)).is_ok());
+        // an event report without a trace too
+        let mut e = event_report("update-failed");
+        e.message = "ü".repeat(MAX_MESSAGE / 2);
+        let url = github_issue_url(&e, "AtlasOS");
+        assert!(url.len() <= MAX_URL, "{}", url.len());
+        // a field that is not the message: the URL is cut, still valid
+        let mut l = report("  0: f\n");
+        l.app_name = format!("/usr/bin/{}", "ü".repeat(3000));
+        let url = github_issue_url(&l, "AtlasOS");
+        assert!(url.len() <= MAX_URL, "{}", url.len());
+        assert!(!url.ends_with('%') && !url[..url.len() - 1].ends_with('%'));
+        assert!(std::str::from_utf8(&percent_decode(&url)).is_ok());
     }
 }
