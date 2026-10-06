@@ -167,6 +167,15 @@ fw_commit=${FRAMEWORK_COMMIT:-}
 [[ $fw_commit =~ ^[0-9a-f]{40}$ ]] || { echo "FRAMEWORK_COMMIT is not a commit id: $fw_commit" >&2; exit 2; }
 fw_lock=$(dirname -- "$(realpath -- "$0")")/../Cargo.lock
 [ -f "$fw_lock" ] || { echo "no atlas-framework Cargo.lock at $fw_lock" >&2; exit 2; }
+# No lock changed (an app that uses no atlas-framework crate, such as the
+# Installer): nothing to open. The artifact upload drops the empty files/, so
+# this is checked before the shape below, from the same two plain files.
+if [ -f "$dir/locks" ] && [ ! -L "$dir/locks" ] && [ ! -s "$dir/locks" ] &&
+    [ -f "$dir/base" ] && [ ! -L "$dir/base" ] &&
+    [ "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name base ! -name locks ! -name files -printf x | wc -c)" = 0 ]; then
+    echo "$repo: no lock file needs this release: nothing to open"
+    exit 0
+fi
 # The lock job's output: base, locks and files/, nothing else, no symlinks.
 if [ "$(find "$dir" -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort | tr '\n' ' ')" != "base files locks " ] ||
     [ -L "$dir/base" ] || [ ! -f "$dir/base" ] || [ -L "$dir/locks" ] || [ ! -f "$dir/locks" ] ||
