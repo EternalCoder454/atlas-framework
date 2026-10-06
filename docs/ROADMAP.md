@@ -560,8 +560,8 @@ first. Fix in batches by file; every fix gets a test that fails before it.
 
 #### Crates (study 5)
 
-crash.rs has uncommitted work from another session: its items wait until
-that lands, then go in one batch.
+crash.rs's items went in one batch after its other work (SendFailure,
+a644aba) landed.
 
 - [x] crash.rs: the 5-an-hour limit is per process and `pending/` has no cap
   (a restart loop queues 5 per launch); dedupe by crash key, an on-disk hour
@@ -639,11 +639,13 @@ that lands, then go in one batch.
 
 ### S-phase notes (from the studies; handled in the S pass)
 
-- crash.rs: a coredump's `app_name` is the full exe path, not redacted
-  (`/mnt/clients/acme/...` reaches the public issue); scrub gaps
+- crash.rs: ~~a coredump's `app_name` is the full exe path, not redacted
+  (`/mnt/clients/acme/...` reaches the public issue)~~ (done: `<home>/` and
+  `<path>/` placeholders); scrub gaps
   (`--password x`, single name parts, a deny-list of private prefixes, Event
   scrubbed for hosts only); markers not reset when reporting is turned on by
-  hand; `discard()` deletes any `Report.path`.
+  hand; ~~`discard()` deletes any `Report.path`~~ (done: only files in
+  `pending/`).
 - Unpinned `fedora:44` base image; no dependabot for the pinned action SHAs;
   app-checks.yml tracks main by default.
 

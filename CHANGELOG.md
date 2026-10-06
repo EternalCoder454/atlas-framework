@@ -45,6 +45,14 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `AlreadyExists`, and a failed send puts the report back. A report file
   with a huge `ram_total_kb` no longer overflows `Report::payload`.
 
+- Privacy: a coredump report's `app_name` was the crashed program's whole
+  path, so `/mnt/clients/<name>/...` reached the public issue. A path
+  outside the system directories (`/usr`, `/opt`, `/app`, ...) is now
+  `<home>/<program>` or `<path>/<program>`.
+- Fix: `crash::discard` (and `crash::send`, when it removes a sent report)
+  deletes only a report file in `pending/`; it deleted whatever `path` a
+  `Report` held. Any other path fails with `InvalidInput`.
+
 - Fix: every `AtlasWindow` asks for an alpha surface from the start
   (`color` is always transparent; its background paints the opaque base
   colour when nothing should show through). The surface's format is fixed

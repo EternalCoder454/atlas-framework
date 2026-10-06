@@ -1574,14 +1574,44 @@ pub fn sent() -> Vec<Report> {
         .unwrap_or_default()
 }
 
-/// "Don't send": delete the pending report's file.
+/// "Don't send": delete the pending report's file. Only a report file in
+/// `pending/` is deleted: any other `path` fails with `InvalidInput`.
 pub fn discard(report: &Report) -> io::Result<()> {
-    fs::remove_file(
-        report
-            .path
-            .as_ref()
-            .ok_or_else(|| io::Error::other("report has no path"))?,
-    )
+    let dir = reports_dir()
+        .ok_or_else(|| io::Error::other("no state directory"))?
+        .join("pending");
+    discard_in(&dir, report)
+}
+
+fn discard_in(pending: &Path, report: &Report) -> io::Result<()> {
+    let p = report
+        .path
+        .as_ref()
+        .ok_or_else(|| io::Error::other("report has no path"))?;
+    if !is_pending_file(pending, p) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "not a pending crash report",
+        ));
+    }
+    fs::remove_file(p)
+}
+
+/// Whether `p` names a report file (`*.json`, not hidden) directly in the
+/// directory `pending`, and is no symlink or directory if it exists. The
+/// directories are compared resolved, so `..` and links lead nowhere else.
+fn is_pending_file(pending: &Path, p: &Path) -> bool {
+    let (Some(parent), Some(name)) = (p.parent(), p.file_name().and_then(|n| n.to_str())) else {
+        return false;
+    };
+    let same_dir = match (fs::canonicalize(parent), fs::canonicalize(pending)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    };
+    same_dir
+        && name.ends_with(".json")
+        && !name.starts_with('.')
+        && fs::symlink_metadata(p).map_or(true, |m| m.file_type().is_file())
 }
 
 /// Delete sent and quarantined reports older than 90 days, and leftovers of
@@ -1644,7 +1674,9 @@ fn move_to_sent(sent_dir: &Path, report: &Report, server: Server) {
     r.sent_event_id = server.id;
     r.issue_url = server.url;
     let _ = write_report(sent_dir, &r);
-    if let Some(p) = &report.path
+    // only a file in the `pending/` beside `sent/`
+    let pending = sent_dir.with_file_name("pending");
+    if let Some(p) = report.path.as_ref().filter(|p| is_pending_file(&pending, p))
         && let Err(e) = fs::remove_file(p)
         && e.kind() != io::ErrorKind::NotFound
     {
@@ -2040,7 +2072,7 @@ fn coredump_report(
     let name = if exe.is_empty() {
         comm.clone()
     } else {
-        exe.clone()
+        redact_exe(&exe, scrubber)
     };
     let version = match (
         field(entry, "COREDUMP_PACKAGE_NAME"),
@@ -2059,6 +2091,38 @@ fn coredump_report(
         stacktrace: &clean(&field(entry, "MESSAGE").unwrap_or_default(), 8192, true),
     };
     Some((ts, build_report(&crash, scrubber, Some(&time)).ok()?))
+}
+
+/// Where installed programs live: a crashed program's path under one of
+/// these is kept whole.
+const SYSTEM_PREFIXES: &[&str] = &[
+    "/usr/",
+    "/bin/",
+    "/sbin/",
+    "/lib/",
+    "/lib64/",
+    "/opt/",
+    "/app/",
+    "/var/lib/flatpak/",
+];
+
+/// A crashed program's path as it may be shown: a system path whole; under
+/// a home directory `<home>/<program>`; anywhere else (`/mnt/clients/...`,
+/// `/srv/...`, a build tree) `<path>/<program>`. The program name stays: it
+/// is the crash's subject, and the message has it already.
+fn redact_exe(exe: &str, scrubber: &Scrubber) -> String {
+    if SYSTEM_PREFIXES.iter().any(|p| exe.starts_with(p)) {
+        return exe.to_string();
+    }
+    let base = exe.rsplit('/').next().unwrap_or("");
+    // `/home/`, `/var/home/` and the same inside an ostree deployment
+    let home = exe.contains("/home/")
+        || ["/root/", "/var/roothome/"].iter().any(|p| exe.starts_with(p))
+        || scrubber
+            .homes
+            .iter()
+            .any(|h| exe.strip_prefix(h.as_str()).is_some_and(|r| r.starts_with('/')));
+    format!("{}/{base}", if home { "<home>" } else { "<path>" })
 }
 
 fn own_uid() -> String {
@@ -2577,10 +2641,17 @@ fn pick_events<'a>(
 /// payload and got a yes. Fails when crash reporting is off or no endpoint is
 /// configured. Uses `/usr/bin/curl`.
 pub fn send(report: &Report) -> io::Result<()> {
-    send_with(report, Settings::load().enabled, Endpoint::load())
+    let pending = reports_dir().map(|d| d.join("pending"));
+    send_with(report, Settings::load().enabled, Endpoint::load(), pending.as_deref())
 }
 
-fn send_with(report: &Report, enabled: bool, ep: Option<Endpoint>) -> io::Result<()> {
+/// [`send`] with every input given; `pending` is the pending directory.
+fn send_with(
+    report: &Report,
+    enabled: bool,
+    ep: Option<Endpoint>,
+    pending: Option<&Path>,
+) -> io::Result<()> {
     if !enabled {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
@@ -2590,7 +2661,14 @@ fn send_with(report: &Report, enabled: bool, ep: Option<Endpoint>) -> io::Result
     let ep = ep.ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no endpoint configured"))?;
     // Two senders of one report (two windows, a double click) would file
     // two public issues: the first to claim it sends it.
-    let claim = report.path.as_deref().map(Claim::take).transpose()?;
+    // Only a file in `pending/` is taken (and later removed); a report
+    // whose path points anywhere else is sent and its file left alone.
+    let claim = report
+        .path
+        .as_deref()
+        .filter(|p| pending.is_some_and(|d| is_pending_file(d, p)))
+        .map(Claim::take)
+        .transpose()?;
     // a failed POST drops the claim, which puts the report back
     let server = post(report, &ep)?;
     finish_sent(report, server);
@@ -3363,7 +3441,7 @@ mod tests {
         assert_ne!(p, write_report(&pend, &r).unwrap());
         let got = read_reports(&pend);
         assert_eq!(got.len(), 2);
-        discard(&got[0]).unwrap();
+        discard_in(&pend, &got[0]).unwrap();
         move_to_sent(
             &d.path().join("sent"),
             &got[1],
@@ -3391,7 +3469,7 @@ mod tests {
 
     #[test]
     fn send_without_endpoint_fails_cleanly() {
-        let e = send_with(&report(""), true, None).unwrap_err();
+        let e = send_with(&report(""), true, None, None).unwrap_err();
         assert_eq!(e.to_string(), "no endpoint configured");
     }
 
@@ -3620,7 +3698,7 @@ mod tests {
     #[test]
     fn send_is_refused_when_disabled() {
         let ep = Endpoint::parse("https://k@glitch.example/1");
-        let e = send_with(&report(""), false, ep).unwrap_err();
+        let e = send_with(&report(""), false, ep, None).unwrap_err();
         assert_eq!(e.kind(), io::ErrorKind::PermissionDenied);
     }
 
@@ -4728,7 +4806,7 @@ mod tests {
         let mut r = report("");
         r.path = Some(p.clone());
         let ep = Endpoint::parse("http://k@127.0.0.1:9/1");
-        let e = send_with(&r, true, ep).unwrap_err();
+        let e = send_with(&r, true, ep, Some(&pend)).unwrap_err();
         assert_eq!(e.kind(), io::ErrorKind::AlreadyExists, "{e}");
         // a failed send gives it back
         drop(a);
@@ -4768,6 +4846,76 @@ mod tests {
         let c = Claim::take(&p).unwrap();
         sweep_claims(d.path(), SystemTime::now());
         assert!(c.held.exists(), "a running send is not put back");
+    }
+
+    #[test]
+    fn a_coredump_names_its_program_without_a_private_path() {
+        let s = Scrubber::new(&["zach"], &[], &["/data/zach"]);
+        for (exe, want) in [
+            ("/usr/bin/plasmashell", "/usr/bin/plasmashell"),
+            ("/opt/vendor/bin/tool", "/opt/vendor/bin/tool"),
+            ("/app/bin/net.example.App", "/app/bin/net.example.App"),
+            ("/mnt/clients/acme/bin/billing", "<path>/billing"),
+            ("/srv/acme-payroll/run", "<path>/run"),
+            ("/var/home/zach/src/proj/target/debug/proj", "<home>/proj"),
+            ("/home/other/bin/x", "<home>/x"),
+            ("/root/x", "<home>/x"),
+            ("/data/zach/bin/y", "<home>/y"),
+            ("/usrlocal/x", "<path>/x"),
+        ] {
+            assert_eq!(redact_exe(exe, &s), want, "{exe}");
+        }
+        let mut e = real_entry();
+        e["COREDUMP_EXE"] = json!("/mnt/clients/acme/bin/billing");
+        e["COREDUMP_COMM"] = json!("billing");
+        let (_, r) = coredump_report(&e, &sc(), "1000", |_| None).unwrap();
+        assert_eq!(r.app_name, "<path>/billing");
+        let all = format!("{}{}", serde_json::to_string(&r).unwrap(), r.payload());
+        assert!(!all.contains("acme") && !all.contains("clients"), "{all}");
+        // rpm is still asked with the real path
+        let asked = std::cell::RefCell::new(String::new());
+        coredump_report(&e, &sc(), "1000", |x| {
+            *asked.borrow_mut() = x.to_string();
+            None
+        });
+        assert_eq!(*asked.borrow(), "/mnt/clients/acme/bin/billing");
+    }
+
+    #[test]
+    fn discard_deletes_only_report_files_in_pending() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let p = write_report(&pend, &report("")).unwrap();
+        let victim = d.path().join("victim.json");
+        fs::write(&victim, "keep").unwrap();
+        let mut r = report("");
+        for bad in [
+            victim.clone(),
+            pend.join("../victim.json"),
+            d.path().join("sent").join(p.file_name().unwrap()),
+            pend.join(".hidden.json"),
+            pend.join("x.txt"),
+        ] {
+            r.path = Some(bad.clone());
+            let e = discard_in(&pend, &r).unwrap_err();
+            assert_eq!(e.kind(), io::ErrorKind::InvalidInput, "{}", bad.display());
+        }
+        assert_eq!(fs::read_to_string(&victim).unwrap(), "keep");
+        // a symlink in pending/ is not followed or deleted
+        let link = pend.join("link.json");
+        std::os::unix::fs::symlink(&victim, &link).unwrap();
+        r.path = Some(link.clone());
+        assert!(discard_in(&pend, &r).is_err());
+        assert!(link.exists() && victim.exists());
+        // a real one goes; a second discard says it is gone
+        r.path = Some(p.clone());
+        discard_in(&pend, &r).unwrap();
+        assert!(!p.exists());
+        assert_eq!(discard_in(&pend, &r).unwrap_err().kind(), io::ErrorKind::NotFound);
+        // a sent report's move never deletes a file outside pending/
+        r.path = Some(victim.clone());
+        move_to_sent(&d.path().join("sent"), &r, Server::default());
+        assert!(victim.exists());
     }
 
     #[test]
