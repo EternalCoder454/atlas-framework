@@ -39,6 +39,12 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   `collect_*` functions block: the reference now says to call them from a
   worker thread.
 
+- Fix: two senders of one crash report (two windows, a double click) filed
+  two public issues. `crash::send` now takes the pending file for the time
+  of the POST (`<name>.json.sending`); a second sender fails with
+  `AlreadyExists`, and a failed send puts the report back. A report file
+  with a huge `ram_total_kb` no longer overflows `Report::payload`.
+
 - Fix: every `AtlasWindow` asks for an alpha surface from the start
   (`color` is always transparent; its background paints the opaque base
   colour when nothing should show through). The surface's format is fixed

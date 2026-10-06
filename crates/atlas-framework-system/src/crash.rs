@@ -116,8 +116,9 @@ impl Report {
                 "os": {"name": "AtlasOS", "version": tag(&self.atlasos_version),
                        "kernel_version": tag(&self.kernel)},
                 "gpu": {"name": tag(&self.gpu), "version": tag(&self.gpu_driver)},
-                "device": {"cpu": tag(&self.cpu_model), "memory_size": self.ram_total_kb * 1024,
-                           "free_memory": (self.ram_total_kb.saturating_sub(self.mem_used_kb)) * 1024},
+                // saturating: a report file is only JSON, any number may be in it
+                "device": {"cpu": tag(&self.cpu_model), "memory_size": self.ram_total_kb.saturating_mul(1024),
+                           "free_memory": self.ram_total_kb.saturating_sub(self.mem_used_kb).saturating_mul(1024)},
                 "runtime": {"uptime_secs": self.uptime_secs},
             },
         });
@@ -250,8 +251,10 @@ impl Settings {
     }
 
     /// Save the setting. Turning reporting on starts the coredump and event
-    /// markers at "now", so nothing from before the opt-in is ever queued;
-    /// turning it off prunes the sent history.
+    /// markers at "now", so nothing from before the opt-in is ever queued.
+    /// Turning it off deletes every pending and quarantined report; of the
+    /// sent history only reports older than 90 days go, as on every
+    /// `pending()` and `sent()`.
     pub fn save(&self) -> io::Result<()> {
         let p = Self::path().ok_or_else(|| io::Error::other("no config directory"))?;
         let was = Self::load_from(&p).enabled;
@@ -1593,6 +1596,7 @@ fn prune_sent() {
         for sub in ["pending", "sent", QUARANTINE] {
             sweep_temp_files(&d.join(sub), now);
         }
+        sweep_claims(&d.join("pending"), now);
         prune_older_than(&d.join("sent"), SENT_KEEP, now);
         prune_older_than(&d.join(QUARANTINE), SENT_KEEP, now);
     }
@@ -2584,9 +2588,97 @@ fn send_with(report: &Report, enabled: bool, ep: Option<Endpoint>) -> io::Result
         ));
     }
     let ep = ep.ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no endpoint configured"))?;
+    // Two senders of one report (two windows, a double click) would file
+    // two public issues: the first to claim it sends it.
+    let claim = report.path.as_deref().map(Claim::take).transpose()?;
+    // a failed POST drops the claim, which puts the report back
     let server = post(report, &ep)?;
     finish_sent(report, server);
+    if let Some(c) = claim {
+        c.finish();
+    }
     Ok(())
+}
+
+/// The suffix of a pending report taken for sending.
+const CLAIM_SUFFIX: &str = ".sending";
+
+/// A pending report taken by one sender: renamed to `<name>.sending`, which
+/// no list shows and no other sender can take. Dropped without
+/// [`finish`](Claim::finish), it is renamed back; one left by a killed
+/// process is put back after 10 minutes ([`sweep_claims`]).
+struct Claim {
+    from: PathBuf,
+    held: PathBuf,
+    sent: bool,
+}
+
+impl Claim {
+    fn take(path: &Path) -> io::Result<Claim> {
+        let mut held = path.as_os_str().to_os_string();
+        held.push(CLAIM_SUFFIX);
+        let held = PathBuf::from(held);
+        match fs::rename(path, &held) {
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "the report is being sent, or is no longer pending",
+                ));
+            }
+            Err(e) => return Err(e),
+        }
+        // a rename keeps the old time: mark when the claim was taken
+        if let Ok(f) = fs::File::open(&held) {
+            let _ = f.set_modified(SystemTime::now());
+        }
+        Ok(Claim {
+            from: path.to_path_buf(),
+            held,
+            sent: false,
+        })
+    }
+
+    /// Sent: the claimed file goes.
+    fn finish(mut self) {
+        self.sent = true;
+        let _ = fs::remove_file(&self.held);
+        if let Some(d) = self.held.parent() {
+            sync_dir(d);
+        }
+    }
+}
+
+impl Drop for Claim {
+    fn drop(&mut self) {
+        // (gone if reporting was turned off meanwhile: then it stays gone)
+        if !self.sent {
+            let _ = fs::rename(&self.held, &self.from);
+        }
+    }
+}
+
+/// Put back the claims of senders that were killed (older than 10 minutes:
+/// a send takes 30 s at most).
+fn sweep_claims(dir: &Path, now: SystemTime) {
+    for e in fs::read_dir(dir).into_iter().flatten().flatten() {
+        let p = e.path();
+        let Some(name) = p.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let Some(orig) = name.strip_suffix(CLAIM_SUFFIX) else {
+            continue;
+        };
+        if !orig.ends_with(".json") || !is_stale(&e, now) {
+            continue;
+        }
+        let to = dir.join(orig);
+        if fs::symlink_metadata(&to).is_ok() {
+            let _ = fs::remove_file(&p);
+        } else {
+            let _ = fs::rename(&p, &to);
+        }
+    }
 }
 
 /// curl's arguments: no config file, https only (http only for a loopback
@@ -4610,6 +4702,72 @@ mod tests {
         assert_eq!(l.version("/usr/bin/c"), None);
         assert_eq!(l.version("/usr/bin/d"), None);
         assert_eq!(calls.get(), 3, "no rpm after a timeout");
+    }
+
+    #[test]
+    fn huge_memory_numbers_do_not_overflow_the_payload() {
+        // a report file is plain JSON: any number may be in it
+        let mut r = report("");
+        r.ram_total_kb = u64::MAX;
+        r.mem_used_kb = 1;
+        let p = r.payload();
+        assert_eq!(p["contexts"]["device"]["memory_size"], u64::MAX);
+        assert_eq!(p["contexts"]["device"]["free_memory"], u64::MAX);
+    }
+
+    #[test]
+    fn one_report_is_sent_by_one_sender() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let p = write_report(&pend, &report("")).unwrap();
+        let a = Claim::take(&p).unwrap();
+        // while claimed: not listed, and nobody else can take it
+        assert!(read_reports(&pend).is_empty());
+        let e = Claim::take(&p).err().expect("a second claim");
+        assert_eq!(e.kind(), io::ErrorKind::AlreadyExists);
+        let mut r = report("");
+        r.path = Some(p.clone());
+        let ep = Endpoint::parse("http://k@127.0.0.1:9/1");
+        let e = send_with(&r, true, ep).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::AlreadyExists, "{e}");
+        // a failed send gives it back
+        drop(a);
+        assert_eq!(read_reports(&pend).len(), 1);
+        // a sent one is gone
+        Claim::take(&p).unwrap().finish();
+        assert!(names(&pend).is_empty());
+        // two at once: exactly one wins
+        let p = write_report(&pend, &report("")).unwrap();
+        let barrier = std::sync::Barrier::new(2);
+        let wins: usize = std::thread::scope(|s| {
+            let hs: Vec<_> = (0..2)
+                .map(|_| {
+                    s.spawn(|| {
+                        barrier.wait();
+                        usize::from(Claim::take(&p).map(Claim::finish).is_ok())
+                    })
+                })
+                .collect();
+            hs.into_iter().map(|h| h.join().unwrap()).sum()
+        });
+        assert_eq!(wins, 1);
+    }
+
+    #[test]
+    fn claims_of_killed_senders_are_put_back() {
+        let d = tempfile::tempdir().unwrap();
+        let held = d.path().join("2026-10-02T10:00:00Z-00.json.sending");
+        fs::write(&held, "{}").unwrap();
+        sweep_claims(d.path(), SystemTime::now());
+        assert!(held.exists(), "fresh: a send may be running");
+        sweep_claims(d.path(), SystemTime::now() + Duration::from_secs(3600));
+        assert_eq!(names(d.path()), ["2026-10-02T10:00:00Z-00.json"]);
+        // a claim keeps the time it was taken, not the report's
+        let p = d.path().join("2026-10-02T10:00:00Z-00.json");
+        set_mtime(&p, SystemTime::now() - Duration::from_secs(86_400));
+        let c = Claim::take(&p).unwrap();
+        sweep_claims(d.path(), SystemTime::now());
+        assert!(c.held.exists(), "a running send is not put back");
     }
 
     #[test]

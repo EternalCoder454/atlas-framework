@@ -573,9 +573,11 @@ that lands, then go in one batch.
 - [x] crash.rs: reports and markers are written in place (no temp, fsync,
   rename): a crash leaves a truncated report that stays invisible, or an empty
   coredump marker that skips every crash since. Quarantine unparsable files.
-- [ ] crash.rs Low: `--noproxy "*"`; two senders of one report file two
-  issues; `ram_total_kb * 1024` overflow; the "prunes the sent history"
-  comment; the C++ `alarm(10)` turns a hung save into SIGALRM (no core).
+- [x] crash.rs Low: `--noproxy "*"` (already passed); two senders of one
+  report file two issues; `ram_total_kb * 1024` overflow; the "prunes the
+  sent history" comment.
+- [ ] atlas-framework-ui Low: the fatal handler's `alarm(10)`
+  (`atlas_framework_ui_fatal`) turns a hung save into SIGALRM (no core).
 - [x] flatpak: one failing installation (an unmounted extra one) fails all of
   `list_updates`; failed remote refreshes are dropped without a log line.
 - [x] flatpak: no Cancellable or deadline on any libflatpak call; a stalled
