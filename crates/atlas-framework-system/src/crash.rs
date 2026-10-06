@@ -2069,16 +2069,91 @@ fn own_uid() -> String {
         .unwrap_or_default()
 }
 
-fn journal(args: &[String]) -> Vec<Value> {
-    let out = Command::new("/usr/bin/journalctl")
-        .args(args)
+/// How long one `journalctl` call may take.
+const JOURNAL_LIMIT: Duration = Duration::from_secs(10);
+/// How long one `rpm -qf` may take: it waits on the rpmdb lock while an
+/// update runs.
+const RPM_LIMIT: Duration = Duration::from_secs(5);
+/// The most of journalctl's output that is kept (500 entries of capped
+/// fields are far less).
+const JOURNAL_MAX_OUT: usize = 16 * 1024 * 1024;
+
+/// Run `cmd` (no stdin or stderr, a clean environment) for at most `limit`.
+/// Past it the command's whole process group is killed and `None` returned.
+/// At most `max_out` bytes of its output are kept; the rest is read and
+/// dropped, so it never blocks on a full pipe.
+fn output_within(
+    cmd: &mut Command,
+    limit: Duration,
+    max_out: usize,
+) -> Option<(std::process::ExitStatus, Vec<u8>)> {
+    use std::os::unix::process::CommandExt;
+    let end = Instant::now() + limit;
+    let mut child = cmd
         .env_clear()
         .env("PATH", "/usr/bin")
         .stdin(Stdio::null())
+        .stdout(Stdio::piped())
         .stderr(Stdio::null())
-        .output();
-    match out {
-        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
+        // its own group, so a child it started dies with it
+        .process_group(0)
+        .spawn()
+        .ok()?;
+    let Some(mut stdout) = child.stdout.take() else {
+        kill_group(&mut child);
+        return None;
+    };
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let _ = (&mut stdout).take(max_out as u64).read_to_end(&mut buf);
+        let _ = io::copy(&mut stdout, &mut io::sink());
+        let _ = tx.send(buf);
+    });
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(s)) => break s,
+            Ok(None) if Instant::now() < end => std::thread::sleep(Duration::from_millis(5)),
+            _ => {
+                kill_group(&mut child);
+                return None;
+            }
+        }
+    };
+    // The output is whole once the pipe closes; something it left running
+    // that holds the pipe gets until the deadline.
+    let wait = end
+        .saturating_duration_since(Instant::now())
+        .max(Duration::from_millis(100));
+    match rx.recv_timeout(wait) {
+        Ok(out) => Some((status, out)),
+        Err(_) => {
+            kill_group(&mut child);
+            None
+        }
+    }
+}
+
+/// SIGKILL to the group `child` leads (see [`output_within`]), then reap it.
+fn kill_group(child: &mut std::process::Child) {
+    if let Ok(pid) = i32::try_from(child.id()) {
+        // SAFETY: kill has no memory preconditions; -pid is the process
+        // group the child was made the leader of.
+        unsafe { libc::kill(-pid, libc::SIGKILL) };
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+fn journal(args: &[String]) -> Vec<Value> {
+    journal_with(Path::new("/usr/bin/journalctl"), args, JOURNAL_LIMIT)
+}
+
+/// The JSON lines `program args` prints within `limit`; nothing on an
+/// error or past the limit.
+fn journal_with(program: &Path, args: &[String], limit: Duration) -> Vec<Value> {
+    match output_within(Command::new(program).args(args), limit, JOURNAL_MAX_OUT) {
+        Some((status, out)) if status.success() => String::from_utf8_lossy(&out)
             .lines()
             .filter_map(|l| serde_json::from_str(l).ok())
             .collect(),
@@ -2113,19 +2188,55 @@ fn journal_args(since_micros: u64, uid: Option<&str>) -> Vec<String> {
     a
 }
 
-fn rpm_version(exe: &str) -> Option<String> {
-    let o = Command::new("/usr/bin/rpm")
-        .args(["-qf", "--qf", "%{NAME} %{VERSION}-%{RELEASE}", "--", exe])
-        .env_clear()
-        .env("PATH", "/usr/bin")
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    o.status
+/// The package owning `exe`; `Err` (`TimedOut`) when rpm took longer than
+/// [`RPM_LIMIT`].
+fn rpm_version(exe: &str) -> io::Result<Option<String>> {
+    let mut cmd = Command::new("/usr/bin/rpm");
+    cmd.args(["-qf", "--qf", "%{NAME} %{VERSION}-%{RELEASE}", "--", exe]);
+    let (status, out) = output_within(&mut cmd, RPM_LIMIT, 4096)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "rpm took too long"))?;
+    Ok(status
         .success()
-        .then(|| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .filter(|s| !s.is_empty())
+        .then(|| String::from_utf8_lossy(&out).trim().to_string())
+        .filter(|s| !s.is_empty()))
+}
+
+/// Package lookups for one collection run: each program is asked once, and
+/// after a lookup times out (the rpmdb is locked by an update) none is
+/// asked again, so a run of many crashes costs one timeout, not one each.
+struct RpmLookup<F: Fn(&str) -> io::Result<Option<String>>> {
+    query: F,
+    seen: std::cell::RefCell<std::collections::HashMap<String, Option<String>>>,
+    off: Cell<bool>,
+}
+
+impl<F: Fn(&str) -> io::Result<Option<String>>> RpmLookup<F> {
+    fn new(query: F) -> Self {
+        RpmLookup {
+            query,
+            seen: Default::default(),
+            off: Cell::new(false),
+        }
+    }
+
+    fn version(&self, exe: &str) -> Option<String> {
+        if self.off.get() {
+            return None;
+        }
+        if let Some(v) = self.seen.borrow().get(exe) {
+            return v.clone();
+        }
+        match (self.query)(exe) {
+            Ok(v) => {
+                self.seen.borrow_mut().insert(exe.to_string(), v.clone());
+                v
+            }
+            Err(_) => {
+                self.off.set(true);
+                None
+            }
+        }
+    }
 }
 
 /// New systemd-coredump crashes of the user's own processes since the last
@@ -2133,6 +2244,11 @@ fn rpm_version(exe: &str) -> Option<String> {
 /// The first call after opting in starts at "now": nothing older is read.
 /// Tries the user journal, then the system journal filtered to our UID
 /// (readable for members of `wheel`/`systemd-journal`). Empty when disabled.
+///
+/// Blocks: it runs `journalctl` (up to twice, 10 s each at most) and
+/// `rpm -qf` for programs without a package field (5 s at most; after one
+/// timeout, as when an update holds the rpmdb lock, no more this call), so
+/// up to about 25 s. Call it from a worker thread, never the GUI thread.
 pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     if !Settings::load().enabled {
         return Vec::new();
@@ -2151,6 +2267,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     }
     let scrubber = Scrubber::from_env();
     let uid = own_uid();
+    let rpm = RpmLookup::new(rpm_version);
     let mut newest = since;
     let mut out = Vec::new();
     for e in &entries {
@@ -2161,7 +2278,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
         if ts <= since {
             continue;
         }
-        let Some((_, report)) = coredump_report(e, &scrubber, &uid, rpm_version) else {
+        let Some((_, report)) = coredump_report(e, &scrubber, &uid, |x| rpm.version(x)) else {
             continue;
         };
         let Some(d) = reports_dir() else { break };
@@ -2243,6 +2360,9 @@ fn discard_written(reports: &[Report]) {
 /// last call (or `since`, an RFC 3339 time), queued as pending. The first call
 /// after opting in starts at "now". Every string copied from the event log is
 /// scrubbed again. Empty when disabled.
+///
+/// Blocks on file I/O (the event log, the history, `/proc` and `/sys`):
+/// call it from a worker thread, like [`collect_coredumps`].
 pub fn collect_events(since: Option<&str>) -> Vec<Report> {
     if !Settings::load().enabled {
         return Vec::new();
@@ -4429,6 +4549,67 @@ mod tests {
         let mut f = b.clone();
         f.app_name = "/usr/bin/bar".into();
         assert_ne!(coredump_key(&a), coredump_key(&f));
+    }
+
+    #[test]
+    fn journal_and_rpm_calls_have_a_deadline() {
+        let sh = Path::new("/bin/sh");
+        let args = |s: &str| vec!["-c".to_string(), s.to_string()];
+        // a hung journalctl (or rpm on a locked rpmdb): killed at the limit,
+        // with the child it started, which holds the pipe
+        let t = Instant::now();
+        let got = journal_with(sh, &args("sleep 30; echo '{}'"), Duration::from_millis(300));
+        assert!(got.is_empty());
+        assert!(t.elapsed() < Duration::from_secs(5), "{:?}", t.elapsed());
+        let t = Instant::now();
+        assert!(
+            output_within(
+                Command::new("/usr/bin/sleep").arg("30"),
+                Duration::from_millis(200),
+                10
+            )
+            .is_none()
+        );
+        assert!(t.elapsed() < Duration::from_secs(5));
+        // a quick one is read whole, even past the pipe's buffer
+        let got = journal_with(
+            sh,
+            &args("i=0; while [ $i -lt 3000 ]; do echo '{\"a\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}'; i=$((i+1)); done"),
+            Duration::from_secs(20),
+        );
+        assert_eq!(got.len(), 3000);
+        // more than the cap is dropped, not waited on
+        let (status, out) = output_within(
+            Command::new("/bin/sh").args(["-c", "head -c 1000000 /dev/zero"]),
+            Duration::from_secs(20),
+            100,
+        )
+        .unwrap();
+        assert!(status.success() && out.len() == 100);
+        // a failed one gives nothing
+        assert!(journal_with(sh, &args("echo '{}'; exit 1"), Duration::from_secs(5)).is_empty());
+    }
+
+    #[test]
+    fn rpm_is_asked_once_per_program_and_not_after_a_timeout() {
+        let calls = Cell::new(0);
+        let l = RpmLookup::new(|exe: &str| {
+            calls.set(calls.get() + 1);
+            match exe {
+                "/usr/bin/a" => Ok(Some("a 1-1".to_string())),
+                "/usr/bin/b" => Ok(None),
+                _ => Err(io::Error::new(io::ErrorKind::TimedOut, "locked")),
+            }
+        });
+        assert_eq!(l.version("/usr/bin/a").as_deref(), Some("a 1-1"));
+        assert_eq!(l.version("/usr/bin/a").as_deref(), Some("a 1-1"));
+        assert_eq!(l.version("/usr/bin/b"), None);
+        assert_eq!(l.version("/usr/bin/b"), None);
+        assert_eq!(calls.get(), 2);
+        assert_eq!(l.version("/usr/bin/locked"), None);
+        assert_eq!(l.version("/usr/bin/c"), None);
+        assert_eq!(l.version("/usr/bin/d"), None);
+        assert_eq!(calls.get(), 3, "no rpm after a timeout");
     }
 
     #[test]

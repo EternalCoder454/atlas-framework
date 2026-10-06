@@ -32,6 +32,13 @@ something it added. The packaging spec's `%changelog` repeats the package side.
   1 GB. `crash::github_issue_url` now also cuts a message that alone is over
   its 7 KB budget, which it used to return whole.
 
+- Fix: `crash::collect_coredumps` runs `journalctl` and `rpm -qf` with a
+  deadline (10 s and 5 s; killed past it). `rpm` waits on the rpmdb lock
+  while an update runs, and was asked once per crash, up to 500 times.
+  Now each program is asked once, and after one timeout no more. Both
+  `collect_*` functions block: the reference now says to call them from a
+  worker thread.
+
 - Fix: every `AtlasWindow` asks for an alpha surface from the start
   (`color` is always transparent; its background paints the opaque base
   colour when nothing should show through). The surface's format is fixed
