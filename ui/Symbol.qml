@@ -62,6 +62,12 @@ Item {
         font.family: root.codepoint > 0 ? Symbols.family(root.style) : ""
         font.pixelSize: Math.max(1, Math.round(root.size))
         font.hintingPreference: Font.PreferNoHinting
+        // Not the scene graph's distance-field text (the default): at FILL 1
+        // the fonts lay a reversed copy of each counter over the counter to
+        // fill it in, which the distance-field glyphs draw as stray edges and
+        // gaps (a solid monitor with its inner outline showing). The glyphs
+        // are rasterised from the outline instead, where the overlap fills.
+        renderType: Text.NativeRendering
         // The optical size follows the drawn size, so small symbols get the
         // sturdier strokes the font draws for them.
         font.variableAxes: ({

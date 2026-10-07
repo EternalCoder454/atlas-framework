@@ -162,7 +162,11 @@ private:
         // The whole window, so popups (which live in the overlay) are in the
         // picture, cropped to the demo's rectangle.
         const QImage image = item->window()->grabWindow();
-        const QRect area = item->mapRectToScene(item->boundingRect()).toAlignedRect().intersected(image.rect());
+        // The picture is in device pixels: at a scale factor other than 1 the
+        // demo's rectangle (in device-independent ones) is that much larger there.
+        const QRectF scene = item->mapRectToScene(item->boundingRect());
+        const qreal ratio = image.devicePixelRatio();
+        const QRect area = QRectF(scene.topLeft() * ratio, scene.size() * ratio).toAlignedRect().intersected(image.rect());
         return area.isEmpty() ? QImage() : image.copy(area);
     }
 };

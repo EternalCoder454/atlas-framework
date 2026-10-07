@@ -7,6 +7,9 @@
 #                      (tests/visual/golden/<variant>/<Demo>.png)
 #                      variants: light dark accent opaque contrast rtl compact text200
 #   TELAMON_UPDATE_GOLDENS=1 ctest ...   rewrites the goldens that fail
+#   visual-filled-symbols-<scale>
+#                      a selected SidebarItem's filled symbols on the GPU
+#                      renderer, at scale 1 and 1.7 (tests/visual/rhi-demos)
 #   i18n               a throwaway German catalogue: Telamon.Ui's qsTr() strings
 #                      come back translated (tests/i18n)
 #   state-<n>          every demo against the state contract of docs/DESIGN.md
@@ -36,6 +39,19 @@ foreach(variant light dark accent opaque contrast rtl compact text200)
     set_tests_properties(visual-${variant} PROPERTIES
         TIMEOUT 600
         ENVIRONMENT "TELAMON_TEST_BIN=$<TARGET_FILE:telamon-visual-tests>;TELAMON_FAKE_PORTAL=$<TARGET_FILE:telamon-fake-portal>;TELAMON_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;TELAMON_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;TELAMON_OUT_DIR=${CMAKE_BINARY_DIR}/visual-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+endforeach()
+
+# The selected sidebar entries' filled symbols on the scene graph's GPU renderer
+# (Mesa's software OpenGL in the container), at scale 1 and at a fractional one.
+# The other visual tests draw with the software renderer, whose pictures of a
+# symbol at FILL 1 are right even when the GPU renderer's are not
+# (visual/rhi-demos, visual/golden-rhi/<scale>/light).
+foreach(scale 1 1.7)
+    add_test(NAME visual-filled-symbols-${scale}
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+    set_tests_properties(visual-filled-symbols-${scale} PROPERTIES
+        TIMEOUT 120
+        ENVIRONMENT "TELAMON_TEST_BIN=$<TARGET_FILE:telamon-visual-tests>;TELAMON_TEST_BACKEND=opengl;TELAMON_TEST_SCALE=${scale};TELAMON_DEMO_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/rhi-demos;TELAMON_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden-rhi/${scale};TELAMON_OUT_DIR=${CMAKE_BINARY_DIR}/visual-out/filled-symbols-${scale};QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 endforeach()
 
 # The accessibility test: the same demos, the same private environment as the

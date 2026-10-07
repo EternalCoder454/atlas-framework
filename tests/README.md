@@ -55,6 +55,19 @@ its goldens, nothing else. A window demo (`TelamonWindowDemo`) has an
   application name `atlas-visual-tests` set in `visual/main.cpp`, "Atlas Test
   OS" in `ui/telamonapp.cpp`). Change one with its golden, on purpose.
 
+## Filled symbols on the GPU renderer (`visual-filled-symbols-<scale>`)
+
+The visual tests draw with the software renderer, and a symbol at FILL 1 comes
+out right there even when it is broken on the GPU renderer (distance-field
+text), which is what a desktop runs. `visual-filled-symbols-1` and `-1.7` run
+`visual/rhi-demos/SidebarItemFilledDemo.qml` (selected and unselected
+`SidebarItem` with `VolumeUp`, `Monitor` and `Home`, also compact) on the scene
+graph's OpenGL renderer over Mesa's software OpenGL
+(`TELAMON_TEST_BACKEND=opengl` in `run-variant.sh`), at scale factor 1 and 1.7
+(`TELAMON_TEST_SCALE`). Their goldens are `visual/golden-rhi/<scale>/light/`.
+Another Mesa or Qt version can shift the antialiasing: regenerate them with
+`TELAMON_UPDATE_GOLDENS=1 ctest --test-dir build -R filled-symbols`.
+
 ## qmllint budget
 
 CI counts the `Warning` lines of `all_qmllint` and compares them with
