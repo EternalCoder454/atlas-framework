@@ -1,5 +1,9 @@
 # Atlas.Ui 1.5.0: API sketch
 
+> Written before the 2.0.0 rename and left as it was: Atlas.Ui is now Telamon.Ui,
+> every `Atlas<Name>` type is `Telamon<Name>`, `atlas-ui` is `telamon-ui` and
+> the `atlas-framework-*` crates are `telamon-framework-*` (see CHANGELOG.md).
+
 This is the design of every new Atlas.Ui 1.5.0 API, written before any of it is
 built. It covers ROADMAP "1.5.0", sections A1 and B1, and one framework-wide
 rule for B2's "internal assignments break app bindings". It has no code to

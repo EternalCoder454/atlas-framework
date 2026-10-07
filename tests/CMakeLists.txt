@@ -247,6 +247,22 @@ add_test(NAME appearance COMMAND telamon-appearance-tests)
 set_tests_properties(appearance PROPERTIES TIMEOUT 60 ENVIRONMENT
     "QT_QPA_PLATFORM=offscreen;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/appearance-config;DBUS_SESSION_BUS_ADDRESS=disabled:")
 
+# What Telamon.Ui 2.0.0 still reads from before the rename: LegacyConfig (the
+# copy of a file under its old name, the old group, the old variables) and
+# Appearance finding atlasrc and the ATLAS_* variables (ui/legacyconfig.cpp and
+# ui/appearance.cpp, compiled in). Its own config directory, no session bus.
+add_executable(telamon-legacy-tests legacy/tst_legacy.cpp
+    ${PROJECT_SOURCE_DIR}/ui/appearance.h ${PROJECT_SOURCE_DIR}/ui/appearance.cpp
+    ${PROJECT_SOURCE_DIR}/ui/legacyconfig.h ${PROJECT_SOURCE_DIR}/ui/legacyconfig.cpp
+    ${PROJECT_SOURCE_DIR}/ui/portalappearance.h ${PROJECT_SOURCE_DIR}/ui/portalappearance.cpp
+    ${PROJECT_SOURCE_DIR}/ui/textscale.h)
+target_include_directories(telamon-legacy-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(telamon-legacy-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::DBus
+    KF6::WindowSystem KF6::ConfigCore)
+add_test(NAME legacy COMMAND telamon-legacy-tests)
+set_tests_properties(legacy PROPERTIES TIMEOUT 60 ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;DBUS_SESSION_BUS_ADDRESS=disabled:")
+
 # The Telamon validators (ui/telamonvalidators.cpp, compiled into the test):
 # acceptable, intermediate and invalid input of each, hostile input included.
 add_executable(telamon-validators-tests validators/tst_validators.cpp
@@ -330,6 +346,9 @@ set_tests_properties(platform PROPERTIES TIMEOUT 120 ENVIRONMENT
 # lint-app.sh's replacement and deprecation rules (tests/lint/run.sh).
 add_test(NAME lint COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/lint/run.sh)
 set_tests_properties(lint PROPERTIES TIMEOUT 60)
+# tools/migrate-app-to-telamon.sh on a made-up app (tests/migrate/run.sh).
+add_test(NAME migrate COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/migrate/run.sh)
+set_tests_properties(migrate PROPERTIES TIMEOUT 60)
 # TelamonSettings and TelamonPortal's rules (ui/telamonsettings.cpp and
 # ui/telamonportal.cpp, compiled into the test): typed values, the shared file
 # and lock, immutable keys, symlink escapes, bad names, the URL scheme filter.

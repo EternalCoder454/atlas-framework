@@ -49,6 +49,11 @@ its goldens, nothing else. A window demo (`TelamonWindowDemo`) has an
   also shows the OS name and Qt version).
 - `visual/schemes/` holds the Breeze colour schemes the variants start from, so
   the pictures do not follow the distribution's copy.
+- The sample texts the pictures show are fixtures. The rename to Telamon
+  (2.0.0) changed no golden, to the byte, so the texts that show in one keep
+  their wording from before ("Atlas Notepad", `AtlasListView: ...`, the
+  application name `atlas-visual-tests` set in `visual/main.cpp`, "Atlas Test
+  OS" in `ui/telamonapp.cpp`). Change one with its golden, on purpose.
 
 ## qmllint budget
 
@@ -97,3 +102,10 @@ lowers it again.
 - `i18n/`: with `LANGUAGE=de` and a throwaway `telamon-ui_de.qm` (built from
   `i18n/telamon-ui_de.ts`), a default `SearchField` must show the German string.
   Needs qt6-linguist; skipped without it.
+- `legacy/`: what Telamon.Ui 2.0.0 still reads from before the rename
+  (`ui/legacyconfig.cpp`): the copy of a file under its old name with the
+  `[Atlas]` group renamed, the `ATLAS_*` variables, `atlasrc` for `Appearance`.
+  The same for `TelamonSettings` and the notifyrc is in `settings/`.
+- `migrate/run.sh`: `tools/migrate-app-to-telamon.sh` on a made-up app: what it
+  rewrites, what it leaves, the pins, the spec, the notifyrc, a dry run, a
+  dirty tree and a second run.

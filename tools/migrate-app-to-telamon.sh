@@ -28,7 +28,7 @@
 #             Rust code; the app!'s `ui: "x.y.z"` below 2.0.0 -> "2.0.0"
 #   Cargo     the pin of those crates to `tag = "v2.0.0"` (or `--rev`),
 #             on one line or in a [dependencies.<crate>] table; Cargo.lock
-#             is not touched: run the `cargo update` line printed at the end
+#             is not touched: run the `cargo fetch` line printed at the end
 #   C         include/atlas/app.h (also textview.h, textsnapshot.h) ->
 #             telamon/..., atlas_app_{init,ready,require_ui,run} and
 #             atlas_backend_new (the template's backend factory) -> telamon_*,
@@ -458,8 +458,8 @@ def main():
     frameworks = any("framework pin" in k or "crate" in k for k in (kk for v in report.files.values() for kk in v))
     print("\nNext:")
     if frameworks:
-        print("  cargo update -p telamon-framework-core -p telamon-framework-ui  # add -p telamon-framework-system / -flatpak as the app uses them")
-        print("  (Cargo.lock still names the atlas-framework crates; this drops them. Build with --locked afterwards.)")
+        print("  cargo fetch   # no --locked: Cargo.lock still names the atlas-framework crates; this swaps them for the new ones")
+        print("  (if cargo says \"failed to select a version for X\": cargo update -p X, and again. Then build with --locked.)")
     print("  install telamon-ui 2.0.0 (and telamon-symbols-fonts) in the app's container, build, run the tests")
     print("  git diff   # look at every change")
     if opts["dry"]:

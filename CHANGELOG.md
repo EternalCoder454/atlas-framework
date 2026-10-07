@@ -139,7 +139,7 @@ run it in the app's repository, from a clean tree:
 ```sh
 path/to/telamon-framework/tools/migrate-app-to-telamon.sh --dry-run   # what would change
 path/to/telamon-framework/tools/migrate-app-to-telamon.sh             # change it
-scripts/dev.sh cargo update -p telamon-framework-ui                   # (and -core, -system, -flatpak as used)
+cargo fetch                                                           # without --locked: Cargo.lock gets the renamed crates
 ```
 
 It rewrites, as whole words and only names the framework had, and prints each
@@ -160,8 +160,10 @@ app's own names (`AtlasOS`, `atlasos-<app>`, its app ID and desktop file, a
 type of its own such as `AtlasObjects`), and lists what still says "atlas". A
 second run changes nothing. Then, by hand:
 
-1. `cargo update -p telamon-framework-ui ...` (it drops the old crates from
-   `Cargo.lock`), build with `--locked`, run the tests and `lint-app.sh`.
+1. `cargo fetch` (any cargo command without `--locked`) swaps the old crates
+   in `Cargo.lock` for the new ones and moves nothing else; if cargo says "failed
+   to select a version for `X`", `cargo update -p X` and again. Then build with
+   `--locked`, run the tests and `lint-app.sh`.
 2. An `app-checks.yml` pinned to a commit moves to the commit of `v2.0.0`
    (the script reports it); `framework-ref: v2.0.0`.
 3. The settings file, the shared switch, crash state and notification choices

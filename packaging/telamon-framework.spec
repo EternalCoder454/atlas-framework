@@ -83,7 +83,9 @@ BuildArch:      noarch
 Requires:       fontconfig
 
 %description -n telamon-symbols-fonts
-Google's Material Symbols Rounded as a variable font: about 4,000 icons that
+Google's Material Symbols Rounded as a variable font, installed as the family
+"Telamon Symbols Rounded" (only its name differs from Google's, so it sits
+beside the Material Symbols fonts of atlas-symbols-fonts): about 4,000 icons that
 Telamon apps draw through Telamon.Ui's Symbol (Rounded is its default style). The
 Outlined and Sharp styles are in telamon-symbols-fonts-extra.
 

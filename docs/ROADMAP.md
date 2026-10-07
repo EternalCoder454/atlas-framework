@@ -1,5 +1,9 @@
 # Roadmap
 
+> Written before the 2.0.0 rename and left as it was: Atlas.Ui is now Telamon.Ui,
+> every `Atlas<Name>` type is `Telamon<Name>`, `atlas-ui` is `telamon-ui` and
+> the `atlas-framework-*` crates are `telamon-framework-*` (see CHANGELOG.md).
+
 ## 1.4.0
 
 Everything below ships in 1.4.0 (decided 2026-10-04). The goal is to tag it

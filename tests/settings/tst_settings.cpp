@@ -105,12 +105,109 @@ private Q_SLOTS:
         QTest::newRow("dotdot") << "x.." << "telamon-app";
         QTest::newRow("astral") << QString::fromUtf8("x.\xF0\x9F\x98\x80") << "telamon-_";
         QTest::newRow("long") << ("x." + QString(100, QLatin1Char('a'))) << ("telamon-" + QString(56, QLatin1Char('a')));
+        // An ID that still has the old brand names the file the same way.
+        QTest::newRow("old brand") << "net.eterneon.atlas.updater" << "telamon-updater";
+        QTest::newRow("old prefix") << "x.atlas-notes" << "telamon-notes";
+        QTest::newRow("old prefix upper") << "x.Atlas-Notes" << "telamon-notes";
     }
     void shortName()
     {
         QFETCH(QString, id);
         QFETCH(QString, name);
         QCOMPARE(TelamonSettings::shortName(id), name);
+    }
+
+    void legacyShortName_data()
+    {
+        QTest::addColumn<QString>("id");
+        QTest::addColumn<QString>("name");
+        QTest::newRow("atlas id") << "net.eterneon.atlas.updater" << "atlas-updater";
+        QTest::newRow("telamon id") << "net.eterneon.telamon.updater" << "atlas-updater";
+        QTest::newRow("upper") << "net.eterneon.atlas.Monitor" << "atlas-monitor";
+        QTest::newRow("slash") << "net.eterneon.atlas.a/b c" << "atlas-a_b_c";
+        QTest::newRow("empty") << "" << "atlas-app";
+        QTest::newRow("prefix") << "x.atlas-notes" << "atlas-notes";
+        QTest::newRow("long") << ("x." + QString(100, QLatin1Char('a'))) << ("atlas-" + QString(58, QLatin1Char('a')));
+    }
+    void legacyShortName()
+    {
+        QFETCH(QString, id);
+        QFETCH(QString, name);
+        QCOMPARE(TelamonSettings::legacyShortName(id), name);
+    }
+
+    // A file framework 1.x wrote (atlas-<app>rc, [Atlas] Format=1) is copied to the
+    // new name the first time, with the group renamed; the old file stays.
+    void adoptsTheFileOfOneX()
+    {
+        const QString old = m_dir.filePath(QStringLiteral("atlas-testerrc"));
+        writeAll(old, QStringLiteral("[Atlas]\nFormat=1\n\n[View]\nSide=left\nWidth=321\n"));
+        QFile::setPermissions(old, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+        auto s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side")).toString(), QStringLiteral("left"));
+        QCOMPARE(s->value(QStringLiteral("Width")).toInt(), 321);
+        QCOMPARE(readAll(rc()), QStringLiteral("[Telamon]\nFormat=1\n\n[View]\nSide=left\nWidth=321\n"));
+        QCOMPARE(int(QFileInfo(rc()).permissions()), int(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadUser | QFileDevice::WriteUser));
+        QVERIFY(QFileInfo::exists(old));
+        // The new file is the app's now: a change in it stays, and a later change of the
+        // old one (an app of 1.x still writing it) is not copied again.
+        QVERIFY(s->setValue(QStringLiteral("Side"), QStringLiteral("right")));
+        QVERIFY(s->flush());
+        writeAll(old, QStringLiteral("[View]\nSide=top\n"));
+        auto again = make(QStringLiteral("View"));
+        QCOMPARE(again->value(QStringLiteral("Side")).toString(), QStringLiteral("right"));
+        // No stray temp file.
+        QStringList names = QDir(m_dir.path()).entryList(QDir::Files | QDir::Hidden);
+        names.removeAll(QStringLiteral(".telamon-testerrc.lock"));
+        names.sort();
+        QCOMPARE(names, (QStringList{QStringLiteral("atlas-testerrc"), QStringLiteral("telamon-testerrc")}));
+    }
+    void adoptionNeedsAPlainFileAndLeavesALinkAlone()
+    {
+        // No old file: no new file either.
+        auto s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side"), QStringLiteral("dflt")).toString(), QStringLiteral("dflt"));
+        QVERIFY(!QFileInfo::exists(rc()));
+        // An old directory, or a file over 4 MB, is not a settings file.
+        QVERIFY(QDir(m_dir.path()).mkdir(QStringLiteral("atlas-testerrc")));
+        s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side"), QStringLiteral("dflt")).toString(), QStringLiteral("dflt"));
+        QVERIFY(!QFileInfo::exists(rc()));
+        QDir(m_dir.path()).rmdir(QStringLiteral("atlas-testerrc"));
+        // A link at the new name counts as present, even a dangling one.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-testerrc")), QStringLiteral("[View]\nSide=left\n"));
+        QVERIFY(QFile::link(QStringLiteral("elsewhere"), rc()));
+        s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side"), QStringLiteral("dflt")).toString(), QStringLiteral("dflt"));
+        QVERIFY(!QFileInfo::exists(m_dir.filePath(QStringLiteral("elsewhere"))));
+    }
+    void adoptsThroughALinkedOldFileAndKeepsOddBytes()
+    {
+        const QString real = m_dir.filePath(QStringLiteral("dotfiles-rc"));
+        QFile f(real);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("[Atlas]\nFormat=1\n# \xff\xfe\n[View]\nSide=left\n");
+        f.close();
+        QVERIFY(QFile::link(real, m_dir.filePath(QStringLiteral("atlas-testerrc"))));
+        auto s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side")).toString(), QStringLiteral("left"));
+        QVERIFY(!QFileInfo(rc()).isSymLink());
+        // Not UTF-8: copied as it is.
+        QFile out(rc());
+        QVERIFY(out.open(QIODevice::ReadOnly));
+        QCOMPARE(out.readAll(), QByteArray("[Atlas]\nFormat=1\n# \xff\xfe\n[View]\nSide=left\n"));
+    }
+    void adoptsALegacyNamedFileToo()
+    {
+        // fileName set by the app: telamon-xrc takes atlas-xrc.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-extrarc")), QStringLiteral("[Atlas]\nSchemaVersion=2\n[G]\nK=v\n"));
+        auto s = make(QStringLiteral("G"), QStringLiteral("telamon-extrarc"));
+        QCOMPARE(s->value(QStringLiteral("K")).toString(), QStringLiteral("v"));
+        QCOMPARE(readAll(m_dir.filePath(QStringLiteral("telamon-extrarc"))), QStringLiteral("[Telamon]\nSchemaVersion=2\n[G]\nK=v\n"));
+        // A name with no telamon- prefix has no old name to look for.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-otherrc")), QStringLiteral("[G]\nK=old\n"));
+        s = make(QStringLiteral("G"), QStringLiteral("otherrc"));
+        QCOMPARE(s->value(QStringLiteral("K"), QStringLiteral("dflt")).toString(), QStringLiteral("dflt"));
     }
 
     void names_data()
@@ -478,6 +575,20 @@ private Q_SLOTS:
         writeAll(m_dir.filePath(QStringLiteral("telamon-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n\n[Event/loud]\nAction=Popup\n"));
         TelamonPortal portal;
         QCOMPARE(portal.notify(QStringLiteral("t"), QStringLiteral("b"), {}, {{QStringLiteral("eventId"), QStringLiteral("quiet")}}), QString());
+    }
+    void popupChoiceOfOneXStillCounts()
+    {
+        TelamonPortal portal;
+        QVERIFY(portal.popupEnabled(QStringLiteral("quiet"))); // no file: on
+        // Switched off under the old component name, with nothing in the new file.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n\n[Event/loud]\nAction=Popup\n"));
+        QVERIFY(!portal.popupEnabled(QStringLiteral("quiet")));
+        QVERIFY(portal.popupEnabled(QStringLiteral("loud")));
+        QVERIFY(portal.popupEnabled(QStringLiteral("unmentioned")));
+        // The new file's entry for an event wins over the old one; its other events are the old file's.
+        writeAll(m_dir.filePath(QStringLiteral("telamon-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=Popup\n\n[Event/loud]\nAction=\n"));
+        QVERIFY(portal.popupEnabled(QStringLiteral("quiet")));
+        QVERIFY(!portal.popupEnabled(QStringLiteral("loud")));
     }
     // Fix-sec: TelamonSettings
     void failedFlushDoesNotCarryOver()

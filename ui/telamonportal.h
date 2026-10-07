@@ -91,6 +91,7 @@ private Q_SLOTS:
     void onServerClosed(uint serverId, uint reason);
 
 private:
+    friend class TestSettings; // tests/settings reads which notifyrc file counts
     bool popupEnabled(const QString &event) const;
     void ensureConnected();
     bool m_connected = false;
