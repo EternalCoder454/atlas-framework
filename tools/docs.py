@@ -10,7 +10,7 @@
 from the atlas-ui pages: docs/reference is the single source for the API.
 `--root` skips that check unless `--api FILE` names the API file too.
 
-The AtlasOS site (atlasos.eterneon.net/framework) reads the docs-published branch.
+The AtlasOS site (telamon.eterneon.net/framework) reads the docs-published branch.
 docs/reference/README.md is the contract: the layout, the frontmatter and the
 rules this script enforces. Only the standard library, so CI needs nothing
 installed.

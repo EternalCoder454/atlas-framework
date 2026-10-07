@@ -17,7 +17,7 @@ Atlas.Ui, and the compatibility rules. Change it together with the code.
   `crates/atlas-framework-ui/include/atlas/app.h` and every on-disk or D-Bus
   format are contracts too.
 - **docs/reference is the single source for API documentation** (published
-  at atlasos.eterneon.net/framework). Change the page in the same commit as
+  at telamon.eterneon.net/framework). Change the page in the same commit as
   the API, and don't describe types, properties or crate items anywhere else
   (DESIGN.md, READMEs, comments): link to the page. `tools/docs.py check`
   fails when `api/atlas-ui.api` has a type or public member without one.

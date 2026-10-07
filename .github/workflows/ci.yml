@@ -362,7 +362,7 @@ jobs:
         run: tools/check-app-names.sh "$RUNNER_TEMP"/apps/*
 
   docs:
-    # The reference docs (docs/reference, read by atlasos.eterneon.net/framework):
+    # The reference docs (docs/reference, read by telamon.eterneon.net/framework):
     # broken links, missing frontmatter, raw HTML and the rest fail here.
     runs-on: ubuntu-latest
     timeout-minutes: 5

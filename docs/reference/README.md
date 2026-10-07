@@ -1,7 +1,7 @@
 # Reference docs
 
 The pages here are the Atlas Framework reference on
-<https://atlasos.eterneon.net/framework>. CI checks them (`tools/docs.py check`)
+<https://telamon.eterneon.net/framework>. CI checks them (`tools/docs.py check`)
 on every push. On main it then rebuilds the `docs-published` branch
 (`tools/docs.py build`), and the site reads that branch within about five
 minutes, with no site deploy. This README is not published.
