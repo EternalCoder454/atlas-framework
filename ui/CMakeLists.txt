@@ -202,6 +202,21 @@ target_link_libraries(atlastext PUBLIC Qt6::Core Qt6::Gui)
 target_link_libraries(atlasui PRIVATE atlastext Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::DBus
     KF6::WindowSystem KF6::ConfigCore)
 
+# Every Atlas app loads the plugin, and nothing links it: the QML engine only
+# looks up the two symbols Q_PLUGIN_METADATA marks for export
+# (qt_plugin_instance, qt_plugin_query_metadata_v2), plus the type
+# registration Qt's generated code exports itself. Everything else stays
+# hidden, so the dynamic linker has a few dozen symbols to bind at load
+# instead of 31,000, and unused code and data are dropped at link time.
+set_target_properties(atlasui atlastext PROPERTIES
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(atlasui PRIVATE -ffunction-sections -fdata-sections)
+    target_compile_options(atlastext PRIVATE -ffunction-sections -fdata-sections)
+    target_link_options(atlasui PRIVATE LINKER:--gc-sections)
+endif()
+
 # lupdate and lrelease come with qt6-linguist. Without them the module still
 # builds, without translations (the strings show in English).
 find_package(Qt6 6.11 QUIET COMPONENTS LinguistTools)

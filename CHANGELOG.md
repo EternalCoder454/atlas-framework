@@ -6,6 +6,23 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
+## Unreleased
+
+- Change: Atlas.Ui is lighter in every app, with no change to its API or
+  look (every golden is the same at zero tolerance). Apps need no change.
+  - The plugin exports only what Qt looks up (`qt_plugin_instance`,
+    `qt_plugin_query_metadata_v2`) and the type registration: 52 symbols
+    instead of 31,164. It loads in 0.7 ms instead of 14.6, is 12.0 MB
+    instead of 18.7 (stripped), and the app template runs in about 7 MB
+    less (Rss and Pss).
+  - DataTable's cells make only what their column draws: a plain column's
+    cell is a Loader and a Text, and the icon, the heat bar and the custom
+    cell's holder come only with the columns that use them. The rows of a
+    Monitor-like table (8 columns, about 30 rows on screen) take 11.7 MB
+    instead of 21.7.
+  - MenuButton makes its menu on the first open, not up front: about
+    120 KB less for each MenuButton whose menu is never opened.
+
 ## 1.6.1
 
 - Fix: the switch to the GPU on HiDPI screens (1.6.0) never happened. It read
