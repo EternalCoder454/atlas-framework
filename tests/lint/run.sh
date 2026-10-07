@@ -1,10 +1,10 @@
 #!/bin/bash
 # lint-app.sh's deprecation and replacement rules on tests/lint/banner.qml:
 # the lines marked `// WANT` get one warning each, nothing else is reported,
-# and the `atlas-lint: allow` twins are silent.
+# and the `telamon-lint: allow` twins are silent.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
-out=$(ATLAS_LINT_DEPRECATED="$here/deprecated.txt" "$here/../../tools/lint-app.sh" "$here")
+out=$(TELAMON_LINT_DEPRECATED="$here/deprecated.txt" "$here/../../tools/lint-app.sh" "$here")
 want=$(grep -n '// WANT$' "$here/banner.qml" | cut -d: -f1)
 got=$(sed -nE 's|^.*/banner\.qml:([0-9]+): warning: .*$|\1|p' <<<"$out")
 n=$(wc -l <<<"$want")
@@ -89,20 +89,20 @@ Rectangle {
         duration: 90 // WANT
     }
     ColorAnimation { duration: 150; to: "transparent" } // WANT
-    color: "#abc" // atlas-lint: allow-raw
-    radius: 8 // atlas-lint: allow-raw
-    Behavior on y { NumberAnimation { duration: 99 } } // atlas-lint: allow-raw
-    color: AtlasStyle.surface
+    color: "#abc" // telamon-lint: allow-raw
+    radius: 8 // telamon-lint: allow-raw
+    Behavior on y { NumberAnimation { duration: 99 } } // telamon-lint: allow-raw
+    color: TelamonStyle.surface
     color: Qt.rgba(c.r, c.g, c.b, 0.5)
-    color: Qt.alpha(AtlasStyle.text, 0.5)
+    color: Qt.alpha(TelamonStyle.text, 0.5)
     radius: 0
     radius: height / 2
-    radius: AtlasStyle.radius
+    radius: TelamonStyle.radius
     text: "#123"
     title: qsTr("Issue #1234")
     Timer { interval: 200; }
     Toast { duration: 4000 }
-    NumberAnimation { duration: AtlasStyle.duration }
+    NumberAnimation { duration: TelamonStyle.duration }
     NumberAnimation { duration: 0 }
     // color: "#fff"
     /* color: "#fff" */
@@ -117,10 +117,36 @@ if [ "$got" != "$want" ] || [ "$rc" -ne 0 ] || ! grep -q "^lint-app: 0 error(s),
     printf -- '--- wanted lines\n%s\n--- got (exit %s)\n%s\n' "$want" "$rc" "$out" >&2
     fail "raw-value rules: unexpected findings"
 fi
-grep -q 'AtlasStyle.error' <<<"$out" || fail "a raw red names no token"
-grep -q 'AtlasStyle.durationShort' <<<"$out" || fail "a 90 ms duration names no token"
-grep -q 'AtlasStyle.radius (6)' <<<"$out" || fail "a radius of 6 names no token"
+grep -q 'TelamonStyle.error' <<<"$out" || fail "a raw red names no token"
+grep -q 'TelamonStyle.durationShort' <<<"$out" || fail "a 90 ms duration names no token"
+grep -q 'TelamonStyle.radius (6)' <<<"$out" || fail "a radius of 6 names no token"
 echo "lint raw-value rules ok ($n findings)"
+
+# An app that has not moved to Telamon.Ui yet (Atlas.Ui 1.x names, `atlas-lint:`)
+# is checked the same way, with the same line numbers.
+mkdir "$tmp/legacy"
+cat >"$tmp/legacy/Old.qml" <<'QML'
+import QtQuick
+import Atlas.Ui
+Rectangle {
+    color: "#fff" // WANT
+    radius: 6 // WANT
+    color: "#abc" // atlas-lint: allow-raw
+    AtlasTextField { echoMode: TextInput.Password } // WANT
+}
+QML
+out=$("$lint" "$tmp/legacy")
+want=$(grep -n '// WANT$' "$tmp/legacy/Old.qml" | cut -d: -f1)
+got=$(sed -nE 's|^.*/Old\.qml:([0-9]+): warning: .*$|\1|p' <<<"$out")
+[ "$got" = "$want" ] && grep -q '^lint-app: 0 error(s), 3 warning(s)$' <<<"$out" || {
+    printf -- '--- wanted lines\n%s\n--- got\n%s\n' "$want" "$out" >&2
+    fail "Atlas.Ui 1.x names are not checked like Telamon.Ui ones"
+}
+mkdir "$tmp/legacynames"
+printf 'Item {}\n' >"$tmp/legacynames/AtlasButton.qml"
+"$names" "$tmp/legacynames" >/dev/null 2>&1
+[ $? -eq 1 ] || fail "check-app-names: AtlasButton.qml hides Atlas.Ui's type in an app of 1.x"
+echo "lint of apps on Atlas.Ui 1.x ok"
 
 # --strict: a warning fails too.
 mkdir "$tmp/strict"
@@ -135,18 +161,18 @@ mkdir "$tmp/rawonly"
 cat >"$tmp/rawonly/A.qml" <<'QML'
 import QtQuick
 import QtQuick.Controls
-import Atlas.Ui
+import Telamon.Ui
 Item {
-    Button { } // atlas-lint: allow-raw
-    AtlasTextField { echoMode: TextInput.Password } // atlas-lint: allow-raw
-    AtlasPasswordField { echoMode: TextInput.Normal } // atlas-lint: allow-raw
-    Rectangle { radius: 6; color: "#fff" } // atlas-lint: allow-raw
+    Button { } // telamon-lint: allow-raw
+    TelamonTextField { echoMode: TextInput.Password } // telamon-lint: allow-raw
+    TelamonPasswordField { echoMode: TextInput.Normal } // telamon-lint: allow-raw
+    Rectangle { radius: 6; color: "#fff" } // telamon-lint: allow-raw
 }
 QML
 expect 1 "allow-raw does not silence an error" "$tmp/rawonly"
 grep -q 'A.qml:5: error: default Button' "$tmp/out" || fail "allow-raw hid the default Button error"
-grep -q 'A.qml:6: warning: AtlasTextField with echoMode Password' "$tmp/out" || fail "allow-raw hid the password finding"
-grep -q 'A.qml:7: warning: AtlasPasswordField sets' "$tmp/out" || fail "allow-raw hid the masking finding"
+grep -q 'A.qml:6: warning: TelamonTextField with echoMode Password' "$tmp/out" || fail "allow-raw hid the password finding"
+grep -q 'A.qml:7: warning: TelamonPasswordField sets' "$tmp/out" || fail "allow-raw hid the masking finding"
 ! grep -q 'A.qml:8:' "$tmp/out" || fail "allow-raw did not silence the raw values"
 # Deep nesting and a very long line: bounded work, and still a result.
 mkdir "$tmp/deep"
@@ -160,7 +186,7 @@ echo "lint allow-raw scope and bounds ok"
 
 # allow-raw on the line before silences the next line's raw values (as `allow` does).
 mkdir "$tmp/prev"
-printf 'import QtQuick\nItem {\n    // atlas-lint: allow-raw sample colour\n    Rectangle { color: "#fff"; radius: 6 }\n    Rectangle { color: "#fff" }\n}\n' >"$tmp/prev/A.qml"
+printf 'import QtQuick\nItem {\n    // telamon-lint: allow-raw sample colour\n    Rectangle { color: "#fff"; radius: 6 }\n    Rectangle { color: "#fff" }\n}\n' >"$tmp/prev/A.qml"
 "$lint" "$tmp/prev" >"$tmp/out" 2>&1
 grep -q 'A.qml:4:' "$tmp/out" && fail "allow-raw on the previous line did not silence line 4"
 grep -q 'A.qml:5: warning: raw colour' "$tmp/out" || fail "allow-raw on the previous line silenced two lines"

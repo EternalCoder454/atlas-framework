@@ -17,7 +17,7 @@ Flow {
     property list<real> values
     property real maximum: 100
     property bool numbered: true
-    property color color: AtlasStyle.accent
+    property color color: TelamonStyle.accent
     property real barWidth: Math.round(Kirigami.Units.gridUnit * 0.9)
     property real barHeight: Kirigami.Units.gridUnit * 2.5
     // What a screen reader says for bar i, e.g. "Core 3".
@@ -26,7 +26,7 @@ Flow {
     property var textOf: v => Math.round(v) + "%"
 
     Layout.fillWidth: true
-    spacing: AtlasStyle.spacingSmall
+    spacing: TelamonStyle.spacingSmall
 
     Repeater {
         model: root.values.length
@@ -48,7 +48,7 @@ Flow {
                 Rectangle {
                     anchors.fill: parent
                     radius: 3
-                    color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.1)
+                    color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.1)
                 }
                 Rectangle {
                     anchors.bottom: parent.bottom
@@ -64,9 +64,9 @@ Flow {
                 width: root.barWidth
                 horizontalAlignment: Text.AlignHCenter
                 text: cell.index
-                color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.55)
-                font.family: AtlasStyle.fontFamily
-                font.pointSize: AtlasStyle.fontSizeCaption
+                color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.55)
+                font.family: TelamonStyle.fontFamily
+                font.pointSize: TelamonStyle.fontSizeCaption
                 textFormat: Text.PlainText
             }
         }

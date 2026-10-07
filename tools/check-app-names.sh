@@ -1,5 +1,5 @@
 #!/bin/bash
-# Fails when an app has a .qml file named like an Atlas.Ui type.
+# Fails when an app has a .qml file named like a Telamon.Ui type.
 #
 #   tools/check-app-names.sh [--allow-empty] <app-dir>...
 #
@@ -7,9 +7,9 @@
 # must not pass; --allow-empty for an app that has none). Directories named
 # build, build-*, _build, target, node_modules and .git are skipped.
 #
-# `import Atlas.Ui` wins over the QML files in an app's own directory, so an
-# Atlas.Ui type named like an app's local type replaces it in that app, which
-# then breaks (docs/DESIGN.md, "Compatibility"). The Atlas.Ui names are the
+# `import Telamon.Ui` wins over the QML files in an app's own directory, so a
+# Telamon.Ui type named like an app's local type replaces it in that app, which
+# then breaks (docs/DESIGN.md, "Compatibility"). The Telamon.Ui names are the
 # basenames of ui/*.qml and the QML_ELEMENT / QML_NAMED_ELEMENT names in ui/*.h.
 set -euo pipefail
 
@@ -40,8 +40,13 @@ trap 'rm -f "$names"' EXIT
         /QML_ELEMENT/ && cls != "" { print cls }
     ' "$root"/ui/*.h
 } | sort -u >"$names"
+# Atlas.Ui 1.x's names too (AtlasButton for TelamonButton): an app that has not
+# moved to Telamon.Ui yet says `import Atlas.Ui`, which hides its own files the
+# same way.
+sed -n 's/^Telamon/Atlas/p' "$names" >>"$names"
+sort -u -o "$names" "$names"
 if [ ! -s "$names" ]; then
-    echo "check-app-names: found no Atlas.Ui type names under $root/ui" >&2
+    echo "check-app-names: found no Telamon.Ui type names under $root/ui" >&2
     exit 2
 fi
 
@@ -57,8 +62,8 @@ for app in "$@"; do
         base=$(basename "$file" .qml)
         if grep -qxF -- "$base" "$names"; then
             # Control characters in a name could forge CI log commands (::error::).
-            echo "${file//[[:cntrl:]]/?}: clashes with the Atlas.Ui type $base."
-            echo "  Rule: 'import Atlas.Ui' hides an app's own QML file of the same name, so the app's $base.qml"
+            echo "${file//[[:cntrl:]]/?}: clashes with the Telamon.Ui type $base."
+            echo "  Rule: 'import Telamon.Ui' hides an app's own QML file of the same name, so the app's $base.qml"
             echo "  is replaced by the framework's. Rename the app's file (the Installer's SearchField became ListSearchField)."
             status=1
         fi

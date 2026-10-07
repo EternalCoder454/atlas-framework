@@ -6,11 +6,11 @@
                                                   images and index.json into
                                                   <out dir> (docs-published)
 
-`check` also fails when a type or public member in api/atlas-ui.api is missing
-from the atlas-ui pages: docs/reference is the single source for the API.
+`check` also fails when a type or public member in api/telamon-ui.api is missing
+from the telamon-ui pages: docs/reference is the single source for the API.
 `--root` skips that check unless `--api FILE` names the API file too.
 
-The AtlasOS site (telamon.eterneon.net/framework) reads the docs-published branch.
+The Telamon OS site (telamon.eterneon.net/framework) reads the docs-published branch.
 docs/reference/README.md is the contract: the layout, the frontmatter and the
 rules this script enforces. Only the standard library, so CI needs nothing
 installed.
@@ -29,8 +29,8 @@ import urllib.parse
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REF = os.path.join(ROOT, "docs", "reference")  # `--root DIR` replaces it (the tests do)
 CUSTOM_ROOT = False  # True when REF was given with --root
-API = os.path.join(ROOT, "api", "atlas-ui.api")  # None: no API coverage check (`--root` without `--api`)
-API_LIBRARY = "atlas-ui"  # the library whose pages describe that API
+API = os.path.join(ROOT, "api", "telamon-ui.api")  # None: no API coverage check (`--root` without `--api`)
+API_LIBRARY = "telamon-ui"  # the library whose pages describe that API
 
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 KEYS = {"title", "summary", "order", "since", "section", "deprecated"}
@@ -554,7 +554,7 @@ def check():
 
 
 def page_slug(type_name):
-    """AtlasButton -> atlas-button, DataTable -> data-table."""
+    """TelamonButton -> telamon-button, DataTable -> data-table."""
     return re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "-", type_name).lower()
 
 
@@ -576,7 +576,7 @@ def read_api(errors):
             types.setdefault(m.group(1), set())
             continue
         m = re.fullmatch(r"(\w+)\.base \w+", line)
-        if m:  # the first non-Atlas base class: a contract line, not a member
+        if m:  # the first non-Telamon base class: a contract line, not a member
             types.setdefault(m.group(1), set())
             continue
         m = re.match(r"(\w+)\.(property|signal|method) (\w+)", line)
@@ -705,7 +705,7 @@ def git(*args):
 
 def project_version():
     with open(os.path.join(ROOT, "CMakeLists.txt"), encoding="utf-8") as f:
-        m = re.search(r"project\(\s*atlas-framework\s+VERSION\s+([0-9.]+)", f.read())
+        m = re.search(r"project\(\s*telamon-framework\s+VERSION\s+([0-9.]+)", f.read())
     if not m:
         sys.exit("docs: no project version in CMakeLists.txt")
     return m.group(1)
@@ -798,7 +798,7 @@ def main(argv):
         CUSTOM_ROOT = True
         del argv[i:i + 2]
         API = None
-    if "--api" in argv:  # the API file to check coverage of (default: api/atlas-ui.api, none with --root)
+    if "--api" in argv:  # the API file to check coverage of (default: api/telamon-ui.api, none with --root)
         i = argv.index("--api")
         if i + 1 >= len(argv):
             sys.exit(__doc__.strip().split("\n\n")[1])

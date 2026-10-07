@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtTest
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
 // One test row per ui/gallery/demos/*Demo.qml, found at run time. A new
 // control with a demo needs no change here, only a golden (see tests/README.md).
@@ -22,7 +22,7 @@ Rectangle {
         name: "Visual"
         when: windowShown
 
-        // compact: the density an app sets on the style (AtlasStyle.density).
+        // compact: the density an app sets on the style (TelamonStyle.density).
         // Popups and dialogs live in the window's overlay, which is not a child
         // of the app's root: an RTL app mirrors it too (Qt does not do it).
         function mirrorOverlay() {
@@ -33,22 +33,22 @@ Rectangle {
         }
 
         function init() {
-            AtlasStyle.density = Goldens.variant() === "compact" ? AtlasStyle.Compact : AtlasStyle.Normal;
+            TelamonStyle.density = Goldens.variant() === "compact" ? TelamonStyle.Compact : TelamonStyle.Normal;
             mirrorOverlay();
         }
 
         function cleanup() {
-            AtlasStyle.density = AtlasStyle.Normal;
+            TelamonStyle.density = TelamonStyle.Normal;
         }
 
         // The variant really is on: a picture of the wrong state would be
         // accepted as a golden without anyone noticing.
         function test_variant_is_on() {
             const v = Goldens.variant();
-            compare(AtlasStyle.highContrast, v === "contrast", "AtlasStyle.highContrast");
+            compare(TelamonStyle.highContrast, v === "contrast", "TelamonStyle.highContrast");
             compare(Qt.application.layoutDirection === Qt.RightToLeft, v === "rtl", "layout direction");
-            compare(AtlasStyle.compact, v === "compact", "AtlasStyle.compact");
-            fuzzyCompare(AtlasStyle.textScale, v === "text200" ? 2.0 : 1.0, 0.01, "AtlasStyle.textScale");
+            compare(TelamonStyle.compact, v === "compact", "TelamonStyle.compact");
+            fuzzyCompare(TelamonStyle.textScale, v === "text200" ? 2.0 : 1.0, 0.01, "TelamonStyle.textScale");
             compare(stage.LayoutMirroring.enabled, v === "rtl", "the stage is mirrored");
         }
 

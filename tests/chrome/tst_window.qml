@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 Item {
     id: root
@@ -9,31 +9,31 @@ Item {
 
     Component {
         id: headerComp
-        AtlasHeaderBar {
+        TelamonHeaderBar {
             width: 700
             title: "Test"
         }
     }
     Component {
         id: framelessComp
-        AtlasWindow {
+        TelamonWindow {
             width: 400
             height: 300
-            header: AtlasHeaderBar {
+            header: TelamonHeaderBar {
                 title: "Frameless"
             }
         }
     }
     Component {
         id: plainComp
-        AtlasWindow {
+        TelamonWindow {
             width: 400
             height: 300
         }
     }
 
     TestCase {
-        name: "AtlasHeaderBar"
+        name: "TelamonHeaderBar"
         when: windowShown
 
         function test_drag_on_empty_bar_starts_system_move() {
@@ -99,7 +99,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasWindow"
+        name: "TelamonWindow"
         when: windowShown
 
         function resizeAt(win, x, y) {
@@ -128,10 +128,10 @@ Item {
             const w = createTemporaryObject(framelessComp, root);
             w.show();
             tryVerify(() => w.visible && w.visibility === Window.Windowed);
-            compare(w._cornerRadius, AtlasStyle.radiusLarge);
+            compare(w._cornerRadius, TelamonStyle.radiusLarge);
             compare(w.color.a, 0);
-            compare(w.background.topLeftRadius, AtlasStyle.radiusLarge);
-            compare(w.background.topRightRadius, AtlasStyle.radiusLarge);
+            compare(w.background.topLeftRadius, TelamonStyle.radiusLarge);
+            compare(w.background.topRightRadius, TelamonStyle.radiusLarge);
             compare(w.background.bottomLeftRadius, 0);
             let bar = null;
             for (const c of w.header.children) {
@@ -141,7 +141,7 @@ Item {
                 }
             }
             verify(bar);
-            compare(bar.topLeftRadius, AtlasStyle.radiusLarge);
+            compare(bar.topLeftRadius, TelamonStyle.radiusLarge);
             w.showMaximized();
             tryVerify(() => w.visibility === Window.Maximized);
             compare(w._cornerRadius, 0);
@@ -247,37 +247,37 @@ Item {
     }
 
     TestCase {
-        name: "AtlasWindowChrome"
+        name: "TelamonWindowChrome"
 
         function test_parse_buttons() {
-            compare(AtlasWindowChrome._parseButtons("HIAX"), ["minimize", "maximize", "close"]);
-            compare(AtlasWindowChrome._parseButtons("M"), ["menu"]);
-            compare(AtlasWindowChrome._parseButtons("XAI"), ["close", "maximize", "minimize"]);
-            compare(AtlasWindowChrome._parseButtons("IIX"), ["minimize", "close"]);
-            compare(AtlasWindowChrome._parseButtons("SFB"), []);
-            compare(AtlasWindowChrome._parseButtons(""), []);
+            compare(TelamonWindowChrome._parseButtons("HIAX"), ["minimize", "maximize", "close"]);
+            compare(TelamonWindowChrome._parseButtons("M"), ["menu"]);
+            compare(TelamonWindowChrome._parseButtons("XAI"), ["close", "maximize", "minimize"]);
+            compare(TelamonWindowChrome._parseButtons("IIX"), ["minimize", "close"]);
+            compare(TelamonWindowChrome._parseButtons("SFB"), []);
+            compare(TelamonWindowChrome._parseButtons(""), []);
         }
 
         function test_default_layout() {
-            // The test environment has no kwinrc: AtlasOS's defaults.
-            compare(AtlasWindowChrome.buttonsOnLeft, ["menu"]);
-            compare(AtlasWindowChrome.buttonsOnRight, ["minimize", "maximize", "close"]);
+            // The test environment has no kwinrc: Telamon OS's defaults.
+            compare(TelamonWindowChrome.buttonsOnLeft, ["menu"]);
+            compare(TelamonWindowChrome.buttonsOnRight, ["minimize", "maximize", "close"]);
         }
     }
 
     Component {
         id: navComp
-        AtlasNavigationStack {
+        TelamonNavigationStack {
             width: 400
             height: 300
-            initialItem: AtlasPage {
+            initialItem: TelamonPage {
                 title: "Home"
             }
         }
     }
     Component {
         id: navPageComp
-        AtlasPage {
+        TelamonPage {
             title: "Details"
             headerTrailing: ToolbarButton {
                 objectName: "pageAction"
@@ -295,7 +295,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasNavigationStack"
+        name: "TelamonNavigationStack"
         when: windowShown
 
         function findLabel(item, text) {
@@ -349,7 +349,7 @@ Item {
             verify(!findLabel(nav.currentItem, "Home").visible, "the first page too");
         }
 
-        // A page that isn't an AtlasPage (no _titleInHeader) is left alone.
+        // A page that isn't a TelamonPage (no _titleInHeader) is left alone.
         function test_plain_item_page() {
             const nav = createTemporaryObject(navComp, root);
             const page = nav.push(plainPageComp, { title: "Plain" });

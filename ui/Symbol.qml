@@ -9,7 +9,7 @@ import org.kde.kirigami as Kirigami
 //   Symbol { icon: Symbols.Favorite; filled: liked; color: Kirigami.Theme.negativeTextColor }
 //   Symbol { icon: Symbols.Home; style: Symbol.Sharp; weight: 300 }
 //
-// Browse them all with the atlas-symbols gallery (ui/gallery) or at
+// Browse them all with the telamon-symbols gallery (ui/gallery) or at
 // fonts.google.com/icons. Decorative: screen readers skip it, so give the
 // control around it the accessible name.
 Item {
@@ -46,7 +46,7 @@ Item {
 
     Behavior on fill {
         NumberAnimation {
-            duration: AtlasStyle.durationShort
+            duration: TelamonStyle.durationShort
             easing.type: Easing.OutCubic
         }
     }

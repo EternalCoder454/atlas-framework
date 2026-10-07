@@ -72,7 +72,7 @@ import org.kde.kirigami as Kirigami
 // selection) and the Menu key or Shift+F10 on the current row emit
 // rowContextMenuRequested(row, pos) as well as contextMenuRequested.
 //
-// `density` follows AtlasStyle.density: Compact makes the rows about 75% as
+// `density` follows TelamonStyle.density: Compact makes the rows about 75% as
 // tall.
 //
 // Name the table for screen readers with Accessible.name ("Apps").
@@ -105,7 +105,7 @@ FocusScope {
     property list<real> columnWidths
     property bool columnsMenu: false
     property list<int> hiddenColumns
-    property int density: AtlasStyle.density
+    property int density: TelamonStyle.density
     property string sortRole
     property int sortOrder: Qt.DescendingOrder
     property alias currentIndex: list.currentIndex
@@ -114,16 +114,16 @@ FocusScope {
     property string expandedRole
     // Shown in the middle when there are no rows ("No Apps Match").
     property string placeholderText
-    // What the table shows in place of its rows (an AtlasStatus value), under
+    // What the table shows in place of its rows (a TelamonStatus value), under
     // the column header, and the content of that: the heading, the
     // explanation, a Symbols value (0 for the status's own) and one action.
-    property int status: AtlasStatus.Ready
+    property int status: TelamonStatus.Ready
     property string statusTitle
     property string statusText
     property int statusSymbol: 0
-    property AtlasAction statusAction: null
+    property TelamonAction statusAction: null
     readonly property bool pointerInside: hover.hovered
-    readonly property real rowHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * (density === AtlasStyle.Compact ? 0.75 : 1))
+    readonly property real rowHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * (density === TelamonStyle.Compact ? 0.75 : 1))
     readonly property alias count: list.count
 
     signal activated(int row)
@@ -142,7 +142,7 @@ FocusScope {
     implicitHeight: Kirigami.Units.gridUnit * 20
     Layout.fillWidth: true
     // Not under a status: no row shows focus, and the action button is the stop.
-    activeFocusOnTab: root.status === AtlasStatus.Ready
+    activeFocusOnTab: root.status === TelamonStatus.Ready
 
     Accessible.role: Accessible.Table
     Accessible.focusable: true
@@ -150,8 +150,8 @@ FocusScope {
     // mirrors only the table itself.
     LayoutMirroring.childrenInherit: true
 
-    readonly property real padding: AtlasStyle.spacingSmall
-    readonly property real cellPadding: AtlasStyle.spacingLarge
+    readonly property real padding: TelamonStyle.spacingSmall
+    readonly property real cellPadding: TelamonStyle.spacingLarge
     readonly property real _minColumnWidth: Kirigami.Units.gridUnit * 3
     // Hidden columns as a set of indexes; the first column stays if the app
     // hides them all.
@@ -345,7 +345,7 @@ FocusScope {
         if (!c) {
             return;
         }
-        const icon = Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall;
+        const icon = Kirigami.Units.iconSizes.small + TelamonStyle.spacingSmall;
         const pad = 2 * cellPadding + 2;
         metrics.text = String(c.title ?? "");
         let best = metrics.advanceWidth + pad + icon;
@@ -396,8 +396,8 @@ FocusScope {
 
     TextMetrics {
         id: metrics
-        font.family: AtlasStyle.fontFamily
-        font.pointSize: AtlasStyle.fontSizeBody
+        font.family: TelamonStyle.fontFamily
+        font.pointSize: TelamonStyle.fontSizeBody
     }
 
     Loader {
@@ -427,7 +427,7 @@ FocusScope {
     }
 
     Keys.onPressed: event => {
-        if (root.status !== AtlasStatus.Ready) {
+        if (root.status !== TelamonStatus.Ready) {
             return;
         }
         const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
@@ -535,10 +535,10 @@ FocusScope {
     // The card, drawn like Section's.
     Rectangle {
         anchors.fill: parent
-        radius: AtlasStyle.radius
-        color: AtlasStyle.surface
+        radius: TelamonStyle.radius
+        color: TelamonStyle.surface
         border.width: 1
-        border.color: root.activeFocus ? AtlasStyle.focus : AtlasStyle.separator
+        border.color: root.activeFocus ? TelamonStyle.focus : TelamonStyle.separator
     }
 
     Row {
@@ -582,8 +582,8 @@ FocusScope {
                 Rectangle {
                     anchors.fill: parent
                     anchors.margins: 1
-                    radius: AtlasStyle.radiusSmall
-                    color: headMouse.pressed ? AtlasStyle.pressed : headMouse.containsMouse ? AtlasStyle.hover : "transparent"
+                    radius: TelamonStyle.radiusSmall
+                    color: headMouse.pressed ? TelamonStyle.pressed : headMouse.containsMouse ? TelamonStyle.hover : "transparent"
                 }
 
                 RowLayout {
@@ -665,7 +665,7 @@ FocusScope {
                         width: grip.pressed || grip.containsMouse ? 2 : 1
                         height: parent.height * 0.5
                         radius: width / 2
-                        color: grip.pressed || grip.containsMouse ? AtlasStyle.accent : AtlasStyle.controlBorder
+                        color: grip.pressed || grip.containsMouse ? TelamonStyle.accent : TelamonStyle.controlBorder
                     }
                 }
             }
@@ -678,7 +678,7 @@ FocusScope {
         y: header.y + header.height
         width: root.width - 2 * x
         height: 1
-        color: AtlasStyle.separator
+        color: TelamonStyle.separator
     }
 
     Item {
@@ -694,7 +694,7 @@ FocusScope {
         id: list
         anchors.fill: rows
         clip: true
-        visible: root.status === AtlasStatus.Ready
+        visible: root.status === TelamonStatus.Ready
         model: root.model
         reuseItems: true
         onCountChanged: root._pruneSelection()
@@ -717,11 +717,11 @@ FocusScope {
             contentItem: Rectangle {
                 implicitWidth: 6
                 radius: width / 2
-                color: AtlasStyle.alpha(Kirigami.Theme.textColor, vbar.pressed ? 0.45 : vbar.hovered ? 0.35 : 0.22)
+                color: TelamonStyle.alpha(Kirigami.Theme.textColor, vbar.pressed ? 0.45 : vbar.hovered ? 0.35 : 0.22)
                 opacity: vbar.active ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: AtlasStyle.duration
+                        duration: TelamonStyle.duration
                     }
                 }
             }
@@ -774,12 +774,12 @@ FocusScope {
                 anchors.fill: parent
                 anchors.topMargin: 1
                 anchors.bottomMargin: 1
-                radius: AtlasStyle.radiusSmall
-                color: row.selected ? (root.activeFocus ? AtlasStyle.selection : AtlasStyle.selectionInactive) : rowMouse.pressed ? AtlasStyle.pressed : rowMouse.containsMouse ? AtlasStyle.hover : "transparent"
+                radius: TelamonStyle.radiusSmall
+                color: row.selected ? (root.activeFocus ? TelamonStyle.selection : TelamonStyle.selectionInactive) : rowMouse.pressed ? TelamonStyle.pressed : rowMouse.containsMouse ? TelamonStyle.hover : "transparent"
                 // The current row of a multi-selection when it isn't selected
                 // (Ctrl+Space off), so the keyboard position stays visible.
                 border.width: root._multi && row.current && !row.selected && root.activeFocus ? 1 : 0
-                border.color: AtlasStyle.focus
+                border.color: TelamonStyle.focus
             }
 
             Row {
@@ -934,11 +934,11 @@ FocusScope {
         visible: cell.heat > 0.02
         anchors.left: parent.left
         anchors.leftMargin: root.cellPadding
-        y: parent.height - height - AtlasStyle.spacingXSmall - 1
+        y: parent.height - height - TelamonStyle.spacingXSmall - 1
         width: Math.max(height, Math.round((parent.width - 2 * root.cellPadding) * cell.heat))
         height: 3
         radius: height / 2
-        color: cell.rowSelected ? AtlasStyle.accent : AtlasStyle.warning
+        color: cell.rowSelected ? TelamonStyle.accent : TelamonStyle.warning
     }
     // The font and colour of every cell's text: a Label's in this table.
     QQC2.Label {
@@ -1021,7 +1021,7 @@ FocusScope {
         }
     }
 
-    AtlasStatusView {
+    TelamonStatusView {
         anchors.fill: rows
         status: root.status
         title: root.statusTitle
@@ -1031,7 +1031,7 @@ FocusScope {
     }
 
     QQC2.Label {
-        visible: root.status === AtlasStatus.Ready && list.count === 0 && root.placeholderText.length > 0
+        visible: root.status === TelamonStatus.Ready && list.count === 0 && root.placeholderText.length > 0
         anchors.centerIn: rows
         width: list.width - Kirigami.Units.gridUnit * 2
         horizontalAlignment: Text.AlignHCenter

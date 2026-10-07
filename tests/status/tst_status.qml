@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 import org.kde.kirigami as Kirigami
 
-// AtlasStatus on AtlasListView, DataTable, AtlasTreeView and AtlasPage.
+// TelamonStatus on TelamonListView, DataTable, TelamonTreeView and TelamonPage.
 Item {
     id: root
     width: 480
@@ -17,11 +17,11 @@ Item {
         ListElement { name: "b"; cpu: 2 }
         ListElement { name: "c"; cpu: 3 }
     }
-    AtlasTreeModel {
+    TelamonTreeModel {
         id: tm
         items: [{ text: "one", children: [{ text: "two" }] }, { text: "three" }]
     }
-    AtlasAction {
+    TelamonAction {
         id: retry
         text: "Re&try"
         symbol: Symbols.Refresh
@@ -40,7 +40,7 @@ Item {
 
     Component {
         id: listComp
-        AtlasListView {
+        TelamonListView {
             anchors.fill: parent
             model: lm
             textRole: "name"
@@ -55,7 +55,7 @@ Item {
     }
     Component {
         id: bindComp
-        AtlasListView {
+        TelamonListView {
             anchors.fill: parent
             model: 3
             delegate: Rectangle {
@@ -78,7 +78,7 @@ Item {
     }
     Component {
         id: treeComp
-        AtlasTreeView {
+        TelamonTreeView {
             anchors.fill: parent
             model: tm
             statusAction: retry
@@ -86,7 +86,7 @@ Item {
     }
     Component {
         id: pageComp
-        AtlasPage {
+        TelamonPage {
             anchors.fill: parent
             title: "Pagetitle"
             statusAction: retry
@@ -101,7 +101,7 @@ Item {
 
     Component {
         id: emptyComp
-        AtlasEmptyState {
+        TelamonEmptyState {
             width: 300
             symbol: Symbols.Error
             title: "Something went wrong"
@@ -111,7 +111,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasEmptyStateFit"
+        name: "TelamonEmptyStateFit"
         when: windowShown
 
         function parts(e) {
@@ -176,7 +176,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasStatus"
+        name: "TelamonStatus"
         when: windowShown
 
         function make(kind) {
@@ -216,11 +216,11 @@ Item {
         }
 
         function test_enum_values() {
-            compare(AtlasStatus.Ready, 0);
-            compare(AtlasStatus.Loading, 1);
-            compare(AtlasStatus.Empty, 2);
-            compare(AtlasStatus.NoResults, 3);
-            compare(AtlasStatus.Error, 4);
+            compare(TelamonStatus.Ready, 0);
+            compare(TelamonStatus.Loading, 1);
+            compare(TelamonStatus.Empty, 2);
+            compare(TelamonStatus.NoResults, 3);
+            compare(TelamonStatus.Error, 4);
         }
 
         function test_each_status_on_each_view_data() {
@@ -235,9 +235,9 @@ Item {
         function test_each_status_on_each_view(data) {
             const v = make(data.kind);
             const sv = statusView(v);
-            compare(v.status, AtlasStatus.Ready);
+            compare(v.status, TelamonStatus.Ready);
             verify(!sv.visible, "Ready shows no status");
-            v.status = AtlasStatus[data.status];
+            v.status = TelamonStatus[data.status];
             verify(sv.visible);
             const es = emptyState(sv);
             verify(es !== null && es.visible, "an empty state shows");
@@ -252,7 +252,7 @@ Item {
             compare(es.title, "Mine");
             compare(es.text, "Because.");
             compare(es.symbol, Symbols.Folder);
-            v.status = AtlasStatus.Ready;
+            v.status = TelamonStatus.Ready;
             verify(!sv.visible, "back to Ready hides it");
         }
 
@@ -273,9 +273,9 @@ Item {
             };
             tryVerify(() => rowItem() !== null && rowItem() !== undefined);
             verify(rowItem().visible, "rows show when Ready");
-            v.status = AtlasStatus.Empty;
+            v.status = TelamonStatus.Empty;
             verify(!rowItem().visible, "rows hidden under a status");
-            v.status = AtlasStatus.Ready;
+            v.status = TelamonStatus.Ready;
             verify(rowItem().visible, "rows are back");
         }
 
@@ -288,14 +288,14 @@ Item {
             const v = make("list");
             const sv = statusView(v);
             sv._delay = 1200;
-            v.status = AtlasStatus.Loading;
+            v.status = TelamonStatus.Loading;
             verify(sv.visible);
             verify(!sv.spinnerShown);
             wait(100);
             verify(!sv.spinnerShown, "no spinner before the delay");
             tryVerify(() => sv.spinnerShown, 3000);
             compare(sv.effectiveTitle, "", "Loading has no heading");
-            v.status = AtlasStatus.Ready;
+            v.status = TelamonStatus.Ready;
             verify(!sv.spinnerShown);
             verify(!sv.visible);
         }
@@ -304,9 +304,9 @@ Item {
             const v = make("table");
             const sv = statusView(v);
             sv._delay = 800;
-            v.status = AtlasStatus.Loading;
+            v.status = TelamonStatus.Loading;
             wait(50);
-            v.status = AtlasStatus.Ready;
+            v.status = TelamonStatus.Ready;
             wait(1000);
             verify(!sv.spinnerShown, "a load that ended early left no spinner");
             verify(!sv.visible);
@@ -318,9 +318,9 @@ Item {
             const said = [];
             sv._announceHook = t => said.push(t);
             wait(50);
-            v.status = AtlasStatus.Loading;
+            v.status = TelamonStatus.Loading;
             wait(500);
-            v.status = AtlasStatus.Ready;
+            v.status = TelamonStatus.Ready;
             wait(50);
             compare(said.length, 0);
         }
@@ -332,11 +332,11 @@ Item {
             sv._announceHook = t => said.push(t);
             wait(50);
             // The text comes a moment after the status: it is still spoken.
-            v.status = AtlasStatus.Error;
+            v.status = TelamonStatus.Error;
             v.statusText = "No network.";
             tryCompare(said, "length", 1);
             compare(said[0], "Something went wrong. No network.");
-            v.status = AtlasStatus.Empty;
+            v.status = TelamonStatus.Empty;
             wait(50);
             compare(said.length, 1, "Empty is not announced");
         }
@@ -344,7 +344,7 @@ Item {
         function test_action_button_triggers() {
             const v = make("list");
             const sv = statusView(v);
-            v.status = AtlasStatus.Error;
+            v.status = TelamonStatus.Error;
             const es = emptyState(sv);
             compare(es.actionText, "Retry", "the mnemonic marker is dropped");
             compare(es.actionSymbol, Symbols.Refresh);
@@ -362,7 +362,7 @@ Item {
         function test_disabled_action_has_no_button() {
             const v = make("list");
             const sv = statusView(v);
-            v.status = AtlasStatus.Empty;
+            v.status = TelamonStatus.Empty;
             const es = emptyState(sv);
             verify(findBy(es, c => c.text === "Retry" && typeof c.clicked === "function" && c.visible) !== null);
             retry.enabled = false;
@@ -382,23 +382,23 @@ Item {
             tryVerify(() => l.itemAtIndex(0) !== null);
             const d = l.itemAtIndex(0);
             verify(d.visible);
-            l.status = AtlasStatus.Empty;
+            l.status = TelamonStatus.Empty;
             verify(!d.visible, "hidden under the status");
-            l.status = AtlasStatus.Ready;
+            l.status = TelamonStatus.Ready;
             verify(d.visible);
             root.keep = false;
             verify(!d.visible, "the app's binding still drives it");
-            l.status = AtlasStatus.Loading;
-            l.status = AtlasStatus.Ready;
+            l.status = TelamonStatus.Loading;
+            l.status = TelamonStatus.Ready;
             verify(!d.visible, "still hidden by the app");
             root.keep = true;
             verify(d.visible, "and shown again by the app");
             // Under a status the app's change waits for Ready.
-            l.status = AtlasStatus.Error;
+            l.status = TelamonStatus.Error;
             root.keep = false;
             root.keep = true;
             verify(!d.visible);
-            l.status = AtlasStatus.Ready;
+            l.status = TelamonStatus.Ready;
             verify(d.visible);
         }
 
@@ -407,7 +407,7 @@ Item {
             tryVerify(() => l.itemAtIndex(0) !== null);
             l.currentIndex = -1;
             const spy = createTemporaryObject(spyComp, root, { target: l });
-            l.status = AtlasStatus.Empty;
+            l.status = TelamonStatus.Empty;
             mouseClick(l, 20, 60);
             mouseDoubleClickSequence(l, 20, 60);
             mouseClick(l, 20, 60, Qt.RightButton);
@@ -419,7 +419,7 @@ Item {
         function test_table_header_stays() {
             const t = make("table");
             const sv = statusView(t);
-            t.status = AtlasStatus.NoResults;
+            t.status = TelamonStatus.NoResults;
             const head = findBy(t, c => c.Accessible.role === Accessible.ColumnHeader);
             verify(head !== null, "the table has a column header");
             verify(head.visible, "the header stays");
@@ -431,7 +431,7 @@ Item {
         function test_list_header_stays() {
             const l = make("list");
             const sv = statusView(l);
-            l.status = AtlasStatus.Empty;
+            l.status = TelamonStatus.Empty;
             tryVerify(() => l.headerItem !== null);
             verify(l.headerItem.visible, "the list's header stays");
             verify(sv.y >= l.headerItem.height - 1, "the status sits under the header: " + sv.y);
@@ -440,7 +440,7 @@ Item {
 
         function test_page_title_stays() {
             const p = make("page");
-            p.status = AtlasStatus.Error;
+            p.status = TelamonStatus.Error;
             const title = findBy(p, c => c.text === "Pagetitle");
             verify(title !== null && title.visible, "the title stays");
             const content = findBy(p, c => c.objectName === "content");
@@ -454,7 +454,7 @@ Item {
         function test_tree_keys_do_nothing_under_a_status() {
             const t = make("tree");
             t.forceActiveFocus();
-            t.status = AtlasStatus.Empty;
+            t.status = TelamonStatus.Empty;
             keyClick(Qt.Key_Down);
             keyClick(Qt.Key_Down);
             compare(t.selectionModel.hasSelection, false);
@@ -466,7 +466,7 @@ Item {
             l.model = 300;
             tryVerify(() => l.itemAtIndex(0) !== null);
             const rows = () => l.contentItem.children.filter(c => c.ListView.view === l);
-            l.status = AtlasStatus.Empty;
+            l.status = TelamonStatus.Empty;
             verify(rows().every(r => !r.visible), "rows hidden");
             // Scrolling reuses the delegates: they stay hidden, with new rows too.
             l.contentY = 1500;
@@ -475,7 +475,7 @@ Item {
             wait(100);
             verify(rows().length > 0);
             verify(rows().every(r => !r.visible), "reused rows hidden");
-            l.status = AtlasStatus.Ready;
+            l.status = TelamonStatus.Ready;
             verify(rows().every(r => r.visible), "rows back");
         }
     }

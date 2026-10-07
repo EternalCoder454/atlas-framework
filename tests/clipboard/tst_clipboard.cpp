@@ -1,7 +1,7 @@
-// AtlasClipboard: text, rich text and image round trips through the in-process
+// TelamonClipboard: text, rich text and image round trips through the in-process
 // clipboard of the offscreen platform, and the refusals of setImage().
-// Compiled straight from ui/atlasclipboard.cpp.
-#include "atlasclipboard.h"
+// Compiled straight from ui/telamonclipboard.cpp.
+#include "telamonclipboard.h"
 
 #include <QClipboard>
 #include <QGuiApplication>
@@ -18,8 +18,8 @@ class TestClipboard : public QObject
 private Q_SLOTS:
     void text()
     {
-        AtlasClipboard board;
-        QSignalSpy spy(&board, &AtlasClipboard::changed);
+        TelamonClipboard board;
+        QSignalSpy spy(&board, &TelamonClipboard::changed);
         board.setText(QStringLiteral("hello é world"));
         QCOMPARE(board.text(), QStringLiteral("hello é world"));
         QVERIFY(board.hasText());
@@ -32,14 +32,14 @@ private Q_SLOTS:
 
     void emptyText()
     {
-        AtlasClipboard board;
+        TelamonClipboard board;
         board.setText(QString());
         QCOMPARE(board.text(), QString());
     }
 
     void richText()
     {
-        AtlasClipboard board;
+        TelamonClipboard board;
         board.setRichText(QStringLiteral("<b>bold</b>"), QStringLiteral("bold"));
         const QMimeData *data = QGuiApplication::clipboard()->mimeData();
         QVERIFY(data->hasFormat(QStringLiteral("text/html")));
@@ -50,7 +50,7 @@ private Q_SLOTS:
 
     void imageFromQImage()
     {
-        AtlasClipboard board;
+        TelamonClipboard board;
         QImage image(4, 3, QImage::Format_ARGB32);
         image.fill(Qt::red);
         QVERIFY(board.setImage(QVariant::fromValue(image)));
@@ -68,7 +68,7 @@ private Q_SLOTS:
         const QString path = dir.filePath(QStringLiteral("shot.png"));
         QVERIFY(image.save(path));
 
-        AtlasClipboard board;
+        TelamonClipboard board;
         QVERIFY(board.setImage(QUrl::fromLocalFile(path)));
         QCOMPARE(QGuiApplication::clipboard()->image().size(), QSize(5, 2));
         QVERIFY(board.setImage(path)); // a plain path
@@ -77,7 +77,7 @@ private Q_SLOTS:
 
     void imageRefused()
     {
-        AtlasClipboard board;
+        TelamonClipboard board;
         QVERIFY(!board.setImage(QUrl(QStringLiteral("https://example.org/a.png"))));
         QVERIFY(!board.setImage(QUrl(QStringLiteral("file://remote.example/etc/passwd")))); // not local
         QVERIFY(!board.setImage(QStringLiteral("/nonexistent/none.png")));
@@ -107,7 +107,7 @@ private Q_SLOTS:
         QVERIFY(dir.isValid());
         QImage image(3, 3, QImage::Format_ARGB32);
         image.fill(Qt::red);
-        AtlasClipboard board;
+        TelamonClipboard board;
         for (const char *format : {"png", "jpg", "bmp", "gif"}) {
             const QString path = dir.filePath(QStringLiteral("p.") + QLatin1String(format));
             if (!image.save(path)) {

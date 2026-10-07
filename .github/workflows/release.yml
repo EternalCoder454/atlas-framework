@@ -1,7 +1,10 @@
 name: Release
 
-# Pushing a tag vX.Y.Z publishes a release of atlas-framework and opens a pull
-# request in every Atlas app (tools/apps.txt) that moves it to the new tag.
+# Pushing a tag vX.Y.Z publishes a release of telamon-framework and opens a pull
+# request in every Telamon app (tools/apps.txt) that moves it to the new tag,
+# except for a release that raises the major version: 2.0.0 renamed every
+# crate, so the apps move by hand (tools/migrate-app-to-telamon.sh) and the
+# jobs that open pull requests are skipped (the release job says so).
 #
 # A release is made only from a commit on main whose CI run passed, and only
 # when CHANGELOG.md has a finished section for the version. A tag must be
@@ -35,6 +38,7 @@ jobs:
       actions: read
     outputs:
       version: ${{ steps.version.outputs.version }}
+      major_changed: ${{ steps.version.outputs.major_changed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,11 +55,11 @@ jobs:
           if ! [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::$TAG is not vX.Y.Z"; exit 1
           fi
-          cmake=$(sed -nE 's/^project\(atlas-framework VERSION ([0-9.]+).*/\1/p' CMakeLists.txt)
-          spec=$(sed -nE 's/^Version:[[:space:]]+([0-9.]+)$/\1/p' packaging/atlas-framework.spec)
+          cmake=$(sed -nE 's/^project\(telamon-framework VERSION ([0-9.]+).*/\1/p' CMakeLists.txt)
+          spec=$(sed -nE 's/^Version:[[:space:]]+([0-9.]+)$/\1/p' packaging/telamon-framework.spec)
           cargo=$(sed -nE '/^\[workspace.package\]/,/^\[/ s/^version = "([0-9.]+)"$/\1/p' Cargo.toml)
           bad=0
-          for pair in "CMakeLists.txt:$cmake" "atlas-framework.spec:$spec" "Cargo.toml:$cargo"; do
+          for pair in "CMakeLists.txt:$cmake" "telamon-framework.spec:$spec" "Cargo.toml:$cargo"; do
             if [ "${pair#*:}" != "$v" ]; then
               echo "::error::${pair%%:*} says ${pair#*:}, the tag says $v"; bad=1
             fi
@@ -68,6 +72,15 @@ jobs:
             echo "::error::$TAG is not newer than $newest"; exit 1
           fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          # A new major version may rename or remove what apps use (2.0.0 renamed
+          # every crate): no pull request is opened in the apps for it, they are
+          # moved by hand. The previous release is the newest other tag, or none.
+          major_changed=false
+          if [ -n "$newest" ] && [ "$(cut -d. -f1 <<<"${newest#v}")" != "${v%%.*}" ]; then
+            major_changed=true
+            echo "::notice::$TAG changes the major version ($newest before it): no pull requests will be opened in the apps; move them by hand (tools/migrate-app-to-telamon.sh for 2.0.0)"
+          fi
+          echo "major_changed=$major_changed" >> "$GITHUB_OUTPUT"
 
       - name: The tag is on main
         run: |
@@ -146,7 +159,7 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::notice::$TAG is already released"
           else
-            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "atlas-framework $TAG" --notes-file notes.md
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "Telamon framework $TAG" --notes-file notes.md
           fi
 
   # The app pull requests, in two steps per app, because an app's checkout is
@@ -157,6 +170,8 @@ jobs:
   # See tools/open-update-pr.sh.
   apps:
     needs: release
+    # Skipped (with the two jobs below) when the major version changed.
+    if: needs.release.outputs.major_changed != 'true'
     runs-on: ubuntu-latest
     outputs:
       apps: ${{ steps.list.outputs.apps }}
@@ -189,7 +204,7 @@ jobs:
 
   update-locks:
     needs: [release, apps]
-    if: needs.apps.outputs.apps != '[]'
+    if: needs.release.outputs.major_changed != 'true' && needs.apps.outputs.apps != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -221,7 +236,7 @@ jobs:
     needs: [release, apps, update-locks]
     # Only when every lock job passed: a failed one can mean another job
     # uploaded its artifact first.
-    if: needs.apps.outputs.apps != '[]'
+    if: needs.release.outputs.major_changed != 'true' && needs.apps.outputs.apps != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: release
@@ -252,4 +267,4 @@ jobs:
             echo "::notice::APP_UPDATE_TOKEN is not set: no pull request opened for $APP"
             exit 0
           fi
-          tools/open-update-pr.sh publish "EternalCoder454/$APP" "v$V" "atlas-framework-v$V" "$RUNNER_TEMP/lock"
+          tools/open-update-pr.sh publish "EternalCoder454/$APP" "v$V" "telamon-framework-v$V" "$RUNNER_TEMP/lock"

@@ -1,7 +1,7 @@
-// The AtlasShortcuts registry: add, remove, conflicts, destroyed actions.
-// Compiled straight from ui/atlasshortcuts.cpp, with stand-in actions that
+// The TelamonShortcuts registry: add, remove, conflicts, destroyed actions.
+// Compiled straight from ui/telamonshortcuts.cpp, with stand-in actions that
 // have the three properties the registry watches.
-#include "atlasshortcuts.h"
+#include "telamonshortcuts.h"
 
 #include <QKeySequence>
 #include <QQuickItem>
@@ -39,8 +39,8 @@ class TestShortcuts : public QObject
 private Q_SLOTS:
     void addRemove()
     {
-        AtlasShortcuts reg;
-        QSignalSpy spy(&reg, &AtlasShortcuts::actionsChanged);
+        TelamonShortcuts reg;
+        QSignalSpy spy(&reg, &TelamonShortcuts::actionsChanged);
         FakeAction a("Save", "Ctrl+S"), b("Open", "Ctrl+O");
         reg.add(&a);
         reg.add(&a); // twice: still once
@@ -56,8 +56,8 @@ private Q_SLOTS:
 
     void conflict()
     {
-        AtlasShortcuts reg;
-        QSignalSpy spy(&reg, &AtlasShortcuts::conflictsChanged);
+        TelamonShortcuts reg;
+        QSignalSpy spy(&reg, &TelamonShortcuts::conflictsChanged);
         FakeAction a("&Save", "Ctrl+S"), b("Sort", QVariant::fromValue(QKeySequence(QStringLiteral("ctrl+s")))),
             c("Open", "Ctrl+O");
         reg.add(&a);
@@ -89,7 +89,7 @@ private Q_SLOTS:
 
     void standardKey()
     {
-        AtlasShortcuts reg;
+        TelamonShortcuts reg;
         FakeAction a("Save", int(QKeySequence::Save)), b("Store", "Ctrl+S");
         reg.add(&a);
         QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict"));
@@ -101,10 +101,10 @@ private Q_SLOTS:
     void keyCodesAreNotStandardKeys()
     {
         // Qt.Key_Escape and friends are far above the StandardKey numbers.
-        QCOMPARE(AtlasShortcuts::toSequence(int(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
-        QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel)), QKeySequence(QKeySequence::Cancel));
-        QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel) + 1), QKeySequence(int(QKeySequence::Cancel) + 1));
-        QCOMPARE(AtlasShortcuts::toSequence(0), QKeySequence());
+        QCOMPARE(TelamonShortcuts::toSequence(int(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(TelamonShortcuts::toSequence(int(QKeySequence::Cancel)), QKeySequence(QKeySequence::Cancel));
+        QCOMPARE(TelamonShortcuts::toSequence(int(QKeySequence::Cancel) + 1), QKeySequence(int(QKeySequence::Cancel) + 1));
+        QCOMPARE(TelamonShortcuts::toSequence(0), QKeySequence());
     }
 
     void hostileNumbers()
@@ -115,33 +115,33 @@ private Q_SLOTS:
         const double inf = std::numeric_limits<double>::infinity();
         for (const QVariant &v : {QVariant(nan), QVariant(inf), QVariant(-inf), QVariant(1e300), QVariant(-1.0), QVariant(0.5),
                                   QVariant(qlonglong(1) << 40), QVariant(qulonglong(1) << 63), QVariant(-5), QVariant(qlonglong(-1) << 40)}) {
-            QVERIFY2(AtlasShortcuts::toSequence(v).isEmpty(), qPrintable(v.toString()));
+            QVERIFY2(TelamonShortcuts::toSequence(v).isEmpty(), qPrintable(v.toString()));
         }
-        QVERIFY(AtlasShortcuts::toSequence(2147483648.0).isEmpty());
-        QVERIFY(AtlasShortcuts::toSequence(float(1e30)).isEmpty());
-        QVERIFY(AtlasShortcuts::toSequence(float(-3)).isEmpty());
-        QVERIFY(AtlasShortcuts::toSequence(qulonglong(2147483648u)).isEmpty());
-        QVERIFY(AtlasShortcuts::toSequence(QVariant::fromValue(ulong(1) << 40)).isEmpty());
+        QVERIFY(TelamonShortcuts::toSequence(2147483648.0).isEmpty());
+        QVERIFY(TelamonShortcuts::toSequence(float(1e30)).isEmpty());
+        QVERIFY(TelamonShortcuts::toSequence(float(-3)).isEmpty());
+        QVERIFY(TelamonShortcuts::toSequence(qulonglong(2147483648u)).isEmpty());
+        QVERIFY(TelamonShortcuts::toSequence(QVariant::fromValue(ulong(1) << 40)).isEmpty());
         // In range: no crash, a key (INT_MAX as int and as double).
         const int big = std::numeric_limits<int>::max();
-        QCOMPARE(AtlasShortcuts::toSequence(big), AtlasShortcuts::toSequence(double(big)));
-        QCOMPARE(AtlasShortcuts::toSequence(1.5), AtlasShortcuts::toSequence(1));
-        QCOMPARE(AtlasShortcuts::toSequence(QVariant::fromValue(ulong(Qt::Key_Escape))), QKeySequence(Qt::Key_Escape));
-        QCOMPARE(AtlasShortcuts::toSequence(float(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
-        QCOMPARE(AtlasShortcuts::toSequence(double(int(Qt::Key_Escape))), QKeySequence(Qt::Key_Escape));
-        QCOMPARE(AtlasShortcuts::toSequence(int(QKeySequence::Cancel) + 0.0), QKeySequence(QKeySequence::Cancel));
-        QCOMPARE(AtlasShortcuts::toSequence(qlonglong(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(TelamonShortcuts::toSequence(big), TelamonShortcuts::toSequence(double(big)));
+        QCOMPARE(TelamonShortcuts::toSequence(1.5), TelamonShortcuts::toSequence(1));
+        QCOMPARE(TelamonShortcuts::toSequence(QVariant::fromValue(ulong(Qt::Key_Escape))), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(TelamonShortcuts::toSequence(float(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(TelamonShortcuts::toSequence(double(int(Qt::Key_Escape))), QKeySequence(Qt::Key_Escape));
+        QCOMPARE(TelamonShortcuts::toSequence(int(QKeySequence::Cancel) + 0.0), QKeySequence(QKeySequence::Cancel));
+        QCOMPARE(TelamonShortcuts::toSequence(qlonglong(Qt::Key_Escape)), QKeySequence(Qt::Key_Escape));
     }
 
     void conflictsGetterIsPure()
     {
         // Reading `conflicts` never emits a signal; the registry computes once per turn.
-        AtlasShortcuts reg;
+        TelamonShortcuts reg;
         FakeAction a("Save", "Ctrl+S"), b("Sort", "Ctrl+S");
         reg.add(&a);
         QTest::ignoreMessage(QtWarningMsg, QRegularExpression("Shortcut conflict"));
         reg.add(&b);
-        QSignalSpy spy(&reg, &AtlasShortcuts::conflictsChanged);
+        QSignalSpy spy(&reg, &TelamonShortcuts::conflictsChanged);
         QVERIFY(reg.conflicts().isEmpty());
         QCOMPARE(spy.count(), 0);
         QTRY_COMPARE(reg.conflicts().size(), 1);
@@ -155,7 +155,7 @@ private Q_SLOTS:
     {
         QQuickWindow w1, w2;
         FakeAction a("One", "Ctrl+K", w1.contentItem()), b("Two", "Ctrl+K", w2.contentItem());
-        AtlasShortcuts reg;
+        TelamonShortcuts reg;
         reg.add(&a);
         reg.add(&b);
         // Different windows: no conflict.
@@ -175,7 +175,7 @@ private Q_SLOTS:
 
     void destroyed()
     {
-        AtlasShortcuts reg;
+        TelamonShortcuts reg;
         auto *a = new FakeAction("Save", "Ctrl+S");
         FakeAction b("Sort", "Ctrl+S");
         reg.add(a);
@@ -189,7 +189,7 @@ private Q_SLOTS:
 
     void keys()
     {
-        AtlasShortcuts reg;
+        TelamonShortcuts reg;
         QCOMPARE(reg.keys("Ctrl+Shift+S").size(), 1);
         QCOMPARE(reg.keys("Ctrl+Shift+S").first().toStringList().size(), 3);
         QCOMPARE(reg.keys("Ctrl++").first().toStringList().size(), 2);

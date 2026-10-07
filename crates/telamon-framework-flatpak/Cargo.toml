@@ -1,0 +1,15 @@
+[package]
+name = "telamon-framework-flatpak"
+description = "Flatpak through libflatpak, for Telamon Updater and Telamon Store (needs flatpak-devel to build)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+libflatpak = "0.7"
+log.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,8 +1,8 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasFloatingToolbar: shape, dimming, Escape and the focus.
+// TelamonFloatingToolbar: shape, dimming, Escape and the focus.
 Item {
     id: root
     width: 600
@@ -10,10 +10,10 @@ Item {
     property int appEscapes: 0
     Keys.onEscapePressed: appEscapes++
 
-    AtlasAction { id: a1; text: "One"; symbol: Symbols.Add }
-    AtlasAction { id: a2; text: "Two"; symbol: Symbols.Add }
-    AtlasAction { id: a3; text: "Three"; symbol: Symbols.Add }
-    AtlasAction {
+    TelamonAction { id: a1; text: "One"; symbol: Symbols.Add }
+    TelamonAction { id: a2; text: "Two"; symbol: Symbols.Add }
+    TelamonAction { id: a3; text: "Three"; symbol: Symbols.Add }
+    TelamonAction {
         id: withMenu
         text: "Sub"
         symbol: Symbols.Add
@@ -38,7 +38,7 @@ Item {
     }
     Component {
         id: barComp
-        AtlasFloatingToolbar {
+        TelamonFloatingToolbar {
             x: 250
             y: 150
             actions: [a1, a2, a3]
@@ -46,7 +46,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasFloatingToolbar"
+        name: "TelamonFloatingToolbar"
         when: windowShown
 
         function find(item, action) {

@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 // A user edit and an app binding (docs/api-1.5.0.md, Part 1): a bound value
 // that takes the edit stays bound, one that refuses springs back and stays
@@ -40,11 +40,11 @@ TestCase {
         wait(30);
     }
 
-    // AtlasComboBox.currentIndex ---------------------------------------
+    // TelamonComboBox.currentIndex ---------------------------------------
 
     Component {
         id: comboComp
-        AtlasComboBox {
+        TelamonComboBox {
             width: 200
             model: ["A", "B", "C"]
         }
@@ -101,17 +101,17 @@ TestCase {
         compare(u.currentIndex, 1);
     }
 
-    // AtlasFileField and AtlasFolderField.path -----------------------------
+    // TelamonFileField and TelamonFolderField.path -----------------------------
 
     Component {
         id: fileComp
-        AtlasFileField {
+        TelamonFileField {
             width: 400
         }
     }
     Component {
         id: folderComp
-        AtlasFolderField {
+        TelamonFolderField {
             width: 400
         }
     }
@@ -317,7 +317,7 @@ TestCase {
         verify(b.visible);
         verify(b.implicitHeight > 0);
         const full = b.implicitHeight;
-        wait(AtlasStyle.durationShort + 100);
+        wait(TelamonStyle.durationShort + 100);
         compare(b.implicitHeight, full);
         b.shown = false;
         compare(b.implicitHeight, 0);
@@ -370,11 +370,11 @@ TestCase {
         compare(b.shown, true);
     }
 
-    // AtlasCopyButton -------------------------------------------------------
+    // TelamonCopyButton -------------------------------------------------------
 
     Component {
         id: copyComp
-        AtlasCopyButton {
+        TelamonCopyButton {
             text: "secret"
         }
     }

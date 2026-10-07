@@ -1,5 +1,9 @@
 # AtlasTextView: design (1.5.0 item 38)
 
+> Written before the 2.0.0 rename and left as it was: Atlas.Ui is now Telamon.Ui,
+> every `Atlas<Name>` type is `Telamon<Name>`, `atlas-ui` is `telamon-ui` and
+> the `atlas-framework-*` crates are `telamon-framework-*` (see CHANGELOG.md).
+
 How the virtualized text view is built, from the requirements in
 [textview-1.5.md](textview-1.5.md). This page is the proposal Notepad reviews
 before any code exists. The API sketch below is a draft. Once the type ships,

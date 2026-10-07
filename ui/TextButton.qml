@@ -7,8 +7,8 @@ T.AbstractButton {
     id: control
 
     implicitWidth: label.implicitWidth + leftPadding + rightPadding
-    implicitHeight: Math.max(AtlasStyle.controlHeight, label.implicitHeight + AtlasStyle.spacingSmall * 2)
-    leftPadding: AtlasStyle.spacingSmall
+    implicitHeight: Math.max(TelamonStyle.controlHeight, label.implicitHeight + TelamonStyle.spacingSmall * 2)
+    leftPadding: TelamonStyle.spacingSmall
     rightPadding: leftPadding
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -29,26 +29,26 @@ T.AbstractButton {
         Accessible.ignored: true
         verticalAlignment: Text.AlignVCenter
         text: control.text
-        font.family: AtlasStyle.fontFamily
-        font.pointSize: AtlasStyle.fontSizeBody
+        font.family: TelamonStyle.fontFamily
+        font.pointSize: TelamonStyle.fontSizeBody
         textFormat: Text.PlainText
-        color: control.enabled ? AtlasStyle.accent : AtlasStyle.textDisabled
+        color: control.enabled ? TelamonStyle.accent : TelamonStyle.textDisabled
         Behavior on color {
             ColorAnimation {
-                duration: AtlasStyle.durationShort
+                duration: TelamonStyle.durationShort
             }
         }
     }
     background: Rectangle {
-        radius: AtlasStyle.radiusSmall
+        radius: TelamonStyle.radiusSmall
         // Grey hover and press, never the accent.
-        color: !control.enabled ? "transparent" : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
+        color: !control.enabled ? "transparent" : control.down ? TelamonStyle.pressed : control.hovered ? TelamonStyle.hover : "transparent"
         Behavior on color {
             ColorAnimation {
-                duration: AtlasStyle.durationShort
+                duration: TelamonStyle.durationShort
             }
         }
-        AtlasFocusRing {
+        TelamonFocusRing {
             radius: parent.radius + gap
             shown: control.visualFocus
         }

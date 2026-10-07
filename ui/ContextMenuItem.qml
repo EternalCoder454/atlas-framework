@@ -20,7 +20,7 @@ import org.kde.kirigami as Kirigami
 //   ContextMenuItem { text: qsTr("Name"); radio: true; checked: true; ButtonGroup.group: sortGroup }
 //   ContextMenuItem { text: qsTr("Size"); radio: true; ButtonGroup.group: sortGroup }
 //
-// With an `action` (AtlasAction or a plain Qt Action) the row shows its
+// With an `action` (TelamonAction or a plain Qt Action) the row shows its
 // `symbol` and, when `shortcutText` is empty, its shortcut.
 T.MenuItem {
     id: control
@@ -43,16 +43,16 @@ T.MenuItem {
             return control.shortcutText;
         }
         const seq = _actionObject ? _actionObject.shortcut : undefined;
-        return seq !== undefined && seq !== null ? AtlasShortcuts.readable(seq) : "";
+        return seq !== undefined && seq !== null ? TelamonShortcuts.readable(seq) : "";
     }
     readonly property bool showsCheck: checkable && checked && !radio
     readonly property bool _showsDot: radio && checked
-    readonly property color tint: !enabled ? AtlasStyle.textDisabled : destructive ? AtlasStyle.error : AtlasStyle.text
+    readonly property color tint: !enabled ? TelamonStyle.textDisabled : destructive ? TelamonStyle.error : TelamonStyle.text
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
     implicitHeight: visible ? Math.round(Kirigami.Units.gridUnit * 1.8) : 0
-    leftPadding: AtlasStyle.spacingLarge
-    rightPadding: AtlasStyle.spacingLarge
+    leftPadding: TelamonStyle.spacingLarge
+    rightPadding: TelamonStyle.spacingLarge
     hoverEnabled: true
     icon.width: Kirigami.Units.iconSizes.small
     icon.height: Kirigami.Units.iconSizes.small
@@ -66,12 +66,12 @@ T.MenuItem {
     Accessible.checked: checked
 
     background: Rectangle {
-        radius: AtlasStyle.radiusSmall
-        color: control.highlighted ? (control.destructive ? AtlasStyle.errorFill : control.down ? AtlasStyle.pressed : AtlasStyle.hover) : "transparent"
+        radius: TelamonStyle.radiusSmall
+        color: control.highlighted ? (control.destructive ? TelamonStyle.errorFill : control.down ? TelamonStyle.pressed : TelamonStyle.hover) : "transparent"
     }
 
     contentItem: RowLayout {
-        spacing: AtlasStyle.spacingLarge
+        spacing: TelamonStyle.spacingLarge
 
         Item {
             Layout.preferredWidth: control.icon.width
@@ -108,8 +108,8 @@ T.MenuItem {
         Text {
             Layout.fillWidth: true
             text: control._plainText
-            font.family: AtlasStyle.fontFamily
-            font.pointSize: AtlasStyle.fontSizeBody
+            font.family: TelamonStyle.fontFamily
+            font.pointSize: TelamonStyle.fontSizeBody
             color: control.tint
             textFormat: Text.PlainText
             elide: Text.ElideRight
@@ -118,9 +118,9 @@ T.MenuItem {
             visible: control._effectiveShortcut.length > 0
             Layout.leftMargin: Kirigami.Units.gridUnit
             text: control._effectiveShortcut
-            font.family: AtlasStyle.fontFamily
-            font.pointSize: AtlasStyle.fontSizeCaption
-            color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
+            font.family: TelamonStyle.fontFamily
+            font.pointSize: TelamonStyle.fontSizeCaption
+            color: control.enabled ? TelamonStyle.textMuted : TelamonStyle.textDisabled
             textFormat: Text.PlainText
         }
         Kirigami.Icon {
@@ -129,7 +129,7 @@ T.MenuItem {
             Layout.preferredHeight: Layout.preferredWidth
             source: control.mirrored ? "go-previous" : "go-next"
             isMask: true
-            color: control.enabled ? AtlasStyle.textMuted : AtlasStyle.textDisabled
+            color: control.enabled ? TelamonStyle.textMuted : TelamonStyle.textDisabled
         }
     }
 }

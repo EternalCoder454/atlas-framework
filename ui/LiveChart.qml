@@ -20,11 +20,11 @@ LiveChartItem {
     implicitWidth: Kirigami.Units.gridUnit * 20
     implicitHeight: Kirigami.Units.gridUnit * 8
 
-    color: AtlasStyle.accent
+    color: TelamonStyle.accent
     color2: Kirigami.Theme.neutralTextColor
     textColor: Kirigami.Theme.textColor
-    font.family: AtlasStyle.fontFamily
-    font.pointSize: AtlasStyle.fontSizeCaption
+    font.family: TelamonStyle.fontFamily
+    font.pointSize: TelamonStyle.fontSizeCaption
     Accessible.role: Accessible.Chart
     Accessible.name: chart.label
     Accessible.description: chart.valueText

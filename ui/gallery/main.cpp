@@ -1,4 +1,4 @@
-// Atlas Gallery: start Qt, give QML the clipboard and the generated list of
+// Telamon Gallery: start Qt, give QML the clipboard and the generated list of
 // demos and snippets, load the window.
 #include <QApplication>
 #include <QClipboard>
@@ -36,24 +36,24 @@ public:
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    QApplication::setApplicationName(QStringLiteral("atlas-symbols"));
-    QApplication::setApplicationDisplayName(QStringLiteral("Atlas Gallery"));
+    QApplication::setApplicationName(QStringLiteral("telamon-symbols"));
+    QApplication::setApplicationDisplayName(QStringLiteral("Telamon Gallery"));
     // The Wayland app_id: matches the window to its launcher and icon.
-    QGuiApplication::setDesktopFileName(QStringLiteral("net.eterneon.atlas.symbols"));
+    QGuiApplication::setDesktopFileName(QStringLiteral("net.eterneon.telamon.symbols"));
 
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) {
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
     }
 
     // snippets.json is generated at build time and compiled in (see CMakeLists.txt).
-    QFile catalogFile(QStringLiteral(":/net/eterneon/atlas/symbols/snippets.json"));
+    QFile catalogFile(QStringLiteral(":/net/eterneon/telamon/symbols/snippets.json"));
     QJsonParseError parseError;
     QJsonDocument catalog;
     if (catalogFile.open(QIODevice::ReadOnly)) {
         catalog = QJsonDocument::fromJson(catalogFile.readAll(), &parseError);
     }
     if (!catalog.isObject()) {
-        qWarning() << "Atlas Gallery: the control list is missing or damaged:" << (catalogFile.isOpen() ? parseError.errorString() : catalogFile.errorString());
+        qWarning() << "Telamon Gallery: the control list is missing or damaged:" << (catalogFile.isOpen() ? parseError.errorString() : catalogFile.errorString());
         return 1;
     }
 
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
         {QStringLiteral("catalog"), catalog.object().toVariantMap()},
     });
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
-    engine.loadFromModule(QStringLiteral("net.eterneon.atlas.symbols"), QStringLiteral("Main"));
+    engine.loadFromModule(QStringLiteral("net.eterneon.telamon.symbols"), QStringLiteral("Main"));
     return app.exec();
 }
 

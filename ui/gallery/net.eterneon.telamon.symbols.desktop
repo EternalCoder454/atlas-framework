@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Telamon Gallery
+GenericName=Control and Icon Gallery
+Comment=Every Telamon control and Material Symbol
+Exec=telamon-symbols
+Icon=preferences-desktop-icons
+Categories=Qt;KDE;Development;
+Keywords=icons;symbols;material;qml;controls;widgets;gallery;

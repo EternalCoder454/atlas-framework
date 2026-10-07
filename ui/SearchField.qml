@@ -17,18 +17,18 @@ T.TextField {
     readonly property bool rtl: LayoutMirroring.enabled
 
     implicitWidth: Kirigami.Units.gridUnit * 14
-    implicitHeight: Math.max(AtlasStyle.controlHeight, Math.ceil(contentHeight) + AtlasStyle.spacing)
-    leftPadding: (rtl ? clearButton.width : icon.width) + AtlasStyle.spacingLarge
-    rightPadding: (rtl ? icon.width : clearButton.width) + AtlasStyle.spacingLarge
+    implicitHeight: Math.max(TelamonStyle.controlHeight, Math.ceil(contentHeight) + TelamonStyle.spacing)
+    leftPadding: (rtl ? clearButton.width : icon.width) + TelamonStyle.spacingLarge
+    rightPadding: (rtl ? icon.width : clearButton.width) + TelamonStyle.spacingLarge
     verticalAlignment: TextInput.AlignVCenter
     placeholderText: qsTr("Search")
-    placeholderTextColor: AtlasStyle.textMuted
-    color: enabled ? Kirigami.Theme.textColor : AtlasStyle.textDisabled
+    placeholderTextColor: TelamonStyle.textMuted
+    color: enabled ? Kirigami.Theme.textColor : TelamonStyle.textDisabled
     hoverEnabled: true
-    selectionColor: AtlasStyle.accent
-    selectedTextColor: AtlasStyle.accentText
-    font.family: AtlasStyle.fontFamily
-    font.pointSize: AtlasStyle.fontSizeBody
+    selectionColor: TelamonStyle.accent
+    selectedTextColor: TelamonStyle.accentText
+    font.family: TelamonStyle.fontFamily
+    font.pointSize: TelamonStyle.fontSizeBody
     selectByMouse: true
     inputMethodHints: Qt.ImhNoPredictiveText
 
@@ -70,12 +70,12 @@ T.TextField {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusSmall
-        color: control.hovered && !control.activeFocus && control.enabled ? Qt.tint(AtlasStyle.control, AtlasStyle.hover) : AtlasStyle.control
+        radius: TelamonStyle.radiusSmall
+        color: control.hovered && !control.activeFocus && control.enabled ? Qt.tint(TelamonStyle.control, TelamonStyle.hover) : TelamonStyle.control
         border.width: 1
-        border.color: control.activeFocus ? AtlasStyle.focus : AtlasStyle.controlBorder
+        border.color: control.activeFocus ? TelamonStyle.focus : TelamonStyle.controlBorder
         opacity: control.enabled ? 1 : 0.6
-        AtlasFocusRing {
+        TelamonFocusRing {
             radius: parent.radius + gap
             shown: control.activeFocus && (control.focusReason === Qt.TabFocusReason || control.focusReason === Qt.BacktabFocusReason || control.focusReason === Qt.ShortcutFocusReason)
         }
@@ -99,20 +99,20 @@ T.TextField {
 
     Kirigami.Icon {
         id: icon
-        x: control.rtl ? control.width - width - AtlasStyle.spacingLarge : AtlasStyle.spacingLarge
+        x: control.rtl ? control.width - width - TelamonStyle.spacingLarge : TelamonStyle.spacingLarge
         anchors.verticalCenter: parent.verticalCenter
         width: Kirigami.Units.iconSizes.small
         height: width
         source: "search"
         isMask: true
-        color: AtlasStyle.textMuted
+        color: TelamonStyle.textMuted
     }
 
     T.AbstractButton {
         id: clearButton
-        x: control.rtl ? AtlasStyle.spacingSmall : control.width - width - AtlasStyle.spacingSmall
+        x: control.rtl ? TelamonStyle.spacingSmall : control.width - width - TelamonStyle.spacingSmall
         anchors.verticalCenter: parent.verticalCenter
-        width: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
+        width: Kirigami.Units.iconSizes.small + TelamonStyle.spacingSmall * 2
         height: width
         visible: control.text.length > 0 && !control.readOnly
         focusPolicy: Qt.NoFocus
@@ -125,7 +125,7 @@ T.TextField {
 
         background: Rectangle {
             radius: width / 2
-            color: AtlasStyle.alpha(Kirigami.Theme.textColor, clearButton.down ? 0.15 : clearButton.hovered ? 0.08 : 0)
+            color: TelamonStyle.alpha(Kirigami.Theme.textColor, clearButton.down ? 0.15 : clearButton.hovered ? 0.08 : 0)
         }
         contentItem: Kirigami.Icon {
             source: "edit-clear"

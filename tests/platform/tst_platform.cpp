@@ -1,4 +1,4 @@
-// AtlasGlobalShortcut, PortalAppearance, Appearance and AccessibilityState
+// TelamonGlobalShortcut, PortalAppearance, Appearance and AccessibilityState
 // against a fake desktop portal on a PRIVATE session bus: the test starts its
 // own dbus-daemon (no service directories, so nothing can be activated on it),
 // and points DBUS_SESSION_BUS_ADDRESS at it before the first use of the
@@ -6,7 +6,7 @@
 // session bus it ends up with has the same id as its private one. Compiled straight from the ui/ sources.
 #include "accessibilitystate.h"
 #include "appearance.h"
-#include "atlasglobalshortcut.h"
+#include "telamonglobalshortcut.h"
 #include "portalappearance.h"
 
 #include <QDBusArgument>
@@ -306,9 +306,9 @@ class TestPlatform : public QObject
         m_portal->readAlls = 0;
     }
 
-    AtlasGlobalShortcut *item(const QString &name, const QString &trigger = QStringLiteral("Meta+Shift+M"), bool complete = true)
+    TelamonGlobalShortcut *item(const QString &name, const QString &trigger = QStringLiteral("Meta+Shift+M"), bool complete = true)
     {
-        auto *s = new AtlasGlobalShortcut;
+        auto *s = new TelamonGlobalShortcut;
         s->setName(name);
         s->setDescription(QStringLiteral("Does %1").arg(name));
         s->setPreferredTrigger(trigger);
@@ -384,23 +384,23 @@ private Q_SLOTS:
         }
     }
 
-    // ---- AtlasGlobalShortcut ----
+    // ---- TelamonGlobalShortcut ----
 
     void validNames()
     {
-        QVERIFY(AtlasGlobalShortcut::validName(QStringLiteral("show-window_2.x")));
-        QVERIFY(!AtlasGlobalShortcut::validName(QString()));
-        QVERIFY(!AtlasGlobalShortcut::validName(QStringLiteral("a b")));
-        QVERIFY(!AtlasGlobalShortcut::validName(QStringLiteral("a/b")));
-        QVERIFY(!AtlasGlobalShortcut::validName(QStringLiteral("é")));
-        QVERIFY(!AtlasGlobalShortcut::validName(QString(65, QLatin1Char('a'))));
+        QVERIFY(TelamonGlobalShortcut::validName(QStringLiteral("show-window_2.x")));
+        QVERIFY(!TelamonGlobalShortcut::validName(QString()));
+        QVERIFY(!TelamonGlobalShortcut::validName(QStringLiteral("a b")));
+        QVERIFY(!TelamonGlobalShortcut::validName(QStringLiteral("a/b")));
+        QVERIFY(!TelamonGlobalShortcut::validName(QStringLiteral("é")));
+        QVERIFY(!TelamonGlobalShortcut::validName(QString(65, QLatin1Char('a'))));
     }
 
     void noSessionBus()
     {
         GlobalShortcutSession session(QDBusConnection(QStringLiteral("no-such-connection")), QString(), 500);
         GlobalShortcutSession::setShared(&session);
-        std::unique_ptr<AtlasGlobalShortcut> s(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> s(item(QStringLiteral("a")));
         QTRY_VERIFY(!s->errorString().isEmpty());
         QVERIFY(!s->available());
         QVERIFY2(s->errorString().contains(QLatin1String("session bus")), qPrintable(s->errorString()));
@@ -412,7 +412,7 @@ private Q_SLOTS:
         // The portal is not on the bus yet.
         GlobalShortcutSession session(m_client, QString(), 500);
         GlobalShortcutSession::setShared(&session);
-        std::unique_ptr<AtlasGlobalShortcut> s(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> s(item(QStringLiteral("a")));
         QVERIFY(!s->available());
         QVERIFY(s->errorString().isEmpty()); // nothing asked yet
         QTRY_VERIFY(!s->errorString().isEmpty());
@@ -430,10 +430,10 @@ private Q_SLOTS:
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Good;
         m_portal->creates = m_portal->binds = 0;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("one"), QStringLiteral("Meta+Shift+M")));
-        std::unique_ptr<AtlasGlobalShortcut> b(item(QStringLiteral("two"), QString()));
-        std::unique_ptr<AtlasGlobalShortcut> bad(item(QStringLiteral("badtrigger")));
-        std::unique_ptr<AtlasGlobalShortcut> refused(item(QStringLiteral("refused")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("one"), QStringLiteral("Meta+Shift+M")));
+        std::unique_ptr<TelamonGlobalShortcut> b(item(QStringLiteral("two"), QString()));
+        std::unique_ptr<TelamonGlobalShortcut> bad(item(QStringLiteral("badtrigger")));
+        std::unique_ptr<TelamonGlobalShortcut> refused(item(QStringLiteral("refused")));
         QTRY_VERIFY(a->available());
         QVERIFY(b->available());
         QVERIFY(bad->available());
@@ -457,9 +457,9 @@ private Q_SLOTS:
         }
 
         // Activated and deactivated reach the right item only.
-        QSignalSpy on(a.get(), &AtlasGlobalShortcut::activated);
-        QSignalSpy off(a.get(), &AtlasGlobalShortcut::deactivated);
-        QSignalSpy onB(b.get(), &AtlasGlobalShortcut::activated);
+        QSignalSpy on(a.get(), &TelamonGlobalShortcut::activated);
+        QSignalSpy off(a.get(), &TelamonGlobalShortcut::deactivated);
+        QSignalSpy onB(b.get(), &TelamonGlobalShortcut::activated);
         m_portal->activate(m_portal->session, QStringLiteral("one"));
         QTRY_COMPARE(on.count(), 1);
         m_portal->activate(m_portal->session, QStringLiteral("one"), false);
@@ -477,7 +477,7 @@ private Q_SLOTS:
         QCOMPARE(off.count(), 1);
 
         // A shortcut declared later is bound with a second call, on the same session.
-        std::unique_ptr<AtlasGlobalShortcut> late(item(QStringLiteral("late"), QStringLiteral("Meta+L")));
+        std::unique_ptr<TelamonGlobalShortcut> late(item(QStringLiteral("late"), QStringLiteral("Meta+L")));
         QTRY_VERIFY(late->available());
         QCOMPARE(m_portal->creates, 1);
         QCOMPARE(m_portal->binds, 2);
@@ -488,7 +488,7 @@ private Q_SLOTS:
         QTRY_COMPARE(m_portal->binds, 3);
 
         // The portal closes the session: unavailable, then a new one for the next change.
-        QSignalSpy errors(a.get(), &AtlasGlobalShortcut::errorStringChanged);
+        QSignalSpy errors(a.get(), &TelamonGlobalShortcut::errorStringChanged);
         m_portal->closeSession();
         // No property is touched: a new session is made by itself.
         QTRY_COMPARE(m_portal->creates, 2);
@@ -507,11 +507,11 @@ private Q_SLOTS:
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Good;
         m_portal->binds = 0;
-        std::unique_ptr<AtlasGlobalShortcut> bad(item(QStringLiteral("has space")));
+        std::unique_ptr<TelamonGlobalShortcut> bad(item(QStringLiteral("has space")));
         QVERIFY(!bad->available());
         QVERIFY(!bad->errorString().isEmpty());
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("dup")));
-        std::unique_ptr<AtlasGlobalShortcut> b(item(QStringLiteral("dup")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("dup")));
+        std::unique_ptr<TelamonGlobalShortcut> b(item(QStringLiteral("dup")));
         QVERIFY(!b->errorString().isEmpty());
         QTRY_VERIFY(a->available());
         QVERIFY(!b->available());
@@ -539,7 +539,7 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 2000);
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = static_cast<FakePortal::Bind>(mode);
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty());
         QVERIFY(!a->available());
         QVERIFY2(a->errorString().contains(QLatin1String("could not be understood")), qPrintable(a->errorString()));
@@ -558,7 +558,7 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 2000);
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Cancelled;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty());
         QVERIFY(a->errorString().contains(QLatin1String("cancelled")));
         m_portal->mode = FakePortal::Bind::Good;
@@ -571,7 +571,7 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 300);
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Silent;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QElapsedTimer t;
         t.start();
         QTRY_VERIFY_WITH_TIMEOUT(!a->errorString().isEmpty(), 5000);
@@ -675,8 +675,8 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 3000);
         GlobalShortcutSession::setShared(&session);
         PortalAppearance appearance(m_client);
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
-        QSignalSpy activated(a.get(), &AtlasGlobalShortcut::activated);
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
+        QSignalSpy activated(a.get(), &TelamonGlobalShortcut::activated);
         QTRY_VERIFY(!a->errorString().isEmpty());
 
         startPortal();
@@ -739,10 +739,10 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 2000);
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = static_cast<FakePortal::Bind>(mode);
-        QPointer<AtlasGlobalShortcut> a = item(QStringLiteral("a"), QString(), false);
-        QPointer<AtlasGlobalShortcut> victim = item(QStringLiteral("victim"), QString(), false);
-        QPointer<AtlasGlobalShortcut> renamed = item(QStringLiteral("renamed-soon"), QString(), false);
-        QPointer<AtlasGlobalShortcut> other = item(QStringLiteral("other"), QString(), false);
+        QPointer<TelamonGlobalShortcut> a = item(QStringLiteral("a"), QString(), false);
+        QPointer<TelamonGlobalShortcut> victim = item(QStringLiteral("victim"), QString(), false);
+        QPointer<TelamonGlobalShortcut> renamed = item(QStringLiteral("renamed-soon"), QString(), false);
+        QPointer<TelamonGlobalShortcut> other = item(QStringLiteral("other"), QString(), false);
         int calls = 0;
         const auto handler = [&] {
             ++calls;
@@ -751,9 +751,9 @@ private Q_SLOTS:
                 renamed->setName(QStringLiteral("renamed"));
             }
         };
-        connect(a.data(), &AtlasGlobalShortcut::errorStringChanged, a.data(), handler);
-        connect(a.data(), &AtlasGlobalShortcut::availableChanged, a.data(), handler);
-        for (AtlasGlobalShortcut *s : {a.data(), victim.data(), renamed.data(), other.data()}) {
+        connect(a.data(), &TelamonGlobalShortcut::errorStringChanged, a.data(), handler);
+        connect(a.data(), &TelamonGlobalShortcut::availableChanged, a.data(), handler);
+        for (TelamonGlobalShortcut *s : {a.data(), victim.data(), renamed.data(), other.data()}) {
             s->componentComplete(); // all four in one turn, so one bind
         }
         QTRY_VERIFY(calls >= 1);
@@ -788,7 +788,7 @@ private Q_SLOTS:
         m_portal->mode = FakePortal::Bind::Malformed;
         m_portal->closes = 0;
         m_portal->creates = 0;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty());
         QTRY_COMPARE(m_portal->closes, 1);
         // The next try makes a new session.
@@ -806,7 +806,7 @@ private Q_SLOTS:
         {
             GlobalShortcutSession session(m_client, QString(), 2000);
             GlobalShortcutSession::setShared(&session);
-            std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+            std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
             QTRY_VERIFY(a->available());
             GlobalShortcutSession::setShared(nullptr);
         }
@@ -822,7 +822,7 @@ private Q_SLOTS:
         // A bidi override, a zero-width space, a line separator and a newline.
         // Also the tag characters U+E0041 and U+E007F, outside the BMP.
         m_portal->triggerOverride = QStringLiteral("Meta‮+X​ \ny") + QString::fromUcs4(U"\U000E0041\U000E007F");
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(a->available());
         QCOMPARE(a->trigger(), QStringLiteral("Meta+Xy"));
         m_portal->triggerOverride.clear();
@@ -858,7 +858,7 @@ private Q_SLOTS:
         session.setRetryBaseMs(50);
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Malformed;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty());
         m_portal->mode = FakePortal::Bind::Good;
         QTRY_VERIFY_WITH_TIMEOUT(a->available(), 5000); // no edit, no new item
@@ -873,8 +873,8 @@ private Q_SLOTS:
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Silent;
         m_portal->creates = m_portal->binds = 0;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
-        QSignalSpy on(a.get(), &AtlasGlobalShortcut::activated);
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
+        QSignalSpy on(a.get(), &TelamonGlobalShortcut::activated);
         QTRY_COMPARE(m_portal->binds, 1);
         m_portal->mode = FakePortal::Bind::Good; // for the bind on the new session
         m_portal->closeSession();
@@ -891,15 +891,15 @@ private Q_SLOTS:
         startPortal();
         GlobalShortcutSession session(m_client, QString(), 2000);
         GlobalShortcutSession::setShared(&session);
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("dup")));
-        std::unique_ptr<AtlasGlobalShortcut> b(item(QStringLiteral("dup")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("dup")));
+        std::unique_ptr<TelamonGlobalShortcut> b(item(QStringLiteral("dup")));
         QTRY_VERIFY(a->available());
         QVERIFY(!b->available());
         a.reset(); // a Loader drops the first one
         QTRY_VERIFY(b->available());
         QVERIFY(b->errorString().isEmpty());
         // Or it is renamed.
-        std::unique_ptr<AtlasGlobalShortcut> c(item(QStringLiteral("dup")));
+        std::unique_ptr<TelamonGlobalShortcut> c(item(QStringLiteral("dup")));
         QVERIFY(!c->errorString().isEmpty());
         b->setName(QStringLiteral("moved"));
         QTRY_VERIFY(c->available());
@@ -920,17 +920,17 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 2000);
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = static_cast<FakePortal::Bind>(mode);
-        QPointer<AtlasGlobalShortcut> a = item(QStringLiteral("a"), QString(), false);
-        QPointer<AtlasGlobalShortcut> b = item(QStringLiteral("b"), QString(), false);
+        QPointer<TelamonGlobalShortcut> a = item(QStringLiteral("a"), QString(), false);
+        QPointer<TelamonGlobalShortcut> b = item(QStringLiteral("b"), QString(), false);
         const auto die = [&a] { delete a.data(); };
-        connect(a.data(), &AtlasGlobalShortcut::errorStringChanged, this, die);
-        connect(a.data(), &AtlasGlobalShortcut::availableChanged, this, die);
+        connect(a.data(), &TelamonGlobalShortcut::errorStringChanged, this, die);
+        connect(a.data(), &TelamonGlobalShortcut::availableChanged, this, die);
         a->componentComplete();
         b->componentComplete();
         QTRY_VERIFY(!a);
         // A rename whose handler deletes the item, too.
-        QPointer<AtlasGlobalShortcut> c = item(QStringLiteral("c"));
-        connect(c.data(), &AtlasGlobalShortcut::nameChanged, this, [&c] { delete c.data(); });
+        QPointer<TelamonGlobalShortcut> c = item(QStringLiteral("c"));
+        connect(c.data(), &TelamonGlobalShortcut::nameChanged, this, [&c] { delete c.data(); });
         c->setName(QStringLiteral("c2"));
         QVERIFY(!c);
         QTest::qWait(50);
@@ -946,7 +946,7 @@ private Q_SLOTS:
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Silent;
         m_portal->binds = 0;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_COMPARE(m_portal->binds, 1);
         stopPortal();
         QTRY_VERIFY(!a->errorString().isEmpty());
@@ -962,7 +962,7 @@ private Q_SLOTS:
         session.setRetryBaseMs(50);
         GlobalShortcutSession::setShared(&session);
         stopPortal(); // the call finds no one: a failure, then a retry when it is back
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty());
         startPortal();
         QTRY_VERIFY_WITH_TIMEOUT(a->available(), 5000);
@@ -976,7 +976,7 @@ private Q_SLOTS:
         session.setRetryBaseMs(100000); // no retry in this test
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Silent;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty());
         m_portal->finishPending(FakePortal::Bind::Good); // really sent, too late
         QVERIFY(!flush(m_fakeConn).isEmpty());
@@ -993,7 +993,7 @@ private Q_SLOTS:
         session.setRetryBaseMs(20);
         GlobalShortcutSession::setShared(&session);
         PortalAppearance appearance(m_client);
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(a->available());
         const auto fds = [] { return QDir(QStringLiteral("/proc/self/fd")).entryList(QDir::NoDotAndDotDot).size(); };
         const int before = fds();
@@ -1013,7 +1013,7 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 5000);
         GlobalShortcutSession::setShared(&session);
         m_portal->binds = 0;
-        std::vector<std::unique_ptr<AtlasGlobalShortcut>> all;
+        std::vector<std::unique_ptr<TelamonGlobalShortcut>> all;
         for (int i = 0; i < 300; ++i) {
             all.emplace_back(item(QStringLiteral("s%1").arg(i), QString()));
         }
@@ -1033,7 +1033,7 @@ private Q_SLOTS:
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Silent;
         m_portal->binds = m_portal->closes = m_portal->creates = 0;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_COMPARE(m_portal->binds, 1);
         QVERIFY(QMetaObject::invokeMethod(QCoreApplication::instance(), "aboutToQuit")); // the private signal, by name
         QTRY_COMPARE(m_portal->closes, 1);
@@ -1052,7 +1052,7 @@ private Q_SLOTS:
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Cancelled; // every bind fails
         m_portal->creates = m_portal->binds = 0;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty());
         QTRY_VERIFY(session.retryPending());
         for (int i = 0; i < 20; ++i) {
@@ -1082,7 +1082,7 @@ private Q_SLOTS:
         GlobalShortcutSession::setShared(&session);
         m_portal->closeAfterBind = true;
         m_portal->creates = 0;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTest::qWait(200);
         QVERIFY2(m_portal->creates <= 4, qPrintable(QString::number(m_portal->creates))); // 50 + 100 ms of backoff so far
         QTRY_COMPARE_WITH_TIMEOUT(m_portal->creates, 6, 5000); // the first try and five retries
@@ -1099,7 +1099,7 @@ private Q_SLOTS:
         session.setRetryBaseMs(5000);
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Cancelled;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(session.retryPending());
         QVERIFY(session.failures() > 0);
         stopPortal();
@@ -1160,7 +1160,7 @@ private Q_SLOTS:
         session.setRetryBaseMs(50);
         GlobalShortcutSession::setShared(&session);
         m_portal->mode = FakePortal::Bind::Cancelled; // every bind fails
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty());
         int creates = 0;
         for (int i = 0; i < 12; ++i) {
@@ -1187,7 +1187,7 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 2000);
         session.setRetryBaseMs(20000); // a backoff the test could not wait for
         GlobalShortcutSession::setShared(&session);
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a")));
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a")));
         QTRY_VERIFY(!a->errorString().isEmpty()); // no portal
         QVERIFY(session.failures() > 0);
         startPortal();
@@ -1234,7 +1234,7 @@ private Q_SLOTS:
         GlobalShortcutSession session(m_client, QString(), 2000);
         GlobalShortcutSession::setShared(&session);
         m_portal->creates = 0;
-        std::unique_ptr<AtlasGlobalShortcut> a(item(QStringLiteral("a"))); // queues the run
+        std::unique_ptr<TelamonGlobalShortcut> a(item(QStringLiteral("a"))); // queues the run
         session.shutdown();
         QTest::qWait(150);
         QCOMPARE(m_portal->creates, 0);
@@ -1243,10 +1243,10 @@ private Q_SLOTS:
 
     void reducedMotionFromTheEnvironment()
     {
-        qputenv("ATLAS_REDUCED_MOTION", "1");
+        qputenv("TELAMON_REDUCED_MOTION", "1");
         AccessibilityState state;
         QVERIFY(state.reducedMotion());
-        qunsetenv("ATLAS_REDUCED_MOTION");
+        qunsetenv("TELAMON_REDUCED_MOTION");
     }
 };
 

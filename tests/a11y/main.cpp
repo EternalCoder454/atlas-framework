@@ -1,10 +1,10 @@
-// Accessibility test for Atlas.Ui: every ui/gallery/demos/*Demo.qml is loaded
+// Accessibility test for Telamon.Ui: every ui/gallery/demos/*Demo.qml is loaded
 // and its item tree walked. Any visible, enabled item the keyboard can reach
 // with Tab must have an accessible role and a non-empty accessible name.
 // See tests/README.md.
 //
-// Environment (set by visual/run-variant.sh through ctest): ATLAS_DEMO_DIR,
-// ATLAS_DEMO_FILTER (see demolist.h).
+// Environment (set by visual/run-variant.sh through ctest): TELAMON_DEMO_DIR,
+// TELAMON_DEMO_FILTER (see demolist.h).
 #include "../demolist.h"
 
 #include <QtQuickTest/quicktest.h>
@@ -40,7 +40,7 @@ public:
 private:
     static QString typeName(const QObject *o)
     {
-        // "AtlasButton_QMLTYPE_12" or "QQuickTextField" -> a readable name.
+        // "TelamonButton_QMLTYPE_12" or "QQuickTextField" -> a readable name.
         QString name = QString::fromLatin1(o->metaObject()->className());
         const qsizetype at = name.indexOf(QLatin1String("_QMLTYPE_"));
         if (at > 0) {
@@ -114,6 +114,6 @@ private:
     Audit m_audit;
 };
 
-QUICK_TEST_MAIN_WITH_SETUP(atlas_a11y, Setup)
+QUICK_TEST_MAIN_WITH_SETUP(telamon_a11y, Setup)
 
 #include "main.moc"

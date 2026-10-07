@@ -1,7 +1,7 @@
 # perf
 
 `perf/measure.sh [build-dir]` (in the dev container) builds `template/` in
-Release against the installed Atlas.Ui, starts it under `dbus-run-session` and
+Release against the installed Telamon.Ui, starts it under `dbus-run-session` and
 `xvfb-run` (software renderer, temporary XDG tree) and writes `perf/out.json`:
 startup (exec to mapped window, median of 3), Rss and Pss after 3 s idle, and
 idle CPU over 10 s. It exits 1 when a figure is over `perf/budget.json`, and 2

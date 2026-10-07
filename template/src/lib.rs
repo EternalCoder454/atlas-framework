@@ -6,15 +6,15 @@ mod backend;
 // Who this app is: its name, app ID (also the desktop file and icon name) and
 // repository. The framework uses it for the window, the single-instance name,
 // the journal, crash reports and the About page.
-atlas_framework_ui::app! {
-    name: "Atlas App",
-    id: "net.eterneon.atlas.apptemplate",
+telamon_framework_ui::app! {
+    name: "Telamon App",
+    id: "net.eterneon.telamon.apptemplate",
     // The app's own repository under github.com/EternalCoder454: the About
     // page links to it. Change it in a copied app.
-    repo: "atlas-framework",
-    // The oldest Atlas.Ui this app works with. If the installed one is older
+    repo: "telamon-framework",
+    // The oldest Telamon.Ui this app works with. If the installed one is older
     // (or missing), the app says so in a plain window and exits instead of
-    // failing half-drawn. Raise it when the app starts using a newer Atlas.Ui.
+    // failing half-drawn. Raise it when the app starts using a newer Telamon.Ui.
     ui: "1.4.0",
 }
 
@@ -23,6 +23,6 @@ use std::ffi::c_void;
 /// Called once from `main.cpp`. Returns the `Backend` QObject, which C++ hands
 /// to the QML engine. Ownership passes to the caller (a QObject with no parent).
 #[unsafe(no_mangle)]
-pub extern "C" fn atlas_backend_new() -> *mut c_void {
+pub extern "C" fn telamon_backend_new() -> *mut c_void {
     backend::qobject::backend_make_unique().into_raw().cast()
 }

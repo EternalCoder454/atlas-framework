@@ -1,0 +1,1467 @@
+AccessibilityState.base QObject
+AccessibilityState.property accentColor: QColor [readonly]
+AccessibilityState.property active: bool [readonly]
+AccessibilityState.property highContrast: bool [readonly]
+AccessibilityState.property reducedMotion: bool [readonly]
+AccessibilityState.type
+Appearance.base QObject
+Appearance.enum ColorScheme: DarkScheme = 2
+Appearance.enum ColorScheme: LightScheme = 1
+Appearance.enum ColorScheme: UnknownScheme = 0
+Appearance.method applyBlur(QWindow* window): void
+Appearance.method refresh(): void
+Appearance.property accentFromSystem: bool [readonly]
+Appearance.property blurAvailable: bool [readonly]
+Appearance.property colorScheme: int [readonly]
+Appearance.property darkMode: bool [readonly]
+Appearance.property effective: bool [readonly]
+Appearance.property fontFamily: QString [readonly]
+Appearance.property highContrast: bool [readonly]
+Appearance.property monoFamily: QString [readonly]
+Appearance.property reducedMotion: bool [readonly]
+Appearance.property softwareRendering: bool [readonly]
+Appearance.property textScale: double [readonly]
+Appearance.property transparency: bool
+Appearance.type
+ConfirmDialog.base QQuickPopup
+ConfirmDialog.property acceptText: QString
+ConfirmDialog.property alternativeText: QString
+ConfirmDialog.property body: QQmlListProperty<QObject> [readonly]
+ConfirmDialog.property closeOnAccept: bool
+ConfirmDialog.property defaultButton: QString
+ConfirmDialog.property destructive: bool
+ConfirmDialog.property focusReject: bool
+ConfirmDialog.property rejectText: QString
+ConfirmDialog.property showReject: bool
+ConfirmDialog.property text: QString
+ConfirmDialog.property title: QString
+ConfirmDialog.signal accepted()
+ConfirmDialog.signal alternative()
+ConfirmDialog.type
+ContextMenu.base QQuickMenu
+ContextMenu.type
+ContextMenuItem.base QQuickMenuItem
+ContextMenuItem.property destructive: bool
+ContextMenuItem.property radio: bool
+ContextMenuItem.property shortcutText: QString
+ContextMenuItem.property showsCheck: bool [readonly]
+ContextMenuItem.property symbol: int
+ContextMenuItem.property tint: QColor [readonly]
+ContextMenuItem.type
+ContextMenuSeparator.base QQuickMenuSeparator
+ContextMenuSeparator.type
+DataTable.base QQuickFocusScope
+DataTable.enum SelectionMode: MultiSelection = 1
+DataTable.enum SelectionMode: NoSelection = 2
+DataTable.enum SelectionMode: SingleSelection = 0
+DataTable.method clearSelection(): QVariant
+DataTable.method openMenuAtCurrent(): QVariant
+DataTable.method selectAll(): QVariant
+DataTable.method selectRows(QVariant rows): QVariant
+DataTable.method sortBy(QVariant i): QVariant
+DataTable.property cellPadding: double [readonly]
+DataTable.property collapsedText: QString [readonly]
+DataTable.property columnWidths: QList<double>
+DataTable.property columns: QVariant
+DataTable.property columnsMenu: bool
+DataTable.property count: int [readonly]
+DataTable.property currentIndex: int
+DataTable.property density: int
+DataTable.property depthRole: QString
+DataTable.property expandableRole: QString
+DataTable.property expandedRole: QString
+DataTable.property expandedText: QString [readonly]
+DataTable.property hiddenColumns: QList<int>
+DataTable.property mirrored: bool [readonly]
+DataTable.property model: QVariant
+DataTable.property padding: double [readonly]
+DataTable.property placeholderText: QString
+DataTable.property pointerInside: bool [readonly]
+DataTable.property resizableColumns: bool
+DataTable.property rowHeight: double [readonly]
+DataTable.property selectedRows: QList<int> [readonly]
+DataTable.property selectionMode: int
+DataTable.property sortOrder: int
+DataTable.property sortRole: QString
+DataTable.property status: int
+DataTable.property statusAction: TelamonAction_QMLTYPE*
+DataTable.property statusSymbol: int
+DataTable.property statusText: QString
+DataTable.property statusTitle: QString
+DataTable.property widths: QVariant [readonly]
+DataTable.signal activated(int row)
+DataTable.signal columnResized(int column, double width)
+DataTable.signal contextMenuRequested(int row, double x, double y)
+DataTable.signal deleteRequested(int row)
+DataTable.signal headerMenuRequested(double x, double y)
+DataTable.signal rowContextMenuRequested(int row, QPointF pos)
+DataTable.signal toggleRequested(int row)
+DataTable.type
+FindBar.base QQuickItem
+FindBar.method close(): QVariant
+FindBar.method open(QVariant withReplace): QVariant
+FindBar.property countText: QString [readonly]
+FindBar.property currentMatch: int
+FindBar.property error: QString
+FindBar.property failed: bool [readonly]
+FindBar.property findText: QString
+FindBar.property fullHeight: double [readonly]
+FindBar.property matchCase: bool
+FindBar.property matchCount: int
+FindBar.property opened: bool
+FindBar.property regularExpression: bool
+FindBar.property replaceText: QString
+FindBar.property replaceVisible: bool
+FindBar.property wholeWords: bool
+FindBar.signal closed()
+FindBar.signal findNext()
+FindBar.signal findPrevious()
+FindBar.signal replaceAll()
+FindBar.signal replaceOne()
+FindBar.type
+InfoBanner.base QQuickItem
+InfoBanner.property actions: QQmlListProperty<QObject> [readonly]
+InfoBanner.property animated: bool
+InfoBanner.property closable: bool
+InfoBanner.property closeName: QString
+InfoBanner.property dismissed: bool [readonly]
+InfoBanner.property iconName: QString [readonly]
+InfoBanner.property shown: bool
+InfoBanner.property text: QString
+InfoBanner.property tint: QColor [readonly]
+InfoBanner.property type: QString
+InfoBanner.signal closed()
+InfoBanner.type
+LiveChart.base QQuickPaintedItem
+LiveChart.property captions: bool
+LiveChart.property color2: QColor
+LiveChart.property color: QColor
+LiveChart.property font: QFont
+LiveChart.property label: QString
+LiveChart.property maximum: double
+LiveChart.property minimumScale: double
+LiveChart.property scaleTop: double [readonly]
+LiveChart.property spanText: QString
+LiveChart.property textColor: QColor
+LiveChart.property topText: QString
+LiveChart.property valueText: QString
+LiveChart.property values2: QList<double>
+LiveChart.property values: QList<double>
+LiveChart.type
+LiveChartItem.base QQuickPaintedItem
+LiveChartItem.property captions: bool
+LiveChartItem.property color2: QColor
+LiveChartItem.property color: QColor
+LiveChartItem.property font: QFont
+LiveChartItem.property label: QString
+LiveChartItem.property maximum: double
+LiveChartItem.property minimumScale: double
+LiveChartItem.property scaleTop: double [readonly]
+LiveChartItem.property spanText: QString
+LiveChartItem.property textColor: QColor
+LiveChartItem.property topText: QString
+LiveChartItem.property valueText: QString
+LiveChartItem.property values2: QList<double>
+LiveChartItem.property values: QList<double>
+LiveChartItem.type
+MenuButton.base QQuickAbstractButton
+MenuButton.enum Variant: Default = 0
+MenuButton.enum Variant: Destructive = 2
+MenuButton.enum Variant: Ghost = 3
+MenuButton.enum Variant: Prominent = 1
+MenuButton.property accent: QColor [readonly]
+MenuButton.property busy: bool
+MenuButton.property items: QQmlListProperty<QObject> [readonly]
+MenuButton.property maximumWidth: double
+MenuButton.property prominent: bool
+MenuButton.property symbol: int
+MenuButton.property textTint: QColor [readonly]
+MenuButton.property variant: int
+MenuButton.type
+MiniBars.base QQuickFlow
+MiniBars.property barHeight: double
+MiniBars.property barWidth: double
+MiniBars.property color: QColor
+MiniBars.property maximum: double
+MiniBars.property nameOf: QVariant
+MiniBars.property numbered: bool
+MiniBars.property textOf: QVariant
+MiniBars.property values: QList<double>
+MiniBars.type
+NotesText.base QQuickText
+NotesText.property accent: QColor [readonly]
+NotesText.property body: QString [readonly]
+NotesText.property css: QString [readonly]
+NotesText.property darkTheme: bool [readonly]
+NotesText.property html: QString
+NotesText.property plain: QString
+NotesText.signal linkClicked(QString link)
+NotesText.type
+PrimaryButton.base QQuickAbstractButton
+PrimaryButton.enum Variant: Default = 0
+PrimaryButton.enum Variant: Destructive = 2
+PrimaryButton.enum Variant: Ghost = 3
+PrimaryButton.enum Variant: Prominent = 1
+PrimaryButton.property accent: QColor [readonly]
+PrimaryButton.property busy: bool
+PrimaryButton.property maximumWidth: double
+PrimaryButton.property prominent: bool
+PrimaryButton.property symbol: int
+PrimaryButton.property textTint: QColor [readonly]
+PrimaryButton.property variant: int
+PrimaryButton.type
+RepaintArea.base QQuickItem
+RepaintArea.property content: QVariantList
+RepaintArea.type
+SearchField.base QQuickTextField
+SearchField.property delay: int
+SearchField.property query: QString
+SearchField.property rtl: bool [readonly]
+SearchField.type
+SecondaryButton.base QQuickAbstractButton
+SecondaryButton.enum Variant: Default = 0
+SecondaryButton.enum Variant: Destructive = 2
+SecondaryButton.enum Variant: Ghost = 3
+SecondaryButton.enum Variant: Prominent = 1
+SecondaryButton.property accent: QColor [readonly]
+SecondaryButton.property busy: bool
+SecondaryButton.property maximumWidth: double
+SecondaryButton.property prominent: bool
+SecondaryButton.property symbol: int
+SecondaryButton.property textTint: QColor [readonly]
+SecondaryButton.property variant: int
+SecondaryButton.type
+Section.base QQuickColumnLayout
+Section.property content: QQmlListProperty<QObject> [readonly]
+Section.property foldable: bool
+Section.property folded: bool
+Section.property footer: QString
+Section.property title: QString
+Section.signal foldRequested(bool fold)
+Section.type
+SectionRow.base QQuickFocusScope
+SectionRow.method activate(QVariant event): QVariant
+SectionRow.method ensureVisible(): QVariant
+SectionRow.method step(QVariant forward, QVariant event): QVariant
+SectionRow.property animated: bool
+SectionRow.property busy: bool
+SectionRow.property byMouse: bool
+SectionRow.property checkmark: bool
+SectionRow.property chevron: bool
+SectionRow.property clickable: bool
+SectionRow.property content: QQmlListProperty<QObject> [readonly]
+SectionRow.property density: int
+SectionRow.property disclosure: bool
+SectionRow.property expanded: bool
+SectionRow.property iconName: QString
+SectionRow.property isFirst: bool [readonly]
+SectionRow.property leading: QQmlListProperty<QObject> [readonly]
+SectionRow.property mirrored: bool [readonly]
+SectionRow.property radio: bool
+SectionRow.property showSwitch: bool
+SectionRow.property subtitle: QString
+SectionRow.property switchChecked: bool
+SectionRow.property telamonRow: bool [readonly]
+SectionRow.property title: QString
+SectionRow.property trailing: QQmlListProperty<QObject> [readonly]
+SectionRow.property value: QString
+SectionRow.signal clicked()
+SectionRow.signal switchToggled(bool checked)
+SectionRow.type
+SidebarGroup.base QQuickColumnLayout
+SidebarGroup.property badge: QString
+SidebarGroup.property badgeText: QString
+SidebarGroup.property compact: bool
+SidebarGroup.property expanded: bool
+SidebarGroup.property holdsSelection: bool [readonly]
+SidebarGroup.property iconName: QString
+SidebarGroup.property items: QQmlListProperty<QObject> [readonly]
+SidebarGroup.property symbol: int
+SidebarGroup.property text: QString
+SidebarGroup.property tintIcon: bool
+SidebarGroup.property value: QString
+SidebarGroup.signal activated()
+SidebarGroup.signal toggled()
+SidebarGroup.type
+SidebarItem.base QQuickAbstractButton
+SidebarItem.property badge: QString
+SidebarItem.property badgeText: QString
+SidebarItem.property compact: bool
+SidebarItem.property density: int
+SidebarItem.property disclosure: bool
+SidebarItem.property expanded: bool
+SidebarItem.property selected: bool
+SidebarItem.property sub: bool
+SidebarItem.property symbol: int
+SidebarItem.property tintIcon: bool
+SidebarItem.property value: QString
+SidebarItem.type
+StatusBar.base QQuickItem
+StatusBar.method refresh(): QVariant
+StatusBar.property content: QQmlListProperty<QObject> [readonly]
+StatusBar.property density: int
+StatusBar.type
+StatusBarItem.base QQuickAbstractButton
+StatusBarItem.property clickable: bool
+StatusBarItem.property leadingSeparator: bool
+StatusBarItem.property menu: QObject*
+StatusBarItem.property symbol: int
+StatusBarItem.property toolTip: QString
+StatusBarItem.type
+StatusHero.base QQuickColumnLayout
+StatusHero.property actions: QQmlListProperty<QObject> [readonly]
+StatusHero.property badgeUnits: double
+StatusHero.property barText: QString
+StatusHero.property busy: bool
+StatusHero.property cornerBadgeIcon: QString
+StatusHero.property headline: QString
+StatusHero.property iconIsMask: bool
+StatusHero.property iconName: QString
+StatusHero.property progress: double
+StatusHero.property ringWidth: double
+StatusHero.property showBar: bool
+StatusHero.property showTintCircle: bool
+StatusHero.property sideBySide: bool [readonly]
+StatusHero.property subtitle: QString
+StatusHero.property tint: QColor
+StatusHero.property wideWidth: double [readonly]
+StatusHero.type
+StepItem.base QQuickAbstractButton
+StepItem.property clickable: bool
+StepItem.property current: bool
+StepItem.property done: bool
+StepItem.property number: int
+StepItem.type
+Symbol.base QQuickItem
+Symbol.enum Style: Outlined = 0
+Symbol.enum Style: Rounded = 1
+Symbol.enum Style: Sharp = 2
+Symbol.property codepoint: int [readonly]
+Symbol.property color: QColor
+Symbol.property fill: double
+Symbol.property filled: bool
+Symbol.property grade: int
+Symbol.property icon: int
+Symbol.property name: QString
+Symbol.property size: double
+Symbol.property style: int
+Symbol.property weight: int
+Symbol.type
+Symbols.base QObject
+Symbols.method available(int style): bool
+Symbols.method codepoint(QString name): int
+Symbols.method family(int style): QString
+Symbols.method key(int codepoint): QString
+Symbols.method name(int codepoint): QString
+Symbols.method names(): QStringList
+Symbols.type
+TabBar.base QQuickItem
+TabBar.method ensureCurrentVisible(): QVariant
+TabBar.property currentIndex: int
+TabBar.property density: int
+TabBar.property maxTabWidth: double [readonly]
+TabBar.property model: QVariant
+TabBar.property trailing: QQmlListProperty<QObject> [readonly]
+TabBar.signal activated(int index)
+TabBar.signal closeRequested(int index)
+TabBar.signal contextMenuRequested(int index, QPointF position)
+TabBar.signal moved(int from, int to)
+TabBar.signal newRequested()
+TabBar.type
+TelamonAboutPage.base QQuickItem
+TelamonAboutPage.method ensureVisible(QVariant item): QVariant
+TelamonAboutPage.method systemInfo(): QString
+TelamonAboutPage.property busy: bool
+TelamonAboutPage.property busyText: QString
+TelamonAboutPage.property content: QQmlListProperty<QObject> [readonly]
+TelamonAboutPage.property description: QString
+TelamonAboutPage.property extraContent: QQmlListProperty<QObject> [readonly]
+TelamonAboutPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
+TelamonAboutPage.property license: QString
+TelamonAboutPage.property links: QVariant
+TelamonAboutPage.property maxContentWidth: double
+TelamonAboutPage.property showSystemRows: bool
+TelamonAboutPage.property status: int
+TelamonAboutPage.property statusAction: TelamonAction_QMLTYPE*
+TelamonAboutPage.property statusSymbol: int
+TelamonAboutPage.property statusText: QString
+TelamonAboutPage.property statusTitle: QString
+TelamonAboutPage.property subtitle: QString
+TelamonAboutPage.property title: QString
+TelamonAboutPage.type
+TelamonAccentPicker.base QQuickControl
+TelamonAccentPicker.property count: int [readonly]
+TelamonAccentPicker.property currentColor: QColor [readonly]
+TelamonAccentPicker.property currentIndex: int
+TelamonAccentPicker.property model: QVariant
+TelamonAccentPicker.signal activated(int index)
+TelamonAccentPicker.type
+TelamonAction.base QQuickAction
+TelamonAction.property category: QString
+TelamonAction.property menu: QQuickMenu*
+TelamonAction.property popover: QQuickPopup*
+TelamonAction.property section: QString
+TelamonAction.property symbol: int
+TelamonAction.property toolTip: QString
+TelamonAction.type
+TelamonActionCollection.base QObject
+TelamonActionCollection.method action(QString name): QVariant
+TelamonActionCollection.method declaredConflict(QString name): QString
+TelamonActionCollection.method hasCustomShortcut(QString name): bool
+TelamonActionCollection.method resetShortcut(QString name): bool
+TelamonActionCollection.method resetShortcuts(): bool
+TelamonActionCollection.method setShortcut(QString name, QString sequence): bool
+TelamonActionCollection.property actions: QQmlListProperty<TelamonAction_QMLTYPE> [readonly]
+TelamonActionCollection.property settings: TelamonSettings*
+TelamonActionCollection.property shortcutsEditable: bool
+TelamonActionCollection.type
+TelamonApp.base QObject
+TelamonApp.property id: QString [readonly]
+TelamonApp.property issuesUrl: QString [readonly]
+TelamonApp.property name: QString [readonly]
+TelamonApp.property osHomeUrl: QString [readonly]
+TelamonApp.property osLogo: QString [readonly]
+TelamonApp.property osName: QString [readonly]
+TelamonApp.property osPrettyName: QString [readonly]
+TelamonApp.property osVersion: QString [readonly]
+TelamonApp.property qtVersion: QString [readonly]
+TelamonApp.property repo: QString [readonly]
+TelamonApp.property sourceUrl: QString [readonly]
+TelamonApp.property uiVersion: QString [readonly]
+TelamonApp.property version: QString [readonly]
+TelamonApp.type
+TelamonAppCard.base QQuickAbstractButton
+TelamonAppCard.property actionComponent: QQmlComponent*
+TelamonAppCard.property compact: bool
+TelamonAppCard.property defaultAction: QQmlComponent* [readonly]
+TelamonAppCard.property installState: QString
+TelamonAppCard.property name: QString
+TelamonAppCard.property progress: double
+TelamonAppCard.property rating: double
+TelamonAppCard.property sizeText: QString
+TelamonAppCard.property summary: QString
+TelamonAppCard.property symbol: int
+TelamonAppCard.property verified: bool
+TelamonAppCard.signal actionClicked()
+TelamonAppCard.signal cancelRequested()
+TelamonAppCard.type
+TelamonAppMenu.base QQuickItem
+TelamonAppMenu.method open(): QVariant
+TelamonAppMenu.property accessibleName: QString
+TelamonAppMenu.property collection: TelamonActionCollection_QMLTYPE*
+TelamonAppMenu.property exportShortcuts: bool
+TelamonAppMenu.property menus: QVariant
+TelamonAppMenu.signal modelActivated(QString id, QVariant modelData, int index)
+TelamonAppMenu.type
+TelamonAutocompleteField.base QQuickFocusScope
+TelamonAutocompleteField.property clearable: bool
+TelamonAutocompleteField.property errorText: QString
+TelamonAutocompleteField.property filter: QString
+TelamonAutocompleteField.property maxSuggestions: int
+TelamonAutocompleteField.property model: QVariant
+TelamonAutocompleteField.property placeholderText: QString
+TelamonAutocompleteField.property popupOpen: bool [readonly]
+TelamonAutocompleteField.property readOnly: bool
+TelamonAutocompleteField.property text: QString
+TelamonAutocompleteField.property textRole: QString
+TelamonAutocompleteField.signal accepted(QString text)
+TelamonAutocompleteField.type
+TelamonAvatar.base QQuickItem
+TelamonAvatar.property accessibleName: QString
+TelamonAvatar.property name: QString
+TelamonAvatar.property size: double
+TelamonAvatar.property source: QUrl
+TelamonAvatar.property symbol: int
+TelamonAvatar.type
+TelamonBadge.base QQuickRectangle
+TelamonBadge.property accessibleName: QString
+TelamonBadge.property dot: bool
+TelamonBadge.property symbol: int
+TelamonBadge.property text: QString
+TelamonBadge.property type: QString
+TelamonBadge.type
+TelamonBreadcrumb.base QQuickControl
+TelamonBreadcrumb.property count: int [readonly]
+TelamonBreadcrumb.property hiddenText: QString
+TelamonBreadcrumb.property segments: QVariant
+TelamonBreadcrumb.signal activated(int index)
+TelamonBreadcrumb.type
+TelamonButton.base QQuickAbstractButton
+TelamonButton.enum Variant: Default = 0
+TelamonButton.enum Variant: Destructive = 2
+TelamonButton.enum Variant: Ghost = 3
+TelamonButton.enum Variant: Prominent = 1
+TelamonButton.property accent: QColor [readonly]
+TelamonButton.property busy: bool
+TelamonButton.property maximumWidth: double
+TelamonButton.property prominent: bool
+TelamonButton.property symbol: int
+TelamonButton.property textTint: QColor [readonly]
+TelamonButton.property variant: int
+TelamonButton.type
+TelamonCalendar.base QQuickControl
+TelamonCalendar.method showDate(QDateTime d): QVariant
+TelamonCalendar.property maximumDate: QDateTime
+TelamonCalendar.property minimumDate: QDateTime
+TelamonCalendar.property month: int
+TelamonCalendar.property selectedDate: QDateTime
+TelamonCalendar.property today: QDateTime
+TelamonCalendar.property year: int
+TelamonCalendar.signal activated(QDateTime date)
+TelamonCalendar.type
+TelamonCard.base QQuickControl
+TelamonCard.property clickable: bool
+TelamonCard.property content: QQmlListProperty<QObject> [readonly]
+TelamonCard.property footer: QQmlListProperty<QObject> [readonly]
+TelamonCard.property headerTrailing: QQmlListProperty<QObject> [readonly]
+TelamonCard.property subtitle: QString
+TelamonCard.property title: QString
+TelamonCard.signal clicked()
+TelamonCard.type
+TelamonCheckBox.base QQuickCheckBox
+TelamonCheckBox.type
+TelamonChip.base QQuickAbstractButton
+TelamonChip.property closable: bool
+TelamonChip.property maximumWidth: double
+TelamonChip.property showsCheck: bool [readonly]
+TelamonChip.property symbol: int
+TelamonChip.property tint: QColor [readonly]
+TelamonChip.signal closeRequested()
+TelamonChip.type
+TelamonChipGroup.base QQuickItem
+TelamonChipGroup.property content: QQmlListProperty<QObject> [readonly]
+TelamonChipGroup.property exclusive: bool
+TelamonChipGroup.property spacing: double
+TelamonChipGroup.type
+TelamonChoiceCard.base QQuickAbstractButton
+TelamonChoiceCard.property aspectRatio: double
+TelamonChoiceCard.property source: QUrl
+TelamonChoiceCard.type
+TelamonClipboard.base QObject
+TelamonClipboard.method setImage(QVariant image): bool
+TelamonClipboard.method setRichText(QString html, QString plainFallback): void
+TelamonClipboard.method setText(QString text): void
+TelamonClipboard.method text(): QString
+TelamonClipboard.property hasImage: bool [readonly]
+TelamonClipboard.property hasText: bool [readonly]
+TelamonClipboard.type
+TelamonCodeView.base QQuickItem
+TelamonCodeView.property framed: bool
+TelamonCodeView.property inset: bool
+TelamonCodeView.property lineNumbers: bool
+TelamonCodeView.property maximumHeight: double
+TelamonCodeView.property showCopy: bool
+TelamonCodeView.property text: QString
+TelamonCodeView.property wrap: bool
+TelamonCodeView.type
+TelamonColorField.base QQuickAbstractButton
+TelamonColorField.property color: QColor
+TelamonColorField.property hex: QString [readonly]
+TelamonColorField.property showAlpha: bool
+TelamonColorField.property showMore: bool
+TelamonColorField.signal edited()
+TelamonColorField.type
+TelamonComboBox.base QQuickComboBox
+TelamonComboBox.property filterable: bool
+TelamonComboBox.property placeholderText: QString
+TelamonComboBox.type
+TelamonCommandPalette.base QQuickPopup
+TelamonCommandPalette.property actions: QQmlListProperty<QObject> [readonly]
+TelamonCommandPalette.property collection: TelamonActionCollection_QMLTYPE*
+TelamonCommandPalette.property placeholderText: QString
+TelamonCommandPalette.property query: QString
+TelamonCommandPalette.property recentCount: int
+TelamonCommandPalette.signal triggered(QObject* action)
+TelamonCommandPalette.type
+TelamonCopyButton.base QQuickAbstractButton
+TelamonCopyButton.enum TipSide: Below = 0
+TelamonCopyButton.enum TipSide: End = 2
+TelamonCopyButton.enum TipSide: Start = 1
+TelamonCopyButton.property copiedLabel: QString
+TelamonCopyButton.property focusOnClick: bool
+TelamonCopyButton.property focusable: bool
+TelamonCopyButton.property iconRotation: double
+TelamonCopyButton.property label: QString
+TelamonCopyButton.property round: bool
+TelamonCopyButton.property shortcutText: QString
+TelamonCopyButton.property symbol: int
+TelamonCopyButton.property tipSide: int
+TelamonCopyButton.property toolTipText: QString
+TelamonCopyButton.signal copied()
+TelamonCopyButton.type
+TelamonDatePicker.base QQuickControl
+TelamonDatePicker.method close(): QVariant
+TelamonDatePicker.method open(): QVariant
+TelamonDatePicker.property clearable: bool
+TelamonDatePicker.property format: QVariant
+TelamonDatePicker.property maximumDate: QDateTime
+TelamonDatePicker.property minimumDate: QDateTime
+TelamonDatePicker.property opened: bool [readonly]
+TelamonDatePicker.property placeholderText: QString
+TelamonDatePicker.property selectedDate: QDateTime
+TelamonDatePicker.property today: QDateTime
+TelamonDatePicker.signal edited()
+TelamonDatePicker.type
+TelamonDetailGrid.base QQuickItem
+TelamonDetailGrid.property columns: int
+TelamonDetailGrid.property columnsBreakpoint: double
+TelamonDetailGrid.property footer: QString
+TelamonDetailGrid.property framed: bool
+TelamonDetailGrid.property model: QVariant
+TelamonDetailGrid.property title: QString
+TelamonDetailGrid.type
+TelamonDialog.base QPlatformDialogHelper
+TelamonDialog.method scrollToTop(): QVariant
+TelamonDialog.property content: QQmlListProperty<QObject> [readonly]
+TelamonDialog.property footerContent: QQmlListProperty<QObject> [readonly]
+TelamonDialog.property headerTrailing: QQmlListProperty<QObject> [readonly]
+TelamonDialog.property preferredWidth: double
+TelamonDialog.property showBack: bool
+TelamonDialog.property showClose: bool
+TelamonDialog.signal backRequested()
+TelamonDialog.type
+TelamonDoubleSpinBox.base QQuickDoubleSpinBox
+TelamonDoubleSpinBox.property prefix: QString
+TelamonDoubleSpinBox.property showButtons: bool
+TelamonDoubleSpinBox.property suffix: QString
+TelamonDoubleSpinBox.type
+TelamonDropZone.base QQuickItem
+TelamonDropZone.property acceptedKeys: QStringList
+TelamonDropZone.property allowRemote: bool
+TelamonDropZone.property browseText: QString
+TelamonDropZone.property dragAccepted: bool [readonly]
+TelamonDropZone.property dragRejected: bool [readonly]
+TelamonDropZone.property nameFilters: QStringList
+TelamonDropZone.property subtitle: QString
+TelamonDropZone.property symbol: int
+TelamonDropZone.property text: QString
+TelamonDropZone.signal browseRequested()
+TelamonDropZone.signal dropped(QList<QUrl> urls)
+TelamonDropZone.type
+TelamonEdgeGlow.base QQuickItem
+TelamonEdgeGlow.property active: bool
+TelamonEdgeGlow.property animated: bool
+TelamonEdgeGlow.property reach: double
+TelamonEdgeGlow.type
+TelamonEmailValidator.base QValidator
+TelamonEmailValidator.type
+TelamonEmptyState.base QQuickItem
+TelamonEmptyState.property actionSymbol: int
+TelamonEmptyState.property actionText: QString
+TelamonEmptyState.property iconName: QString
+TelamonEmptyState.property symbol: int
+TelamonEmptyState.property text: QString
+TelamonEmptyState.property title: QString
+TelamonEmptyState.signal triggered()
+TelamonEmptyState.type
+TelamonExpandableSection.base QQuickColumnLayout
+TelamonExpandableSection.property content: QQmlListProperty<QObject> [readonly]
+TelamonExpandableSection.property expanded: bool
+TelamonExpandableSection.property subtitle: QString
+TelamonExpandableSection.property symbol: int
+TelamonExpandableSection.property title: QString
+TelamonExpandableSection.signal toggled(bool expanded)
+TelamonExpandableSection.type
+TelamonFileField.base QQuickItem
+TelamonFileField.property editable: bool
+TelamonFileField.property invalidText: QString
+TelamonFileField.property nameFilters: QStringList
+TelamonFileField.property path: QString
+TelamonFileField.property placeholderText: QString
+TelamonFileField.property saveMode: bool
+TelamonFileField.property title: QString
+TelamonFileField.property url: QUrl [readonly]
+TelamonFileField.property validator: QValidator*
+TelamonFileField.signal edited()
+TelamonFileField.type
+TelamonFloatingToolbar.base QQuickItem
+TelamonFloatingToolbar.property accessibleName: QString
+TelamonFloatingToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
+TelamonFloatingToolbar.property autoDim: bool
+TelamonFloatingToolbar.property content: QQmlListProperty<QObject> [readonly]
+TelamonFloatingToolbar.property dimOpacity: double
+TelamonFloatingToolbar.property focusOnClick: bool
+TelamonFloatingToolbar.property focusable: bool
+TelamonFloatingToolbar.property keepActive: bool
+TelamonFloatingToolbar.property margin: double
+TelamonFloatingToolbar.property near: bool [readonly]
+TelamonFloatingToolbar.property nearDistance: double
+TelamonFloatingToolbar.property orientation: int
+TelamonFloatingToolbar.property overflow: int
+TelamonFloatingToolbar.property returnFocus: QQuickItem*
+TelamonFloatingToolbar.property shown: bool
+TelamonFloatingToolbar.property toolbar: TelamonToolbar_QMLTYPE* [readonly]
+TelamonFloatingToolbar.signal escaped()
+TelamonFloatingToolbar.type
+TelamonFlowLayout.base QQuickItem
+TelamonFlowLayout.property rowSpacing: double
+TelamonFlowLayout.property spacing: double
+TelamonFlowLayout.type
+TelamonFocusRing.base QQuickRectangle
+TelamonFocusRing.property gap: double
+TelamonFocusRing.property shown: bool
+TelamonFocusRing.type
+TelamonFolderField.base QQuickItem
+TelamonFolderField.property editable: bool
+TelamonFolderField.property invalidText: QString
+TelamonFolderField.property path: QString
+TelamonFolderField.property placeholderText: QString
+TelamonFolderField.property title: QString
+TelamonFolderField.property url: QUrl [readonly]
+TelamonFolderField.property validator: QValidator*
+TelamonFolderField.signal edited()
+TelamonFolderField.type
+TelamonFontPicker.base QQuickAbstractButton
+TelamonFontPicker.property fixedOnly: bool
+TelamonFontPicker.signal edited()
+TelamonFontPicker.type
+TelamonForm.base QQuickColumnLayout
+TelamonForm.method validate(): bool
+TelamonForm.property entries: QVariant [readonly]
+TelamonForm.property settings: TelamonSettings*
+TelamonForm.property valid: bool [readonly]
+TelamonForm.signal accepted()
+TelamonForm.type
+TelamonFormEntry.base QQuickFocusScope
+TelamonFormEntry.property content: QQmlListProperty<QObject> [readonly]
+TelamonFormEntry.property errorText: QString
+TelamonFormEntry.property help: QString
+TelamonFormEntry.property invalidText: QString
+TelamonFormEntry.property isFirst: bool [readonly]
+TelamonFormEntry.property label: QString
+TelamonFormEntry.property required: bool
+TelamonFormEntry.property requiredText: QString
+TelamonFormEntry.property settingKey: QString
+TelamonFormEntry.property settingProperty: QString
+TelamonFormEntry.property shownError: QString [readonly]
+TelamonFormEntry.property stacked: bool
+TelamonFormEntry.property telamonRow: bool [readonly]
+TelamonFormEntry.property valid: bool [readonly]
+TelamonFormEntry.type
+TelamonFormat.base QObject
+TelamonFormat.method bytes(double n): QString
+TelamonFormat.method bytes(double n, int precision): QString
+TelamonFormat.method bytes(double n, int precision, QString locale): QString
+TelamonFormat.method bytes(double n, int precision, QString locale, QString system): QString
+TelamonFormat.method bytesPerSecond(double n): QString
+TelamonFormat.method bytesPerSecond(double n, int precision): QString
+TelamonFormat.method bytesPerSecond(double n, int precision, QString locale): QString
+TelamonFormat.method bytesPerSecond(double n, int precision, QString locale, QString system): QString
+TelamonFormat.method date(QDateTime d): QString
+TelamonFormat.method date(QDateTime d, QString style): QString
+TelamonFormat.method date(QDateTime d, QString style, QString locale): QString
+TelamonFormat.method date(QDateTime d, QString style, QString locale, QDateTime now): QString
+TelamonFormat.method duration(double seconds): QString
+TelamonFormat.method duration(double seconds, QString style): QString
+TelamonFormat.method duration(double seconds, QString style, QString locale): QString
+TelamonFormat.method number(double n): QString
+TelamonFormat.method number(double n, int precision): QString
+TelamonFormat.method number(double n, int precision, QString locale): QString
+TelamonFormat.method percent(double fraction): QString
+TelamonFormat.method percent(double fraction, int precision): QString
+TelamonFormat.method percent(double fraction, int precision, QString locale): QString
+TelamonFormat.type
+TelamonGlobalShortcut.base QObject
+TelamonGlobalShortcut.property available: bool [readonly]
+TelamonGlobalShortcut.property description: QString
+TelamonGlobalShortcut.property errorString: QString [readonly]
+TelamonGlobalShortcut.property name: QString
+TelamonGlobalShortcut.property preferredTrigger: QString
+TelamonGlobalShortcut.property trigger: QString [readonly]
+TelamonGlobalShortcut.signal activated()
+TelamonGlobalShortcut.signal deactivated()
+TelamonGlobalShortcut.type
+TelamonHeaderBar.base QQuickItem
+TelamonHeaderBar.method openWindowMenu(): QVariant
+TelamonHeaderBar.property actions: QQmlListProperty<QQuickAction> [readonly]
+TelamonHeaderBar.property active: bool
+TelamonHeaderBar.property centerTitle: bool
+TelamonHeaderBar.property iconName: QString
+TelamonHeaderBar.property leading: QQmlListProperty<QObject> [readonly]
+TelamonHeaderBar.property showTitle: bool
+TelamonHeaderBar.property stretch: QQmlListProperty<QObject> [readonly]
+TelamonHeaderBar.property title: QString
+TelamonHeaderBar.property titleCentered: bool [readonly]
+TelamonHeaderBar.property trailing: QQmlListProperty<QObject> [readonly]
+TelamonHeaderBar.property windowButtons: bool
+TelamonHeaderBar.type
+TelamonIconGrid.base QQuickControl
+TelamonIconGrid.property count: int [readonly]
+TelamonIconGrid.property currentIndex: int
+TelamonIconGrid.property iconRole: QString
+TelamonIconGrid.property iconSize: double
+TelamonIconGrid.property model: QVariant
+TelamonIconGrid.property placeholderText: QString
+TelamonIconGrid.property symbolRole: QString
+TelamonIconGrid.property textRole: QString
+TelamonIconGrid.signal activated(int index)
+TelamonIconGrid.signal contextMenuRequested(int index, double x, double y)
+TelamonIconGrid.type
+TelamonInstallButton.base QQuickAbstractButton
+TelamonInstallButton.property animated: bool
+TelamonInstallButton.property errorText: QString
+TelamonInstallButton.property installState: QString
+TelamonInstallButton.property installText: QString
+TelamonInstallButton.property installedText: QString
+TelamonInstallButton.property progress: double
+TelamonInstallButton.property queuedText: QString
+TelamonInstallButton.property removeText: QString
+TelamonInstallButton.property updateText: QString
+TelamonInstallButton.signal cancelRequested()
+TelamonInstallButton.type
+TelamonLabel.base QQuickLabel
+TelamonLabel.enum TextStyle: Body = 0
+TelamonLabel.enum TextStyle: Caption = 3
+TelamonLabel.enum TextStyle: Code = 6
+TelamonLabel.enum TextStyle: Heading = 2
+TelamonLabel.enum TextStyle: Mono = 4
+TelamonLabel.enum TextStyle: Title = 1
+TelamonLabel.enum TextStyle: WindowTitle = 5
+TelamonLabel.property textStyle: int
+TelamonLabel.type
+TelamonListView.base QQuickListView
+TelamonListView.enum SelectionMode: MultiSelection = 1
+TelamonListView.enum SelectionMode: NoSelection = 2
+TelamonListView.enum SelectionMode: SingleSelection = 0
+TelamonListView.method clearSelection(): QVariant
+TelamonListView.method isSelected(int index): bool
+TelamonListView.method select(int index): QVariant
+TelamonListView.method selectAll(): QVariant
+TelamonListView.method selectRows(QList<int> rows): QVariant
+TelamonListView.property placeholderSymbol: int
+TelamonListView.property placeholderText: QString
+TelamonListView.property reorderable: bool
+TelamonListView.property selectedIndexes: QList<int> [readonly]
+TelamonListView.property selectedRows: QList<int> [readonly]
+TelamonListView.property selectionMode: int
+TelamonListView.property status: int
+TelamonListView.property statusAction: TelamonAction_QMLTYPE*
+TelamonListView.property statusSymbol: int
+TelamonListView.property statusText: QString
+TelamonListView.property statusTitle: QString
+TelamonListView.property subtitleRole: QString
+TelamonListView.property symbolRole: QString
+TelamonListView.property textRole: QString
+TelamonListView.signal activated(int index)
+TelamonListView.signal contextMenuRequested(int index, QPointF pos)
+TelamonListView.signal moveRequested(int from, int to)
+TelamonListView.type
+TelamonNavigationStack.base QQuickItem
+TelamonNavigationStack.method pop(): QVariant
+TelamonNavigationStack.method popToRoot(): QVariant
+TelamonNavigationStack.method push(QVariant page, QVariant properties): QVariant
+TelamonNavigationStack.property canGoBack: bool [readonly]
+TelamonNavigationStack.property currentItem: QQuickItem* [readonly]
+TelamonNavigationStack.property depth: int [readonly]
+TelamonNavigationStack.property initialItem: QVariant
+TelamonNavigationStack.property showHeader: bool
+TelamonNavigationStack.signal wentBack()
+TelamonNavigationStack.type
+TelamonNumberValidator.base QValidator
+TelamonNumberValidator.property bottom: double
+TelamonNumberValidator.property decimals: int
+TelamonNumberValidator.property locale: QString
+TelamonNumberValidator.property top: double
+TelamonNumberValidator.type
+TelamonOnboarding.base QQuickItem
+TelamonOnboarding.enum StepStyle: Column = 0
+TelamonOnboarding.enum StepStyle: Dots = 1
+TelamonOnboarding.method back(): QVariant
+TelamonOnboarding.method next(): QVariant
+TelamonOnboarding.method skip(): QVariant
+TelamonOnboarding.property autoAdvance: bool
+TelamonOnboarding.property backText: QString
+TelamonOnboarding.property busy: bool
+TelamonOnboarding.property canGoBack: bool
+TelamonOnboarding.property count: int [readonly]
+TelamonOnboarding.property currentIndex: int
+TelamonOnboarding.property finishText: QString
+TelamonOnboarding.property nextText: QString
+TelamonOnboarding.property pages: QQmlListProperty<QQuickItem> [readonly]
+TelamonOnboarding.property showSkip: bool
+TelamonOnboarding.property showSteps: bool
+TelamonOnboarding.property stepStyle: int
+TelamonOnboarding.signal advanceRequested(int index)
+TelamonOnboarding.signal finished()
+TelamonOnboarding.signal skipped(int index)
+TelamonOnboarding.type
+TelamonPage.base QQuickItem
+TelamonPage.method ensureVisible(QVariant item): QVariant
+TelamonPage.property busy: bool
+TelamonPage.property busyText: QString
+TelamonPage.property content: QQmlListProperty<QObject> [readonly]
+TelamonPage.property headerTrailing: QQmlListProperty<QObject> [readonly]
+TelamonPage.property maxContentWidth: double
+TelamonPage.property status: int
+TelamonPage.property statusAction: TelamonAction_QMLTYPE*
+TelamonPage.property statusSymbol: int
+TelamonPage.property statusText: QString
+TelamonPage.property statusTitle: QString
+TelamonPage.property subtitle: QString
+TelamonPage.property title: QString
+TelamonPage.type
+TelamonPasswordField.base QQuickTextField
+TelamonPasswordField.method hide(): QVariant
+TelamonPasswordField.method reveal(): QVariant
+TelamonPasswordField.property errorText: QString
+TelamonPasswordField.property hasError: bool [readonly]
+TelamonPasswordField.property revealed: bool [readonly]
+TelamonPasswordField.property rtl: bool [readonly]
+TelamonPasswordField.type
+TelamonPasswordStrength.base QQuickItem
+TelamonPasswordStrength.property score: int
+TelamonPasswordStrength.property text: QString
+TelamonPasswordStrength.type
+TelamonPathValidator.base QValidator
+TelamonPathValidator.property absolute: bool
+TelamonPathValidator.property directory: bool
+TelamonPathValidator.property mustExist: bool
+TelamonPathValidator.type
+TelamonPlaceholder.base QQuickItem
+TelamonPlaceholder.property animated: bool
+TelamonPlaceholder.property lineHeight: double
+TelamonPlaceholder.property lines: int
+TelamonPlaceholder.type
+TelamonPopover.base QQuickPopup
+TelamonPopover.enum Side: Above = 2
+TelamonPopover.enum Side: Auto = 0
+TelamonPopover.enum Side: Below = 1
+TelamonPopover.enum Side: End = 4
+TelamonPopover.enum Side: Start = 3
+TelamonPopover.property above: bool [readonly]
+TelamonPopover.property content: QQmlListProperty<QObject> [readonly]
+TelamonPopover.property placedSide: int [readonly]
+TelamonPopover.property showArrow: bool
+TelamonPopover.property side: int
+TelamonPopover.property target: QQuickItem*
+TelamonPopover.type
+TelamonPortal.base QObject
+TelamonPortal.method escape(QString text): QString
+TelamonPortal.method notify(QString title, QString body): QString
+TelamonPortal.method notify(QString title, QString body, QVariantList actions): QString
+TelamonPortal.method notify(QString title, QString body, QVariantList actions, QVariantMap options): QString
+TelamonPortal.method openUrl(QUrl url): bool
+TelamonPortal.property extraSchemes: QStringList
+TelamonPortal.signal actionInvoked(QString notificationId, QString actionId)
+TelamonPortal.type
+TelamonPreferencesDialog.base QPlatformDialogHelper
+TelamonPreferencesDialog.method scrollToTop(): QVariant
+TelamonPreferencesDialog.property content: QQmlListProperty<QObject> [readonly]
+TelamonPreferencesDialog.property currentIndex: int
+TelamonPreferencesDialog.property footerContent: QQmlListProperty<QObject> [readonly]
+TelamonPreferencesDialog.property headerTrailing: QQmlListProperty<QObject> [readonly]
+TelamonPreferencesDialog.property pages: QQmlListProperty<TelamonPreferencesPage_QMLTYPE> [readonly]
+TelamonPreferencesDialog.property preferredWidth: double
+TelamonPreferencesDialog.property searchable: bool
+TelamonPreferencesDialog.property settings: TelamonSettings*
+TelamonPreferencesDialog.property showBack: bool
+TelamonPreferencesDialog.property showClose: bool
+TelamonPreferencesDialog.property stateKey: QString
+TelamonPreferencesDialog.signal backRequested()
+TelamonPreferencesDialog.type
+TelamonPreferencesPage.base QQuickColumnLayout
+TelamonPreferencesPage.method validate(): bool
+TelamonPreferencesPage.property entries: QVariant [readonly]
+TelamonPreferencesPage.property settings: TelamonSettings*
+TelamonPreferencesPage.property symbol: int
+TelamonPreferencesPage.property title: QString
+TelamonPreferencesPage.property valid: bool [readonly]
+TelamonPreferencesPage.signal accepted()
+TelamonPreferencesPage.type
+TelamonProgressBar.base QQuickItem
+TelamonProgressBar.property animated: bool
+TelamonProgressBar.property indeterminate: bool
+TelamonProgressBar.property status: QString
+TelamonProgressBar.property text: QString
+TelamonProgressBar.property value: double
+TelamonProgressBar.type
+TelamonRadioButton.base QQuickRadioButton
+TelamonRadioButton.type
+TelamonRating.base QQuickControl
+TelamonRating.property count: int
+TelamonRating.property readOnly: bool
+TelamonRating.property starSize: double
+TelamonRating.property value: double
+TelamonRating.signal edited()
+TelamonRating.type
+TelamonScreenshotCarousel.base QQuickControl
+TelamonScreenshotCarousel.property allowRemote: bool
+TelamonScreenshotCarousel.property count: int [readonly]
+TelamonScreenshotCarousel.property currentIndex: int
+TelamonScreenshotCarousel.property expandable: bool
+TelamonScreenshotCarousel.property expanded: bool
+TelamonScreenshotCarousel.property sources: QVariant
+TelamonScreenshotCarousel.signal opened(int index)
+TelamonScreenshotCarousel.type
+TelamonScrollBar.base QQuickScrollBar
+TelamonScrollBar.type
+TelamonSearchResults.base QQuickControl
+TelamonSearchResults.method activateCurrent(): QVariant
+TelamonSearchResults.method handleKey(QVariant event): QVariant
+TelamonSearchResults.method moveCurrent(QVariant delta): QVariant
+TelamonSearchResults.property count: int [readonly]
+TelamonSearchResults.property currentIndex: int
+TelamonSearchResults.property iconRole: QString
+TelamonSearchResults.property model: QVariant
+TelamonSearchResults.property placeholderText: QString
+TelamonSearchResults.property sectionRole: QString
+TelamonSearchResults.property shortcutRole: QString
+TelamonSearchResults.property subtitleRole: QString
+TelamonSearchResults.property symbolRole: QString
+TelamonSearchResults.property textRole: QString
+TelamonSearchResults.signal activated(int index)
+TelamonSearchResults.type
+TelamonSegmentedControl.base QQuickControl
+TelamonSegmentedControl.property count: int [readonly]
+TelamonSegmentedControl.property currentIndex: int
+TelamonSegmentedControl.property model: QVariant
+TelamonSegmentedControl.signal activated(int index)
+TelamonSegmentedControl.type
+TelamonSettings.base QObject
+TelamonSettings.method contains(QString key): bool
+TelamonSettings.method flush(): bool
+TelamonSettings.method remove(QString key): bool
+TelamonSettings.method setValue(QString key, QVariant value): bool
+TelamonSettings.method value(QString key): QVariant
+TelamonSettings.method value(QString key, QVariant defaultValue): QVariant
+TelamonSettings.property fileName: QString
+TelamonSettings.property group: QString
+TelamonSettings.signal changed(QString key)
+TelamonSettings.type
+TelamonShelf.base QQuickControl
+TelamonShelf.property cardWidth: double
+TelamonShelf.property count: int [readonly]
+TelamonShelf.property defaultDelegate: QQmlComponent* [readonly]
+TelamonShelf.property delegate: QQmlComponent*
+TelamonShelf.property model: QVariant
+TelamonShelf.property title: QString
+TelamonShelf.signal activated(int index)
+TelamonShelf.type
+TelamonShortcutField.base QQuickControl
+TelamonShortcutField.method startRecording(): QVariant
+TelamonShortcutField.property conflictText: QString [readonly]
+TelamonShortcutField.property ignoreAction: QObject*
+TelamonShortcutField.property placeholderText: QString
+TelamonShortcutField.property recording: bool [readonly]
+TelamonShortcutField.property sequence: QString
+TelamonShortcutField.signal edited()
+TelamonShortcutField.type
+TelamonShortcutLabel.base QQuickItem
+TelamonShortcutLabel.property sequence: QVariant
+TelamonShortcutLabel.type
+TelamonShortcuts.base QObject
+TelamonShortcuts.method add(QObject* action): void
+TelamonShortcuts.method keys(QVariant sequence): QVariantList
+TelamonShortcuts.method plainText(QString text): QString
+TelamonShortcuts.method portable(QVariant sequence): QString
+TelamonShortcuts.method readable(QVariant sequence): QString
+TelamonShortcuts.method remove(QObject* action): void
+TelamonShortcuts.property actions: QList<QObject*> [readonly]
+TelamonShortcuts.property conflicts: QVariantList [readonly]
+TelamonShortcuts.type
+TelamonShortcutsDialog.base QQuickPopup
+TelamonShortcutsDialog.property collection: TelamonActionCollection_QMLTYPE*
+TelamonShortcutsDialog.property title: QString
+TelamonShortcutsDialog.type
+TelamonSidebar.base QQuickFocusScope
+TelamonSidebar.property baseColor: QColor
+TelamonSidebar.property compact: bool
+TelamonSidebar.property content: QQmlListProperty<QObject> [readonly]
+TelamonSidebar.property currentIndex: int
+TelamonSidebar.property delegate: QQmlComponent*
+TelamonSidebar.property dropEnabled: bool
+TelamonSidebar.property filterText: QString
+TelamonSidebar.property footer: QQmlListProperty<QObject> [readonly]
+TelamonSidebar.property footerSeparator: bool
+TelamonSidebar.property model: QVariant
+TelamonSidebar.property padding: int
+TelamonSidebar.property placeholderSymbol: int
+TelamonSidebar.property placeholderText: QString
+TelamonSidebar.property showFilter: bool
+TelamonSidebar.property spacing: int
+TelamonSidebar.property win: QVariant [readonly]
+TelamonSidebar.signal contextMenuRequested(QQuickItem* item, QPointF pos)
+TelamonSidebar.signal dropped(QQuickItem* item, QVariant drop)
+TelamonSidebar.type
+TelamonSlider.base QQuickSlider
+TelamonSlider.type
+TelamonSparkline.base QQuickPaintedItem
+TelamonSparkline.property color: QColor
+TelamonSparkline.property fill: bool
+TelamonSparkline.property lineWidth: double
+TelamonSparkline.property maximum: double
+TelamonSparkline.property minimum: double
+TelamonSparkline.property minimumRange: double
+TelamonSparkline.property values: QList<double>
+TelamonSparkline.type
+TelamonSparklineItem.base QQuickPaintedItem
+TelamonSparklineItem.property color: QColor
+TelamonSparklineItem.property fill: bool
+TelamonSparklineItem.property lineWidth: double
+TelamonSparklineItem.property maximum: double
+TelamonSparklineItem.property minimum: double
+TelamonSparklineItem.property minimumRange: double
+TelamonSparklineItem.property values: QList<double>
+TelamonSparklineItem.type
+TelamonSpinBox.base QQuickSpinBox
+TelamonSpinBox.property prefix: QString
+TelamonSpinBox.property showButtons: bool
+TelamonSpinBox.property suffix: QString
+TelamonSpinBox.type
+TelamonSpinner.base QQuickBusyIndicator
+TelamonSpinner.property animated: bool
+TelamonSpinner.property color: QColor
+TelamonSpinner.type
+TelamonSplitButton.base QQuickItem
+TelamonSplitButton.method openMenu(): QVariant
+TelamonSplitButton.property action: QQuickAction*
+TelamonSplitButton.property items: QQmlListProperty<QObject> [readonly]
+TelamonSplitButton.property menu: ContextMenu_QMLTYPE* [readonly]
+TelamonSplitButton.property mirrored: bool [readonly]
+TelamonSplitButton.property prominent: bool
+TelamonSplitButton.property symbol: int
+TelamonSplitButton.property text: QString
+TelamonSplitButton.signal clicked()
+TelamonSplitButton.type
+TelamonSplitView.base QQuickSplitView
+TelamonSplitView.method restoreSizes(QString sizes): bool
+TelamonSplitView.method saveSizes(): QString
+TelamonSplitView.method showPane(int i): QVariant
+TelamonSplitView.property collapseWidth: double
+TelamonSplitView.property collapsed: bool [readonly]
+TelamonSplitView.property collapsible: bool
+TelamonSplitView.property currentPane: int
+TelamonSplitView.property stateKey: QString
+TelamonSplitView.type
+TelamonSpringAnimation.base QQuickSpringAnimation
+TelamonSpringAnimation.property expressive: bool
+TelamonSpringAnimation.property fine: bool
+TelamonSpringAnimation.type
+TelamonStat.base QQuickColumnLayout
+TelamonStat.property invertTrend: bool
+TelamonStat.property label: QString
+TelamonStat.property sparkline: QList<double>
+TelamonStat.property symbol: int
+TelamonStat.property trend: double
+TelamonStat.property trendText: QString
+TelamonStat.property unit: QString
+TelamonStat.property value: QString
+TelamonStat.type
+TelamonStatus.base QObject
+TelamonStatus.enum Status: Empty = 2
+TelamonStatus.enum Status: Error = 4
+TelamonStatus.enum Status: Loading = 1
+TelamonStatus.enum Status: NoResults = 3
+TelamonStatus.enum Status: Ready = 0
+TelamonStatus.type
+TelamonStyle.base QObject
+TelamonStyle.enum Density: Compact = 1
+TelamonStyle.enum Density: Normal = 0
+TelamonStyle.method alpha(QColor c, double a): QColor
+TelamonStyle.method mix(QColor a, QColor b, double t): QColor
+TelamonStyle.property accent: QColor [readonly]
+TelamonStyle.property accentStrong: QColor [readonly]
+TelamonStyle.property accentStrongText: QColor [readonly]
+TelamonStyle.property accentText: QColor [readonly]
+TelamonStyle.property base: QColor [readonly]
+TelamonStyle.property chromeBackground: QColor [readonly]
+TelamonStyle.property codeSurface: QColor [readonly]
+TelamonStyle.property compact: bool [readonly]
+TelamonStyle.property control: QColor [readonly]
+TelamonStyle.property controlBorder: QColor [readonly]
+TelamonStyle.property controlHeight: double [readonly]
+TelamonStyle.property density: int
+TelamonStyle.property duration: int [readonly]
+TelamonStyle.property durationLong: int [readonly]
+TelamonStyle.property durationShort: int [readonly]
+TelamonStyle.property error: QColor [readonly]
+TelamonStyle.property errorFill: QColor [readonly]
+TelamonStyle.property floatingBackground: QColor [readonly]
+TelamonStyle.property focus: QColor [readonly]
+TelamonStyle.property fontFamily: QString [readonly]
+TelamonStyle.property fontSizeBody: double [readonly]
+TelamonStyle.property fontSizeCaption: double [readonly]
+TelamonStyle.property fontSizeCode: double [readonly]
+TelamonStyle.property fontSizeHeading: double [readonly]
+TelamonStyle.property fontSizeTitle: double [readonly]
+TelamonStyle.property fontSizeWindowTitle: double [readonly]
+TelamonStyle.property fontWeightWindowTitle: int [readonly]
+TelamonStyle.property highContrast: bool [readonly]
+TelamonStyle.property hover: QColor [readonly]
+TelamonStyle.property monoFamily: QString [readonly]
+TelamonStyle.property pressed: QColor [readonly]
+TelamonStyle.property radius: double [readonly]
+TelamonStyle.property radiusLarge: double [readonly]
+TelamonStyle.property radiusPill: double [readonly]
+TelamonStyle.property radiusSmall: double [readonly]
+TelamonStyle.property reducedMotion: bool [readonly]
+TelamonStyle.property rowHeight: double [readonly]
+TelamonStyle.property sakura: QColor [readonly]
+TelamonStyle.property selection: QColor [readonly]
+TelamonStyle.property selectionInactive: QColor [readonly]
+TelamonStyle.property separator: QColor [readonly]
+TelamonStyle.property softwareRendering: bool [readonly]
+TelamonStyle.property spacing: double [readonly]
+TelamonStyle.property spacingLarge: double [readonly]
+TelamonStyle.property spacingSmall: double [readonly]
+TelamonStyle.property spacingXLarge: double [readonly]
+TelamonStyle.property spacingXSmall: double [readonly]
+TelamonStyle.property spacingXXLarge: double [readonly]
+TelamonStyle.property success: QColor [readonly]
+TelamonStyle.property surface: QColor [readonly]
+TelamonStyle.property surfaceAlt: QColor [readonly]
+TelamonStyle.property surfaceRaised: QColor [readonly]
+TelamonStyle.property text: QColor [readonly]
+TelamonStyle.property textDisabled: QColor [readonly]
+TelamonStyle.property textMuted: QColor [readonly]
+TelamonStyle.property textScale: double [readonly]
+TelamonStyle.property warning: QColor [readonly]
+TelamonStyle.type
+TelamonSwitch.base QQuickSwitch
+TelamonSwitch.type
+TelamonTextArea.base QQuickTextArea
+TelamonTextArea.type
+TelamonTextField.base QQuickTextField
+TelamonTextField.property clearable: bool
+TelamonTextField.property errorText: QString
+TelamonTextField.property hasError: bool [readonly]
+TelamonTextField.property invalidText: QString
+TelamonTextField.property prefix: QString
+TelamonTextField.property rtl: bool [readonly]
+TelamonTextField.property showCounter: bool
+TelamonTextField.property suffix: QString
+TelamonTextField.property validateOn: QString
+TelamonTextField.type
+TelamonTextView.base QQuickItem
+TelamonTextView.enum LineEnding: CR = 2
+TelamonTextView.enum LineEnding: CRLF = 1
+TelamonTextView.enum LineEnding: LF = 0
+TelamonTextView.enum LineEnding: Mixed = 3
+TelamonTextView.method appendBytes(QByteArray utf8): void
+TelamonTextView.method appendText(QString text): void
+TelamonTextView.method beginLoad(): void
+TelamonTextView.method clearDecorations(QString layer): void
+TelamonTextView.method columnOf(qlonglong position): qsizetype
+TelamonTextView.method copy(): void
+TelamonTextView.method endLoad(): void
+TelamonTextView.method ensureVisible(qlonglong position): void
+TelamonTextView.method lineOf(qlonglong position): qsizetype
+TelamonTextView.method lineY(qlonglong line): double
+TelamonTextView.method markSaved(qulonglong revision): void
+TelamonTextView.method positionAt(QPointF itemPoint): qsizetype
+TelamonTextView.method positionOfLine(qlonglong line): qsizetype
+TelamonTextView.method rectangleAt(qlonglong position): QRectF
+TelamonTextView.method select(qlonglong start, qlonglong end): void
+TelamonTextView.method selectAll(): void
+TelamonTextView.method setDecorationPairs(QString layer, QVariantList pairs, int style): void
+TelamonTextView.method textInRange(qlonglong start, qlonglong end): QString
+TelamonTextView.property canRedo: bool [readonly]
+TelamonTextView.property canUndo: bool [readonly]
+TelamonTextView.property contentHeight: double [readonly]
+TelamonTextView.property contentWidth: double [readonly]
+TelamonTextView.property contentX: double
+TelamonTextView.property contentY: double
+TelamonTextView.property cursorPosition: qlonglong
+TelamonTextView.property firstVisibleLine: qlonglong [readonly]
+TelamonTextView.property follow: bool
+TelamonTextView.property font: QFont
+TelamonTextView.property hadInvalidText: bool [readonly]
+TelamonTextView.property hasSelection: bool [readonly]
+TelamonTextView.property highlightCurrentLine: bool
+TelamonTextView.property highlightLimit: qlonglong
+TelamonTextView.property lastVisibleLine: qlonglong [readonly]
+TelamonTextView.property length: qlonglong [readonly]
+TelamonTextView.property lineCount: qlonglong [readonly]
+TelamonTextView.property lineEnding: TelamonTextView::LineEnding [readonly]
+TelamonTextView.property lineNumberColor: QColor
+TelamonTextView.property loadFailed: bool [readonly]
+TelamonTextView.property loadProgress: double [readonly]
+TelamonTextView.property loading: bool [readonly]
+TelamonTextView.property maximumLines: qlonglong
+TelamonTextView.property modified: bool [readonly]
+TelamonTextView.property readOnly: bool
+TelamonTextView.property selectedText: QString [readonly]
+TelamonTextView.property selectionColor: QColor
+TelamonTextView.property selectionEnd: qlonglong [readonly]
+TelamonTextView.property selectionStart: qlonglong [readonly]
+TelamonTextView.property showLineNumbers: bool
+TelamonTextView.property syntax: QString
+TelamonTextView.property syntaxTheme: QString
+TelamonTextView.property tabWidth: int
+TelamonTextView.property text: QString
+TelamonTextView.property textColor: QColor
+TelamonTextView.property undoLimit: int
+TelamonTextView.property wrap: bool
+TelamonTextView.signal contentsChange(qlonglong position, qlonglong removed, qlonglong added)
+TelamonTextView.signal loaded()
+TelamonTextView.type
+TelamonTimePicker.base QQuickControl
+TelamonTimePicker.property day: int
+TelamonTimePicker.property hours: int
+TelamonTimePicker.property minimumHours: int
+TelamonTimePicker.property minimumMinutes: int
+TelamonTimePicker.property minuteArrowStep: int
+TelamonTimePicker.property minuteStep: int
+TelamonTimePicker.property minutes: int
+TelamonTimePicker.property showDay: bool
+TelamonTimePicker.property use24Hour: bool
+TelamonTimePicker.signal adjusted()
+TelamonTimePicker.signal edited()
+TelamonTimePicker.type
+TelamonToolTip.base QQuickToolTip
+TelamonToolTip.property shown: bool
+TelamonToolTip.type
+TelamonToolbar.base QQuickItem
+TelamonToolbar.enum Overflow: Menu = 0
+TelamonToolbar.enum Overflow: Scroll = 1
+TelamonToolbar.property accessibleName: QString
+TelamonToolbar.property actions: QQmlListProperty<QQuickAction> [readonly]
+TelamonToolbar.property flat: bool
+TelamonToolbar.property focusOnClick: bool
+TelamonToolbar.property focusable: bool
+TelamonToolbar.property leading: QQmlListProperty<QObject> [readonly]
+TelamonToolbar.property moreMenu: ContextMenu_QMLTYPE* [readonly]
+TelamonToolbar.property orientation: int
+TelamonToolbar.property overflow: int
+TelamonToolbar.property overflowCount: int [readonly]
+TelamonToolbar.property scrolls: bool [readonly]
+TelamonToolbar.property trailing: QQmlListProperty<QObject> [readonly]
+TelamonToolbar.property visibleCount: int [readonly]
+TelamonToolbar.type
+TelamonTransparencySwitch.base QQuickFocusScope
+TelamonTransparencySwitch.method activate(QVariant event): QVariant
+TelamonTransparencySwitch.method ensureVisible(): QVariant
+TelamonTransparencySwitch.method step(QVariant forward, QVariant event): QVariant
+TelamonTransparencySwitch.property animated: bool
+TelamonTransparencySwitch.property busy: bool
+TelamonTransparencySwitch.property byMouse: bool
+TelamonTransparencySwitch.property checkmark: bool
+TelamonTransparencySwitch.property chevron: bool
+TelamonTransparencySwitch.property clickable: bool
+TelamonTransparencySwitch.property content: QQmlListProperty<QObject> [readonly]
+TelamonTransparencySwitch.property density: int
+TelamonTransparencySwitch.property disclosure: bool
+TelamonTransparencySwitch.property expanded: bool
+TelamonTransparencySwitch.property iconName: QString
+TelamonTransparencySwitch.property isFirst: bool [readonly]
+TelamonTransparencySwitch.property leading: QQmlListProperty<QObject> [readonly]
+TelamonTransparencySwitch.property mirrored: bool [readonly]
+TelamonTransparencySwitch.property radio: bool
+TelamonTransparencySwitch.property showSwitch: bool
+TelamonTransparencySwitch.property subtitle: QString
+TelamonTransparencySwitch.property switchChecked: bool
+TelamonTransparencySwitch.property telamonRow: bool [readonly]
+TelamonTransparencySwitch.property title: QString
+TelamonTransparencySwitch.property trailing: QQmlListProperty<QObject> [readonly]
+TelamonTransparencySwitch.property value: QString
+TelamonTransparencySwitch.signal clicked()
+TelamonTransparencySwitch.signal switchToggled(bool checked)
+TelamonTransparencySwitch.type
+TelamonTreeModel.base QAbstractItemModel
+TelamonTreeModel.property items: QVariantList
+TelamonTreeModel.type
+TelamonTreeView.base QQuickControl
+TelamonTreeView.enum SelectionMode: MultiSelection = 1
+TelamonTreeView.enum SelectionMode: NoSelection = 2
+TelamonTreeView.enum SelectionMode: SingleSelection = 0
+TelamonTreeView.method clearSelection(): QVariant
+TelamonTreeView.method collapse(QVariant index): QVariant
+TelamonTreeView.method collapseAll(): QVariant
+TelamonTreeView.method expand(QVariant index): QVariant
+TelamonTreeView.method expandAll(): QVariant
+TelamonTreeView.method isExpanded(QVariant index): QVariant
+TelamonTreeView.method selectAll(): QVariant
+TelamonTreeView.property count: int [readonly]
+TelamonTreeView.property currentIndex: QVariant [readonly]
+TelamonTreeView.property iconRole: QString
+TelamonTreeView.property model: QVariant
+TelamonTreeView.property selectionMode: int
+TelamonTreeView.property selectionModel: QItemSelectionModel* [readonly]
+TelamonTreeView.property status: int
+TelamonTreeView.property statusAction: TelamonAction_QMLTYPE*
+TelamonTreeView.property statusSymbol: int
+TelamonTreeView.property statusText: QString
+TelamonTreeView.property statusTitle: QString
+TelamonTreeView.property symbolRole: QString
+TelamonTreeView.property textRole: QString
+TelamonTreeView.signal activated(QVariant index)
+TelamonTreeView.signal contextMenuRequested(QVariant index, QPointF pos)
+TelamonTreeView.type
+TelamonUrlValidator.base QValidator
+TelamonUrlValidator.property schemes: QStringList
+TelamonUrlValidator.type
+TelamonViewSwitcher.base QQuickControl
+TelamonViewSwitcher.property count: int [readonly]
+TelamonViewSwitcher.property currentIndex: int
+TelamonViewSwitcher.property model: QVariant
+TelamonViewSwitcher.property narrow: bool
+TelamonViewSwitcher.signal activated(int index)
+TelamonViewSwitcher.type
+TelamonWindow.base QQuickApplicationWindow
+TelamonWindow.enum WidthClass: Compact = 0
+TelamonWindow.enum WidthClass: Medium = 1
+TelamonWindow.enum WidthClass: Wide = 2
+TelamonWindow.method confirm(QVariant options, QVariant done): QVariant
+TelamonWindow.method sidebarColor(QColor base): QColor
+TelamonWindow.method syncBlur(): QVariant
+TelamonWindow.method tinted(QColor base, double factor): QColor
+TelamonWindow.method toast(QVariant text, QVariant options): QVariant
+TelamonWindow.property blurAlpha: double
+TelamonWindow.property blurred: bool [readonly]
+TelamonWindow.property compactBreakpoint: double
+TelamonWindow.property frameless: bool [readonly]
+TelamonWindow.property kiosk: bool
+TelamonWindow.property sidebarCollapsed: bool [readonly]
+TelamonWindow.property sidebarFactor: double
+TelamonWindow.property stateKey: QString
+TelamonWindow.property wideBreakpoint: double
+TelamonWindow.property widthClass: int [readonly]
+TelamonWindow.type
+TelamonWindowButtons.base QQuickRow
+TelamonWindowButtons.property active: bool
+TelamonWindowButtons.property buttons: QVariant
+TelamonWindowButtons.property maximized: bool [readonly]
+TelamonWindowButtons.type
+TelamonWindowChrome.base QObject
+TelamonWindowChrome.property buttonsOnLeft: QStringList [readonly]
+TelamonWindowChrome.property buttonsOnRight: QStringList [readonly]
+TelamonWindowChrome.property globalMenu: bool [readonly]
+TelamonWindowChrome.type
+TextButton.base QQuickAbstractButton
+TextButton.type
+Toast.base QQuickItem
+Toast.method hide(): QVariant
+Toast.method show(QVariant message): QVariant
+Toast.method showAction(QVariant message, QVariant actionText): QVariant
+Toast.property actionText: QString
+Toast.property interval: int
+Toast.property text: QString
+Toast.signal actionTriggered()
+Toast.type
+ToolbarButton.base QQuickAbstractButton
+ToolbarButton.enum TipSide: Below = 0
+ToolbarButton.enum TipSide: End = 2
+ToolbarButton.enum TipSide: Start = 1
+ToolbarButton.property focusOnClick: bool
+ToolbarButton.property focusable: bool
+ToolbarButton.property iconRotation: double
+ToolbarButton.property round: bool
+ToolbarButton.property shortcutText: QString
+ToolbarButton.property symbol: int
+ToolbarButton.property tipSide: int
+ToolbarButton.property toolTipText: QString
+ToolbarButton.type
+UsageBar.base QQuickColumnLayout
+UsageBar.method colorAt(QVariant i): QVariant
+UsageBar.property barHeight: double
+UsageBar.property colors: QList<QColor>
+UsageBar.property labels: QStringList
+UsageBar.property legend: bool
+UsageBar.property mirrored: bool [readonly]
+UsageBar.property sum: double [readonly]
+UsageBar.property texts: QStringList
+UsageBar.property total: double
+UsageBar.property trackColor: QColor [readonly]
+UsageBar.property values: QList<double>
+UsageBar.property whole: double [readonly]
+UsageBar.type

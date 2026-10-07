@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 Item {
     id: root
@@ -12,7 +12,7 @@ Item {
 
     Component {
         id: autocomplete
-        AtlasAutocompleteField {
+        TelamonAutocompleteField {
             x: 20
             y: 20
             width: 300
@@ -21,14 +21,14 @@ Item {
     }
     Component {
         id: colorField
-        AtlasColorField {}
+        TelamonColorField {}
     }
 
     Component {
         id: emailField
-        AtlasTextField {
+        TelamonTextField {
             width: 300
-            validator: AtlasEmailValidator {}
+            validator: TelamonEmailValidator {}
             invalidText: "Enter an email address"
         }
     }
@@ -289,7 +289,7 @@ Item {
     property int bound: 50
     Component {
         id: spin
-        AtlasSpinBox {
+        TelamonSpinBox {
             from: 0
             to: 100
             value: root.bound
@@ -298,7 +298,7 @@ Item {
     }
     Component {
         id: dspin
-        AtlasDoubleSpinBox {
+        TelamonDoubleSpinBox {
             from: 0
             to: 5000
             value: 1234.5
@@ -345,37 +345,37 @@ Item {
     // ROADMAP B2, Fields and buttons.
     Component {
         id: buttonWithAction
-        AtlasButton {
+        TelamonButton {
             text: "Go"
             checkable: true
         }
     }
     Component {
         id: chipComp
-        AtlasChip {
+        TelamonChip {
             text: "Tag"
             checkable: true
         }
     }
     Component {
         id: splitComp
-        AtlasSplitButton {
+        TelamonSplitButton {
             text: "Save"
             ContextMenuItem { text: "Save As" }
         }
     }
     Component {
         id: chipGroupComp
-        AtlasChipGroup {
+        TelamonChipGroup {
             width: 300
-            AtlasChip { objectName: "chipA"; text: "A" }
-            AtlasChip { objectName: "chipB"; text: "B" }
-            AtlasChip { objectName: "chipC"; text: "C" }
+            TelamonChip { objectName: "chipA"; text: "A" }
+            TelamonChip { objectName: "chipB"; text: "B" }
+            TelamonChip { objectName: "chipC"; text: "C" }
         }
     }
     Component {
         id: dropComp
-        AtlasDropZone {
+        TelamonDropZone {
             width: 300
             height: 150
             browseText: "Browse"
@@ -391,25 +391,25 @@ Item {
     }
     Component {
         id: shortcutComp
-        AtlasShortcutField {
+        TelamonShortcutField {
             width: 200
         }
     }
     Component {
         id: segComp
-        AtlasSegmentedControl {
+        TelamonSegmentedControl {
             width: 240
         }
     }
     Component {
         id: comboComp
-        AtlasComboBox {
+        TelamonComboBox {
             width: 200
         }
     }
     Component {
         id: spinComp
-        AtlasSpinBox {
+        TelamonSpinBox {
             from: 0
             to: 999
             editable: true
@@ -458,19 +458,19 @@ Item {
     }
     Component {
         id: folderFieldComp
-        AtlasFolderField {
+        TelamonFolderField {
             width: 300
         }
     }
     Component {
         id: fileFieldComp
-        AtlasFileField {
+        TelamonFileField {
             width: 300
         }
     }
     Component {
         id: pickerComp
-        AtlasFontPicker {
+        TelamonFontPicker {
             width: 300
         }
     }
@@ -722,7 +722,7 @@ Item {
             compare(b.symbol, Symbols.FileOpen);
             f.saveMode = true;
             compare(b.symbol, Symbols.Save);
-            f.validator = Qt.createQmlObject('import Atlas.Ui; AtlasUrlValidator {}', root);
+            f.validator = Qt.createQmlObject('import Telamon.Ui; TelamonUrlValidator {}', root);
             f.invalidText = "Not a path";
             compare(f.invalidText, "Not a path");
             const tf = _textField(f);

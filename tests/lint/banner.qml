@@ -1,5 +1,5 @@
 // Fixture for tests/lint/run.sh: a line ending in `// WANT` must get exactly
-// one finding, every other line none. `atlas-lint: allow` silences the next
+// one finding, every other line none. `telamon-lint: allow` silences the next
 // line too, so each allowed case has a plain line after it.
 import QtQuick
 import QtQuick.Controls as QQC2
@@ -7,22 +7,22 @@ import org.kde.kirigami as Kirigami
 
 Item {
     Kirigami.PlaceholderMessage { text: "empty" } // WANT
-    Kirigami.PlaceholderMessage { text: "empty" } // atlas-lint: allow fixture
+    Kirigami.PlaceholderMessage { text: "empty" } // telamon-lint: allow fixture
     Item { }
     Kirigami.Heading { text: "title" } // WANT
-    Kirigami.Heading { text: "title" } // atlas-lint: allow fixture
+    Kirigami.Heading { text: "title" } // telamon-lint: allow fixture
     Item { }
     QQC2.ToolTip { text: "tip" } // WANT
-    QQC2.ToolTip { text: "tip" } // atlas-lint: allow fixture
+    QQC2.ToolTip { text: "tip" } // telamon-lint: allow fixture
     Item { }
     QQC2.ToolTip.text: "tip" // WANT
-    QQC2.ToolTip.text: "tip" // atlas-lint: allow fixture
+    QQC2.ToolTip.text: "tip" // telamon-lint: allow fixture
     Item { }
     Rectangle { // WANT
         color: Qt.alpha(Kirigami.Theme.negativeTextColor, 0.1)
         QQC2.Label { text: "error" }
     }
-    // atlas-lint: allow fixture
+    // telamon-lint: allow fixture
     Rectangle {
         color: Qt.alpha(Kirigami.Theme.negativeTextColor, 0.1)
         QQC2.Label { text: "error" }
@@ -32,18 +32,18 @@ Item {
         color: Qt.alpha(Kirigami.Theme.negativeTextColor, 0.1)
     }
     Rectangle {
-        color: "red" // atlas-lint: allow-raw
+        color: "red" // telamon-lint: allow-raw
         QQC2.Label { text: "plain" }
     }
     OldThing { } // WANT
-    OldThing { } // atlas-lint: allow fixture
+    OldThing { } // telamon-lint: allow fixture
     Item { }
     Item { oldProp: 1 } // WANT
     Component.onCompleted: {
-        AtlasPortal.notify("t", body, [], { markup: true }) // WANT
-        AtlasPortal.notify("t", AtlasPortal.escape(body), [], { markup: true })
-        AtlasPortal.notify(qsTr("t"), qsTr("<b>fixed</b>"), [], { markup: true })
-        AtlasPortal.notify("t", body, [], { eventId: "x" })
-        AtlasPortal.notify("t", body, [], { markup: true }) // atlas-lint: allow fixture
+        TelamonPortal.notify("t", body, [], { markup: true }) // WANT
+        TelamonPortal.notify("t", TelamonPortal.escape(body), [], { markup: true })
+        TelamonPortal.notify(qsTr("t"), qsTr("<b>fixed</b>"), [], { markup: true })
+        TelamonPortal.notify("t", body, [], { eventId: "x" })
+        TelamonPortal.notify("t", body, [], { markup: true }) // telamon-lint: allow fixture
     }
 }

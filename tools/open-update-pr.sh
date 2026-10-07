@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Opens a pull request in an Atlas app that moves its atlas-framework crates
+# Opens a pull request in a Telamon app that moves its telamon-framework crates
 # to a release tag. Run by .github/workflows/release.yml in two steps, in two
 # separate jobs, because the app's checkout is not trusted (cargo runs what
 # its .cargo/config.toml names) and the token can push to every app:
 #
 #   tools/open-update-pr.sh lock <owner/repo> <vX.Y.Z> <out dir>
 #       No token. Clones the app, moves the pins and runs `cargo update` for
-#       the atlas-framework crates (and each crate cargo names as a conflict:
+#       the telamon-framework crates (and each crate cargo names as a conflict:
 #       a raised floor); writes the base commit and the changed
 #       Cargo.lock files to <out dir>. Nothing else from that job is used.
 #
@@ -19,14 +19,14 @@
 #       says which crates the framework can bring in.
 #
 # A lock job could be made to forge another app's lock files, so publish
-# accepts only changes a framework update can make: atlas-framework crates at
+# accepts only changes a framework update can make: telamon-framework crates at
 # exactly FRAMEWORK_COMMIT, and crates.io packages the app already had or the
 # framework's own Cargo.lock names. Anything else, and nothing is pushed.
 #
-# Every `atlas-framework-*` git dependency on this repository pinned by tag or
+# Every `telamon-framework-*` git dependency on this repository pinned by tag or
 # branch becomes `tag = "<vX.Y.Z>"`; one pinned by rev stays a rev, of the
 # commit the tag names (an app's CI may require revs, as Notepad's does).
-# Nothing else changes: the app's own `atlas-ui >=` requirement is its
+# Nothing else changes: the app's own `telamon-ui >=` requirement is its
 # decision.
 set -euo pipefail
 
@@ -60,8 +60,8 @@ move_pins() {
     # shellcheck disable=SC2016 # perl, not shell, expands these
     TAG=$tag COMMIT=$fw_commit timeout 60 perl -0pi -e '
         sub pin { $_[0] eq "rev" ? qq(rev = "$ENV{COMMIT}") : qq(tag = "$ENV{TAG}") }
-        s#(atlas-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?"[^}\n]*?)\b(rev|tag|branch)\s*=\s*"[^"]*"#$1 . pin($2)#ge;
-        s#(atlas-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?)\b(rev|tag|branch)\s*=\s*"[^"]*"([^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?")#$1 . pin($2) . $3#ge;
+        s#(telamon-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?"[^}\n]*?)\b(rev|tag|branch)\s*=\s*"[^"]*"#$1 . pin($2)#ge;
+        s#(telamon-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?)\b(rev|tag|branch)\s*=\s*"[^"]*"([^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?")#$1 . pin($2) . $3#ge;
     ' -- "$@"
 }
 
@@ -98,7 +98,7 @@ if [ "$mode" = lock ]; then
     # The commit the tag names (peeled, for an annotated tag), for rev pins.
     fw_commit=$(git ls-remote https://github.com/EternalCoder454/atlas-framework "refs/tags/$tag" "refs/tags/$tag^{}" |
         sort -k2 | awk 'END { print $1 }')
-    [[ $fw_commit =~ ^[0-9a-f]{40}$ ]] || { echo "atlas-framework has no tag $tag" >&2; exit 1; }
+    [[ $fw_commit =~ ^[0-9a-f]{40}$ ]] || { echo "telamon-framework has no tag $tag" >&2; exit 1; }
     git clone --quiet --depth 1 "$url" "$work/app"
     cd "$work/app"
     base=$(git rev-parse HEAD)
@@ -120,7 +120,7 @@ if [ "$mode" = lock ]; then
         move_pins "${manifests[@]/#/./}"
     fi
     for lock in "${locks[@]}"; do
-        mapfile -t pkgs < <(grep -oE '^name = "atlas-framework-[a-z0-9-]+"' "./$lock" | sed -E 's/.*"(.*)"/\1/' | sort -u)
+        mapfile -t pkgs < <(grep -oE '^name = "telamon-framework-[a-z0-9-]+"' "./$lock" | sed -E 's/.*"(.*)"/\1/' | sort -u)
         [ ${#pkgs[@]} -gt 0 ] || continue
         args=()
         for p in "${pkgs[@]}"; do args+=(-p "$p"); done
@@ -174,8 +174,8 @@ fi
 fw_commit=${FRAMEWORK_COMMIT:-}
 [[ $fw_commit =~ ^[0-9a-f]{40}$ ]] || { echo "FRAMEWORK_COMMIT is not a commit id: $fw_commit" >&2; exit 2; }
 fw_lock=$(dirname -- "$(realpath -- "$0")")/../Cargo.lock
-[ -f "$fw_lock" ] || { echo "no atlas-framework Cargo.lock at $fw_lock" >&2; exit 2; }
-# No lock changed (an app that uses no atlas-framework crate, such as the
+[ -f "$fw_lock" ] || { echo "no telamon-framework Cargo.lock at $fw_lock" >&2; exit 2; }
+# No lock changed (an app that uses no telamon-framework crate, such as the
 # Installer): nothing to open. The artifact upload drops the empty files/, so
 # this is checked before the shape below, from the same two plain files.
 if [ -f "$dir/locks" ] && [ ! -L "$dir/locks" ] && [ ! -s "$dir/locks" ] &&
@@ -222,12 +222,12 @@ while IFS= read -r m; do
     cp "$tmp/manifest" "$tmp/manifest.old"
     move_pins "$tmp/manifest"
     # What the rewrite could not move (an inline table without a pin key, or
-    # a dependency written as its own [dependencies.atlas-framework-x]
+    # a dependency written as its own [dependencies.telamon-framework-x]
     # table): a person has to.
     left=$({
-        grep -nE '^[[:space:]]*atlas-framework-[a-z0-9-]+[[:space:]]*=.*github\.com/EternalCoder454/atlas-framework' "$tmp/manifest" |
+        grep -nE '^[[:space:]]*telamon-framework-[a-z0-9-]+[[:space:]]*=.*github\.com/EternalCoder454/atlas-framework' "$tmp/manifest" |
             grep -vF -e "tag = \"$tag\"" -e "rev = \"$fw_commit\"" || true
-        grep -nE '^[[:space:]]*\[([^]]*\.)?atlas-framework-[a-z0-9-]+\]' "$tmp/manifest" || true
+        grep -nE '^[[:space:]]*\[([^]]*\.)?telamon-framework-[a-z0-9-]+\]' "$tmp/manifest" || true
     })
     if [ -n "$left" ]; then
         left=${left//[[:cntrl:]]/; }
@@ -299,7 +299,7 @@ while IFS= read -r lock; do
     bad=0
     while read -r name version source; do
         shown="${lock//[^A-Za-z0-9 ._\/-]/?}: ${name//[^A-Za-z0-9._-]/?} ${version//[^A-Za-z0-9.+-]/?}"
-        if [[ $name == atlas-framework-* ]]; then
+        if [[ $name == telamon-framework-* ]]; then
             if [ "$source" = "$fw_source" ] || [ "$source" = "$fw_source_git" ] ||
                 [ "$source" = "$fw_source_rev" ] || [ "$source" = "$fw_source_rev_git" ]; then
                 continue
@@ -310,7 +310,7 @@ while IFS= read -r lock; do
             others+=("$shown")
             continue
         fi
-        echo "::error::$repo: the lock job's $shown is not from crates.io or atlas-framework $tag (${source//[^A-Za-z0-9._:\/+#?=-]/?})"
+        echo "::error::$repo: the lock job's $shown is not from crates.io or telamon-framework $tag (${source//[^A-Za-z0-9._:\/+#?=-]/?})"
         bad=1
     done < <(comm -13 <(lock_packages "$tmp/lock.old") <(lock_packages "$file"))
     if [ "$bad" = 1 ]; then
@@ -330,9 +330,9 @@ if [ "$changed" = 0 ]; then
     exit 0
 fi
 tree=$(git write-tree)
-commit=$(GIT_AUTHOR_NAME="atlas-framework release" GIT_AUTHOR_EMAIL=atlas@eterneon.net \
-    GIT_COMMITTER_NAME="atlas-framework release" GIT_COMMITTER_EMAIL=atlas@eterneon.net \
-    git commit-tree "$tree" -p "$base" -m "Move atlas-framework to $tag")
+commit=$(GIT_AUTHOR_NAME="telamon-framework release" GIT_AUTHOR_EMAIL=atlas@eterneon.net \
+    GIT_COMMITTER_NAME="telamon-framework release" GIT_COMMITTER_EMAIL=atlas@eterneon.net \
+    git commit-tree "$tree" -p "$base" -m "Move telamon-framework to $tag")
 # Forced: no pull request uses the branch (checked above), so it can only be
 # left over from a run that failed before opening one. A branch of that name
 # whose tip is not this script's is someone's work and left alone (a guard
@@ -341,7 +341,7 @@ commit=$(GIT_AUTHOR_NAME="atlas-framework release" GIT_AUTHOR_EMAIL=atlas@eterne
 old=$(git ls-remote "$url" "refs/heads/$branch" | cut -f1)
 if [ -n "$old" ]; then
     git fetch --quiet --depth 1 "$url" "$old"
-    if [ "$(git log -1 --format='%an <%ae>' "$old")" != "atlas-framework release <atlas@eterneon.net>" ]; then
+    if [ "$(git log -1 --format='%an <%ae>' "$old")" != "telamon-framework release <atlas@eterneon.net>" ]; then
         echo "::error::$repo already has a branch $branch that the release did not make: nothing pushed"
         exit 1
     fi
@@ -352,15 +352,15 @@ cd /
 if [ ${#others[@]} -eq 0 ]; then
     other_text="Other packages in Cargo.lock: none changed."
 else
-    other_text="Other crates.io packages added or changed in Cargo.lock (check that the new atlas-framework needs them):"
+    other_text="Other crates.io packages added or changed in Cargo.lock (check that the new telamon-framework needs them):"
     for p in "${others[@]}"; do other_text+=$'\n'"- \`$p\`"; done
 fi
 gh pr create --repo "$repo" --head "$branch" \
-    --title "Move atlas-framework to $tag" \
-    --body "atlas-framework $tag was released: https://github.com/EternalCoder454/atlas-framework/releases/tag/$tag
+    --title "Move telamon-framework to $tag" \
+    --body "telamon-framework $tag was released: https://github.com/EternalCoder454/atlas-framework/releases/tag/$tag
 
-This moves every atlas-framework crate to the tag and updates Cargo.lock. Check the release notes for anything the app should adopt, and whether its \`atlas-ui >=\` requirement (spec) or \`ui:\` in \`app!\` should rise with it. Build with \`--locked\`.
+This moves every telamon-framework crate to the tag and updates Cargo.lock. Check the release notes for anything the app should adopt, and whether its \`telamon-ui >=\` requirement (spec) or \`ui:\` in \`app!\` should rise with it. Build with \`--locked\`.
 
 $other_text
 
-Opened by atlas-framework's release workflow."
+Opened by telamon-framework's release workflow."

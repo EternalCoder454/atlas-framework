@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
-// Atlas Gallery: every Material Symbol (copy the QML for one) and every
-// Atlas.Ui control, live.
-AtlasWindow {
+// Telamon Gallery: every Material Symbol (copy the QML for one) and every
+// Telamon.Ui control, live.
+TelamonWindow {
     id: root
 
     // Set from main.cpp.
@@ -17,7 +17,7 @@ AtlasWindow {
 
     property int page: 0
 
-    title: qsTr("Atlas Gallery")
+    title: qsTr("Telamon Gallery")
     width: Kirigami.Units.gridUnit * 64
     height: Kirigami.Units.gridUnit * 38
     minimumWidth: Kirigami.Units.gridUnit * 36
@@ -25,10 +25,10 @@ AtlasWindow {
     visible: true
 
     // Frameless: the header carries the title and the window buttons.
-    header: AtlasHeaderBar {
+    header: TelamonHeaderBar {
         centerTitle: true
         trailing: [
-            AtlasSegmentedControl {
+            TelamonSegmentedControl {
                 Accessible.name: qsTr("Color scheme")
                 model: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
                 onActivated: index => {
@@ -36,11 +36,11 @@ AtlasWindow {
                     root.theme.setScheme(index);
                 }
             },
-            AtlasSegmentedControl {
+            TelamonSegmentedControl {
                 Accessible.name: qsTr("Density")
                 model: [qsTr("Normal"), qsTr("Compact")]
-                currentIndex: AtlasStyle.density
-                onActivated: index => AtlasStyle.density = index
+                currentIndex: TelamonStyle.density
+                onActivated: index => TelamonStyle.density = index
             }
         ]
     }

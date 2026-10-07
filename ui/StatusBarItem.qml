@@ -27,7 +27,7 @@ T.AbstractButton {
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding + (leadingSeparator ? 1 : 0)
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.5)
-    leftPadding: AtlasStyle.spacingLarge
+    leftPadding: TelamonStyle.spacingLarge
     rightPadding: leftPadding
     hoverEnabled: true
     // A clickable cell is a Tab stop; a click doesn't take the editor's focus.
@@ -43,11 +43,11 @@ T.AbstractButton {
             const w = m.width > 0 ? m.width : m.implicitWidth;
             const h = m.height > 0 ? m.height : m.implicitHeight;
             let x = control.mirrored ? control.width - w : 0;
-            let y = -h - AtlasStyle.spacingSmall;
+            let y = -h - TelamonStyle.spacingSmall;
             const win = control.Window.window;
             if (win) {
                 // Keep the menu inside the window, whichever side runs out.
-                const gap = AtlasStyle.spacingSmall;
+                const gap = TelamonStyle.spacingSmall;
                 const at = control.mapToItem(null, x, y);
                 x += Math.max(gap, Math.min(at.x, win.width - w - gap)) - at.x;
                 y += Math.max(gap, Math.min(at.y, win.height - h - gap)) - at.y;
@@ -87,7 +87,7 @@ T.AbstractButton {
     onVisualFocusChanged: if (control.visualFocus) control._ensureTip()
     Component {
         id: tipComponent
-        AtlasToolTip {
+        TelamonToolTip {
             text: control.toolTip
             shown: control.toolTip.length > 0 && (control.hovered || control.visualFocus)
         }
@@ -101,17 +101,17 @@ T.AbstractButton {
             anchors.verticalCenter: parent.verticalCenter
             width: 1
             height: Math.round(parent.height * 0.6)
-            color: AtlasStyle.separator
+            color: TelamonStyle.separator
         }
         Rectangle {
             anchors.fill: parent
             anchors.topMargin: 1
             anchors.bottomMargin: 1
-            anchors.leftMargin: control.leadingSeparator ? AtlasStyle.spacingXSmall : 0
+            anchors.leftMargin: control.leadingSeparator ? TelamonStyle.spacingXSmall : 0
             anchors.rightMargin: 0
-            radius: AtlasStyle.radiusSmall
-            color: !control.clickable ? "transparent" : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
-            AtlasFocusRing {
+            radius: TelamonStyle.radiusSmall
+            color: !control.clickable ? "transparent" : control.down ? TelamonStyle.pressed : control.hovered ? TelamonStyle.hover : "transparent"
+            TelamonFocusRing {
                 radius: parent.radius + gap
                 shown: control.visualFocus
             }
@@ -127,7 +127,7 @@ T.AbstractButton {
         Row {
             id: row
             anchors.centerIn: parent
-            spacing: AtlasStyle.spacingSmall
+            spacing: TelamonStyle.spacingSmall
             // Made only when used, so cells without one never load the fonts.
             Loader {
                 active: control.symbol !== 0
@@ -136,7 +136,7 @@ T.AbstractButton {
                 sourceComponent: Symbol {
                     icon: control.symbol
                     size: Math.round(Kirigami.Units.iconSizes.small * 1.2)
-                    color: AtlasStyle.textMuted
+                    color: TelamonStyle.textMuted
                 }
             }
             Text {
@@ -147,11 +147,11 @@ T.AbstractButton {
                 verticalAlignment: Text.AlignVCenter
                 horizontalAlignment: Text.AlignHCenter
                 text: control.text
-                font.family: AtlasStyle.fontFamily
-                font.pointSize: AtlasStyle.fontSizeCaption
+                font.family: TelamonStyle.fontFamily
+                font.pointSize: TelamonStyle.fontSizeCaption
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
-                color: AtlasStyle.textMuted
+                color: TelamonStyle.textMuted
             }
         }
     }

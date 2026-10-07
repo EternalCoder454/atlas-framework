@@ -128,7 +128,7 @@ Item {
         return matchCount === 0 ? qsTr("No results") : qsTr("%1 of %2").arg(currentMatch).arg(matchCount);
     }
     readonly property bool failed: error.length > 0 || (findText.length > 0 && matchCount === 0)
-    readonly property real fullHeight: card.implicitHeight + AtlasStyle.spacingSmall
+    readonly property real fullHeight: card.implicitHeight + TelamonStyle.spacingSmall
 
     implicitWidth: Kirigami.Units.gridUnit * 30
     implicitHeight: fullHeight
@@ -140,7 +140,7 @@ Item {
 
     Behavior on height {
         NumberAnimation {
-            duration: AtlasStyle.durationShort
+            duration: TelamonStyle.durationShort
             easing.type: Easing.OutCubic
         }
     }
@@ -155,15 +155,15 @@ Item {
 
         implicitWidth: Kirigami.Units.gridUnit * 10
         implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
-        leftPadding: AtlasStyle.spacingLarge + (rtl ? 0 : fieldIcon.visible ? fieldIcon.width + AtlasStyle.spacingSmall : 0) + AtlasStyle.spacingSmall
-        rightPadding: AtlasStyle.spacingLarge + (rtl ? (fieldIcon.visible ? fieldIcon.width + AtlasStyle.spacingSmall : 0) : 0) + AtlasStyle.spacingSmall
+        leftPadding: TelamonStyle.spacingLarge + (rtl ? 0 : fieldIcon.visible ? fieldIcon.width + TelamonStyle.spacingSmall : 0) + TelamonStyle.spacingSmall
+        rightPadding: TelamonStyle.spacingLarge + (rtl ? (fieldIcon.visible ? fieldIcon.width + TelamonStyle.spacingSmall : 0) : 0) + TelamonStyle.spacingSmall
         verticalAlignment: TextInput.AlignVCenter
-        placeholderTextColor: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.5)
+        placeholderTextColor: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.5)
         color: Kirigami.Theme.textColor
-        selectionColor: AtlasStyle.accent
-        selectedTextColor: AtlasStyle.accentText
-        font.family: AtlasStyle.fontFamily
-        font.pointSize: AtlasStyle.fontSizeBody
+        selectionColor: TelamonStyle.accent
+        selectedTextColor: TelamonStyle.accentText
+        font.family: TelamonStyle.fontFamily
+        font.pointSize: TelamonStyle.fontSizeBody
         selectByMouse: true
         inputMethodHints: Qt.ImhNoPredictiveText
         hoverEnabled: true
@@ -171,10 +171,10 @@ Item {
         Accessible.name: placeholderText
 
         background: Rectangle {
-            radius: AtlasStyle.radiusPill
-            color: AtlasStyle.alpha(Kirigami.Theme.textColor, field.hovered && !field.activeFocus ? 0.09 : 0.06)
+            radius: TelamonStyle.radiusPill
+            color: TelamonStyle.alpha(Kirigami.Theme.textColor, field.hovered && !field.activeFocus ? 0.09 : 0.06)
             border.width: field.activeFocus ? 2 : 1
-            border.color: field.activeFocus ? AtlasStyle.alpha(field.invalid ? Kirigami.Theme.negativeTextColor : AtlasStyle.accent, 0.7) : AtlasStyle.alpha(Kirigami.Theme.textColor, 0.1)
+            border.color: field.activeFocus ? TelamonStyle.alpha(field.invalid ? Kirigami.Theme.negativeTextColor : TelamonStyle.accent, 0.7) : TelamonStyle.alpha(Kirigami.Theme.textColor, 0.1)
         }
 
         // A template field draws no placeholder of its own.
@@ -193,7 +193,7 @@ Item {
         Kirigami.Icon {
             id: fieldIcon
             visible: field.icon.length > 0
-            x: field.rtl ? field.width - width - AtlasStyle.spacingLarge : AtlasStyle.spacingLarge
+            x: field.rtl ? field.width - width - TelamonStyle.spacingLarge : TelamonStyle.spacingLarge
             anchors.verticalCenter: parent.verticalCenter
             width: Kirigami.Units.iconSizes.small
             height: width
@@ -207,20 +207,20 @@ Item {
     Rectangle {
         id: card
         width: parent.width
-        implicitHeight: column.implicitHeight + AtlasStyle.spacingSmall * 2
-        radius: AtlasStyle.radiusLarge
+        implicitHeight: column.implicitHeight + TelamonStyle.spacingSmall * 2
+        radius: TelamonStyle.radiusLarge
         color: Kirigami.Theme.backgroundColor.hslLightness > 0.5 ? Qt.lighter(Kirigami.Theme.backgroundColor, 1.5) : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.06))
         border.width: 1
-        border.color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.12)
+        border.color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.12)
 
         ColumnLayout {
             id: column
             anchors.fill: parent
-            anchors.margins: AtlasStyle.spacingSmall
-            spacing: AtlasStyle.spacingSmall
+            anchors.margins: TelamonStyle.spacingSmall
+            spacing: TelamonStyle.spacingSmall
 
             RowLayout {
-                spacing: AtlasStyle.spacingSmall
+                spacing: TelamonStyle.spacingSmall
 
                 ToolbarButton {
                     id: chevron
@@ -259,8 +259,8 @@ Item {
                     text: control.countText
                     elide: Text.ElideRight
                     textFormat: Text.PlainText
-                    font.family: AtlasStyle.fontFamily
-                    font.pointSize: AtlasStyle.fontSizeCaption
+                    font.family: TelamonStyle.fontFamily
+                    font.pointSize: TelamonStyle.fontSizeCaption
                     horizontalAlignment: Text.AlignHCenter
                     color: control.failed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
                     opacity: control.failed ? 1 : 0.7
@@ -336,7 +336,7 @@ Item {
 
             RowLayout {
                 visible: control.replaceVisible
-                spacing: AtlasStyle.spacingSmall
+                spacing: TelamonStyle.spacingSmall
 
                 // Lines the field up under the find field.
                 Item {
@@ -381,8 +381,8 @@ Item {
     component TypeMark: Text {
         property bool on: false
         anchors.centerIn: parent
-        font.family: AtlasStyle.fontFamily
-        font.pointSize: AtlasStyle.fontSizeBody
+        font.family: TelamonStyle.fontFamily
+        font.pointSize: TelamonStyle.fontSizeBody
         font.weight: Font.Medium
         textFormat: Text.PlainText
         color: Kirigami.Theme.textColor

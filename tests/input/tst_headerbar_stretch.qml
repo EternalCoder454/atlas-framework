@@ -1,22 +1,22 @@
 import QtQuick
 import QtQuick.Layouts
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasHeaderBar.stretch and showTitle.
+// TelamonHeaderBar.stretch and showTitle.
 Item {
     id: root
     width: 800
     height: 100
 
-    AtlasAction {
+    TelamonAction {
         id: act
         text: "Save"
         symbol: Symbols.Save
     }
     Component {
         id: barComp
-        AtlasHeaderBar {
+        TelamonHeaderBar {
             id: bar
             property alias filler: filler
             property alias tail: tail
@@ -41,7 +41,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasHeaderBarStretch"
+        name: "TelamonHeaderBarStretch"
         when: windowShown
 
         function test_stretch_takes_the_free_width() {

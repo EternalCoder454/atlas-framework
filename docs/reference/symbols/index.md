@@ -4,17 +4,17 @@ summary: Google's Material Symbols as fonts, drawn with the Symbol type and name
 order: 2
 ---
 
-Atlas apps draw their icons with Google's Material Symbols: about 4,000 icons in three styles (Outlined, Rounded and Sharp), each as a variable font. [Symbol](../atlas-ui/symbol.md) draws one, tinted like text, and [Symbols](../atlas-ui/symbols.md) is the singleton that holds every icon's value. Buttons, sidebar items and menu items take a `symbol:` property that is a `Symbols.<Name>`.
+Telamon apps draw their icons with Google's Material Symbols: about 4,000 icons in three styles (Outlined, Rounded and Sharp), each as a variable font. [Symbol](../telamon-ui/symbol.md) draws one, tinted like text, and [Symbols](../telamon-ui/symbols.md) is the singleton that holds every icon's value. Buttons, sidebar items and menu items take a `symbol:` property that is a `Symbols.<Name>`.
 
 ## Example
 
 ```qml
 import QtQuick
-import Atlas.Ui
+import Telamon.Ui
 
 Row {
     Symbol { icon: Symbols.Settings }
-    Symbol { icon: Symbols.Favorite; filled: true; color: AtlasStyle.error }
+    Symbol { icon: Symbols.Favorite; filled: true; color: TelamonStyle.error }
     Symbol { name: "arrow_back"; style: Symbol.Sharp; size: 24; weight: 300 }
     PrimaryButton { text: qsTr("Share"); symbol: Symbols.Share }
 }
@@ -30,18 +30,18 @@ Row {
 
 There are thousands, so look one up rather than guess:
 
-- Run the [Atlas Gallery](gallery.md): search, pick a style, fill and weight, then press Copy QML.
+- Run the [Telamon Gallery](gallery.md): search, pick a style, fill and weight, then press Copy QML.
 - Browse <https://fonts.google.com/icons> and convert the name as above.
-- Search `api/symbols.txt` in the atlas-framework repository, which lists every `Symbols.<Name>` value.
+- Search `api/symbols.txt` in the telamon-framework repository, which lists every `Symbols.<Name>` value.
 
 ## Fonts and licence
 
-The fonts are Google's Material Symbols, under the Apache License 2.0 (the rest of Atlas Framework is MIT). Two packages carry them, both installed to `/usr/share/fonts/atlas-symbols` and found through fontconfig:
+The fonts are Google's Material Symbols, under the Apache License 2.0 (the rest of Telamon Framework is MIT). Two packages carry them, both installed to `/usr/share/fonts/telamon-symbols` and found through fontconfig:
 
 | Package | Contents |
 |---|---|
-| `atlas-symbols-fonts` | Rounded, the default and the only style Atlas.Ui's own controls use. `atlas-ui` requires it. |
-| `atlas-symbols-fonts-extra` | Outlined and Sharp. The gallery recommends it. |
+| `telamon-symbols-fonts` | Rounded, the default and the only style Telamon.Ui's own controls use. `telamon-ui` requires it. |
+| `telamon-symbols-fonts-extra` | Outlined and Sharp. The gallery recommends it. |
 
 A Symbol that asks for a style that is not installed draws blank and logs one warning. `Symbols.available(style)` tells whether a style is installed, without a warning. Unused styles cost no memory: a font is only mapped once something draws with it.
 
@@ -58,22 +58,22 @@ A Symbol that asks for a style that is not installed draws blank and logs one wa
 | `size` | Width and height in pixels; the default is `Kirigami.Units.iconSizes.smallMedium`. |
 | `color` | The tint; the default is the theme's text colour. |
 
-See the [Symbol](../atlas-ui/symbol.md) page for the full list.
+See the [Symbol](../telamon-ui/symbol.md) page for the full list.
 
 ## Filled or outline
 
-Only the selected item of a navigation control (a sidebar entry, tab bar or view switcher tab) turns solid with `filled`. Everything else, selected or not, uses the outline. Controls from Atlas.Ui do this already; follow the same rule in an app's own navigation.
+Only the selected item of a navigation control (a sidebar entry, tab bar or view switcher tab) turns solid with `filled`. Everything else, selected or not, uses the outline. Controls from Telamon.Ui do this already; follow the same rule in an app's own navigation.
 
 ## Size, colour and weight
 
 - Size: the optical size follows the drawn size (between 20 and 48), so small symbols get the sturdier strokes the font draws for them. Use the default for inline icons and `Kirigami.Units.iconSizes` values for others, not arbitrary pixels.
-- Colour: a Symbol is tinted like text. Use `AtlasStyle` colours or `Kirigami.Theme` colours and never hard-code one, so light, dark and the user's accent all work.
-- Accessibility: a Symbol is decorative and screen readers skip it, so give the control around it an accessible name. See [Accessibility](../atlas-ui/accessibility.md).
+- Colour: a Symbol is tinted like text. Use `TelamonStyle` colours or `Kirigami.Theme` colours and never hard-code one, so light, dark and the user's accent all work.
+- Accessibility: a Symbol is decorative and screen readers skip it, so give the control around it an accessible name. See [Accessibility](../telamon-ui/accessibility.md).
 
 ## Right to left
 
-A Symbol is never mirrored by itself. Where an app picks a directional icon (a back arrow, a chevron), it chooses the left or right one from `LayoutMirroring.enabled` or the control's `mirrored`, as [AtlasBreadcrumb](../atlas-ui/atlas-breadcrumb.md) does for its chevrons.
+A Symbol is never mirrored by itself. Where an app picks a directional icon (a back arrow, a chevron), it chooses the left or right one from `LayoutMirroring.enabled` or the control's `mirrored`, as [TelamonBreadcrumb](../telamon-ui/telamon-breadcrumb.md) does for its chevrons.
 
 ## Updating the fonts
 
-`ui/symbols/generate.py` rewrites the name table from a download from fonts.google.com. Google sometimes renames or removes an icon; the script keeps the older names as aliases for `name:`, but a removed `Symbols.<Name>` value is an API break (see [Compatibility](../atlas-ui/compatibility.md)).
+`ui/symbols/generate.py` rewrites the name table from a download from fonts.google.com. Google sometimes renames or removes an icon; the script keeps the older names as aliases for `name:`, but a removed `Symbols.<Name>` value is an API break (see [Compatibility](../telamon-ui/compatibility.md)).

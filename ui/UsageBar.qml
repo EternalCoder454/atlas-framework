@@ -24,7 +24,7 @@ ColumnLayout {
     // The whole bar. 0 means the sum of `values`.
     property real total: 0
     // One colour per part; parts past the list get the last colour faded.
-    property list<color> colors: [AtlasStyle.accent, AtlasStyle.alpha(AtlasStyle.accent, 0.45)]
+    property list<color> colors: [TelamonStyle.accent, TelamonStyle.alpha(TelamonStyle.accent, 0.45)]
     property list<string> labels
     // What the legend shows after each label, already formatted.
     property list<string> texts
@@ -39,7 +39,7 @@ ColumnLayout {
         return s;
     }
     readonly property real whole: total > 0 ? total : sum
-    readonly property color trackColor: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.1)
+    readonly property color trackColor: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.1)
 
     // Mirrored, the bar fills from the right.
     readonly property bool mirrored: LayoutMirroring.enabled
@@ -48,10 +48,10 @@ ColumnLayout {
         if (i < colors.length) {
             return colors[i];
         }
-        return AtlasStyle.alpha(colors.length > 0 ? colors[colors.length - 1] : AtlasStyle.accent, 0.25);
+        return TelamonStyle.alpha(colors.length > 0 ? colors[colors.length - 1] : TelamonStyle.accent, 0.25);
     }
 
-    spacing: AtlasStyle.spacingSmall
+    spacing: TelamonStyle.spacingSmall
     Layout.fillWidth: true
     LayoutMirroring.childrenInherit: true
 
@@ -71,7 +71,7 @@ ColumnLayout {
 
         Rectangle {
             anchors.fill: parent
-            radius: AtlasStyle.radiusPill
+            radius: TelamonStyle.radiusPill
             color: root.trackColor
         }
 
@@ -115,7 +115,7 @@ ColumnLayout {
     Flow {
         visible: root.legend
         Layout.fillWidth: true
-        spacing: AtlasStyle.spacingLarge * 2
+        spacing: TelamonStyle.spacingLarge * 2
 
         Repeater {
             model: root.labels.length
@@ -123,27 +123,27 @@ ColumnLayout {
             Row {
                 id: key
                 required property int index
-                spacing: AtlasStyle.spacingSmall
+                spacing: TelamonStyle.spacingSmall
 
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     width: Kirigami.Units.gridUnit * 0.6
                     height: width
                     radius: width / 2
-                    color: key.index < root.values.length ? root.colorAt(key.index) : AtlasStyle.alpha(Kirigami.Theme.textColor, 0.2)
+                    color: key.index < root.values.length ? root.colorAt(key.index) : TelamonStyle.alpha(Kirigami.Theme.textColor, 0.2)
                 }
                 QQC2.Label {
                     text: root.labels[key.index]
                     opacity: 0.7
-                    font.family: AtlasStyle.fontFamily
-                    font.pointSize: AtlasStyle.fontSizeCaption
+                    font.family: TelamonStyle.fontFamily
+                    font.pointSize: TelamonStyle.fontSizeCaption
                     textFormat: Text.PlainText
                 }
                 QQC2.Label {
                     visible: text.length > 0
                     text: key.index < root.texts.length ? root.texts[key.index] : ""
-                    font.family: AtlasStyle.fontFamily
-                    font.pointSize: AtlasStyle.fontSizeCaption
+                    font.family: TelamonStyle.fontFamily
+                    font.pointSize: TelamonStyle.fontSizeCaption
                     textFormat: Text.PlainText
                 }
             }

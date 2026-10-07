@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
 Item {
     id: root
@@ -166,7 +166,7 @@ Item {
         function test_compact_density_shrinks_rows() {
             const t = make();
             const normal = t.rowHeight;
-            t.density = AtlasStyle.Compact;
+            t.density = TelamonStyle.Compact;
             verify(t.rowHeight < normal);
         }
     }

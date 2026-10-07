@@ -4,9 +4,9 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
-// Every Atlas.Ui control, live. The list on the left is the demos bundled in
+// Every Telamon.Ui control, live. The list on the left is the demos bundled in
 // the gallery (ui/gallery/demos), grouped here; a demo this list does not know
 // lands in "Other". The same demos are the visual tests' scenes.
 Item {
@@ -17,53 +17,53 @@ Item {
     required property var catalog
     required property color panelColor
 
-    property string selected: "AtlasButton"
+    property string selected: "TelamonButton"
     property bool disabled: false
 
     readonly property var groups: [
         {
             title: qsTr("Buttons"),
-            types: ["AtlasButton", "PrimaryButton", "SecondaryButton", "TextButton", "ToolbarButton", "MenuButton", "AtlasInstallButton", "AtlasSplitButton", "AtlasCopyButton", "AtlasSegmentedControl", "AtlasToolbar", "AtlasFloatingToolbar"]
+            types: ["TelamonButton", "PrimaryButton", "SecondaryButton", "TextButton", "ToolbarButton", "MenuButton", "TelamonInstallButton", "TelamonSplitButton", "TelamonCopyButton", "TelamonSegmentedControl", "TelamonToolbar", "TelamonFloatingToolbar"]
         },
         {
             title: qsTr("Inputs"),
-            types: ["AtlasTextField", "AtlasPasswordField", "AtlasPasswordStrength", "AtlasTextArea", "SearchField", "AtlasSpinBox", "AtlasDoubleSpinBox", "AtlasSlider", "AtlasAutocompleteField", "AtlasFileField", "AtlasShortcutField", "AtlasDropZone"]
+            types: ["TelamonTextField", "TelamonPasswordField", "TelamonPasswordStrength", "TelamonTextArea", "SearchField", "TelamonSpinBox", "TelamonDoubleSpinBox", "TelamonSlider", "TelamonAutocompleteField", "TelamonFileField", "TelamonShortcutField", "TelamonDropZone"]
         },
         {
             title: qsTr("Pickers"),
-            types: ["AtlasComboBox", "AtlasDatePicker", "AtlasTimePicker", "AtlasCalendar", "AtlasColorField", "AtlasFontPicker"]
+            types: ["TelamonComboBox", "TelamonDatePicker", "TelamonTimePicker", "TelamonCalendar", "TelamonColorField", "TelamonFontPicker"]
         },
         {
             title: qsTr("Selection"),
-            types: ["AtlasCheckBox", "AtlasRadioButton", "AtlasSwitch", "AtlasTransparencySwitch", "AtlasRating", "AtlasChip", "AtlasChoiceCard", "AtlasAccentPicker"]
+            types: ["TelamonCheckBox", "TelamonRadioButton", "TelamonSwitch", "TelamonTransparencySwitch", "TelamonRating", "TelamonChip", "TelamonChoiceCard", "TelamonAccentPicker"]
         },
         {
             title: qsTr("Lists and tables"),
-            types: ["AtlasListView", "AtlasTreeView", "DataTable", "AtlasIconGrid", "AtlasSearchResults", "AtlasScrollBar", "AtlasFlowLayout"]
+            types: ["TelamonListView", "TelamonTreeView", "DataTable", "TelamonIconGrid", "TelamonSearchResults", "TelamonScrollBar", "TelamonFlowLayout"]
         },
         {
             title: qsTr("Navigation and layout"),
-            types: ["SidebarItem", "SidebarGroup", "AtlasSidebar", "TabBar", "AtlasViewSwitcher", "AtlasBreadcrumb", "AtlasNavigationStack", "AtlasSplitView", "ContextMenu", "FindBar", "StepItem", "AtlasCommandPalette", "AtlasExpandableSection"]
+            types: ["SidebarItem", "SidebarGroup", "TelamonSidebar", "TabBar", "TelamonViewSwitcher", "TelamonBreadcrumb", "TelamonNavigationStack", "TelamonSplitView", "ContextMenu", "FindBar", "StepItem", "TelamonCommandPalette", "TelamonExpandableSection"]
         },
         {
             title: qsTr("Windows and dialogs"),
-            types: ["AtlasWindow", "AtlasWindowButtons", "AtlasHeaderBar", "AtlasPage", "AtlasAboutPage", "AtlasDialog", "AtlasPreferencesDialog", "AtlasPreferencesPage", "ConfirmDialog", "AtlasPopover", "AtlasOnboarding", "AtlasShortcutsDialog", "StatusBar"]
+            types: ["TelamonWindow", "TelamonWindowButtons", "TelamonHeaderBar", "TelamonPage", "TelamonAboutPage", "TelamonDialog", "TelamonPreferencesDialog", "TelamonPreferencesPage", "ConfirmDialog", "TelamonPopover", "TelamonOnboarding", "TelamonShortcutsDialog", "StatusBar"]
         },
         {
             title: qsTr("Feedback and status"),
-            types: ["AtlasProgressBar", "AtlasSpinner", "InfoBanner", "Toast", "AtlasToolTip", "UsageBar", "AtlasPlaceholder", "AtlasEmptyState", "AtlasStatus", "AtlasBadge", "StatusHero"]
+            types: ["TelamonProgressBar", "TelamonSpinner", "InfoBanner", "Toast", "TelamonToolTip", "UsageBar", "TelamonPlaceholder", "TelamonEmptyState", "TelamonStatus", "TelamonBadge", "StatusHero"]
         },
         {
             title: qsTr("Data display"),
-            types: ["LiveChart", "MiniBars", "AtlasSparkline", "AtlasStat", "AtlasDetailGrid", "AtlasAppCard", "AtlasShelf", "AtlasCard", "AtlasScreenshotCarousel", "AtlasAvatar"]
+            types: ["LiveChart", "MiniBars", "TelamonSparkline", "TelamonStat", "TelamonDetailGrid", "TelamonAppCard", "TelamonShelf", "TelamonCard", "TelamonScreenshotCarousel", "TelamonAvatar"]
         },
         {
             title: qsTr("Text"),
-            types: ["AtlasLabel", "NotesText", "AtlasCodeView", "AtlasShortcutLabel"]
+            types: ["TelamonLabel", "NotesText", "TelamonCodeView", "TelamonShortcutLabel"]
         },
         {
             title: qsTr("Style and services"),
-            types: ["AtlasStyle", "AtlasFormat", "AtlasAction", "AtlasActionCollection", "AtlasValidators", "Section", "SectionRow", "AtlasForm", "AtlasFormEntry", "Symbol", "AtlasFocusRing"]
+            types: ["TelamonStyle", "TelamonFormat", "TelamonAction", "TelamonActionCollection", "TelamonValidators", "Section", "SectionRow", "TelamonForm", "TelamonFormEntry", "Symbol", "TelamonFocusRing"]
         }
     ]
 
@@ -93,7 +93,7 @@ Item {
         return out;
     }
     readonly property string snippet: root.catalog.snippets[selected] ?? (selected + " {}")
-    // The loaded demo: an Item, or (AtlasWindowDemo) a window.
+    // The loaded demo: an Item, or (TelamonWindowDemo) a window.
     readonly property var demo: loader.item
     readonly property bool isWindow: demo !== null && demo.hasOwnProperty("visibility")
 
@@ -128,7 +128,7 @@ Item {
 
             section.property: "group"
             section.criteria: ViewSection.FullString
-            // atlas-lint: allow the gallery shows Kirigami.Heading as is
+            // telamon-lint: allow the gallery shows Kirigami.Heading as is
             section.delegate: Kirigami.Heading {
                 required property string section
                 width: ListView.view.width
@@ -158,7 +158,7 @@ Item {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.largeSpacing
 
-                // atlas-lint: allow the gallery shows Kirigami.Heading as is
+                // telamon-lint: allow the gallery shows Kirigami.Heading as is
                 Kirigami.Heading {
                     Layout.fillWidth: true
                     level: 2
@@ -168,7 +168,7 @@ Item {
                 QQC2.Label {
                     text: qsTr("Disabled")
                 }
-                AtlasSwitch {
+                TelamonSwitch {
                     checked: root.disabled
                     onToggled: root.disabled = checked
                     Accessible.name: qsTr("Disabled")
@@ -190,8 +190,8 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 12 // atlas-lint: allow-raw gallery card shape
-                color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.04)
+                radius: 12 // telamon-lint: allow-raw gallery card shape
+                color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.04)
                 clip: true
 
                 Flickable {
@@ -213,7 +213,7 @@ Item {
                         Loader {
                             id: loader
                             enabled: !root.disabled
-                            source: "qrc:/net/eterneon/atlas/symbols/demos/" + root.selected + "Demo.qml"
+                            source: "qrc:/net/eterneon/telamon/symbols/demos/" + root.selected + "Demo.qml"
                             onLoaded: {
                                 if (root.demo.animate !== undefined)
                                     root.demo.animate = true;
@@ -236,7 +236,7 @@ Item {
                 }
             }
 
-            AtlasCodeView {
+            TelamonCodeView {
                 Layout.fillWidth: true
                 text: root.snippet
                 maximumHeight: Kirigami.Units.gridUnit * 12

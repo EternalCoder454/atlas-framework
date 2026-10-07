@@ -1,9 +1,9 @@
-// AtlasSettings (ui/atlassettings.cpp) and AtlasPortal's URL and notification
-// rules (ui/atlasportal.cpp), compiled into the test. Every test runs in a
+// TelamonSettings (ui/telamonsettings.cpp) and TelamonPortal's URL and notification
+// rules (ui/telamonportal.cpp), compiled into the test. Every test runs in a
 // temporary XDG_CONFIG_HOME: the real config directory is never touched.
 // Nothing here opens a URL or talks to a notification server.
-#include "atlasportal.h"
-#include "atlassettings.h"
+#include "telamonportal.h"
+#include "telamonsettings.h"
 
 #include <KConfig>
 #include <KConfigGroup>
@@ -58,11 +58,11 @@ class TestSettings : public QObject
     Q_OBJECT
     QTemporaryDir m_dir;
     QTemporaryDir m_files; // files for the URL tests: init() empties m_dir
-    QString rc() const { return m_dir.filePath(QStringLiteral("atlas-testerrc")); }
+    QString rc() const { return m_dir.filePath(QStringLiteral("telamon-testerrc")); }
 
-    std::unique_ptr<AtlasSettings> make(const QString &group, const QString &fileName = QString())
+    std::unique_ptr<TelamonSettings> make(const QString &group, const QString &fileName = QString())
     {
-        auto s = std::make_unique<AtlasSettings>();
+        auto s = std::make_unique<TelamonSettings>();
         s->setGroup(group);
         s->setFileName(fileName);
         s->componentComplete();
@@ -75,7 +75,7 @@ private Q_SLOTS:
         g_previous = qInstallMessageHandler(quiet);
         QVERIFY(m_dir.isValid() && m_files.isValid());
         qputenv("XDG_CONFIG_HOME", m_dir.path().toUtf8());
-        QGuiApplication::setDesktopFileName(QStringLiteral("net.eterneon.atlas.tester"));
+        QGuiApplication::setDesktopFileName(QStringLiteral("net.eterneon.telamon.tester"));
     }
     void cleanupTestCase() { qInstallMessageHandler(g_previous); }
     void init()
@@ -96,21 +96,118 @@ private Q_SLOTS:
     {
         QTest::addColumn<QString>("id");
         QTest::addColumn<QString>("name");
-        QTest::newRow("updater") << "net.eterneon.atlas.updater" << "atlas-updater";
-        QTest::newRow("upper") << "net.eterneon.atlas.Monitor" << "atlas-monitor";
-        QTest::newRow("slash") << "net.eterneon.atlas.a/b c" << "atlas-a_b_c";
-        QTest::newRow("empty") << "" << "atlas-app";
-        QTest::newRow("prefix") << "x.atlas-notes" << "atlas-notes";
-        QTest::newRow("prefix upper") << "x.Atlas-Notes" << "atlas-notes";
-        QTest::newRow("dotdot") << "x.." << "atlas-app";
-        QTest::newRow("astral") << QString::fromUtf8("x.\xF0\x9F\x98\x80") << "atlas-_";
-        QTest::newRow("long") << ("x." + QString(100, QLatin1Char('a'))) << ("atlas-" + QString(58, QLatin1Char('a')));
+        QTest::newRow("updater") << "net.eterneon.telamon.updater" << "telamon-updater";
+        QTest::newRow("upper") << "net.eterneon.telamon.Monitor" << "telamon-monitor";
+        QTest::newRow("slash") << "net.eterneon.telamon.a/b c" << "telamon-a_b_c";
+        QTest::newRow("empty") << "" << "telamon-app";
+        QTest::newRow("prefix") << "x.telamon-notes" << "telamon-notes";
+        QTest::newRow("prefix upper") << "x.Telamon-Notes" << "telamon-notes";
+        QTest::newRow("dotdot") << "x.." << "telamon-app";
+        QTest::newRow("astral") << QString::fromUtf8("x.\xF0\x9F\x98\x80") << "telamon-_";
+        QTest::newRow("long") << ("x." + QString(100, QLatin1Char('a'))) << ("telamon-" + QString(56, QLatin1Char('a')));
+        // An ID that still has the old brand names the file the same way.
+        QTest::newRow("old brand") << "net.eterneon.atlas.updater" << "telamon-updater";
+        QTest::newRow("old prefix") << "x.atlas-notes" << "telamon-notes";
+        QTest::newRow("old prefix upper") << "x.Atlas-Notes" << "telamon-notes";
     }
     void shortName()
     {
         QFETCH(QString, id);
         QFETCH(QString, name);
-        QCOMPARE(AtlasSettings::shortName(id), name);
+        QCOMPARE(TelamonSettings::shortName(id), name);
+    }
+
+    void legacyShortName_data()
+    {
+        QTest::addColumn<QString>("id");
+        QTest::addColumn<QString>("name");
+        QTest::newRow("atlas id") << "net.eterneon.atlas.updater" << "atlas-updater";
+        QTest::newRow("telamon id") << "net.eterneon.telamon.updater" << "atlas-updater";
+        QTest::newRow("upper") << "net.eterneon.atlas.Monitor" << "atlas-monitor";
+        QTest::newRow("slash") << "net.eterneon.atlas.a/b c" << "atlas-a_b_c";
+        QTest::newRow("empty") << "" << "atlas-app";
+        QTest::newRow("prefix") << "x.atlas-notes" << "atlas-notes";
+        QTest::newRow("long") << ("x." + QString(100, QLatin1Char('a'))) << ("atlas-" + QString(58, QLatin1Char('a')));
+    }
+    void legacyShortName()
+    {
+        QFETCH(QString, id);
+        QFETCH(QString, name);
+        QCOMPARE(TelamonSettings::legacyShortName(id), name);
+    }
+
+    // A file framework 1.x wrote (atlas-<app>rc, [Atlas] Format=1) is copied to the
+    // new name the first time, with the group renamed; the old file stays.
+    void adoptsTheFileOfOneX()
+    {
+        const QString old = m_dir.filePath(QStringLiteral("atlas-testerrc"));
+        writeAll(old, QStringLiteral("[Atlas]\nFormat=1\n\n[View]\nSide=left\nWidth=321\n"));
+        QFile::setPermissions(old, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+        auto s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side")).toString(), QStringLiteral("left"));
+        QCOMPARE(s->value(QStringLiteral("Width")).toInt(), 321);
+        QCOMPARE(readAll(rc()), QStringLiteral("[Telamon]\nFormat=1\n\n[View]\nSide=left\nWidth=321\n"));
+        QCOMPARE(int(QFileInfo(rc()).permissions()), int(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadUser | QFileDevice::WriteUser));
+        QVERIFY(QFileInfo::exists(old));
+        // The new file is the app's now: a change in it stays, and a later change of the
+        // old one (an app of 1.x still writing it) is not copied again.
+        QVERIFY(s->setValue(QStringLiteral("Side"), QStringLiteral("right")));
+        QVERIFY(s->flush());
+        writeAll(old, QStringLiteral("[View]\nSide=top\n"));
+        auto again = make(QStringLiteral("View"));
+        QCOMPARE(again->value(QStringLiteral("Side")).toString(), QStringLiteral("right"));
+        // No stray temp file.
+        QStringList names = QDir(m_dir.path()).entryList(QDir::Files | QDir::Hidden);
+        names.removeAll(QStringLiteral(".telamon-testerrc.lock"));
+        names.sort();
+        QCOMPARE(names, (QStringList{QStringLiteral("atlas-testerrc"), QStringLiteral("telamon-testerrc")}));
+    }
+    void adoptionNeedsAPlainFileAndLeavesALinkAlone()
+    {
+        // No old file: no new file either.
+        auto s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side"), QStringLiteral("dflt")).toString(), QStringLiteral("dflt"));
+        QVERIFY(!QFileInfo::exists(rc()));
+        // An old directory, or a file over 4 MB, is not a settings file.
+        QVERIFY(QDir(m_dir.path()).mkdir(QStringLiteral("atlas-testerrc")));
+        s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side"), QStringLiteral("dflt")).toString(), QStringLiteral("dflt"));
+        QVERIFY(!QFileInfo::exists(rc()));
+        QDir(m_dir.path()).rmdir(QStringLiteral("atlas-testerrc"));
+        // A link at the new name counts as present, even a dangling one.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-testerrc")), QStringLiteral("[View]\nSide=left\n"));
+        QVERIFY(QFile::link(QStringLiteral("elsewhere"), rc()));
+        s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side"), QStringLiteral("dflt")).toString(), QStringLiteral("dflt"));
+        QVERIFY(!QFileInfo::exists(m_dir.filePath(QStringLiteral("elsewhere"))));
+    }
+    void adoptsThroughALinkedOldFileAndKeepsOddBytes()
+    {
+        const QString real = m_dir.filePath(QStringLiteral("dotfiles-rc"));
+        QFile f(real);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("[Atlas]\nFormat=1\n# \xff\xfe\n[View]\nSide=left\n");
+        f.close();
+        QVERIFY(QFile::link(real, m_dir.filePath(QStringLiteral("atlas-testerrc"))));
+        auto s = make(QStringLiteral("View"));
+        QCOMPARE(s->value(QStringLiteral("Side")).toString(), QStringLiteral("left"));
+        QVERIFY(!QFileInfo(rc()).isSymLink());
+        // Not UTF-8: copied as it is.
+        QFile out(rc());
+        QVERIFY(out.open(QIODevice::ReadOnly));
+        QCOMPARE(out.readAll(), QByteArray("[Atlas]\nFormat=1\n# \xff\xfe\n[View]\nSide=left\n"));
+    }
+    void adoptsALegacyNamedFileToo()
+    {
+        // fileName set by the app: telamon-xrc takes atlas-xrc.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-extrarc")), QStringLiteral("[Atlas]\nSchemaVersion=2\n[G]\nK=v\n"));
+        auto s = make(QStringLiteral("G"), QStringLiteral("telamon-extrarc"));
+        QCOMPARE(s->value(QStringLiteral("K")).toString(), QStringLiteral("v"));
+        QCOMPARE(readAll(m_dir.filePath(QStringLiteral("telamon-extrarc"))), QStringLiteral("[Telamon]\nSchemaVersion=2\n[G]\nK=v\n"));
+        // A name with no telamon- prefix has no old name to look for.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-otherrc")), QStringLiteral("[G]\nK=old\n"));
+        s = make(QStringLiteral("G"), QStringLiteral("otherrc"));
+        QCOMPARE(s->value(QStringLiteral("K"), QStringLiteral("dflt")).toString(), QStringLiteral("dflt"));
     }
 
     void names_data()
@@ -141,9 +238,9 @@ private Q_SLOTS:
         QFETCH(bool, group);
         QFETCH(bool, key);
         QFETCH(bool, file);
-        QCOMPARE(AtlasSettings::validGroup(text), group);
-        QCOMPARE(AtlasSettings::validKey(text), key);
-        QCOMPARE(AtlasSettings::validFileName(text), file);
+        QCOMPARE(TelamonSettings::validGroup(text), group);
+        QCOMPARE(TelamonSettings::validKey(text), key);
+        QCOMPARE(TelamonSettings::validFileName(text), file);
     }
 
     void roundTrip()
@@ -188,21 +285,21 @@ private Q_SLOTS:
         QCOMPARE(s->value(QStringLiteral("Nope"), QStringLiteral("d")), QVariant(QStringLiteral("d")));
         QVERIFY(!s->contains(QStringLiteral("Nope")));
         const QString text = readAll(rc());
-        QVERIFY2(text.contains(QStringLiteral("[Atlas]\nFormat=1")), qPrintable(text));
+        QVERIFY2(text.contains(QStringLiteral("[Telamon]\nFormat=1")), qPrintable(text));
         // Removal.
         QVERIFY(s->remove(QStringLiteral("Hidden")));
         QVERIFY(!s->contains(QStringLiteral("Hidden")));
         QVERIFY(s->flush());
         QVERIFY(!make(QStringLiteral("View"))->contains(QStringLiteral("Hidden")));
         // Mode: owner-only lock file beside it, like the Rust crate's.
-        const QFileInfo lock(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock")));
+        const QFileInfo lock(m_dir.filePath(QStringLiteral(".telamon-testerrc.lock")));
         QVERIFY(lock.exists());
         QCOMPARE(lock.permissions() & (QFile::ReadGroup | QFile::WriteGroup | QFile::ReadOther | QFile::WriteOther), QFileDevice::Permissions());
     }
 
     void keepsForeignContent()
     {
-        writeAll(rc(), QStringLiteral("# my comment\n[Atlas]\nFormat=7\n\n[Other]\nKey=1\n\n[View]\nFromRust=yes\n"));
+        writeAll(rc(), QStringLiteral("# my comment\n[Telamon]\nFormat=7\n\n[Other]\nKey=1\n\n[View]\nFromRust=yes\n"));
         auto s = make(QStringLiteral("View"));
         QCOMPARE(s->value(QStringLiteral("FromRust"), QString()), QVariant(QStringLiteral("yes")));
         QVERIFY(s->setValue(QStringLiteral("Mine"), 1));
@@ -220,7 +317,7 @@ private Q_SLOTS:
         auto s = make(QStringLiteral("View"));
         QVERIFY(s->setValue(QStringLiteral("Mine"), 1));
         QVERIFY(s->flush());
-        QSignalSpy spy(s.get(), &AtlasSettings::changed);
+        QSignalSpy spy(s.get(), &TelamonSettings::changed);
         {
             // Another writer (as the Rust crate does it: whole-file replace).
             QString text = readAll(rc());
@@ -339,7 +436,7 @@ private Q_SLOTS:
         writeAll(victim, QStringLiteral("[View]\nA=1\n"));
         QVERIFY(QFile::link(victim, rc()));
         QString why;
-        QVERIFY(AtlasSettings::resolve(m_dir.path(), QStringLiteral("atlas-testerrc"), &why).isEmpty());
+        QVERIFY(TelamonSettings::resolve(m_dir.path(), QStringLiteral("telamon-testerrc"), &why).isEmpty());
         QVERIFY(!why.isEmpty());
         auto s = make(QStringLiteral("View"));
         QCOMPARE(s->value(QStringLiteral("A"), 0), QVariant(0)); // not even read
@@ -350,14 +447,14 @@ private Q_SLOTS:
         // A dangling link out, and a link to a directory out, too.
         QFile::remove(rc());
         QVERIFY(QFile::link(outside.filePath(QStringLiteral("new")), rc()));
-        QVERIFY(AtlasSettings::resolve(m_dir.path(), QStringLiteral("atlas-testerrc")).isEmpty());
+        QVERIFY(TelamonSettings::resolve(m_dir.path(), QStringLiteral("telamon-testerrc")).isEmpty());
         QFile::remove(rc());
         QVERIFY(QFile::link(outside.path(), m_dir.filePath(QStringLiteral("sub"))));
-        QVERIFY(AtlasSettings::resolve(m_dir.path(), QStringLiteral("sub")).isEmpty());
+        QVERIFY(TelamonSettings::resolve(m_dir.path(), QStringLiteral("sub")).isEmpty());
         // A lock file that is a link is not followed.
         QFile::remove(m_dir.filePath(QStringLiteral("sub")));
         const QString lockVictim = outside.filePath(QStringLiteral("lockvictim"));
-        QVERIFY(QFile::link(lockVictim, m_dir.filePath(QStringLiteral(".atlas-testerrc.lock"))));
+        QVERIFY(QFile::link(lockVictim, m_dir.filePath(QStringLiteral(".telamon-testerrc.lock"))));
         auto t = make(QStringLiteral("View"));
         QVERIFY(t->setValue(QStringLiteral("A"), 2));
         QVERIFY(!t->flush());
@@ -370,11 +467,11 @@ private Q_SLOTS:
         qunsetenv("XDG_CONFIG_HOME");
         const QByteArray home = qgetenv("HOME");
         qunsetenv("HOME");
-        QVERIFY(AtlasSettings::configDir().isEmpty());
+        QVERIFY(TelamonSettings::configDir().isEmpty());
         qputenv("XDG_CONFIG_HOME", "relative/dir");
-        QVERIFY(AtlasSettings::configDir().isEmpty());
+        QVERIFY(TelamonSettings::configDir().isEmpty());
         qputenv("HOME", home);
-        QCOMPARE(AtlasSettings::configDir(), QDir::cleanPath(QString::fromLocal8Bit(home) + QStringLiteral("/.config")));
+        QCOMPARE(TelamonSettings::configDir(), QDir::cleanPath(QString::fromLocal8Bit(home) + QStringLiteral("/.config")));
         qputenv("XDG_CONFIG_HOME", m_dir.path().toUtf8());
     }
 
@@ -385,7 +482,7 @@ private Q_SLOTS:
         QVERIFY(make(QStringLiteral("View"))->setValue(QStringLiteral("Z"), 1));
         auto s = make(QStringLiteral("View"));
         QVERIFY(s->setValue(QStringLiteral("K"), 1));
-        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock")));
+        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".telamon-testerrc.lock")));
         const int fd = ::open(lockPath.constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
         QVERIFY(fd >= 0);
         QCOMPARE(::flock(fd, LOCK_EX), 0);
@@ -403,7 +500,7 @@ private Q_SLOTS:
         QVERIFY(readAll(rc()).contains(QStringLiteral("K=1")));
     }
 
-    // AtlasPortal
+    // TelamonPortal
     void openUrl_data()
     {
         QTest::addColumn<QString>("url");
@@ -437,35 +534,35 @@ private Q_SLOTS:
         QFETCH(QString, url);
         QFETCH(bool, ok);
         QString why;
-        QCOMPARE(AtlasPortal::isOpenable(QUrl(url), {}, &why), ok);
+        QCOMPARE(TelamonPortal::isOpenable(QUrl(url), {}, &why), ok);
         QCOMPARE(why.isEmpty(), ok);
     }
     void openUrlExtraScheme()
     {
-        const QUrl u(QStringLiteral("atlas-app://thing"));
-        QVERIFY(!AtlasPortal::isOpenable(u));
-        QVERIFY(AtlasPortal::isOpenable(u, {QStringLiteral("atlas-app")}));
-        QVERIFY(!AtlasPortal::isOpenable(QUrl(QStringLiteral("file:///nonexistent-zzz")), {QStringLiteral("file")}));
-        AtlasPortal portal;
+        const QUrl u(QStringLiteral("telamon-app://thing"));
+        QVERIFY(!TelamonPortal::isOpenable(u));
+        QVERIFY(TelamonPortal::isOpenable(u, {QStringLiteral("telamon-app")}));
+        QVERIFY(!TelamonPortal::isOpenable(QUrl(QStringLiteral("file:///nonexistent-zzz")), {QStringLiteral("file")}));
+        TelamonPortal portal;
         QVERIFY(!portal.openUrl(QUrl(QStringLiteral("javascript:alert(1)"))));
         portal.setExtraSchemes({QStringLiteral("a b"), QStringLiteral("OK")});
         QCOMPARE(portal.extraSchemes(), QStringList{QStringLiteral("ok")});
     }
     void notificationRules()
     {
-        QVERIFY(AtlasPortal::validEventId(QStringLiteral("updateStaged")));
+        QVERIFY(TelamonPortal::validEventId(QStringLiteral("updateStaged")));
         for (const QString &bad : {QStringLiteral(""), QStringLiteral("1a"), QStringLiteral("a]b"), QStringLiteral("a/b"), QStringLiteral("a b"), QStringLiteral("a\nb"), QString(65, QLatin1Char('a'))}) {
-            QVERIFY2(!AtlasPortal::validEventId(bad), qPrintable(bad));
+            QVERIFY2(!TelamonPortal::validEventId(bad), qPrintable(bad));
         }
-        QVERIFY(AtlasPortal::validIcon(QString()));
-        QVERIFY(AtlasPortal::validIcon(QStringLiteral("dialog-information")));
-        QVERIFY(AtlasPortal::validIcon(QStringLiteral("/usr/share/icons/x.png")));
+        QVERIFY(TelamonPortal::validIcon(QString()));
+        QVERIFY(TelamonPortal::validIcon(QStringLiteral("dialog-information")));
+        QVERIFY(TelamonPortal::validIcon(QStringLiteral("/usr/share/icons/x.png")));
         for (const QString &bad : {QStringLiteral("https://x/y.png"), QStringLiteral("file:///x"), QStringLiteral("rel/x.png"), QStringLiteral("/a/../b"), QStringLiteral("/a\nb"), QStringLiteral("a b")}) {
-            QVERIFY2(!AtlasPortal::validIcon(bad), qPrintable(bad));
+            QVERIFY2(!TelamonPortal::validIcon(bad), qPrintable(bad));
         }
-        QVERIFY(AtlasPortal::validActionId(QStringLiteral("default")));
-        QVERIFY(!AtlasPortal::validActionId(QStringLiteral("a b")));
-        AtlasPortal portal;
+        QVERIFY(TelamonPortal::validActionId(QStringLiteral("default")));
+        QVERIFY(!TelamonPortal::validActionId(QStringLiteral("a b")));
+        TelamonPortal portal;
         QCOMPARE(portal.escape(QStringLiteral("<b>Tom & \"Jerry's\"</b>")), QStringLiteral("&lt;b&gt;Tom &amp; &quot;Jerry&#39;s&quot;&lt;/b&gt;"));
         QCOMPARE(portal.escape(QStringLiteral("a\x1b" "b\nc")), QStringLiteral("a b\nc"));
         // Bad arguments send nothing (and reach no D-Bus).
@@ -475,17 +572,31 @@ private Q_SLOTS:
     void popupSwitchedOff()
     {
         // The user's per-event choice in <component>.notifyrc is honoured.
-        writeAll(m_dir.filePath(QStringLiteral("atlas-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n\n[Event/loud]\nAction=Popup\n"));
-        AtlasPortal portal;
+        writeAll(m_dir.filePath(QStringLiteral("telamon-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n\n[Event/loud]\nAction=Popup\n"));
+        TelamonPortal portal;
         QCOMPARE(portal.notify(QStringLiteral("t"), QStringLiteral("b"), {}, {{QStringLiteral("eventId"), QStringLiteral("quiet")}}), QString());
     }
-    // Fix-sec: AtlasSettings
+    void popupChoiceOfOneXStillCounts()
+    {
+        TelamonPortal portal;
+        QVERIFY(portal.popupEnabled(QStringLiteral("quiet"))); // no file: on
+        // Switched off under the old component name, with nothing in the new file.
+        writeAll(m_dir.filePath(QStringLiteral("atlas-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n\n[Event/loud]\nAction=Popup\n"));
+        QVERIFY(!portal.popupEnabled(QStringLiteral("quiet")));
+        QVERIFY(portal.popupEnabled(QStringLiteral("loud")));
+        QVERIFY(portal.popupEnabled(QStringLiteral("unmentioned")));
+        // The new file's entry for an event wins over the old one; its other events are the old file's.
+        writeAll(m_dir.filePath(QStringLiteral("telamon-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=Popup\n\n[Event/loud]\nAction=\n"));
+        QVERIFY(portal.popupEnabled(QStringLiteral("quiet")));
+        QVERIFY(!portal.popupEnabled(QStringLiteral("loud")));
+    }
+    // Fix-sec: TelamonSettings
     void failedFlushDoesNotCarryOver()
     {
         QVERIFY(make(QStringLiteral("A"))->setValue(QStringLiteral("Seed"), 1));
         auto s = make(QStringLiteral("A"));
         QVERIFY(s->setValue(QStringLiteral("K"), 1));
-        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock")));
+        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".telamon-testerrc.lock")));
         const int fd = ::open(lockPath.constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
         QVERIFY(fd >= 0);
         QCOMPARE(::flock(fd, LOCK_EX), 0);
@@ -501,7 +612,7 @@ private Q_SLOTS:
     {
         auto s = make(QStringLiteral("A"));
         QVERIFY(s->setValue(QStringLiteral("K"), 1));
-        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock")));
+        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".telamon-testerrc.lock")));
         const int fd = ::open(lockPath.constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
         QVERIFY(fd >= 0);
         QCOMPARE(::flock(fd, LOCK_EX), 0);
@@ -515,7 +626,7 @@ private Q_SLOTS:
     }
     void lockFileMustBeRegular()
     {
-        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock")));
+        const QByteArray lockPath = QFile::encodeName(m_dir.filePath(QStringLiteral(".telamon-testerrc.lock")));
         QCOMPARE(::mkfifo(lockPath.constData(), 0600), 0);
         auto s = make(QStringLiteral("A"));
         QVERIFY(s->setValue(QStringLiteral("K"), 1));
@@ -537,28 +648,28 @@ private Q_SLOTS:
     }
     void noVariableExpansion()
     {
-        qputenv("ATLAS_TEST_SECRET", "hunter2");
-        writeAll(rc(), QStringLiteral("[A]\nK[$e]=$ATLAS_TEST_SECRET\nL=plain\nList[$e]=$ATLAS_TEST_SECRET,x\n"));
+        qputenv("TELAMON_TEST_SECRET", "hunter2");
+        writeAll(rc(), QStringLiteral("[A]\nK[$e]=$TELAMON_TEST_SECRET\nL=plain\nList[$e]=$TELAMON_TEST_SECRET,x\n"));
         auto s = make(QStringLiteral("A"));
         // A key marked [$e] is refused (the default comes back), never expanded.
         QCOMPARE(s->value(QStringLiteral("K"), QStringLiteral("none")).toString(), QStringLiteral("none"));
         QVERIFY(!s->contains(QStringLiteral("K")));
         QCOMPARE(s->value(QStringLiteral("L"), QStringLiteral("")).toString(), QStringLiteral("plain"));
         QVERIFY(!s->contains(QStringLiteral("List")));
-        qunsetenv("ATLAS_TEST_SECRET");
+        qunsetenv("TELAMON_TEST_SECRET");
     }
     // A binding on a sibling is evaluated while the tree is built, before
     // componentComplete(), and never again: it must already see the file.
     void bindingSeesSavedValueBeforeComplete()
     {
         writeAll(rc(), QStringLiteral("[View]\nShowHidden=true\nWidth=321\n"));
-        qmlRegisterType<AtlasSettings>("AtlasTest", 1, 0, "AtlasSettings");
+        qmlRegisterType<TelamonSettings>("TelamonTest", 1, 0, "TelamonSettings");
         QQmlEngine engine;
         QQmlComponent c(&engine);
-        c.setData("import QtQuick\nimport AtlasTest\nItem {\n"
+        c.setData("import QtQuick\nimport TelamonTest\nItem {\n"
                   "  property bool shown: s.value(\"ShowHidden\", false)\n"
                   "  property int width2: s.value(\"Width\", 5)\n"
-                  "  AtlasSettings { id: s; group: \"View\" }\n}\n",
+                  "  TelamonSettings { id: s; group: \"View\" }\n}\n",
                   QUrl());
         std::unique_ptr<QObject> o(c.create());
         QVERIFY2(o, qPrintable(c.errorString()));
@@ -567,9 +678,9 @@ private Q_SLOTS:
     }
     void newFileIsPrivate()
     {
-        const QString other = m_dir.filePath(QStringLiteral("atlas-privaterc"));
+        const QString other = m_dir.filePath(QStringLiteral("telamon-privaterc"));
         const mode_t old = ::umask(0);
-        auto s = make(QStringLiteral("A"), QStringLiteral("atlas-privaterc"));
+        auto s = make(QStringLiteral("A"), QStringLiteral("telamon-privaterc"));
         QVERIFY(s->setValue(QStringLiteral("K"), 1));
         QVERIFY(s->flush());
         ::umask(old);
@@ -583,7 +694,7 @@ private Q_SLOTS:
     void watchesDirectoryOnlyWhileMissing()
     {
         auto s = make(QStringLiteral("A"));
-        QSignalSpy spy(s.get(), &AtlasSettings::changed);
+        QSignalSpy spy(s.get(), &TelamonSettings::changed);
         writeAll(rc(), QStringLiteral("[A]\nK=1\n")); // appears: seen through the directory
         QVERIFY(spy.wait(3000));
         spy.clear();
@@ -591,7 +702,7 @@ private Q_SLOTS:
         QVERIFY(spy.wait(3000));
     }
 
-    // Fix-sec: AtlasPortal
+    // Fix-sec: TelamonPortal
     void openUrlRefusesPrograms()
     {
         const QString dir = m_files.path();
@@ -607,35 +718,35 @@ private Q_SLOTS:
         QCOMPARE(::mkfifo(QFile::encodeName(dir + QStringLiteral("/pipe")).constData(), 0600), 0);
         for (const char *name : {"looks-like.txt", "noext", "script.txt", "plain-script", "pipe"}) {
             QString why;
-            QVERIFY2(!AtlasPortal::isOpenable(QUrl::fromLocalFile(dir + QLatin1Char('/') + QLatin1String(name)), {}, &why), name);
+            QVERIFY2(!TelamonPortal::isOpenable(QUrl::fromLocalFile(dir + QLatin1Char('/') + QLatin1String(name)), {}, &why), name);
             QVERIFY2(!why.isEmpty(), name);
         }
-        QVERIFY(AtlasPortal::isOpenable(QUrl::fromLocalFile(dir + QStringLiteral("/ok.txt"))));
-        QVERIFY(AtlasPortal::isOpenable(QUrl::fromLocalFile(dir + QStringLiteral("/ok-link.txt"))));
-        QVERIFY(AtlasPortal::isOpenable(QUrl::fromLocalFile(dir)));
+        QVERIFY(TelamonPortal::isOpenable(QUrl::fromLocalFile(dir + QStringLiteral("/ok.txt"))));
+        QVERIFY(TelamonPortal::isOpenable(QUrl::fromLocalFile(dir + QStringLiteral("/ok-link.txt"))));
+        QVERIFY(TelamonPortal::isOpenable(QUrl::fromLocalFile(dir)));
         // A control character in the decoded URL.
-        QVERIFY(!AtlasPortal::isOpenable(QUrl(QStringLiteral("https://example.com/a%0Ab"))));
-        QVERIFY(!AtlasPortal::isOpenable(QUrl(QStringLiteral("file://%1/ok.txt%0A").arg(dir))));
+        QVERIFY(!TelamonPortal::isOpenable(QUrl(QStringLiteral("https://example.com/a%0Ab"))));
+        QVERIFY(!TelamonPortal::isOpenable(QUrl(QStringLiteral("file://%1/ok.txt%0A").arg(dir))));
     }
     void mailtoKeepsSubjectAndBodyOnly()
     {
         QStringList dropped;
         const QUrl in(QStringLiteral("mailto:a@example.com?subject=Hi%20there&attach=/etc/passwd&BCC=x@y.z&body=Hello&cc=c@d.e&Subject=dup"));
-        const QUrl out = AtlasPortal::cleanMailto(in, &dropped);
+        const QUrl out = TelamonPortal::cleanMailto(in, &dropped);
         QCOMPARE(out.path(), QStringLiteral("a@example.com"));
         const QUrlQuery q(out);
         QCOMPARE(q.queryItemValue(QStringLiteral("subject"), QUrl::FullyDecoded), QStringLiteral("Hi there"));
         QCOMPARE(q.queryItemValue(QStringLiteral("body"), QUrl::FullyDecoded), QStringLiteral("Hello"));
         QCOMPARE(q.queryItems().size(), 2);
         QVERIFY(dropped.contains(QStringLiteral("attach")) && dropped.contains(QStringLiteral("BCC")) && dropped.contains(QStringLiteral("cc")));
-        QCOMPARE(AtlasPortal::cleanMailto(QUrl(QStringLiteral("mailto:a@example.com?cc=x@y.z"))).toString(), QStringLiteral("mailto:a@example.com"));
+        QCOMPARE(TelamonPortal::cleanMailto(QUrl(QStringLiteral("mailto:a@example.com?cc=x@y.z"))).toString(), QStringLiteral("mailto:a@example.com"));
         const QUrl web(QStringLiteral("https://example.com/?attach=1"));
-        QCOMPARE(AtlasPortal::cleanMailto(web), web);
+        QCOMPARE(TelamonPortal::cleanMailto(web), web);
     }
     void timedWriteNeverBlocksOnTheLock()
     {
         auto s = make(QStringLiteral("Busy"));
-        const int fd = ::open(QFile::encodeName(m_dir.filePath(QStringLiteral(".atlas-testerrc.lock"))).constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+        const int fd = ::open(QFile::encodeName(m_dir.filePath(QStringLiteral(".telamon-testerrc.lock"))).constData(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
         QVERIFY(fd >= 0);
         int held = fd;
         const auto release = qScopeGuard([&held] {
@@ -659,7 +770,7 @@ private Q_SLOTS:
         QTest::qWait(1800);
         ticker.stop();
         QVERIFY2(worst < 700, qPrintable(QString::number(worst))); // the old wait stalled 1000 ms
-        QVERIFY(!QFile::exists(m_dir.filePath(QStringLiteral("atlas-testerrc")))); // still pending
+        QVERIFY(!QFile::exists(m_dir.filePath(QStringLiteral("telamon-testerrc")))); // still pending
         QCOMPARE(s->value(QStringLiteral("K"), 0).toInt(), 7);
         // Explicit flush still waits about a second, then fails and keeps the change.
         QElapsedTimer t;
@@ -674,10 +785,10 @@ private Q_SLOTS:
     void notifyBodyIsPlainByDefault()
     {
         // No D-Bus here: the call is checked through the rules that run first.
-        AtlasPortal portal;
+        TelamonPortal portal;
         QCOMPARE(portal.escape(QStringLiteral("<b>x</b>")), QStringLiteral("&lt;b&gt;x&lt;/b&gt;"));
         // An event switched off returns before anything is sent, with markup either way.
-        writeAll(m_dir.filePath(QStringLiteral("atlas-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n"));
+        writeAll(m_dir.filePath(QStringLiteral("telamon-tester.notifyrc")), QStringLiteral("[Event/quiet]\nAction=\n"));
         QCOMPARE(portal.notify(QStringLiteral("t"), QStringLiteral("<b>x</b>"), {}, {{QStringLiteral("eventId"), QStringLiteral("quiet")}, {QStringLiteral("markup"), true}}), QString());
     }
 };

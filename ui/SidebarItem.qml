@@ -35,14 +35,14 @@ T.AbstractButton {
     // What the badge means, for screen readers ("2 problems").
     property string badgeText
 
-    // AtlasStyle.Normal or AtlasStyle.Compact; Compact shrinks the height and
-    // the vertical padding to about 75%. Follows the app-wide AtlasStyle.density
+    // TelamonStyle.Normal or TelamonStyle.Compact; Compact shrinks the height and
+    // the vertical padding to about 75%. Follows the app-wide TelamonStyle.density
     // unless set here.
-    property int density: AtlasStyle.density
-    readonly property real _k: density === AtlasStyle.Compact ? 0.75 : 1
+    property int density: TelamonStyle.density
+    readonly property real _k: density === TelamonStyle.Compact ? 0.75 : 1
 
     implicitHeight: Math.round(Kirigami.Units.gridUnit * (sub ? 1.8 : 2.1) * _k)
-    implicitWidth: compact ? implicitHeight + AtlasStyle.spacingSmall : Kirigami.Units.gridUnit * 10
+    implicitWidth: compact ? implicitHeight + TelamonStyle.spacingSmall : Kirigami.Units.gridUnit * 10
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     Accessible.name: control.text
@@ -63,7 +63,7 @@ T.AbstractButton {
         }
     }
 
-    AtlasToolTip {
+    TelamonToolTip {
         text: {
             const t = control.value.length > 0 ? control.text + ": " + control.value : control.text;
             return control.badge.length > 0 && control.badgeText.length > 0 ? t + " \u2014 " + control.badgeText : t;
@@ -71,24 +71,24 @@ T.AbstractButton {
         shown: control.compact && control.text.length > 0 && (control.hovered || control.visualFocus)
     }
 
-    // Set by AtlasSidebar, which draws one selection highlight that slides
+    // Set by TelamonSidebar, which draws one selection highlight that slides
     // between entries; the entry then draws only hover and focus.
     property bool _sharedSelection: false
 
     background: Rectangle {
-        radius: AtlasStyle.radiusSmall
-        color: control.selected ? (control._sharedSelection ? (control.down ? AtlasStyle.pressed : "transparent") : AtlasStyle.selection) : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
+        radius: TelamonStyle.radiusSmall
+        color: control.selected ? (control._sharedSelection ? (control.down ? TelamonStyle.pressed : "transparent") : TelamonStyle.selection) : control.down ? TelamonStyle.pressed : control.hovered ? TelamonStyle.hover : "transparent"
         border.width: control.visualFocus ? 2 : 0
-        border.color: AtlasStyle.focus
+        border.color: TelamonStyle.focus
         Behavior on color {
             ColorAnimation {
-                duration: AtlasStyle.durationShort
+                duration: TelamonStyle.durationShort
             }
         }
     }
 
     contentItem: RowLayout {
-        spacing: AtlasStyle.spacingLarge
+        spacing: TelamonStyle.spacingLarge
         Item {
             Layout.fillWidth: control.compact
             visible: control.compact
@@ -96,7 +96,7 @@ T.AbstractButton {
         Item {
             id: iconSlot
             readonly property int side: control.sub ? Kirigami.Units.iconSizes.small : Kirigami.Units.iconSizes.smallMedium
-            Layout.leftMargin: control.compact ? 0 : AtlasStyle.spacingLarge + (control.sub ? Kirigami.Units.gridUnit : 0)
+            Layout.leftMargin: control.compact ? 0 : TelamonStyle.spacingLarge + (control.sub ? Kirigami.Units.gridUnit : 0)
             Layout.preferredWidth: side
             Layout.preferredHeight: side
 
@@ -105,7 +105,7 @@ T.AbstractButton {
                 visible: control.symbol === 0
                 source: control.icon.name
                 isMask: control.tintIcon
-                color: AtlasStyle.accent
+                color: TelamonStyle.accent
             }
             // Made only when used, so entries without one never load the fonts.
             Loader {
@@ -117,7 +117,7 @@ T.AbstractButton {
                     // matches a theme icon of the same slot.
                     size: Math.round(iconSlot.side * 1.2)
                     filled: control.selected
-                    color: control.tintIcon ? AtlasStyle.accent : Kirigami.Theme.textColor
+                    color: control.tintIcon ? TelamonStyle.accent : Kirigami.Theme.textColor
                 }
             }
 
@@ -139,8 +139,8 @@ T.AbstractButton {
             // character) applies, so a right-to-left label keeps its side.
             horizontalAlignment: control.mirrored ? Text.AlignLeft : undefined
             text: control.text
-            font.family: AtlasStyle.fontFamily
-            font.pointSize: AtlasStyle.fontSizeBody
+            font.family: TelamonStyle.fontFamily
+            font.pointSize: TelamonStyle.fontSizeBody
             font.weight: control.sub ? Font.Normal : Font.Medium
             textFormat: Text.PlainText
             elide: Text.ElideRight
@@ -148,37 +148,37 @@ T.AbstractButton {
         }
         Kirigami.Icon {
             visible: !control.compact && control.badge.length > 0
-            Layout.rightMargin: control.value.length > 0 || control.disclosure ? 0 : AtlasStyle.spacingLarge
+            Layout.rightMargin: control.value.length > 0 || control.disclosure ? 0 : TelamonStyle.spacingLarge
             Layout.preferredWidth: Kirigami.Units.iconSizes.small
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             source: control.badge
         }
         QQC2.Label {
             visible: !control.compact && control.value.length > 0
-            Layout.rightMargin: control.disclosure ? 0 : AtlasStyle.spacingLarge
+            Layout.rightMargin: control.disclosure ? 0 : TelamonStyle.spacingLarge
             text: control.value
-            font.family: AtlasStyle.fontFamily
-            font.pointSize: AtlasStyle.fontSizeCaption
+            font.family: TelamonStyle.fontFamily
+            font.pointSize: TelamonStyle.fontSizeCaption
             // Figures of one width, so a changing value doesn't jiggle.
             font.features: ({
                     "tnum": 1
                 })
             textFormat: Text.PlainText
-            color: AtlasStyle.textMuted
+            color: TelamonStyle.textMuted
         }
         Kirigami.Icon {
             visible: !control.compact && control.disclosure
-            Layout.rightMargin: AtlasStyle.spacingLarge
+            Layout.rightMargin: TelamonStyle.spacingLarge
             Layout.preferredWidth: Kirigami.Units.iconSizes.small
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             source: control.mirrored ? "arrow-left" : "arrow-right"
             isMask: true
-            color: AtlasStyle.textMuted
+            color: TelamonStyle.textMuted
             // A quarter turn to point down, whichever way it starts.
             rotation: control.expanded ? (control.mirrored ? -90 : 90) : 0
             Behavior on rotation {
                 NumberAnimation {
-                    duration: AtlasStyle.durationShort
+                    duration: TelamonStyle.durationShort
                 }
             }
         }

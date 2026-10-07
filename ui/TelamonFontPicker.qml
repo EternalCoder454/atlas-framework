@@ -1,0 +1,405 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Templates as T
+import "fontfamilies.js" as Families
+import org.kde.kirigami as Kirigami
+
+// A font chooser: a field like TelamonComboBox with the family drawn in its own face and the size.
+// Clicking it opens a card with a search field, the list of installed families
+// (each in its own face, drawn only while visible) and a size spin box. `font`
+// is the chosen font (its `family` and `pointSize`); the other parts of `font`
+// are left as they are. With `fixedOnly` the list holds monospace families only
+// (found a few at a time after the first opening, so the list fills in).
+// `edited()` is emitted when the user chooses a family or a size, not when the
+// app sets them.
+//
+//   TelamonFontPicker {
+//       font.family: "Noto Sans Mono"
+//       font.pointSize: 11
+//       fixedOnly: true
+//       onEdited: terminal.font = font
+//       Accessible.name: qsTr("Terminal font")
+//   }
+//
+// Name it for screen readers with Accessible.name (what the font is for); the
+// family and size are spoken as the description.
+T.AbstractButton {
+    id: control
+
+    // Only monospace families.
+    property bool fixedOnly: false
+
+    signal edited
+
+    // A user edit is held by a Binding for one turn, so an app binding on
+    // `font.family` or `font.pointSize` is kept (see docs/reference/telamon-ui/telamon-font-picker.md).
+    property string _editFamily
+    property real _editSize: 0
+    property bool _editingFamily: false
+    property bool _editingSize: false
+    readonly property Binding _holdFamily: Binding {
+        target: control
+        property: "font.family"
+        value: control._editFamily
+        when: control._editingFamily
+        restoreMode: Binding.RestoreBinding
+    }
+    readonly property Binding _holdSize: Binding {
+        target: control
+        property: "font.pointSize"
+        value: control._editSize
+        when: control._editingSize
+        restoreMode: Binding.RestoreBinding
+    }
+    function _release(): void {
+        control._editingFamily = false;
+        control._editingSize = false;
+    }
+
+    // The field never draws the picker's own font at the picked size: it uses
+    // the application font for everything but the family name.
+    // How far the shared scan for monospace families has got (for the tests).
+    readonly property int _scanned: internals.scanned
+
+    readonly property font _nameFont: Qt.font({
+        family: control.font.family,
+        pointSize: TelamonStyle.fontSizeBody
+    })
+
+    QtObject {
+        id: internals
+
+        readonly property real fieldHeight: Math.max(TelamonStyle.controlHeight, Math.ceil(sizeMetrics.height) + TelamonStyle.spacing)
+        // Read once for the process, and the monospace scan shared (fontfamilies.js).
+        readonly property var all: Families.all()
+        // Families found to be monospace, and how far the scan has got.
+        property var fixed: Families.fixedList()
+        property int scanned: Families.scanned()
+        readonly property bool scanning: control.fixedOnly && scanned < all.length
+        property string search: ""
+        // The row the keyboard is on.
+        property int current: 0
+        readonly property var shown: {
+            const base = control.fixedOnly ? fixed : all;
+            const n = search.trim().toLowerCase();
+            return n.length === 0 ? base : base.filter(f => f.toLowerCase().indexOf(n) >= 0);
+        }
+
+        function isFixed(family: string): bool {
+            narrow.font.family = family;
+            wide.font.family = family;
+            return narrow.width > 0 && Math.abs(narrow.width - wide.width) < 0.01;
+        }
+        // Looks at a few families per turn of the event loop so the window stays alive.
+        function scanSome(): void {
+            // Another picker may have scanned since: carry on from the shared place.
+            const from = Families.scanned();
+            const end = Math.min(all.length, from + 40);
+            const found = [];
+            for (let i = from; i < end; ++i) {
+                if (isFixed(all[i])) {
+                    found.push(all[i]);
+                }
+            }
+            Families.advance(from, end, found);
+            scanned = Families.scanned();
+            fixed = Families.fixedList();
+        }
+        function choose(index: int): void {
+            if (index < 0 || index >= shown.length) {
+                return;
+            }
+            control._editFamily = shown[index];
+            control._editingFamily = true;
+            control.edited();
+            Qt.callLater(control._release);
+        }
+    }
+
+    // Two strings of the same number of characters with very different glyph
+    // widths: they are as wide as each other only in a monospace face.
+    Text {
+        id: narrow
+        visible: false
+        text: "iiiiiiiiii"
+        font.pointSize: 12
+    }
+    Text {
+        id: wide
+        visible: false
+        text: "WWWWWWWWWW"
+        font.pointSize: 12
+    }
+    Timer {
+        // Not 0: a repeating Timer of 0 ms never fires (it runs on the
+        // animation clock), and the scan would never get past the start.
+        interval: 16
+        repeat: true
+        running: internals.scanning && popup.visible
+        onTriggered: internals.scanSome()
+    }
+
+    TextMetrics {
+        id: sizeMetrics
+        font.family: TelamonStyle.fontFamily
+        font.pointSize: TelamonStyle.fontSizeBody
+        text: "0"
+    }
+
+    implicitWidth: Math.max(Kirigami.Units.gridUnit * 12, contentItem.implicitWidth + leftPadding + rightPadding)
+    implicitHeight: internals.fieldHeight
+    leftPadding: TelamonStyle.spacingLarge
+    rightPadding: leftPadding
+    hoverEnabled: true
+    focusPolicy: Qt.StrongFocus
+
+    Accessible.role: Accessible.Button
+    //: Spoken name of a font chooser that has no name of its own
+    Accessible.name: qsTr("Font")
+    Accessible.description: control.font.pointSize > 0 ? qsTr("%1, %2 pt").arg(control.font.family).arg(Math.round(control.font.pointSize * 10) / 10) : control.font.family
+
+    onClicked: popup.opened ? popup.close() : popup.open()
+    Keys.onReturnPressed: event => {
+        if (enabled && !event.isAutoRepeat) {
+            control.clicked();
+        }
+    }
+    Keys.onEnterPressed: event => {
+        if (enabled && !event.isAutoRepeat) {
+            control.clicked();
+        }
+    }
+
+    contentItem: RowLayout {
+        spacing: Kirigami.Units.largeSpacing
+        Text {
+            Layout.fillWidth: true
+            text: control.font.family
+            font: control._nameFont
+            color: control.enabled ? Kirigami.Theme.textColor : TelamonStyle.textDisabled
+            elide: Text.ElideRight
+            textFormat: Text.PlainText
+        }
+        Text {
+            // QML gives a font set in pixels its size in points (pixels * 72 / 96).
+            text: control.font.pointSize > 0 ? qsTr("%1 pt").arg(Math.round(control.font.pointSize * 10) / 10) : ""
+            font.family: TelamonStyle.fontFamily
+            font.pointSize: TelamonStyle.fontSizeBody
+            color: control.enabled ? TelamonStyle.textMuted : TelamonStyle.textDisabled
+            textFormat: Text.PlainText
+        }
+    }
+
+    background: Rectangle {
+        radius: TelamonStyle.radiusSmall
+        color: control.down || popup.visible ? Qt.tint(TelamonStyle.control, TelamonStyle.pressed) : control.hovered && control.enabled ? Qt.tint(TelamonStyle.control, TelamonStyle.hover) : TelamonStyle.control
+        border.width: 1
+        border.color: TelamonStyle.controlBorder
+        opacity: control.enabled ? 1 : 0.6
+        TelamonFocusRing {
+            radius: parent.radius + gap
+            shown: control.visualFocus
+        }
+    }
+
+    T.Popup {
+        id: popup
+        y: control.height + Kirigami.Units.smallSpacing
+        x: control.mirrored ? control.width - width : 0
+        width: Math.max(control.width, Kirigami.Units.gridUnit * 16)
+        padding: Kirigami.Units.smallSpacing
+        margins: Kirigami.Units.smallSpacing
+        modal: false
+        closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutsideParent
+
+        onOpened: {
+            internals.current = Math.max(0, internals.shown.indexOf(control.font.family));
+            familyList.positionViewAtIndex(internals.current, ListView.Contain);
+            searchField.forceActiveFocus(Qt.PopupFocusReason);
+        }
+        property bool _hadFocus: false
+        // True when item is the root or a descendant (Item.contains takes a point).
+        function _holds(root: Item, item: Item): bool {
+            for (let i = item; i; i = i.parent) {
+                if (i === root) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        onAboutToHide: _hadFocus = popup.contentItem.activeFocus
+        onClosed: {
+            searchField.clear();
+            internals.search = "";
+            const item = control.Window.activeFocusItem;
+            if (popup._hadFocus && (!item || popup._holds(popup.contentItem, item))) {
+                control.forceActiveFocus(Qt.PopupFocusReason);
+            }
+            popup._hadFocus = false;
+        }
+
+        contentItem: ColumnLayout {
+            spacing: Kirigami.Units.smallSpacing
+            TelamonTextField {
+                id: searchField
+                Layout.fillWidth: true
+                placeholderText: qsTr("Search fonts")
+                clearable: true
+                Accessible.name: qsTr("Search fonts")
+                onTextChanged: {
+                    internals.search = text;
+                    internals.current = 0;
+                }
+                Keys.onDownPressed: event => {
+                    internals.current = Math.min(internals.current + 1, internals.shown.length - 1);
+                    event.accepted = true;
+                }
+                Keys.onUpPressed: event => {
+                    internals.current = Math.max(internals.current - 1, 0);
+                    event.accepted = true;
+                }
+                Keys.onReturnPressed: event => {
+                    internals.choose(internals.current);
+                    event.accepted = true;
+                }
+                Keys.onEnterPressed: event => {
+                    internals.choose(internals.current);
+                    event.accepted = true;
+                }
+            }
+            ListView {
+                id: familyList
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.round(Kirigami.Units.gridUnit * 12)
+                clip: true
+                reuseItems: true
+                model: popup.visible ? internals.shown : []
+                currentIndex: internals.current
+                highlightFollowsCurrentItem: false
+                boundsBehavior: Flickable.StopAtBounds
+                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+                delegate: T.ItemDelegate {
+                    id: row
+                    required property string modelData
+                    required property int index
+                    width: ListView.view ? ListView.view.width : implicitWidth
+                    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.8)
+                    leftPadding: Kirigami.Units.largeSpacing
+                    rightPadding: Kirigami.Units.largeSpacing
+                    hoverEnabled: true
+                    focusPolicy: Qt.NoFocus
+                    highlighted: internals.current === index
+                    onHoveredChanged: {
+                        if (hovered) {
+                            internals.current = index;
+                        }
+                    }
+                    onClicked: internals.choose(index)
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: modelData
+                    background: Rectangle {
+                        radius: TelamonStyle.radiusSmall
+                        color: row.highlighted ? TelamonStyle.alpha(TelamonStyle.accent, row.down ? 0.28 : 0.18) : "transparent"
+                    }
+                    contentItem: Text {
+                        text: row.modelData
+                        font.family: row.modelData
+                        font.pointSize: TelamonStyle.fontSizeBody
+                        color: Kirigami.Theme.textColor
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                        textFormat: Text.PlainText
+                    }
+                }
+                footer: Item {
+                    width: familyList.width
+                    visible: internals.shown.length === 0
+                    height: visible ? Math.round(Kirigami.Units.gridUnit * 1.8) : 0
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: internals.scanning ? qsTr("Looking for fonts") : qsTr("No matches")
+                    Text {
+                        anchors.fill: parent
+                        anchors.leftMargin: Kirigami.Units.largeSpacing
+                        text: internals.scanning ? qsTr("Looking for fonts…") : qsTr("No matches")
+                        font.family: TelamonStyle.fontFamily
+                        font.pointSize: TelamonStyle.fontSizeBody
+                        color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.5)
+                        verticalAlignment: Text.AlignVCenter
+                        textFormat: Text.PlainText
+                        Accessible.ignored: true
+                    }
+                }
+            }
+            RowLayout {
+                spacing: Kirigami.Units.largeSpacing
+                Text {
+                    text: qsTr("Size")
+                    font.family: TelamonStyle.fontFamily
+                    font.pointSize: TelamonStyle.fontSizeBody
+                    color: Kirigami.Theme.textColor
+                    textFormat: Text.PlainText
+                    Accessible.ignored: true
+                }
+                TelamonSpinBox {
+                    from: 6
+                    to: 96
+                    editable: true
+                    suffix: qsTr(" pt")
+                    value: Math.round(control.font.pointSize)
+                    Accessible.name: qsTr("Size")
+                    onValueModified: {
+                        control._editSize = value;
+                        control._editingSize = true;
+                        control.edited();
+                        Qt.callLater(control._release);
+                    }
+                }
+            }
+        }
+
+        background: Item {
+            // Same card as ContextMenu. Soft shadow: faint outlines, no shader, so it also draws with the software renderer.
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -1
+                anchors.topMargin: 0
+                anchors.bottomMargin: -3
+                radius: TelamonStyle.radius + 1
+                color: TelamonStyle.alpha("black", 0.04)
+            }
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -2
+                anchors.topMargin: -1
+                anchors.bottomMargin: -5
+                radius: TelamonStyle.radius + 2
+                color: TelamonStyle.alpha("black", 0.025)
+            }
+            Rectangle {
+                anchors.fill: parent
+                radius: TelamonStyle.radius
+                color: TelamonStyle.floatingBackground
+                border.width: 1
+                border.color: TelamonStyle.separator
+            }
+        }
+
+        enter: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: TelamonStyle.durationShort
+            }
+        }
+        exit: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 1
+                to: 0
+                duration: TelamonStyle.durationShort
+            }
+        }
+    }
+}

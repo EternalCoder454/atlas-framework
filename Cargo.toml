@@ -1,9 +1,9 @@
-# The Rust side of atlas-framework. Apps take only the crates they need, so a
-# small app (Atlas Notepad) stays light:
-#   atlas-framework-core     every app: app identity, settings, logging, os-release
-#   atlas-framework-ui       every app with a window: startup, app ID, crash hooks
-#   atlas-framework-system   system apps: crash reports, AtlasOS state, polkit
-#   atlas-framework-flatpak  Atlas Updater and Atlas Store: libflatpak
+# The Rust side of telamon-framework. Apps take only the crates they need, so a
+# small app (Telamon Notepad) stays light:
+#   telamon-framework-core     every app: app identity, settings, logging, os-release
+#   telamon-framework-ui       every app with a window: startup, app ID, crash hooks
+#   telamon-framework-system   system apps: crash reports, Telamon OS state, polkit
+#   telamon-framework-flatpak  Telamon Updater and Telamon Store: libflatpak
 [workspace]
 resolver = "3"
 members = ["crates/*"]
@@ -11,15 +11,15 @@ members = ["crates/*"]
 exclude = ["template"]
 
 [workspace.package]
-version = "1.6.1"
+version = "2.0.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/EternalCoder454/atlas-framework"
 rust-version = "1.89"
 
 [workspace.dependencies]
-atlas-framework-core = { path = "crates/atlas-framework-core", version = "1.6.1" }
-atlas-framework-system = { path = "crates/atlas-framework-system", version = "1.6.1" }
+telamon-framework-core = { path = "crates/telamon-framework-core", version = "2.0.0" }
+telamon-framework-system = { path = "crates/telamon-framework-system", version = "2.0.0" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 libc = "0.2.190"

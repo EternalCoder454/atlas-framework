@@ -12,7 +12,7 @@
 
 #include <cstdio>
 
-namespace AtlasVariant {
+namespace TelamonVariant {
 
 using Settings = QMap<QString, QVariantMap>;
 
@@ -78,6 +78,6 @@ int runFakePortal(const QString &readyFile, int timeoutSeconds)
     return QCoreApplication::exec();
 }
 
-} // namespace AtlasVariant
+} // namespace TelamonVariant
 
 #include "fakeportal.moc"

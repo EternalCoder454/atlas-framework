@@ -1,6 +1,6 @@
 # Reference docs
 
-The pages here are the Atlas Framework reference on
+The pages here are the Telamon Framework reference on
 <https://telamon.eterneon.net/framework>. CI checks them (`tools/docs.py check`)
 on every push. On main it then rebuilds the `docs-published` branch
 (`tools/docs.py build`), and the site reads that branch within about five
@@ -17,12 +17,12 @@ docs/reference/
 ```
 
 Libraries:
-- `atlas-ui` (the QML module)
-- `symbols` (the icon fonts and Atlas Symbols)
-- `atlas-framework-core`, `atlas-framework-ui`, `atlas-framework-system`, `atlas-framework-flatpak` (the crates)
+- `telamon-ui` (the QML module)
+- `symbols` (the icon fonts and Telamon Symbols)
+- `telamon-framework-core`, `telamon-framework-ui`, `telamon-framework-system`, `telamon-framework-flatpak` (the crates)
 - `template` (the app template)
 
-A page name is the type or topic in lowercase with hyphens (`AtlasButton` → `atlas-button.md`). `index` and `images` are reserved.
+A page name is the type or topic in lowercase with hyphens (`TelamonButton` → `telamon-button.md`). `index` and `images` are reserved.
 
 ## Frontmatter
 
@@ -30,12 +30,12 @@ Every file starts with one-line `key: value` pairs:
 
 ```yaml
 ---
-title: AtlasButton
+title: TelamonButton
 summary: A push button with a symbol, four variants and a busy state.
 section: Buttons
 order: 10
 since: "1.4.0"
-deprecated: Use AtlasFoo instead.
+deprecated: Use TelamonFoo instead.
 ---
 ```
 
@@ -67,7 +67,7 @@ The body is CommonMark plus GFM: tables, task lists, strikethrough and autolinks
 
 The checker is a guard, not the security boundary: the site's sanitiser is the real control for HTML and links.
 
-Callouts use GitHub alerts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`. Pages link to each other with relative `.md` links (`../atlas-ui/atlas-button.md#properties`); the site rewrites them.
+Callouts use GitHub alerts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`. Pages link to each other with relative `.md` links (`../telamon-ui/telamon-button.md#properties`); the site rewrites them.
 
 ## A type's page
 
@@ -78,4 +78,4 @@ Callouts use GitHub alerts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`. Pages link 
    - Members starting with `_` are private and never documented.
 4. Optional sections such as `## Keyboard`, `## Accessibility` and `## Notes`, when there's something an app author must know.
 
-Every public member in `api/atlas-ui.api` belongs on its type's page (`tools/docs.py check` fails on a missing type or member). A member counts as documented when it is in backticks in the first cell of a table row (`name`, `name(...)` or `Type.Value`), in a heading, or at the start of a list item; a mention in prose or in an example does not count. A member the type inherits (its `ui/<Type>.qml` root object is another Atlas.Ui type) may be left to the base type's page if the page links to it. These pages are the single source for the API: change the page in the same commit as the API, and link to it from DESIGN.md, READMEs and comments instead of describing types there.
+Every public member in `api/telamon-ui.api` belongs on its type's page (`tools/docs.py check` fails on a missing type or member). A member counts as documented when it is in backticks in the first cell of a table row (`name`, `name(...)` or `Type.Value`), in a heading, or at the start of a list item; a mention in prose or in an example does not count. A member the type inherits (its `ui/<Type>.qml` root object is another Telamon.Ui type) may be left to the base type's page if the page links to it. These pages are the single source for the API: change the page in the same commit as the API, and link to it from DESIGN.md, READMEs and comments instead of describing types there.

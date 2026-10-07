@@ -42,37 +42,37 @@ T.AbstractButton {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusSmall
-        color: control.current ? AtlasStyle.selection : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
+        radius: TelamonStyle.radiusSmall
+        color: control.current ? TelamonStyle.selection : control.down ? TelamonStyle.pressed : control.hovered ? TelamonStyle.hover : "transparent"
         border.width: control.visualFocus ? 2 : 0
-        border.color: AtlasStyle.focus
+        border.color: TelamonStyle.focus
         Behavior on color {
             ColorAnimation {
-                duration: AtlasStyle.durationShort
+                duration: TelamonStyle.durationShort
             }
         }
     }
 
     contentItem: RowLayout {
-        spacing: AtlasStyle.spacingLarge
+        spacing: TelamonStyle.spacingLarge
         Rectangle {
             id: dot
-            Layout.leftMargin: AtlasStyle.spacingLarge
+            Layout.leftMargin: TelamonStyle.spacingLarge
             readonly property real size: Math.round(Kirigami.Units.gridUnit * 1.2)
             Layout.preferredWidth: size
             Layout.preferredHeight: size
             radius: size / 2
-            color: control.current || control.done ? AtlasStyle.accent : "transparent"
+            color: control.current || control.done ? TelamonStyle.accent : "transparent"
             border.width: control.current || control.done ? 0 : 1
-            border.color: AtlasStyle.controlBorder
+            border.color: TelamonStyle.controlBorder
             Text {
                 anchors.centerIn: parent
                 visible: !control.done || control.current
                 text: control.number
-                font.family: AtlasStyle.fontFamily
-                font.pointSize: AtlasStyle.fontSizeCaption
+                font.family: TelamonStyle.fontFamily
+                font.pointSize: TelamonStyle.fontSizeCaption
                 font.weight: Font.DemiBold
-                color: control.current ? AtlasStyle.accentText : AtlasStyle.textMuted
+                color: control.current ? TelamonStyle.accentText : TelamonStyle.textMuted
             }
             Kirigami.Icon {
                 anchors.centerIn: parent
@@ -81,18 +81,18 @@ T.AbstractButton {
                 height: width
                 source: "checkmark"
                 isMask: true
-                color: AtlasStyle.accentText
+                color: TelamonStyle.accentText
             }
         }
         Text {
             Layout.fillWidth: true
             text: control.text
-            font.family: AtlasStyle.fontFamily
-            font.pointSize: AtlasStyle.fontSizeBody
+            font.family: TelamonStyle.fontFamily
+            font.pointSize: TelamonStyle.fontSizeBody
             font.weight: control.current ? Font.DemiBold : Font.Medium
             textFormat: Text.PlainText
             elide: Text.ElideRight
-            color: control.current || control.done ? AtlasStyle.text : AtlasStyle.textMuted
+            color: control.current || control.done ? TelamonStyle.text : TelamonStyle.textMuted
         }
     }
 }

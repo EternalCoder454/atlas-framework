@@ -11,7 +11,7 @@ import org.kde.kirigami as Kirigami
 // The tooltip hides while the button is pressed and after it was used (a menu
 // it opened must not sit under it); it returns once the pointer has left.
 //
-// With an `action` (an AtlasAction or a plain Qt Action) the button follows
+// With an `action` (a TelamonAction or a plain Qt Action) the button follows
 // it: the tooltip is `action.toolTip`, else `action.text`, else `text`; the
 // `action.symbol` is the symbol when it has one; and the action's shortcut is
 // shown when `shortcutText` is empty. `symbol` (a Material Symbol) is drawn
@@ -21,7 +21,7 @@ import org.kde.kirigami as Kirigami
 //
 // `round` draws a circle, `tipSide` puts the tooltip beside the button, and
 // `toolTipText` sets the tooltip's name without changing the spoken name. An
-// action with a `menu` or a `popover` (AtlasAction) makes a button that opens
+// action with a `menu` or a `popover` (TelamonAction) makes a button that opens
 // it instead of triggering: it is a ButtonMenu for screen readers and looks
 // checked while the menu or popover is open.
 T.AbstractButton {
@@ -64,7 +64,7 @@ T.AbstractButton {
             return control.shortcutText;
         }
         const seq = _actionObject ? _actionObject.shortcut : undefined;
-        return seq !== undefined && seq !== null ? AtlasShortcuts.readable(seq) : "";
+        return seq !== undefined && seq !== null ? TelamonShortcuts.readable(seq) : "";
     }
     // The tooltip's name: action.toolTip, else action.text, else text, without mnemonics.
     readonly property string _spokenName: {
@@ -74,7 +74,7 @@ T.AbstractButton {
     }
     // The tooltip's name: toolTipText when set, else the spoken name.
     readonly property string _tipName: control.toolTipText.length > 0 ? control.toolTipText.replace(/&(.)/g, "$1") : control._spokenName
-    // Set by AtlasToolbar: a button with no symbol or icon draws its text's
+    // Set by TelamonToolbar: a button with no symbol or icon draws its text's
     // first letter (the slot is one icon wide) instead of staying blank.
     property bool _letterFallback: false
     readonly property bool _glyphless: control.symbol === 0 && control.icon.name.length === 0 && control.icon.source.toString().length === 0
@@ -84,11 +84,11 @@ T.AbstractButton {
         }
         return Array.from(control.text.replace(/&(&|.)/g, "$1"))[0] ?? "";
     }
-    readonly property color _iconColor: !control.enabled ? AtlasStyle.textDisabled : control.checked ? AtlasStyle.accent : Kirigami.Theme.textColor
+    readonly property color _iconColor: !control.enabled ? TelamonStyle.textDisabled : control.checked ? TelamonStyle.accent : Kirigami.Theme.textColor
 
     implicitWidth: control.round ? implicitHeight : Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
-    implicitHeight: AtlasStyle.controlHeight
-    padding: AtlasStyle.spacingSmall + 1
+    implicitHeight: TelamonStyle.controlHeight
+    padding: TelamonStyle.spacingSmall + 1
     display: T.AbstractButton.IconOnly
     hoverEnabled: true
     focusPolicy: control.focusable ? (control.focusOnClick ? Qt.StrongFocus : Qt.TabFocus) : Qt.NoFocus
@@ -202,7 +202,7 @@ T.AbstractButton {
     property bool _beside: false
     readonly property var _window: Window.window
     function _popup(m): void {
-        const gap = AtlasStyle.spacingSmall;
+        const gap = TelamonStyle.spacingSmall;
         if (!control._beside) {
             m.popup(control, 0, control.height + gap);
             return;
@@ -255,16 +255,16 @@ T.AbstractButton {
     }
     Component {
         id: tipComponent
-        AtlasToolTip {
+        TelamonToolTip {
             text: control._tipText
             shown: (control.hovered && !control.down && !control._used || control.visualFocus) && control._tipName.length > 0
-            x: control._tipBeside ? (control._tipRight ? control.width + AtlasStyle.spacingSmall : -implicitWidth - AtlasStyle.spacingSmall) : Math.round((control.width - implicitWidth) / 2)
-            y: control._tipBeside ? Math.round((control.height - implicitHeight) / 2) : (control._tipAbove ? -implicitHeight - AtlasStyle.spacingSmall : control.height + AtlasStyle.spacingSmall)
+            x: control._tipBeside ? (control._tipRight ? control.width + TelamonStyle.spacingSmall : -implicitWidth - TelamonStyle.spacingSmall) : Math.round((control.width - implicitWidth) / 2)
+            y: control._tipBeside ? Math.round((control.height - implicitHeight) / 2) : (control._tipAbove ? -implicitHeight - TelamonStyle.spacingSmall : control.height + TelamonStyle.spacingSmall)
             onAboutToShow: {
                 const w = control._window ? control._window.width : 0;
                 const h = control._window ? control._window.height : 0;
                 const at = control.mapToItem(null, 0, 0);
-                const gap = AtlasStyle.spacingSmall;
+                const gap = TelamonStyle.spacingSmall;
                 if (!control._tipBeside) {
                     control._tipAbove = at.y + control.height + gap + implicitHeight > h && at.y - gap - implicitHeight >= 0;
                     return;
@@ -288,28 +288,28 @@ T.AbstractButton {
     readonly property string _tipText: control._effectiveShortcut.length > 0 ? qsTr("%1 (%2)").arg(control._tipName).arg(control._effectiveShortcut) : control._tipName
 
     background: Rectangle {
-        radius: control.round ? Math.min(width, height) / 2 : AtlasStyle.radiusSmall
+        radius: control.round ? Math.min(width, height) / 2 : TelamonStyle.radiusSmall
         // On: the selection fill with an accent border and icon; hover and
         // press are the grey overlay.
-        color: control.checked ? AtlasStyle.selection : "transparent"
+        color: control.checked ? TelamonStyle.selection : "transparent"
         border.width: control.checked ? 1 : 0
-        border.color: control.enabled ? AtlasStyle.accent : AtlasStyle.controlBorder
+        border.color: control.enabled ? TelamonStyle.accent : TelamonStyle.controlBorder
         Behavior on color {
             ColorAnimation {
-                duration: AtlasStyle.durationShort
+                duration: TelamonStyle.durationShort
             }
         }
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            color: !control.enabled ? "transparent" : control.down ? AtlasStyle.pressed : control.hovered ? AtlasStyle.hover : "transparent"
+            color: !control.enabled ? "transparent" : control.down ? TelamonStyle.pressed : control.hovered ? TelamonStyle.hover : "transparent"
             Behavior on color {
                 ColorAnimation {
-                    duration: AtlasStyle.durationShort
+                    duration: TelamonStyle.durationShort
                 }
             }
         }
-        AtlasFocusRing {
+        TelamonFocusRing {
             radius: parent.radius + gap
             shown: control.visualFocus
         }
@@ -321,7 +321,7 @@ T.AbstractButton {
         Row {
             id: row
             anchors.centerIn: parent
-            spacing: AtlasStyle.spacingSmall
+            spacing: TelamonStyle.spacingSmall
             // Made only when used, so buttons without one never load the fonts.
             Loader {
                 active: control.symbol !== 0 && control.display !== T.AbstractButton.TextOnly
@@ -347,7 +347,7 @@ T.AbstractButton {
                 anchors.verticalCenter: parent.verticalCenter
                 Behavior on rotation {
                     NumberAnimation {
-                        duration: AtlasStyle.durationShort
+                        duration: TelamonStyle.durationShort
                     }
                 }
             }
@@ -355,8 +355,8 @@ T.AbstractButton {
                 visible: control.display !== T.AbstractButton.IconOnly || (control._letterFallback && control._glyphless && control._label.length > 0)
                 anchors.verticalCenter: parent.verticalCenter
                 text: control._label
-                font.family: AtlasStyle.fontFamily
-                font.pointSize: AtlasStyle.fontSizeBody
+                font.family: TelamonStyle.fontFamily
+                font.pointSize: TelamonStyle.fontSizeBody
                 color: Kirigami.Theme.textColor
                 textFormat: Text.PlainText
             }

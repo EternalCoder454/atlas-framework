@@ -17,5 +17,5 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "usage: fake-portal <ready-file>\n");
         return 2;
     }
-    return AtlasVariant::runFakePortal(QString::fromLocal8Bit(argv[1]));
+    return TelamonVariant::runFakePortal(QString::fromLocal8Bit(argv[1]));
 }

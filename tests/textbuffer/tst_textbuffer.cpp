@@ -1,4 +1,4 @@
-// The text buffer behind AtlasTextView (ui/text): the piece tree against a
+// The text buffer behind TelamonTextView (ui/text): the piece tree against a
 // QString model, loading, line endings and snapshots. Pure QtCore.
 #include "textbuffer.h"
 
@@ -14,8 +14,8 @@
 #include <new>
 #include <thread>
 
-using namespace AtlasTextDetail;
-using LE = AtlasText::LineEnding;
+using namespace TelamonTextDetail;
+using LE = TelamonText::LineEnding;
 
 // ---- The model ----
 
@@ -169,7 +169,7 @@ QString compareAll(const TextTree &t, const QString &s, QRandomGenerator &rng, b
     if (full) {
         qsizetype bytes = 0, units = 0;
         for (qsizetype i = 0; i < t.chunkCount(); ++i) {
-            const AtlasTextChunk c = t.chunkAt(i);
+            const TelamonTextChunk c = t.chunkAt(i);
             if (c.byteOffset != bytes || c.utf16Offset != units || c.byteLength < 1 || c.byteLength > MaxPiece)
                 return QStringLiteral("chunk %1 is out of place").arg(i);
             if (std::memcmp(c.data, m.u8.constData() + bytes, size_t(c.byteLength)) != 0)
@@ -338,7 +338,7 @@ void TestTextBuffer::emptyBuffer()
     QVERIFY(b.lineEnding() == LE::LF);
     QRandomGenerator rng(1);
     QVERIFY2(compareAll(b.tree(), QString(), rng, true).isEmpty(), "empty model");
-    const AtlasTextSnapshot s = b.snapshot();
+    const TelamonTextSnapshot s = b.snapshot();
     QVERIFY(!s.isNull());
     QCOMPARE(s.lineCount(), qsizetype(1));
     // Removing from nothing, inserting nothing.
@@ -976,7 +976,7 @@ void TestTextBuffer::loadRestart()
     b.beginLoad();
     b.appendData(QByteArray(200000, 'a'));
     b.appendData(QByteArray("tail"));
-    const AtlasTextSnapshot before = b.snapshot();
+    const TelamonTextSnapshot before = b.snapshot();
     b.beginLoad();
     b.appendData(QByteArray("new"));
     QVERIFY(b.endLoad());
@@ -1438,8 +1438,8 @@ void TestTextBuffer::lineEndingBig()
 
 void TestTextBuffer::snapshotIsFrozen()
 {
-    AtlasTextSnapshot snap;
-    AtlasTextSnapshot snap2;
+    TelamonTextSnapshot snap;
+    TelamonTextSnapshot snap2;
     QString first;
     quint64 rev1 = 0;
     {
@@ -1471,7 +1471,7 @@ void TestTextBuffer::snapshotIsFrozen()
     // The buffer is gone; the snapshots are not.
     QCOMPARE(snap.text(), first);
     QCOMPARE(snap.utf8(0, snap.byteLength()), first.toUtf8());
-    const AtlasTextSnapshot copy = snap;
+    const TelamonTextSnapshot copy = snap;
     QVERIFY(copy.isSameVersion(snap));
     QCOMPARE(snap2.text(), QStringLiteral("e and a half\r\ntwo\r\nthree"));
 }
@@ -1480,7 +1480,7 @@ void TestTextBuffer::snapshotQueries()
 {
     TextBuffer b;
     b.setText(QStringLiteral("ab\r\ncd\n\nef"));
-    const AtlasTextSnapshot s = b.snapshot();
+    const TelamonTextSnapshot s = b.snapshot();
     QCOMPARE(s.length(), qsizetype(10));
     QCOMPARE(s.lineCount(), qsizetype(4));
     QCOMPARE(s.lineStart(1), qsizetype(4));
@@ -1504,11 +1504,11 @@ void TestTextBuffer::snapshotQueries()
     while (big.size() < 400000)
         big += randomText(rng, 100);
     b.setText(big);
-    const AtlasTextSnapshot sb = b.snapshot();
+    const TelamonTextSnapshot sb = b.snapshot();
     QVERIFY(sb.chunkCount() >= 6);
     QByteArray joined;
     qsizetype expectedUnits = 0, count = 0;
-    sb.visitChunks([&](const AtlasTextChunk &c) {
+    sb.visitChunks([&](const TelamonTextChunk &c) {
         if (c.byteOffset != joined.size() || c.utf16Offset != expectedUnits)
             return false;
         joined.append(c.data, c.byteLength);
@@ -1523,7 +1523,7 @@ void TestTextBuffer::snapshotQueries()
     const qsizetype from = sb.byteLength() / 2;
     qsizetype firstOffset = -1, seen = 0;
     sb.visitChunks(
-        [&](const AtlasTextChunk &c) {
+        [&](const TelamonTextChunk &c) {
             if (firstOffset < 0)
                 firstOffset = c.byteOffset;
             ++seen;
@@ -1550,7 +1550,7 @@ void TestTextBuffer::snapshotQueries()
 
 void TestTextBuffer::snapshotNull()
 {
-    const AtlasTextSnapshot s;
+    const TelamonTextSnapshot s;
     QVERIFY(s.isNull());
     QCOMPARE(s.length(), qsizetype(0));
     QCOMPARE(s.lineCount(), qsizetype(0));
@@ -1559,13 +1559,13 @@ void TestTextBuffer::snapshotNull()
     QCOMPARE(s.lineEnd(3), qsizetype(0));
     QCOMPARE(s.chunkCount(), qsizetype(0));
     bool called = false;
-    s.visitChunks([&](const AtlasTextChunk &) {
+    s.visitChunks([&](const TelamonTextChunk &) {
         called = true;
         return true;
     });
     QVERIFY(!called);
     // An implementation older than the header gives a null handle.
-    struct Old : AtlasTextSnapshotInterface {
+    struct Old : TelamonTextSnapshotInterface {
         int abiVersion() const override { return 0; }
         void ref() const override { QFAIL("ref on an old implementation"); }
         void deref() const override {}
@@ -1582,10 +1582,10 @@ void TestTextBuffer::snapshotNull()
         QString text(qsizetype, qsizetype) const override { return QString(); }
         QByteArray utf8(qsizetype, qsizetype) const override { return QByteArray(); }
         qsizetype chunkCount() const override { return 0; }
-        AtlasTextChunk chunkAt(qsizetype) const override { return AtlasTextChunk(); }
+        TelamonTextChunk chunkAt(qsizetype) const override { return TelamonTextChunk(); }
         qsizetype chunkIndexAtByte(qsizetype) const override { return 0; }
     } old;
-    QVERIFY(AtlasTextSnapshot(&old).isNull());
+    QVERIFY(TelamonTextSnapshot(&old).isNull());
 }
 
 void TestTextBuffer::snapshotThreads()
@@ -1595,7 +1595,7 @@ void TestTextBuffer::snapshotThreads()
     TextBuffer buf;
     QRandomGenerator rng(2024);
     std::mutex mutex;
-    AtlasTextSnapshot published;
+    TelamonTextSnapshot published;
     QHash<quint64, size_t> expected; // revision -> hash of its text
     std::atomic<bool> stop{false};
     std::atomic<int> checked{0};
@@ -1612,7 +1612,7 @@ void TestTextBuffer::snapshotThreads()
     auto reader = [&] {
         quint64 lastRev = 0;
         while (!stop.load()) {
-            AtlasTextSnapshot s;
+            TelamonTextSnapshot s;
             {
                 std::lock_guard<std::mutex> g(mutex);
                 s = published;
@@ -1637,7 +1637,7 @@ void TestTextBuffer::snapshotThreads()
             if (text.size() != s.length())
                 fail(QStringLiteral("length %1 vs text %2").arg(s.length()).arg(text.size()));
             QByteArray joined;
-            s.visitChunks([&](const AtlasTextChunk &c) {
+            s.visitChunks([&](const TelamonTextChunk &c) {
                 joined.append(c.data, c.byteLength);
                 return true;
             });
@@ -1691,7 +1691,7 @@ void TestTextBuffer::snapshotThreads()
     t2.join();
     {
         std::lock_guard<std::mutex> g(mutex);
-        published = AtlasTextSnapshot();
+        published = TelamonTextSnapshot();
     }
     QVERIFY2(failures.load() == 0, qPrintable(failMessage));
     QVERIFY2(checked.load() >= 50, qPrintable(QString::number(checked.load())));

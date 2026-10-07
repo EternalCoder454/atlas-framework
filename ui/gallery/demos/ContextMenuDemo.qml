@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
 // Visual-test scene for ContextMenu: fixed content, no timers or randomness. `animate`
 // is switched off by tests/visual before the picture is taken.

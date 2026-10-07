@@ -21,7 +21,7 @@ Item {
     // The action button was clicked; the toast has already hidden itself.
     signal actionTriggered
 
-    // True from show() until the toast has timed out or been hidden; for AtlasWindow's queue.
+    // True from show() until the toast has timed out or been hidden; for TelamonWindow's queue.
     readonly property bool _showing: timer.showing
 
     function show(message) {
@@ -75,7 +75,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: AtlasStyle.durationShort
+            duration: TelamonStyle.durationShort
         }
     }
 
@@ -106,18 +106,18 @@ Item {
         anchors.bottomMargin: -3
         anchors.leftMargin: -1
         anchors.rightMargin: -1
-        radius: AtlasStyle.radiusPill
+        radius: TelamonStyle.radiusPill
         color: Qt.rgba(0, 0, 0, 0.18)
     }
     Rectangle {
         id: pill
         readonly property real pad: Kirigami.Units.gridUnit
-        width: Math.min(row.implicitWidth + pad + (actionButton.visible ? AtlasStyle.spacingSmall : pad), Math.max(0, (control.parent ? control.parent.width : 0) - Kirigami.Units.gridUnit * 2))
-        height: Math.max(label.implicitHeight, actionButton.visible ? actionButton.implicitHeight : 0) + AtlasStyle.spacingLarge * 2
-        radius: AtlasStyle.radiusPill
-        color: AtlasStyle.floatingBackground
+        width: Math.min(row.implicitWidth + pad + (actionButton.visible ? TelamonStyle.spacingSmall : pad), Math.max(0, (control.parent ? control.parent.width : 0) - Kirigami.Units.gridUnit * 2))
+        height: Math.max(label.implicitHeight, actionButton.visible ? actionButton.implicitHeight : 0) + TelamonStyle.spacingLarge * 2
+        radius: TelamonStyle.radiusPill
+        color: TelamonStyle.floatingBackground
         border.width: 1
-        border.color: AtlasStyle.separator
+        border.color: TelamonStyle.separator
 
         RowLayout {
             id: row
@@ -125,8 +125,8 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.leftMargin: pill.pad
-            anchors.rightMargin: actionButton.visible ? AtlasStyle.spacingSmall : pill.pad
-            spacing: AtlasStyle.spacingLarge
+            anchors.rightMargin: actionButton.visible ? TelamonStyle.spacingSmall : pill.pad
+            spacing: TelamonStyle.spacingLarge
 
             QQC2.Label {
                 id: label
@@ -134,7 +134,7 @@ Item {
                 horizontalAlignment: actionButton.visible ? Text.AlignLeft : Text.AlignHCenter
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
-                color: AtlasStyle.text
+                color: TelamonStyle.text
             }
             TextButton {
                 id: actionButton

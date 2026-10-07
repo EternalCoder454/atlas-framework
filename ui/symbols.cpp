@@ -14,7 +14,7 @@
 
 namespace
 {
-Q_LOGGING_CATEGORY(lcSymbols, "atlas.ui.symbols")
+Q_LOGGING_CATEGORY(lcSymbols, "telamon.ui.symbols")
 
 struct Entry {
     const char *name;
@@ -67,21 +67,21 @@ bool Symbols::resolveStyle(int i)
     static std::once_flag once[std::size(styles)];
     static std::atomic<bool> ready[std::size(styles)];
     std::call_once(once[i], [i] {
-        const QString family = QLatin1String("Material Symbols ") + QLatin1String(styles[i]);
+        const QString family = QLatin1String("Telamon Symbols ") + QLatin1String(styles[i]);
         bool ok = QFontDatabase::hasFamily(family);
-#ifdef ATLAS_UI_SYMBOLS_SOURCE_DIR
-        // Development builds only: a packaged Atlas.Ui is loaded into every
-        // Atlas app, and must not parse a font file named by its environment.
+#ifdef TELAMON_UI_SYMBOLS_SOURCE_DIR
+        // Development builds only: a packaged Telamon.Ui is loaded into every
+        // Telamon app, and must not parse a font file named by its environment.
         QStringList dirs;
-        if (const QString env = qEnvironmentVariable("ATLAS_UI_SYMBOLS_DIR"); !env.isEmpty()) {
+        if (const QString env = qEnvironmentVariable("TELAMON_UI_SYMBOLS_DIR"); !env.isEmpty()) {
             dirs << env;
         }
-        dirs << QStringLiteral(ATLAS_UI_SYMBOLS_SOURCE_DIR);
+        dirs << QStringLiteral(TELAMON_UI_SYMBOLS_SOURCE_DIR);
         for (const QString &dir : std::as_const(dirs)) {
             if (ok) {
                 break;
             }
-            const QString file = QDir(dir).filePath(QLatin1String("MaterialSymbols") + QLatin1String(styles[i]) + QLatin1String(".ttf"));
+            const QString file = QDir(dir).filePath(QLatin1String("TelamonSymbols") + QLatin1String(styles[i]) + QLatin1String(".ttf"));
             ok = QFileInfo::exists(file) && QFontDatabase::addApplicationFont(file) >= 0;
         }
 #endif
@@ -94,11 +94,11 @@ void Symbols::loadFonts()
 {
     static std::once_flag once;
     // Rounded is what Symbol draws with by default, so a missing one is a
-    // broken install: say so now. Outlined and Sharp (atlas-symbols-fonts-extra)
+    // broken install: say so now. Outlined and Sharp (telamon-symbols-fonts-extra)
     // are optional and are looked for when a Symbol first asks for them.
     std::call_once(once, [] {
         if (!resolveStyle(Rounded)) {
-            qCWarning(lcSymbols) << "Material Symbols Rounded is not installed (atlas-symbols-fonts): its symbols will be blank";
+            qCWarning(lcSymbols) << "Telamon Symbols Rounded is not installed (telamon-symbols-fonts): its symbols will be blank";
         }
     });
 }
@@ -155,11 +155,11 @@ QString Symbols::family(int style) const
         static std::once_flag warned[std::size(styles)];
         std::call_once(warned[i], [i] {
             if (i != Rounded) { // Rounded warned when the fonts loaded
-                qCWarning(lcSymbols) << "Material Symbols" << styles[i] << "is not installed (atlas-symbols-fonts-extra): its symbols will be blank";
+                qCWarning(lcSymbols) << "Telamon Symbols" << styles[i] << "is not installed (telamon-symbols-fonts-extra): its symbols will be blank";
             }
         });
     }
-    return QLatin1String("Material Symbols ") + QLatin1String(styles[i]);
+    return QLatin1String("Telamon Symbols ") + QLatin1String(styles[i]);
 }
 
 bool Symbols::available(int style) const

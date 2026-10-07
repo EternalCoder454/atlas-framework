@@ -1,7 +1,7 @@
-// The colour helpers behind AtlasStyle.alpha() and AtlasStyle.mix()
-// (ui/atlascolorsprivate.cpp, compiled into the test): opaque and translucent
+// The colour helpers behind TelamonStyle.alpha() and TelamonStyle.mix()
+// (ui/telamoncolorsprivate.cpp, compiled into the test): opaque and translucent
 // colours, clamping, NaN, mixing with alpha, invalid colours.
-#include "atlascolorsprivate.h"
+#include "telamoncolorsprivate.h"
 
 #include <QtTest>
 
@@ -21,20 +21,20 @@ class TestColors : public QObject
 private Q_SLOTS:
     void alphaOpaque()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         const QColor c = h.alpha(QColor(255, 0, 0), 0.5);
         QVERIFY(near(c, 1, 0, 0, 0.5));
     }
     void alphaTranslucent()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         // Replaces the alpha, as Qt.alpha does; it does not multiply.
         const QColor c = h.alpha(QColor(0, 0, 255, 51), 0.8);
         QVERIFY(near(c, 0, 0, 1, 0.8));
     }
     void alphaClamps()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         QVERIFY(near(h.alpha(QColor(10, 20, 30), 2.5), 10 / 255.0, 20 / 255.0, 30 / 255.0, 1));
         QVERIFY(near(h.alpha(QColor(10, 20, 30), -1), 10 / 255.0, 20 / 255.0, 30 / 255.0, 0));
         QVERIFY(near(h.alpha(QColor(10, 20, 30), std::numeric_limits<double>::infinity()), 10 / 255.0, 20 / 255.0, 30 / 255.0, 1));
@@ -42,17 +42,17 @@ private Q_SLOTS:
     }
     void alphaNaN()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         QVERIFY(near(h.alpha(QColor(255, 255, 255), kNaN), 1, 1, 1, 0));
     }
     void alphaInvalid()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         QVERIFY(!h.alpha(QColor(), 0.5).isValid());
     }
     void mixEnds()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         const QColor a(255, 0, 0);
         const QColor b(0, 0, 255);
         QVERIFY(near(h.mix(a, b, 0), 1, 0, 0, 1));
@@ -60,12 +60,12 @@ private Q_SLOTS:
     }
     void mixHalf()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         QVERIFY(near(h.mix(QColor(0, 0, 0), QColor(255, 255, 255), 0.5), 0.5, 0.5, 0.5, 1));
     }
     void mixAlpha()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         // Alpha blends like a channel: 0 and 1 give 0.5.
         QVERIFY(near(h.mix(QColor(0, 0, 0, 0), QColor(255, 255, 255, 255), 0.5), 0.5, 0.5, 0.5, 0.5));
         // An opaque base mixed with white at t is Qt.tint(base, rgba(1, 1, 1, t)).
@@ -73,7 +73,7 @@ private Q_SLOTS:
     }
     void mixClampsAndNaN()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         const QColor a(255, 0, 0);
         const QColor b(0, 0, 255);
         QVERIFY(near(h.mix(a, b, 7), 0, 0, 1, 1));
@@ -82,13 +82,13 @@ private Q_SLOTS:
     }
     void mixOtherSpec()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         // An HSL colour is converted to RGB first.
         QVERIFY(near(h.mix(QColor::fromHslF(0, 1, 0.5), QColor(255, 0, 0), 0.5), 1, 0, 0, 1));
     }
     void mixInvalid()
     {
-        AtlasColorsPrivate h;
+        TelamonColorsPrivate h;
         QVERIFY(!h.mix(QColor(), QColor(0, 0, 0), 0.5).isValid());
         QVERIFY(!h.mix(QColor(0, 0, 0), QColor(), 0.5).isValid());
         QVERIFY(!h.mix(QColor(), QColor(), 0.5).isValid());

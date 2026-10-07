@@ -1,12 +1,12 @@
 ---
-title: Atlas Gallery
-summary: The Atlas Gallery app (atlas-symbols) shows every Atlas.Ui control live and every Material Symbol, and copies the QML for either.
+title: Telamon Gallery
+summary: The Telamon Gallery app (telamon-symbols) shows every Telamon.Ui control live and every Material Symbol, and copies the QML for either.
 order: 10
 ---
 
-The Atlas Gallery is an app that shows what Atlas.Ui can do. It has two pages, Symbols and Controls, and builds from the same controls it shows, so it is also a sample of an Atlas app.
+The Telamon Gallery is an app that shows what Telamon.Ui can do. It has two pages, Symbols and Controls, and builds from the same controls it shows, so it is also a sample of a Telamon app.
 
-Install it with `sudo dnf install atlas-symbols` and start it with `atlas-symbols` or from the app menu. The package recommends `atlas-symbols-fonts-extra`, so the Outlined and Sharp styles show too; without it the page says so.
+Install it with `sudo dnf install telamon-symbols` and start it with `telamon-symbols` or from the app menu. The package recommends `telamon-symbols-fonts-extra`, so the Outlined and Sharp styles show too; without it the page says so.
 
 ## Symbols
 
@@ -23,7 +23,7 @@ See [Symbols](index.md) for how to use the result.
 
 ## Controls
 
-Every Atlas.Ui control with a demo, grouped (Buttons, Inputs, Pickers, Selection, Lists and tables, Navigation and layout, Windows and dialogs, Feedback and status, Data display, Text, Style and services). Pick one to see it live, with:
+Every Telamon.Ui control with a demo, grouped (Buttons, Inputs, Pickers, Selection, Lists and tables, Navigation and layout, Windows and dialogs, Feedback and status, Data display, Text, Style and services). Pick one to see it live, with:
 
 - **Copy QML**, which copies the demo's snippet, taken from the usage example in the control's header comment;
 - a **Disabled** switch that shows the control disabled;
@@ -36,6 +36,6 @@ The header has two toggles that apply to the whole gallery at once, so you can s
 | Toggle | Choices |
 |---|---|
 | Colour scheme | System, Light, Dark |
-| Density | Normal, Compact (`AtlasStyle.density`) |
+| Density | Normal, Compact (`TelamonStyle.density`) |
 
-The gallery also runs on the user's accent colour, transparency setting and text size like any Atlas app. Its demos are what the framework's visual and accessibility tests run on, so a control that shows here is covered by them. See [Accessibility](../atlas-ui/accessibility.md).
+The gallery also runs on the user's accent colour, transparency setting and text size like any Telamon app. Its demos are what the framework's visual and accessibility tests run on, so a control that shows here is covered by them. See [Accessibility](../telamon-ui/accessibility.md).

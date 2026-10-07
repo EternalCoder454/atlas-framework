@@ -1,16 +1,16 @@
 [package]
-name = "atlas-app-template"
+name = "telamon-app-template"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
 rust-version = "1.89"
-description = "Starting point for Atlas apps: Kirigami + CXX-Qt + atlas-framework"
+description = "Starting point for Telamon apps: Kirigami + CXX-Qt + telamon-framework"
 
 # The template is not part of the framework workspace; it builds on its own.
 [workspace]
 
 [lib]
-name = "atlas_app_template"
+name = "telamon_app_template"
 crate-type = ["staticlib"]
 
 [dependencies]
@@ -18,17 +18,17 @@ cxx = "1"
 cxx-qt = "0.10"
 cxx-qt-lib = "0.10"
 log = "0.4"
-# The Atlas framework crates. Here they come from this checkout; a copied app
+# The Telamon framework crates. Here they come from this checkout; a copied app
 # takes them from git, pinned to a release tag so a change there can't break
 # the app or slip into its build unreviewed. Each release opens a pull request
 # in every app that moves the tag forward (CHANGELOG.md says what changed):
 #   (use the latest release tag, e.g. v1.4.0, in place of vX.Y.Z)
-#   atlas-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", tag = "vX.Y.Z" }
-# Add atlas-framework-system (crash reports, AtlasOS state, polkit,
-# notifications) or atlas-framework-flatpak only if the app needs them. The
+#   telamon-framework-ui = { git = "https://github.com/EternalCoder454/atlas-framework", tag = "vX.Y.Z" }
+# Add telamon-framework-system (crash reports, Telamon OS state, polkit,
+# notifications) or telamon-framework-flatpak only if the app needs them. The
 # `notify` feature is what the demo notification in src/backend.rs uses.
-atlas-framework-ui = { path = "../crates/atlas-framework-ui" }
-atlas-framework-system = { path = "../crates/atlas-framework-system", features = ["notify"] }
+telamon-framework-ui = { path = "../crates/telamon-framework-ui" }
+telamon-framework-system = { path = "../crates/telamon-framework-system", features = ["notify"] }
 
 [build-dependencies]
 cxx-qt-build = "0.10"

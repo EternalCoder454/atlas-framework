@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// 1.5.0 display items: AtlasAboutPage rows and links, AtlasDetailGrid title
-// and footer, AtlasBreadcrumb.hiddenText and AtlasCodeView.inset.
+// 1.5.0 display items: TelamonAboutPage rows and links, TelamonDetailGrid title
+// and footer, TelamonBreadcrumb.hiddenText and TelamonCodeView.inset.
 Item {
     id: root
     width: 520
@@ -13,7 +13,7 @@ Item {
 
     Component {
         id: gridComp
-        AtlasDetailGrid {
+        TelamonDetailGrid {
             width: 400
             model: [
                 { label: "Version", value: "1.4.0" },
@@ -23,21 +23,21 @@ Item {
     }
     Component {
         id: aboutComp
-        AtlasAboutPage {
+        TelamonAboutPage {
             width: 520
             height: 600
         }
     }
     Component {
         id: crumbComp
-        AtlasBreadcrumb {
+        TelamonBreadcrumb {
             width: 120
-            segments: [{ title: "Home" }, { title: "Documents" }, { title: "Projects" }, { title: "Atlas" }, { title: "Deep" }]
+            segments: [{ title: "Home" }, { title: "Documents" }, { title: "Projects" }, { title: "Telamon" }, { title: "Deep" }]
         }
     }
     Component {
         id: codeComp
-        AtlasCodeView {
+        TelamonCodeView {
             width: 300
             wrap: true
             framed: false
@@ -127,13 +127,13 @@ Item {
             tryVerify(() => edit.width > 0);
             fuzzyCompare(edit.width, 300, 0.5);
             v.inset = true;
-            tryVerify(() => Math.abs(edit.width - (300 - 2 * AtlasStyle.spacingLarge)) < 0.5);
+            tryVerify(() => Math.abs(edit.width - (300 - 2 * TelamonStyle.spacingLarge)) < 0.5);
             // A framed view has the room already: inset changes nothing.
             v.framed = true;
-            tryVerify(() => Math.abs(edit.width - (300 - 2 * AtlasStyle.spacingLarge)) < 0.5);
+            tryVerify(() => Math.abs(edit.width - (300 - 2 * TelamonStyle.spacingLarge)) < 0.5);
             v.inset = false;
             wait(50);
-            fuzzyCompare(edit.width, 300 - 2 * AtlasStyle.spacingLarge, 0.5);
+            fuzzyCompare(edit.width, 300 - 2 * TelamonStyle.spacingLarge, 0.5);
         }
 
         function test_about_system_rows() {
@@ -157,7 +157,7 @@ Item {
                 { title: "Homepage", url: "https://example.org/" },
                 { title: "Mail", url: "mailto:a@example.org" },
                 { title: "Bad", url: "file:///etc/passwd" },
-                { title: "Custom", url: "atlas-evil://x" },
+                { title: "Custom", url: "telamon-evil://x" },
                 { title: "Empty", url: "" },
                 { url: "https://example.org/untitled" }
             ];
@@ -208,19 +208,19 @@ Item {
             compare(p._customLinks, false);
             const src = row(p, "Source code");
             verify(src, "the built-in row is still there");
-            compare(src.visible, AtlasApp.sourceUrl.length > 0);
+            compare(src.visible, TelamonApp.sourceUrl.length > 0);
             p.links = [{ title: "Good", url: "https://x.org" }];
             compare(p._customLinks, true);
             tryVerify(() => !row(p, "Source code").visible);
         }
 
-        // --- the AtlasDetailGrid rewrite: cells built from Loaders ---
+        // --- the TelamonDetailGrid rewrite: cells built from Loaders ---
 
         function gridModel(extra) {
             return [
                 { label: "Version", value: "1.4.0" },
                 { label: "Checksum", value: "9f86d081", mono: true, copyable: true },
-                { label: "Path", value: "/usr/share/atlas", copyable: false }
+                { label: "Path", value: "/usr/share/telamon", copyable: false }
             ].concat(extra ?? []);
         }
         function values(g) {
@@ -246,9 +246,9 @@ Item {
             const g = makeGrid({ model: gridModel() });
             tryVerify(() => values(g).length === 3);
             const v = values(g);
-            compare(v[0].font.family, AtlasStyle.fontFamily);
-            compare(v[1].font.family, AtlasStyle.monoFamily);
-            compare(v[2].font.family, AtlasStyle.fontFamily);
+            compare(v[0].font.family, TelamonStyle.fontFamily);
+            compare(v[1].font.family, TelamonStyle.monoFamily);
+            compare(v[2].font.family, TelamonStyle.fontFamily);
         }
 
         function test_grid_copy_button_only_on_copyable_cells() {
@@ -278,10 +278,10 @@ Item {
             const g = makeGrid({ model: gridModel() });
             tryVerify(() => copyButtons(g).length === 1);
             const b = copyButtons(g)[0];
-            AtlasClipboard.setText("before");
+            TelamonClipboard.setText("before");
             verify(!b.copied);
             mouseClick(b);
-            compare(AtlasClipboard.text(), "9f86d081");
+            compare(TelamonClipboard.text(), "9f86d081");
             verify(b.copied);
             // The text edit is left unselected.
             compare(values(g)[1].selectedText, "");
@@ -310,12 +310,12 @@ Item {
             g.model = [
                 { label: "Version", value: "1.4.0", copyable: true, mono: true },
                 { label: "Checksum", value: "9f86d081" },
-                { label: "Path", value: "/usr/share/atlas", copyable: true }
+                { label: "Path", value: "/usr/share/telamon", copyable: true }
             ];
             tryVerify(() => copyButtons(g).length === 2);
             const v = values(g);
-            compare(v[0].font.family, AtlasStyle.monoFamily);
-            compare(v[1].font.family, AtlasStyle.fontFamily);
+            compare(v[0].font.family, TelamonStyle.monoFamily);
+            compare(v[1].font.family, TelamonStyle.fontFamily);
             compare(copyButtons(g)[0].Accessible.name, "Copy Version");
         }
 
@@ -406,7 +406,7 @@ Item {
             const footer = labelItem(g, "F");
             // Unframed: the title, one gap, the footer. The hidden card adds
             // neither height nor a second gap.
-            tryVerify(() => Math.abs(g.implicitHeight - (title.implicitHeight + AtlasStyle.spacingSmall + footer.implicitHeight)) < 0.5);
+            tryVerify(() => Math.abs(g.implicitHeight - (title.implicitHeight + TelamonStyle.spacingSmall + footer.implicitHeight)) < 0.5);
             g.footer = "";
             tryVerify(() => Math.abs(g.implicitHeight - title.implicitHeight) < 0.5);
             g.title = "";

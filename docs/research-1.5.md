@@ -1,5 +1,9 @@
 # Research for 1.5.0 and after
 
+> Written before the 2.0.0 rename and left as it was: Atlas.Ui is now Telamon.Ui,
+> every `Atlas<Name>` type is `Telamon<Name>`, `atlas-ui` is `telamon-ui` and
+> the `atlas-framework-*` crates are `telamon-framework-*` (see CHANGELOG.md).
+
 October 2026. How to make Atlas.Ui and the crates more consistent, less code
 for apps, faster and easier to use, from what Qt, KDE, GNOME, Apple, Google
 and Microsoft do now, plus measurements of the framework itself. The items to

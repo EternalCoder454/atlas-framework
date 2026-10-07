@@ -1,10 +1,10 @@
 # tests
 
-Built with `-DATLAS_UI_TESTS=ON` (off by default, so the RPM build is
+Built with `-DTELAMON_UI_TESTS=ON` (off by default, so the RPM build is
 unchanged). In the dev container:
 
 ```sh
-cmake -S . -B build -G Ninja -DATLAS_UI_TESTS=ON && cmake --build build
+cmake -S . -B build -G Ninja -DTELAMON_UI_TESTS=ON && cmake --build build
 ctest --test-dir build -j"$(nproc)" --output-on-failure
 ```
 
@@ -20,35 +20,40 @@ Qt Quick Test. Every `ui/gallery/demos/*Demo.qml` is found at run time, shown,
 grabbed and compared with `visual/golden/<variant>/<Demo>.png`. A new control
 needs a `<Type>Demo.qml` (an `Item` or layout, no window, no timers or
 randomness; a root `property bool animate` is switched off before the grab) and
-its goldens, nothing else. A window demo (`AtlasWindowDemo`) has an
-`AtlasWindow`-style root and the whole window is grabbed.
+its goldens, nothing else. A window demo (`TelamonWindowDemo`) has an
+`TelamonWindow`-style root and the whole window is grabbed.
 
 - Per-channel tolerance 2; fails when more than 0.1% of the pixels differ.
 - A failure writes `<Demo>.actual.png` and `<Demo>.diff.png` (differences in
   red) to `build/visual-out/<variant>/` and names them.
-- `ATLAS_UPDATE_GOLDENS=1 ctest --test-dir build -R visual` rewrites the
+- `TELAMON_UPDATE_GOLDENS=1 ctest --test-dir build -R visual` rewrites the
   goldens that fail (one that still matches within the tolerance is left
   alone, so the diff holds only real changes); `tools/dev-check.sh` passes
   the variable through. Approving a change means committing them: the reviewer sees the new
   pictures in the pull request.
 - Variants, each in its own temporary `XDG_CONFIG_HOME`: `light` (Breeze
   Light), `dark` (Breeze Dark), `accent` (Breeze Light with `#e5487a` as the
-  accent in kdeglobals), `opaque` (`atlasrc` `Transparency=false`; only the
+  accent in kdeglobals), `opaque` (`telamonrc` `Transparency=false`; only the
   window-level demos), `contrast` (the high-contrast scheme in
   `visual/schemes/`, a Qt palette to match, and `visual/fake-portal.cpp`
   answering "contrast: more" on the private bus: Qt takes
   `Appearance.highContrast` from the settings portal only), `rtl` (the
   application's layout direction, the stage and the window overlay mirrored),
-  `compact` (`AtlasStyle.density = Compact`), `text200` (Noto Sans 20, so
+  `compact` (`TelamonStyle.density = Compact`), `text200` (Noto Sans 20, so
   `textScale` is 2). `test_variant_is_on` fails when a variant is not really on.
   Regenerate the four newest with
-  `ATLAS_UPDATE_GOLDENS=1 ctest --test-dir build -R 'visual-(contrast|rtl|compact|text200)'`.
+  `TELAMON_UPDATE_GOLDENS=1 ctest --test-dir build -R 'visual-(contrast|rtl|compact|text200)'`.
 - Deterministic: `QT_QUICK_BACKEND=software`, `QT_SCALE_FACTOR=1`, Noto Sans 10,
   `org.kde.desktop`, `xvfb-run`, X11. The goldens are made in the dev
-  container; another Qt or font version gives different pictures (`AtlasAboutPage`
+  container; another Qt or font version gives different pictures (`TelamonAboutPage`
   also shows the OS name and Qt version).
 - `visual/schemes/` holds the Breeze colour schemes the variants start from, so
   the pictures do not follow the distribution's copy.
+- The sample texts the pictures show are fixtures. The rename to Telamon
+  (2.0.0) changed no golden, to the byte, so the texts that show in one keep
+  their wording from before ("Atlas Notepad", `AtlasListView: ...`, the
+  application name `atlas-visual-tests` set in `visual/main.cpp`, "Atlas Test
+  OS" in `ui/telamonapp.cpp`). Change one with its golden, on purpose.
 
 ## qmllint budget
 
@@ -78,22 +83,29 @@ lowers it again.
   a failure go to `build/state-out-<n>/`). The allow-list at the top of
   `tst_state.qml` names the demos where a check cannot apply, with the reason;
   a listed demo that passes fails the test until the entry is removed.
-- `status/`: `AtlasStatus` on AtlasListView, DataTable, AtlasTreeView and
-  AtlasPage (every status on every view, the 300 ms spinner delay, the kept
+- `status/`: `TelamonStatus` on TelamonListView, DataTable, TelamonTreeView and
+  TelamonPage (every status on every view, the 300 ms spinner delay, the kept
   header, the action button, the Error announcement; the status view's
-  `_announceHook` stands in for `Accessible.announce`), and AtlasSplitView's
+  `_announceHook` stands in for `Accessible.announce`), and TelamonSplitView's
   `collapsible` (collapse and expand at `collapseWidth`, `showPane`, Back by the
   button, Alt+Left and the mouse Back button, `currentPane` across a resize,
   right-to-left).
-- `chrome/`: the frameless window: AtlasHeaderBar's drag (`_moveHook`) and
-  double click (`_toggleHook`), AtlasWindow's resize handles and cursors
-  (`_resizeHook`), AtlasWindowChrome's KWin button parsing. Real window moves
+- `chrome/`: the frameless window: TelamonHeaderBar's drag (`_moveHook`) and
+  double click (`_toggleHook`), TelamonWindow's resize handles and cursors
+  (`_resizeHook`), TelamonWindowChrome's KWin button parsing. Real window moves
   need a compositor and are not covered.
-- `wizard/`: the first-run setup controls of item 42: AtlasOnboarding's labels,
-  busy state, `advanceRequested`, `canGoBack` and dots; AtlasPasswordStrength;
-  AtlasChoiceCard and AtlasAccentPicker (selection, keys, mirrored layout, the
-  edit rule in the three app styles); AtlasWindow.`kiosk` (full screen, a close
+- `wizard/`: the first-run setup controls of item 42: TelamonOnboarding's labels,
+  busy state, `advanceRequested`, `canGoBack` and dots; TelamonPasswordStrength;
+  TelamonChoiceCard and TelamonAccentPicker (selection, keys, mirrored layout, the
+  edit rule in the three app styles); TelamonWindow.`kiosk` (full screen, a close
   request refused, no close button).
-- `i18n/`: with `LANGUAGE=de` and a throwaway `atlas-ui_de.qm` (built from
-  `i18n/atlas-ui_de.ts`), a default `SearchField` must show the German string.
+- `i18n/`: with `LANGUAGE=de` and a throwaway `telamon-ui_de.qm` (built from
+  `i18n/telamon-ui_de.ts`), a default `SearchField` must show the German string.
   Needs qt6-linguist; skipped without it.
+- `legacy/`: what Telamon.Ui 2.0.0 still reads from before the rename
+  (`ui/legacyconfig.cpp`): the copy of a file under its old name with the
+  `[Atlas]` group renamed, the `ATLAS_*` variables, `atlasrc` for `Appearance`.
+  The same for `TelamonSettings` and the notifyrc is in `settings/`.
+- `migrate/run.sh`: `tools/migrate-app-to-telamon.sh` on a made-up app: what it
+  rewrites, what it leaves, the pins, the spec, the notifyrc, a dry run, a
+  dirty tree and a second run.

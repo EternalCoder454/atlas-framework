@@ -38,24 +38,24 @@ private Q_SLOTS:
         QGuiApplication::setFont(original);
     }
 
-    // ATLAS_SOFTWARE_RENDERING forces the flag both ways; anything else is
+    // TELAMON_SOFTWARE_RENDERING forces the flag both ways; anything else is
     // ignored (no window here, so the flag stays false).
     void softwareRenderingOverride()
     {
-        qputenv("ATLAS_SOFTWARE_RENDERING", "1");
+        qputenv("TELAMON_SOFTWARE_RENDERING", "1");
         QCOMPARE(Appearance().softwareRendering(), true);
-        qputenv("ATLAS_SOFTWARE_RENDERING", "0");
+        qputenv("TELAMON_SOFTWARE_RENDERING", "0");
         QCOMPARE(Appearance().softwareRendering(), false);
 
         for (const char *bad : {"yes", "true", "2", "-1", "01", " 1", "1 ", "llvmpipe"}) {
-            qputenv("ATLAS_SOFTWARE_RENDERING", bad);
-            QTest::ignoreMessage(QtWarningMsg, QRegularExpression("ignoring ATLAS_SOFTWARE_RENDERING"));
+            qputenv("TELAMON_SOFTWARE_RENDERING", bad);
+            QTest::ignoreMessage(QtWarningMsg, QRegularExpression("ignoring TELAMON_SOFTWARE_RENDERING"));
             QCOMPARE(Appearance().softwareRendering(), false);
         }
         // Empty counts as unset: no message.
-        qputenv("ATLAS_SOFTWARE_RENDERING", "");
+        qputenv("TELAMON_SOFTWARE_RENDERING", "");
         QCOMPARE(Appearance().softwareRendering(), false);
-        qunsetenv("ATLAS_SOFTWARE_RENDERING");
+        qunsetenv("TELAMON_SOFTWARE_RENDERING");
         QCOMPARE(Appearance().softwareRendering(), false);
     }
 
@@ -73,7 +73,7 @@ private Q_SLOTS:
     // A probe that gives up does not latch: a later real result still counts.
     void giveUpDoesNotLatch()
     {
-        qunsetenv("ATLAS_SOFTWARE_RENDERING");
+        qunsetenv("TELAMON_SOFTWARE_RENDERING");
         Appearance a;
         QSignalSpy spy(&a, &Appearance::softwareRenderingChanged);
         QTest::ignoreMessage(QtWarningMsg, QRegularExpression("could not tell the rendering mode"));

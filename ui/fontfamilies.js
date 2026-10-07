@@ -1,7 +1,7 @@
 .pragma library
 
 // The installed font families and the monospace ones found so far, kept for
-// the whole process and shared by every AtlasFontPicker: the families are
+// the whole process and shared by every TelamonFontPicker: the families are
 // read once, and a scan one picker has done is not done again by the next.
 var _all = null;
 var _fixed = [];

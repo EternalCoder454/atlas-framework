@@ -1,20 +1,20 @@
 import QtQuick
 import QtQuick.Layouts
-import Atlas.Ui
+import Telamon.Ui
 
 // A small page for tests/preview/run.sh: a label, a button, a field.
 Item {
     ColumnLayout {
         anchors.centerIn: parent
         spacing: 12
-        AtlasLabel {
+        TelamonLabel {
             text: "Preview"
-            textStyle: AtlasLabel.Title
+            textStyle: TelamonLabel.Title
         }
         PrimaryButton {
             text: "Save"
         }
-        AtlasTextField {
+        TelamonTextField {
             Layout.preferredWidth: 240
             placeholderText: "Name"
         }

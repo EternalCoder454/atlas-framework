@@ -1,0 +1,10 @@
+[Global]
+IconName=applications-system
+Name=Telamon App
+Comment=Telamon app template
+DesktopEntry=net.eterneon.telamon.apptemplate
+
+[Event/demoAction]
+Name=Demo notification
+Comment=Sent when you press Send a Notification
+Action=Popup

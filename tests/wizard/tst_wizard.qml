@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// Item 42, the AtlasOS Wizard's controls. Each control is driven the way the
+// Item 42, the Telamon OS Wizard's controls. Each control is driven the way the
 // Wizard drives it; user edits are made with the mouse or the keyboard.
 Item {
     id: root
@@ -40,7 +40,7 @@ Item {
 
     Component {
         id: onboardingComp
-        AtlasOnboarding {
+        TelamonOnboarding {
             id: ob
             width: 640
             height: 400
@@ -59,7 +59,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasOnboarding42"
+        name: "TelamonOnboarding42"
         when: windowShown
 
         function make(props) {
@@ -228,7 +228,7 @@ Item {
 
         function test_dots() {
             const o = make({
-                stepStyle: AtlasOnboarding.Dots
+                stepStyle: TelamonOnboarding.Dots
             });
             const row = dotsOf(o);
             verify(row !== null && row.visible);
@@ -241,21 +241,21 @@ Item {
             // The step column is not shown with the dots.
             const step = find(o, c => c.number !== undefined && c.done !== undefined);
             verify(step === null || !step.visible);
-            if (!AtlasStyle.highContrast) {
+            if (!TelamonStyle.highContrast) {
                 fuzzyCompare(dots[0].color.a, 0.45, 0.02);
                 fuzzyCompare(dots[2].color.a, 0.2, 0.02);
-                compare(dots[1].color, AtlasStyle.accent);
+                compare(dots[1].color, TelamonStyle.accent);
             }
             o.showSteps = false;
             verify(!row.visible);
             o.showSteps = true;
-            o.stepStyle = AtlasOnboarding.Column;
+            o.stepStyle = TelamonOnboarding.Column;
             verify(!row.visible);
         }
 
         function test_dots_move_with_page() {
             const o = make({
-                stepStyle: AtlasOnboarding.Dots
+                stepStyle: TelamonOnboarding.Dots
             });
             const row = dotsOf(o);
             const dots = row.children.filter(c => c.isCurrent !== undefined);
@@ -267,7 +267,7 @@ Item {
 
         function test_column_is_the_default() {
             const o = make();
-            compare(o.stepStyle, AtlasOnboarding.Column);
+            compare(o.stepStyle, TelamonOnboarding.Column);
             verify(dotsOf(o) === null || !dotsOf(o).visible);
         }
     }
@@ -277,17 +277,17 @@ Item {
         SignalSpy {}
     }
 
-    // ---- AtlasPasswordStrength ----
+    // ---- TelamonPasswordStrength ----
 
     Component {
         id: strengthComp
-        AtlasPasswordStrength {
+        TelamonPasswordStrength {
             width: 240
         }
     }
 
     TestCase {
-        name: "AtlasPasswordStrength"
+        name: "TelamonPasswordStrength"
         when: windowShown
 
         function test_scores() {
@@ -328,7 +328,7 @@ Item {
         }
     }
 
-    // ---- AtlasChoiceCard ----
+    // ---- TelamonChoiceCard ----
 
     Component {
         id: cardsComp
@@ -337,17 +337,17 @@ Item {
             property alias b: cb
             property alias c: cc
             spacing: 20
-            AtlasChoiceCard {
+            TelamonChoiceCard {
                 id: ca
                 text: "Light"
                 autoExclusive: true
             }
-            AtlasChoiceCard {
+            TelamonChoiceCard {
                 id: cb
                 text: "Dark"
                 autoExclusive: true
             }
-            AtlasChoiceCard {
+            TelamonChoiceCard {
                 id: cc
                 text: "Auto"
                 autoExclusive: true
@@ -356,7 +356,7 @@ Item {
     }
     Component {
         id: cardAccept
-        AtlasChoiceCard {
+        TelamonChoiceCard {
             text: "Dark"
             checked: app.dark
             onToggled: app.dark = checked
@@ -364,14 +364,14 @@ Item {
     }
     Component {
         id: cardRefuse
-        AtlasChoiceCard {
+        TelamonChoiceCard {
             text: "Dark"
             checked: app.dark
         }
     }
     Component {
         id: cardLiteral
-        AtlasChoiceCard {
+        TelamonChoiceCard {
             text: "Dark"
         }
     }
@@ -382,11 +382,11 @@ Item {
             QQC2.ButtonGroup {
                 id: g
             }
-            AtlasChoiceCard {
+            TelamonChoiceCard {
                 text: "One"
                 QQC2.ButtonGroup.group: g
             }
-            AtlasChoiceCard {
+            TelamonChoiceCard {
                 text: "Two"
                 QQC2.ButtonGroup.group: g
                 checked: true
@@ -395,7 +395,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasChoiceCard"
+        name: "TelamonChoiceCard"
         when: windowShown
 
         function test_exclusive_with_autoexclusive() {
@@ -493,11 +493,11 @@ Item {
         }
     }
 
-    // ---- AtlasAccentPicker ----
+    // ---- TelamonAccentPicker ----
 
     Component {
         id: pickerComp
-        AtlasAccentPicker {
+        TelamonAccentPicker {
             model: [{
                     "color": "#3584e4",
                     "name": "Blue"
@@ -511,7 +511,7 @@ Item {
     }
     Component {
         id: pickerAccept
-        AtlasAccentPicker {
+        TelamonAccentPicker {
             model: ["#111111", "#222222", "#333333"]
             currentIndex: app.accent
             onActivated: index => app.accent = index
@@ -519,14 +519,14 @@ Item {
     }
     Component {
         id: pickerRefuse
-        AtlasAccentPicker {
+        TelamonAccentPicker {
             model: ["#111111", "#222222", "#333333"]
             currentIndex: app.accent
         }
     }
     Component {
         id: pickerLiteral
-        AtlasAccentPicker {
+        TelamonAccentPicker {
             model: ["#111111", "#222222", "#333333"]
         }
     }
@@ -536,7 +536,7 @@ Item {
             property alias picker: p
             LayoutMirroring.enabled: true
             LayoutMirroring.childrenInherit: true
-            AtlasAccentPicker {
+            TelamonAccentPicker {
                 id: p
                 model: ["#111111", "#222222", "#333333"]
             }
@@ -544,7 +544,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasAccentPicker"
+        name: "TelamonAccentPicker"
         when: windowShown
 
         function swatches(p) {
@@ -677,28 +677,28 @@ Item {
         }
     }
 
-    // ---- AtlasWindow.kiosk ----
+    // ---- TelamonWindow.kiosk ----
 
     Component {
         id: winComp
-        AtlasWindow {
+        TelamonWindow {
             width: 320
             height: 240
         }
     }
     Component {
         id: buttonsWinComp
-        AtlasWindow {
+        TelamonWindow {
             width: 320
             height: 240
-            AtlasWindowButtons {
+            TelamonWindowButtons {
                 buttons: ["minimize", "maximize", "close"]
             }
         }
     }
 
     TestCase {
-        name: "AtlasWindowKiosk"
+        name: "TelamonWindowKiosk"
         when: windowShown
 
         function shown(comp, props) {

@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 
-// Modal dialog in the Atlas look: rounded card, AtlasButtons.
+// Modal dialog in the Telamon look: rounded card, TelamonButtons.
 //
 // Two buttons by default (`rejectText`, `acceptText`); a non-empty
 // `alternativeText` ("Don't Save") adds a third at the leading edge, which
@@ -37,7 +37,7 @@ QQC2.Popup {
     property string alternativeText
     // "accept" (default), "reject" or "alternative".
     property string defaultButton: "accept"
-    // The accept button in AtlasButton's Destructive look (for deleting, resetting).
+    // The accept button in TelamonButton's Destructive look (for deleting, resetting).
     property bool destructive: false
     default property alias body: bodyColumn.data
 
@@ -55,7 +55,7 @@ QQC2.Popup {
         // Return themselves.
         readonly property bool bodyReturnBlocked: defaultName === "accept" && (dialog.destructive || dialog.focusReject && dialog.showReject)
 
-        function button(name: string): AtlasButton {
+        function button(name: string): TelamonButton {
             return name === "reject" ? rejectButton : name === "alternative" ? alternativeButton : acceptButton;
         }
         function activateDefault(): void {
@@ -81,7 +81,7 @@ QQC2.Popup {
             property: "opacity"
             from: 0
             to: 1
-            duration: AtlasStyle.durationShort
+            duration: TelamonStyle.durationShort
         }
     }
     exit: Transition {
@@ -89,7 +89,7 @@ QQC2.Popup {
             property: "opacity"
             from: 1
             to: 0
-            duration: AtlasStyle.durationShort
+            duration: TelamonStyle.durationShort
         }
     }
 
@@ -98,11 +98,11 @@ QQC2.Popup {
     }
 
     background: Rectangle {
-        radius: AtlasStyle.radiusLarge
+        radius: TelamonStyle.radiusLarge
         // Raised, strongly tinted over the blur; solid without it (floatingBackground switches).
-        color: AtlasStyle.floatingBackground
+        color: TelamonStyle.floatingBackground
         border.width: 1
-        border.color: AtlasStyle.separator
+        border.color: TelamonStyle.separator
     }
 
     contentItem: ColumnLayout {
@@ -110,7 +110,7 @@ QQC2.Popup {
         Accessible.name: dialog.title
         // The question, so a screen reader reads it with the title.
         Accessible.description: dialog.text
-        spacing: AtlasStyle.spacingLarge
+        spacing: TelamonStyle.spacingLarge
         // From a field in the body, Return reaches here; buttons take it themselves.
         Keys.onReturnPressed: event => {
             if (!event.isAutoRepeat && !internals.bodyReturnBlocked) {
@@ -129,7 +129,7 @@ QQC2.Popup {
             Layout.fillWidth: true
             text: dialog.title
             font.bold: true
-            font.pointSize: AtlasStyle.fontSizeHeading
+            font.pointSize: TelamonStyle.fontSizeHeading
             wrapMode: Text.Wrap
             textFormat: Text.PlainText
             Accessible.role: Accessible.Heading
@@ -145,11 +145,11 @@ QQC2.Popup {
             contentHeight: bodyContent.implicitHeight
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            QQC2.ScrollBar.vertical: AtlasScrollBar {}
+            QQC2.ScrollBar.vertical: TelamonScrollBar {}
             ColumnLayout {
                 id: bodyContent
                 width: scroller.width
-                spacing: AtlasStyle.spacingLarge
+                spacing: TelamonStyle.spacingLarge
                 QQC2.Label {
                     Layout.fillWidth: true
                     visible: dialog.text.length > 0
@@ -161,15 +161,15 @@ QQC2.Popup {
                 ColumnLayout {
                     id: bodyColumn
                     Layout.fillWidth: true
-                    spacing: AtlasStyle.spacingLarge
+                    spacing: TelamonStyle.spacingLarge
                 }
             }
         }
         RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: AtlasStyle.spacingSmall
-            spacing: AtlasStyle.spacingLarge
-            AtlasButton {
+            Layout.topMargin: TelamonStyle.spacingSmall
+            spacing: TelamonStyle.spacingLarge
+            TelamonButton {
                 id: alternativeButton
                 visible: dialog.alternativeText.length > 0
                 prominent: internals.defaultName === "alternative"
@@ -184,16 +184,16 @@ QQC2.Popup {
             Item {
                 Layout.fillWidth: true
             }
-            AtlasButton {
+            TelamonButton {
                 id: rejectButton
                 visible: dialog.showReject
                 prominent: internals.defaultName === "reject"
                 text: dialog.rejectText
                 onClicked: dialog.close()
             }
-            AtlasButton {
+            TelamonButton {
                 id: acceptButton
-                variant: dialog.destructive ? AtlasButton.Destructive : (internals.defaultName === "accept" ? AtlasButton.Prominent : AtlasButton.Default)
+                variant: dialog.destructive ? TelamonButton.Destructive : (internals.defaultName === "accept" ? TelamonButton.Prominent : TelamonButton.Default)
                 text: dialog.acceptText
                 onClicked: {
                     dialog.accepted();

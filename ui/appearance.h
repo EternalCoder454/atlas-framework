@@ -1,12 +1,12 @@
-// Appearance: the look switches every Atlas app shares. `transparency` is
+// Appearance: the look switches every Telamon app shares. `transparency` is
 // the "Transparency and blur" setting, `Transparency` under `[Appearance]` in
-// `atlasrc` (default true). A KConfigWatcher keeps every open Atlas app in
+// `telamonrc` (default true). A KConfigWatcher keeps every open Telamon app in
 // step when one of them, or the user, changes the file.
 //
 // `effective` is what a window acts on: the switch is on AND the compositor
 // offers blur (it does not in software rendering or many VMs, or when KWin's
 // blur effect is off). Nothing signals a change in the second, so call
-// refresh() when a window is shown or activated (AtlasWindow does).
+// refresh() when a window is shown or activated (TelamonWindow does).
 //
 // The read-only system preferences below follow the desktop live; each has a
 // NOTIFY signal, so a binding on it updates when the user changes the setting:
@@ -18,23 +18,23 @@
 //                  accessibility, Qt 6.10+, or the portal's `contrast`).
 //   reducedMotion  Plasma's AnimationDurationFactor in kdeglobals [KDE] is 0
 //                  (animations off), or the environment has
-//                  ATLAS_REDUCED_MOTION=1, or the portal's `reduced-motion`
+//                  TELAMON_REDUCED_MOTION=1, or the portal's `reduced-motion`
 //                  (since 1.5.0). Missing kdeglobals means false.
 //   softwareRendering  rendering is in software: the Qt Quick software
 //                  adaptation, or OpenGL or Vulkan on a software rasterizer
 //                  (GL_RENDERER or the Vulkan device named llvmpipe, softpipe,
 //                  SwiftShader or lavapipe). Known once the first frame is
 //                  drawn, so it changes at most once, false to true.
-//                  ATLAS_SOFTWARE_RENDERING=1 or =0 forces it (anything else
+//                  TELAMON_SOFTWARE_RENDERING=1 or =0 forces it (anything else
 //                  is logged and ignored).
 //   textScale      the application font's point size over 10 (Plasma's
 //                  default), so 1.0 is the default size, 1.2 is 20% larger. Kept
 //                  between 0.5 and 4.
 //
-// The Atlas brand (since 1.4.0), set once when Atlas.Ui loads:
+// The Telamon brand (since 1.4.0), set once when Telamon.Ui loads:
 //   accentFromSystem  the user chose an accent colour in Plasma (AccentColor
 //                  in kdeglobals [General]). Then that accent is used; if not,
-//                  the Atlas violet (and magenta-violet focus ring) is, by putting it
+//                  the Telamon violet (and magenta-violet focus ring) is, by putting it
 //                  in the application palette as the highlight colour.
 //   fontFamily     "IBM Plex Sans" when installed, else the system font's
 //                  family. It is also the application font's family.
@@ -163,7 +163,7 @@ private:
     bool m_blurAvailable = false;
 };
 
-// Puts the Atlas brand into the application: the violet highlight (unless the
+// Puts the Telamon brand into the application: the violet highlight (unless the
 // user has chosen a Plasma accent) and the UI font family. Safe to call more
-// than once; the Atlas.Ui plugin calls it when the module loads.
-void atlasUiApplyBrand();
+// than once; the Telamon.Ui plugin calls it when the module loads.
+void telamonUiApplyBrand();

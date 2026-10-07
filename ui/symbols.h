@@ -1,5 +1,5 @@
 // Symbols: Google's Material Symbols, about 4,000 icons in three styles
-// (Outlined, Rounded, Sharp), for any Atlas app. Draw one with Symbol:
+// (Outlined, Rounded, Sharp), for any Telamon app. Draw one with Symbol:
 //
 //   Symbol { icon: Symbols.Settings }
 //   Symbol { name: "arrow_back"; filled: true }
@@ -10,12 +10,12 @@
 // lists it under at fonts.google.com/icons, or one of its older names, and
 // warns at run time if there is no such symbol.
 //
-// The Rounded font (the default) is installed by the atlas-symbols-fonts
-// package; Outlined and Sharp by atlas-symbols-fonts-extra. A missing Rounded
+// The Rounded font (the default) is installed by the telamon-symbols-fonts
+// package; Outlined and Sharp by telamon-symbols-fonts-extra. A missing Rounded
 // is reported when the fonts load, a missing Outlined or Sharp when a Symbol
 // first asks for it. Without the packages, a
 // development build (any install prefix but /usr) loads them from
-// $ATLAS_UI_SYMBOLS_DIR or ui/symbols/. A packaged build reads neither.
+// $TELAMON_UI_SYMBOLS_DIR or ui/symbols/. A packaged build reads neither.
 #pragma once
 
 #include "symbols/symbolnames.h"

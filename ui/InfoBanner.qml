@@ -14,7 +14,7 @@ import org.kde.kirigami as Kirigami
 //
 // Use `shown` rather than `visible`, which cannot be animated. A dismissed
 // banner holds `shown` false with a Binding, so an app's own `shown` binding
-// survives. See docs/reference/atlas-ui/info-banner.md.
+// survives. See docs/reference/telamon-ui/info-banner.md.
 Item {
     id: control
 
@@ -32,7 +32,7 @@ Item {
 
     signal closed
 
-    readonly property color tint: type === "error" ? Kirigami.Theme.negativeTextColor : type === "warning" ? Kirigami.Theme.neutralTextColor : AtlasStyle.accent
+    readonly property color tint: type === "error" ? Kirigami.Theme.negativeTextColor : type === "warning" ? Kirigami.Theme.neutralTextColor : TelamonStyle.accent
     readonly property string iconName: type === "error" ? "dialog-error" : type === "warning" ? "dialog-warning" : "dialog-information"
     implicitWidth: Kirigami.Units.gridUnit * 20
     implicitHeight: Math.round(card.implicitHeight * card.progress)
@@ -97,25 +97,25 @@ Item {
         Behavior on progress {
             enabled: control.animated
             NumberAnimation {
-                duration: AtlasStyle.durationShort
+                duration: TelamonStyle.durationShort
                 easing.type: Easing.OutCubic
             }
         }
 
         width: parent.width
-        implicitHeight: row.implicitHeight + AtlasStyle.spacingSmall * 2 + AtlasStyle.spacingLarge
-        radius: AtlasStyle.radius
-        color: AtlasStyle.alpha(control.tint, 0.14)
+        implicitHeight: row.implicitHeight + TelamonStyle.spacingSmall * 2 + TelamonStyle.spacingLarge
+        radius: TelamonStyle.radius
+        color: TelamonStyle.alpha(control.tint, 0.14)
         border.width: 1
-        border.color: AtlasStyle.alpha(control.tint, 0.4)
+        border.color: TelamonStyle.alpha(control.tint, 0.4)
         opacity: card.progress
 
         RowLayout {
             id: row
             anchors.fill: parent
-            anchors.leftMargin: AtlasStyle.spacingLarge
-            anchors.rightMargin: AtlasStyle.spacingSmall + 2
-            spacing: AtlasStyle.spacingLarge
+            anchors.leftMargin: TelamonStyle.spacingLarge
+            anchors.rightMargin: TelamonStyle.spacingSmall + 2
+            spacing: TelamonStyle.spacingLarge
 
             Kirigami.Icon {
                 Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
@@ -165,7 +165,7 @@ Item {
                 id: closeButton
                 visible: control.closable
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
+                implicitWidth: Kirigami.Units.iconSizes.small + TelamonStyle.spacingSmall * 2
                 implicitHeight: implicitWidth
                 hoverEnabled: true
                 focusPolicy: Qt.TabFocus // a click must not take the editor's focus
@@ -182,7 +182,7 @@ Item {
                 onVisualFocusChanged: if (closeButton.visualFocus) closeButton._ensureTip()
                 Component {
                     id: closeTipComponent
-                    AtlasToolTip {
+                    TelamonToolTip {
                         text: control.closeName
                         shown: closeButton.hovered || closeButton.visualFocus
                     }
@@ -193,8 +193,8 @@ Item {
                 }
                 background: Rectangle {
                     radius: width / 2
-                    color: AtlasStyle.alpha(Kirigami.Theme.textColor, closeButton.down ? 0.16 : closeButton.hovered ? 0.1 : 0)
-                    AtlasFocusRing {
+                    color: TelamonStyle.alpha(Kirigami.Theme.textColor, closeButton.down ? 0.16 : closeButton.hovered ? 0.1 : 0)
+                    TelamonFocusRing {
                         radius: parent.radius + gap
                         shown: closeButton.visualFocus
                     }

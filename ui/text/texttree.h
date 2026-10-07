@@ -1,4 +1,4 @@
-// The piece tree behind AtlasTextView (1.5.0 item 38, step 1a). Pure QtCore: no
+// The piece tree behind TelamonTextView (1.5.0 item 38, step 1a). Pure QtCore: no
 // QQuickItem here. docs/textview-design-1.5.md ("The buffer") is the design.
 //
 // The text is UTF-8 in immutable Blocks (loaded chunks, and the append-only add
@@ -23,12 +23,12 @@
 #include <QString>
 #include <QtGlobal>
 
-#include <atlas/textsnapshot.h>
+#include <telamon/textsnapshot.h>
 
 #include <memory>
 #include <vector>
 
-namespace AtlasTextDetail {
+namespace TelamonTextDetail {
 
 constexpr int MaxFan = 64;
 constexpr int MinFan = 32;
@@ -138,7 +138,7 @@ public:
 
     // ---- Chunks (pieces), in order. ----
     qsizetype chunkCount() const { return pieceCount(); }
-    AtlasTextChunk chunkAt(qsizetype index) const;
+    TelamonTextChunk chunkAt(qsizetype index) const;
     qsizetype chunkIndexAtByte(qsizetype offset) const;
 
     // ---- New versions. The receiver is unchanged. ----
@@ -164,8 +164,8 @@ private:
     NodePtr m_root;
 };
 
-// The AtlasTextSnapshotInterface over one version of the tree. `revision` is the
+// The TelamonTextSnapshotInterface over one version of the tree. `revision` is the
 // owner's edit counter. The returned handle holds the only reference.
-AtlasTextSnapshot makeSnapshot(const TextTree &tree, quint64 revision);
+TelamonTextSnapshot makeSnapshot(const TextTree &tree, quint64 revision);
 
-} // namespace AtlasTextDetail
+} // namespace TelamonTextDetail

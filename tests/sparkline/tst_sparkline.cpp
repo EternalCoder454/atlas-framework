@@ -1,6 +1,6 @@
-// AtlasSparklineItem (ui/atlassparkline.cpp, compiled into the test): the
+// TelamonSparklineItem (ui/telamonsparkline.cpp, compiled into the test): the
 // automatic scale, its limits, and that equal values cause no repaint.
-#include "atlassparkline.h"
+#include "telamonsparkline.h"
 
 #include <QSignalSpy>
 #include <QtTest>
@@ -16,14 +16,14 @@ class TestSparkline : public QObject
 private Q_SLOTS:
     void autoScale()
     {
-        AtlasSparklineItem s;
+        TelamonSparklineItem s;
         s.setValues({3, 7, 5, NaN});
         QCOMPARE(s.scaleMinimum(), 3.0);
         QCOMPARE(s.scaleMaximum(), 7.0);
     }
     void minimumRangeWidensAroundTheMiddle()
     {
-        AtlasSparklineItem s;
+        TelamonSparklineItem s;
         s.setMinimumRange(10);
         s.setValues({4, 6});
         QCOMPARE(s.scaleMinimum(), 0.0);
@@ -35,7 +35,7 @@ private Q_SLOTS:
     }
     void explicitLimits()
     {
-        AtlasSparklineItem s;
+        TelamonSparklineItem s;
         s.setValues({4, 6});
         s.setMinimum(0);
         s.setMaximum(100);
@@ -48,7 +48,7 @@ private Q_SLOTS:
     }
     void degenerate()
     {
-        AtlasSparklineItem s;
+        TelamonSparklineItem s;
         // Nothing, only gaps, and a flat line: always a span to divide by.
         for (const QList<qreal> &v : {QList<qreal>{}, QList<qreal>{NaN, NaN}, QList<qreal>{5, 5, 5}}) {
             s.setValues(v);
@@ -64,8 +64,8 @@ private Q_SLOTS:
     }
     void equalValuesDoNotRepaint()
     {
-        AtlasSparklineItem s;
-        QSignalSpy changed(&s, &AtlasSparklineItem::valuesChanged);
+        TelamonSparklineItem s;
+        QSignalSpy changed(&s, &TelamonSparklineItem::valuesChanged);
         s.setValues({1, NaN, 3});
         QCOMPARE(changed.count(), 1);
         const int updates = s.updateCount();

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasSidebar.footer, SidebarGroup.symbol and badge, and the edit rule for
+// TelamonSidebar.footer, SidebarGroup.symbol and badge, and the edit rule for
 // filterText (the app's binding survives text typed in the built-in field).
 Item {
     id: root
@@ -12,7 +12,7 @@ Item {
 
     Component {
         id: footerComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 300
             property alias settings: settingsItem
@@ -36,7 +36,7 @@ Item {
     }
     Component {
         id: dynComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 300
             property int lateCount: 0
@@ -53,7 +53,7 @@ Item {
     }
     Component {
         id: tallFooterComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 200
             property alias last: lastItem
@@ -73,7 +73,7 @@ Item {
     }
     Component {
         id: acceptComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 300
             showFilter: true
@@ -84,7 +84,7 @@ Item {
     }
     Component {
         id: refuseComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 300
             showFilter: true
@@ -96,7 +96,7 @@ Item {
     }
     Component {
         id: unboundComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 300
             showFilter: true

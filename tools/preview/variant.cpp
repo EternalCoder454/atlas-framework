@@ -6,7 +6,7 @@
 #include <QGuiApplication>
 #include <QPalette>
 
-namespace AtlasVariant {
+namespace TelamonVariant {
 
 namespace {
 
@@ -15,7 +15,7 @@ constexpr const char *kAccent = "229,72,122";
 
 QByteArray resource(const char *name)
 {
-    QFile file(QStringLiteral(":/atlas-preview/schemes/") + QLatin1String(name));
+    QFile file(QStringLiteral(":/telamon-preview/schemes/") + QLatin1String(name));
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
 }
 
@@ -114,4 +114,4 @@ bool transparencyOff(const QString &variant)
     return variant == QLatin1String("opaque");
 }
 
-} // namespace AtlasVariant
+} // namespace TelamonVariant

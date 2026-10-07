@@ -1,7 +1,7 @@
 // AccessibilityState.active: whether an assistive technology (a screen
 // reader) is listening, so a component can leave out text only one would
 // read. Qt keeps the answer and says when it changes.
-// See docs/reference/atlas-ui/accessibility-state.md.
+// See docs/reference/telamon-ui/accessibility-state.md.
 #pragma once
 
 #include <QAccessible>
@@ -34,7 +34,7 @@ public:
 
     // Not API (the leading _): moves `item` right after `sibling` among
     // their parent's children, the order Qt's Tab chain follows. QML has no
-    // stackAfter; AtlasShelf keeps its cards in index order with it.
+    // stackAfter; TelamonShelf keeps its cards in index order with it.
     Q_INVOKABLE void _stackAfter(QQuickItem *item, QQuickItem *sibling) const;
 
 Q_SIGNALS:

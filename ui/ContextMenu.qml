@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A right-click menu in the Atlas look: a rounded raised card with inset
+// A right-click menu in the Telamon look: a rounded raised card with inset
 // rows. Fill it with ContextMenuItem and ContextMenuSeparator, and open it
 // with popup() at the pointer, or popup(item, x, y) from the keyboard.
 //
@@ -22,8 +22,8 @@ T.Menu {
     // The window's height less the margins bounds the menu; it scrolls past that.
     readonly property real _maxHeight: list.windowHeight - topMargin - bottomMargin
     implicitHeight: Math.min(contentItem.implicitHeight + topPadding + bottomPadding, Math.max(_maxHeight, 0))
-    padding: AtlasStyle.spacingSmall
-    margins: AtlasStyle.spacingSmall
+    padding: TelamonStyle.spacingSmall
+    margins: TelamonStyle.spacingSmall
     overlap: 1
     modal: false
     focus: true
@@ -85,24 +85,24 @@ T.Menu {
             anchors.margins: -1
             anchors.topMargin: 0
             anchors.bottomMargin: -3
-            radius: AtlasStyle.radius + 1
-            color: AtlasStyle.alpha("black", 0.04)
+            radius: TelamonStyle.radius + 1
+            color: TelamonStyle.alpha("black", 0.04)
         }
         Rectangle {
             anchors.fill: parent
             anchors.margins: -2
             anchors.topMargin: -1
             anchors.bottomMargin: -5
-            radius: AtlasStyle.radius + 2
-            color: AtlasStyle.alpha("black", 0.025)
+            radius: TelamonStyle.radius + 2
+            color: TelamonStyle.alpha("black", 0.025)
         }
         Rectangle {
             anchors.fill: parent
-            radius: AtlasStyle.radius
+            radius: TelamonStyle.radius
             // floatingBackground is tinted translucent over the blurred window, solid without it.
-            color: AtlasStyle.floatingBackground
+            color: TelamonStyle.floatingBackground
             border.width: 1
-            border.color: AtlasStyle.separator
+            border.color: TelamonStyle.separator
         }
     }
 
@@ -111,7 +111,7 @@ T.Menu {
             property: "opacity"
             from: 0
             to: 1
-            duration: AtlasStyle.durationShort
+            duration: TelamonStyle.durationShort
         }
     }
     exit: Transition {
@@ -119,7 +119,7 @@ T.Menu {
             property: "opacity"
             from: 1
             to: 0
-            duration: AtlasStyle.durationShort
+            duration: TelamonStyle.durationShort
         }
     }
 }

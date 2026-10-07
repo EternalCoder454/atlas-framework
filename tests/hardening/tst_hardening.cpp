@@ -1,7 +1,7 @@
-// Hostile input to the C++ types: AtlasTreeModel with another model's index
+// Hostile input to the C++ types: TelamonTreeModel with another model's index
 // and with an index that outlived setItems(), and the text scale bounds.
-// Compiled straight from ui/atlastreemodel.cpp.
-#include "atlastreemodel.h"
+// Compiled straight from ui/telamontreemodel.cpp.
+#include "telamontreemodel.h"
 #include "textscale.h"
 
 #include <QtTest>
@@ -9,7 +9,7 @@
 #include <limits>
 
 // Mints an index that points at nothing (createIndex is protected).
-struct Minter : AtlasTreeModel {
+struct Minter : TelamonTreeModel {
     QModelIndex wild() const { return createIndex(0, 0, quintptr(0x10)); }
     QModelIndex createIndexForTest(int row, int col, const QModelIndex &like) const
     {
@@ -28,7 +28,7 @@ private Q_SLOTS:
     void foreignIndex()
     {
         Minter mine;
-        AtlasTreeModel other;
+        TelamonTreeModel other;
         mine.setItems(sample());
         other.setItems(sample());
         const QModelIndex theirs = other.index(0, 0);
@@ -50,7 +50,7 @@ private Q_SLOTS:
 
     void staleIndex()
     {
-        AtlasTreeModel m;
+        TelamonTreeModel m;
         m.setItems(sample());
         const QModelIndex old = m.index(0, 0, m.index(0, 0));
         QVERIFY(old.isValid());
@@ -80,7 +80,7 @@ private Q_SLOTS:
 
     void buildLimits()
     {
-        AtlasTreeModel m;
+        TelamonTreeModel m;
         // Depth past 64 is cut; non-map entries are skipped; NaN/Inf symbols are 0.
         QVariant deep = QVariantList{QVariantMap{{"text", "leaf"}}};
         for (int i = 0; i < 100; ++i) {
@@ -104,7 +104,7 @@ private Q_SLOTS:
 
     void nodeCap()
     {
-        AtlasTreeModel m;
+        TelamonTreeModel m;
         QVariantList items;
         for (int i = 0; i < 100500; ++i) {
             items << QVariantMap{{"text", "x"}};
@@ -119,15 +119,15 @@ private Q_SLOTS:
     void textScale()
     {
         const double inf = std::numeric_limits<double>::infinity();
-        QCOMPARE(AtlasTextScale::clamp(std::numeric_limits<double>::quiet_NaN()), 1.0);
-        QCOMPARE(AtlasTextScale::clamp(inf), 1.0);
-        QCOMPARE(AtlasTextScale::clamp(-inf), 1.0);
-        QCOMPARE(AtlasTextScale::clamp(-1), 1.0);
-        QCOMPARE(AtlasTextScale::clamp(0), 1.0);
-        QCOMPARE(AtlasTextScale::clamp(1e9), 4.0);
-        QCOMPARE(AtlasTextScale::clamp(0.01), 0.5);
-        QCOMPARE(AtlasTextScale::clamp(1.0), 1.0);
-        QCOMPARE(AtlasTextScale::clamp(1.2), 1.2);
+        QCOMPARE(TelamonTextScale::clamp(std::numeric_limits<double>::quiet_NaN()), 1.0);
+        QCOMPARE(TelamonTextScale::clamp(inf), 1.0);
+        QCOMPARE(TelamonTextScale::clamp(-inf), 1.0);
+        QCOMPARE(TelamonTextScale::clamp(-1), 1.0);
+        QCOMPARE(TelamonTextScale::clamp(0), 1.0);
+        QCOMPARE(TelamonTextScale::clamp(1e9), 4.0);
+        QCOMPARE(TelamonTextScale::clamp(0.01), 0.5);
+        QCOMPARE(TelamonTextScale::clamp(1.0), 1.0);
+        QCOMPARE(TelamonTextScale::clamp(1.2), 1.2);
     }
 };
 

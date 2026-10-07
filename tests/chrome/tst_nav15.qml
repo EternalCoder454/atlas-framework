@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Layouts
 import QtTest
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
-// 1.5.0: AtlasPage.subtitle and busy, AtlasDialog.scrollToTop, the width
-// breakpoints, AtlasWindow.toast() and confirm(), and the navigation stack.
+// 1.5.0: TelamonPage.subtitle and busy, TelamonDialog.scrollToTop, the width
+// breakpoints, TelamonWindow.toast() and confirm(), and the navigation stack.
 Item {
     id: root
     width: 500
@@ -13,7 +13,7 @@ Item {
 
     Component {
         id: pageComp
-        AtlasPage {
+        TelamonPage {
             anchors.fill: parent
             title: "T"
             Text { text: "content" }
@@ -21,14 +21,14 @@ Item {
     }
     Component {
         id: dialogComp
-        AtlasDialog {
+        TelamonDialog {
             title: "Long"
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 3000; color: "gray" }
         }
     }
     Component {
         id: windowComp
-        AtlasWindow {
+        TelamonWindow {
             width: 400
             height: 300
             visible: true
@@ -36,7 +36,7 @@ Item {
     }
     Component {
         id: vetoComp
-        AtlasWindow {
+        TelamonWindow {
             width: 400
             height: 300
             visible: true
@@ -45,7 +45,7 @@ Item {
     }
     Component {
         id: stackComp
-        AtlasNavigationStack {
+        TelamonNavigationStack {
             anchors.fill: parent
             initialItem: Item { property string title: "First" }
         }
@@ -151,13 +151,13 @@ Item {
             const w = createTemporaryObject(windowComp, root);
             w.width = gu * 35;
             tryCompare(w, "width", gu * 35);
-            tryCompare(w, "widthClass", AtlasWindow.WidthClass.Medium);
+            tryCompare(w, "widthClass", TelamonWindow.WidthClass.Medium);
             w.compactBreakpoint = 38;
-            tryCompare(w, "widthClass", AtlasWindow.WidthClass.Compact);
+            tryCompare(w, "widthClass", TelamonWindow.WidthClass.Compact);
             verify(w.sidebarCollapsed);
             w.compactBreakpoint = 30;
             w.wideBreakpoint = 34;
-            tryCompare(w, "widthClass", AtlasWindow.WidthClass.Wide);
+            tryCompare(w, "widthClass", TelamonWindow.WidthClass.Wide);
         }
 
         function test_bad_values_use_the_defaults() {
@@ -166,11 +166,11 @@ Item {
             w.width = gu * 35;
             tryCompare(w, "width", gu * 35);
             w.compactBreakpoint = -5;
-            tryCompare(w, "widthClass", AtlasWindow.WidthClass.Medium);
+            tryCompare(w, "widthClass", TelamonWindow.WidthClass.Medium);
             w.compactBreakpoint = NaN;
-            tryCompare(w, "widthClass", AtlasWindow.WidthClass.Medium);
+            tryCompare(w, "widthClass", TelamonWindow.WidthClass.Medium);
             w.compactBreakpoint = Infinity;
-            tryCompare(w, "widthClass", AtlasWindow.WidthClass.Medium);
+            tryCompare(w, "widthClass", TelamonWindow.WidthClass.Medium);
         }
 
         function test_no_medium_when_compact_not_below_wide() {
@@ -180,10 +180,10 @@ Item {
             w.wideBreakpoint = 40;
             w.width = gu * 39;
             tryCompare(w, "width", gu * 39);
-            tryCompare(w, "widthClass", AtlasWindow.WidthClass.Compact);
+            tryCompare(w, "widthClass", TelamonWindow.WidthClass.Compact);
             w.width = gu * 41;
             tryCompare(w, "width", gu * 41);
-            tryCompare(w, "widthClass", AtlasWindow.WidthClass.Wide);
+            tryCompare(w, "widthClass", TelamonWindow.WidthClass.Wide);
         }
     }
 

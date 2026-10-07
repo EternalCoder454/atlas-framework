@@ -13,7 +13,7 @@ pub mod qobject {
         #[qobject]
         #[qproperty(QString, status)]
         #[qproperty(bool, busy)]
-        #[namespace = "atlas_app"]
+        #[namespace = "telamon_app"]
         type Backend = super::BackendRust;
 
         /// Example invokable: does some work on a worker thread.
@@ -29,7 +29,7 @@ pub mod qobject {
     // Lets worker threads post closures back to the Qt thread.
     impl cxx_qt::Threading for Backend {}
 
-    // Lets Rust create the object (see `atlas_backend_new` in lib.rs).
+    // Lets Rust create the object (see `telamon_backend_new` in lib.rs).
     #[namespace = "rust::cxxqtlib1"]
     unsafe extern "C++" {
         include!("cxx-qt-lib/common.h");
@@ -42,7 +42,7 @@ pub mod qobject {
 use core::pin::Pin;
 use cxx_qt::Threading;
 use cxx_qt_lib::QString;
-use atlas_framework_system::notify::{Note, Notifier, escape};
+use telamon_framework_system::notify::{Note, Notifier, escape};
 
 /// Held by a worker thread: when it is dropped, normally or by a panic
 /// unwinding, `busy` goes back to false on the Qt thread, so the buttons never
@@ -88,7 +88,7 @@ impl qobject::Backend {
         let qt = self.qt_thread();
         std::thread::spawn(move || {
             let _guard = BusyGuard(qt.clone());
-            // Replace with the app's own work (atlas_framework_* crates, ...).
+            // Replace with the app's own work (telamon_framework_* crates, ...).
             let text = format!("Template {}", env!("CARGO_PKG_VERSION"));
             let _ = qt.queue(move |mut obj| {
                 obj.as_mut().set_status(QString::from(text.as_str()));
@@ -98,11 +98,11 @@ impl qobject::Backend {
 }
 
 impl qobject::Backend {
-    /// A notification, the AtlasOS way: only because the user pressed a button
+    /// A notification, the Telamon OS way: only because the user pressed a button
     /// (a real app notifies only when the user can act on it), a popup with no
     /// sound, from the user's session, not persistent. The `demoAction` event
-    /// is declared in data/atlas-apptemplate.notifyrc, which Plasma reads for
-    /// the app's name, icon and settings. See `atlas_framework_system::notify`.
+    /// is declared in data/telamon-apptemplate.notifyrc, which Plasma reads for
+    /// the app's name, icon and settings. See `telamon_framework_system::notify`.
     pub fn send_notification(mut self: Pin<&mut Self>) {
         if *self.busy() {
             return;
@@ -112,10 +112,10 @@ impl qobject::Backend {
         // D-Bus can take a while (no server, a slow one): never on the GUI thread.
         std::thread::spawn(move || {
             let _guard = BusyGuard(qt.clone());
-            let notifier = Notifier::new(atlas_framework_ui::app_info());
+            let notifier = Notifier::new(telamon_framework_ui::app_info());
             let note = Note::new(
                 "demoAction",
-                "Hello from Atlas App",
+                "Hello from Telamon App",
                 // Anything that came from outside goes through `escape`.
                 escape(&format!("Template {}", env!("CARGO_PKG_VERSION"))),
             );

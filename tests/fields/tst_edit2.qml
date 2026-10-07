@@ -1,9 +1,9 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 // More user-edit cases (see tst_edit.qml): FindBar keystrokes, cursor and
-// undo, an app that normalises the text; AtlasComboBox with instance-level
+// undo, an app that normalises the text; TelamonComboBox with instance-level
 // handlers, the filter, and a model reset during the held turn.
 TestCase {
     id: tc
@@ -136,11 +136,11 @@ TestCase {
         compare(f.text, "ab");
     }
 
-    // AtlasComboBox ------------------------------------------------------
+    // TelamonComboBox ------------------------------------------------------
 
     Component {
         id: handlerCombo
-        AtlasComboBox {
+        TelamonComboBox {
             id: cb
             property var m
             width: 200
@@ -151,7 +151,7 @@ TestCase {
     }
     Component {
         id: refusingCombo
-        AtlasComboBox {
+        TelamonComboBox {
             property var m
             width: 200
             model: ["A", "B", "C"]
@@ -160,7 +160,7 @@ TestCase {
     }
     Component {
         id: filterCombo
-        AtlasComboBox {
+        TelamonComboBox {
             property var m
             width: 200
             filterable: true
@@ -171,7 +171,7 @@ TestCase {
     }
     Component {
         id: refusingFilterCombo
-        AtlasComboBox {
+        TelamonComboBox {
             property var m
             width: 200
             filterable: true

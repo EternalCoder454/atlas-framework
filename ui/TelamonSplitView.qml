@@ -1,0 +1,492 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import QtQuick.Controls as QQC2
+import org.kde.kirigami as Kirigami
+
+// Panes side by side (or stacked) with a draggable divider in the Telamon look:
+// a thin separator line inside a wider invisible grab area, tinted on hover
+// and while dragged. Put the panes inside as children and size them with
+// SplitView.preferredWidth / minimumWidth / fillWidth (SplitView.* attached
+// properties, as on Qt's own SplitView).
+//
+//   TelamonSplitView {
+//       stateKey: "main"          // remember the sizes between runs
+//       Sidebar { SplitView.preferredWidth: 220; SplitView.minimumWidth: 140 }
+//       Content { SplitView.fillWidth: true }
+//   }
+//
+// `stateKey` (empty by default): when set, the sizes are saved under
+// "TelamonSplitView-<stateKey>" in the app's settings file (TelamonSettings) a
+// moment after a drag, and
+// restored when the view is created. Apps with their own storage use
+// saveSizes() (a base64 string) and restoreSizes(string) instead.
+//
+// With `collapsible`, a horizontal view narrower than `collapseWidth` shows
+// one pane at a time (`currentPane`; move with showPane()), and a pane other
+// than the first gets a Back row; see docs/reference/telamon-ui/telamon-split-view.md.
+QQC2.SplitView {
+    id: control
+
+    // Names the saved sizes; empty keeps them for this run only.
+    property string stateKey
+    // Below `collapseWidth` show one pane at a time (horizontal views only).
+    property bool collapsible: false
+    property real collapseWidth: Kirigami.Units.gridUnit * 40
+    // One pane at a time now.
+    readonly property bool collapsed: control.collapsible && control.orientation === Qt.Horizontal && control.width > 0 && control.width < control.collapseWidth
+    // The pane shown while collapsed; kept across a resize.
+    property int currentPane: 0
+
+    // Moves to pane `i` (an index into the panes; one out of range is
+    // ignored). The pane slides in, instantly under reduced motion.
+    function showPane(i: int): void {
+        if (i >= 0 && i < control.count) {
+            control._snapFocus();
+            control.currentPane = i;
+        }
+    }
+
+    // The pane sizes as a base64 string, for the app's own storage.
+    function saveSizes(): string {
+        const buf = control.saveState();
+        if (!buf) {
+            return "";
+        }
+        return control._toBase64(new Uint8Array(buf));
+    }
+
+    // Applies sizes from saveSizes(); returns false for a string that is
+    // empty or does not fit this view (nothing changes then).
+    function restoreSizes(sizes: string): bool {
+        if (typeof sizes !== "string" || sizes.length === 0) {
+            return false;
+        }
+        const bytes = control._fromBase64(sizes);
+        if (bytes === null) {
+            return false;
+        }
+        return control.restoreState(new Uint8Array(bytes).buffer);
+    }
+
+    // Qt.btoa() and Qt.atob() on strings are deprecated (Qt 6.11). The stored
+    // format stays what they wrote, so saved sizes still load and older
+    // versions still read new ones: base64 of the bytes as UTF-8 code points
+    // (0x80 to 0xFF take two bytes).
+    function _toBase64(bytes: var): string {
+        const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        const u = [];
+        for (const b of bytes) {
+            if (b < 0x80) {
+                u.push(b);
+            } else {
+                u.push(0xc0 | (b >> 6), 0x80 | (b & 0x3f));
+            }
+        }
+        let out = "";
+        for (let i = 0; i < u.length; i += 3) {
+            const n = (u[i] << 16) | ((i + 1 < u.length ? u[i + 1] : 0) << 8) | (i + 2 < u.length ? u[i + 2] : 0);
+            out += abc[(n >> 18) & 63] + abc[(n >> 12) & 63]
+                + (i + 1 < u.length ? abc[(n >> 6) & 63] : "=")
+                + (i + 2 < u.length ? abc[n & 63] : "=");
+        }
+        return out;
+    }
+    // The bytes, or null for text that is not in that format.
+    function _fromBase64(text: string): var {
+        const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        const s = text.trim().replace(/=+$/, "");
+        if (s.length === 0 || s.length % 4 === 1 || /[^A-Za-z0-9+\/]/.test(s)) {
+            return null;
+        }
+        const u = [];
+        let acc = 0;
+        let bits = 0;
+        for (let i = 0; i < s.length; ++i) {
+            acc = ((acc << 6) | abc.indexOf(s[i])) & 0xffffff;
+            bits += 6;
+            if (bits >= 8) {
+                bits -= 8;
+                u.push((acc >> bits) & 0xff);
+            }
+        }
+        const bytes = [];
+        for (let i = 0; i < u.length; ++i) {
+            const b = u[i];
+            if (b < 0x80) {
+                bytes.push(b);
+            } else if ((b & 0xfe) === 0xc2 && i + 1 < u.length && (u[i + 1] & 0xc0) === 0x80) {
+                bytes.push(((b & 0x1f) << 6) | (u[++i] & 0x3f));
+            } else {
+                return null;
+            }
+        }
+        return bytes;
+    }
+
+    function _scheduleSave() {
+        if (control.stateKey.length > 0 && _ready) {
+            saveTimer.restart();
+        }
+    }
+    // The sizes are not written while collapsed (one pane fills the view);
+    // the ones from before are kept for when it expands.
+    function _saveNow() {
+        saveTimer.stop();
+        if (control.stateKey.length > 0 && !control.collapsed) {
+            control._store.setValue("Sizes", control.saveSizes());
+        }
+    }
+    property bool _ready: false
+    // The sizes as they were when the view collapsed.
+    property string _expandedSizes: ""
+    // The panes that already carry the Binding that hides them.
+    property var _hooked: null
+    // Whether focus was inside the view when it last moved.
+    property bool _hadFocus: false
+    // The panes shown before this one, for Back.
+    property var _history: []
+    property int _previous: 0
+    property bool _goingBack: false
+    // The pane shown while collapsed, in range.
+    readonly property int _shown: control._paneShown()
+    function _paneShown(): int {
+        return Math.max(0, Math.min(control.currentPane, control.count - 1));
+    }
+    // Test hook: the push's length.
+    property int _pushDuration: TelamonStyle.duration
+    readonly property bool _sliding: pushAnim.running
+
+    // Whether collapsing hides `pane` now.
+    function _hides(pane: Item): bool {
+        if (!control._ready || !control.collapsed) {
+            return false;
+        }
+        const shown = control._paneShown();
+        for (let i = 0; i < control.count; ++i) {
+            if (control.itemAt(i) === pane) {
+                return i !== shown;
+            }
+        }
+        return false;
+    }
+    // Every pane gets a Binding on its `visible` that hides it while collapsed
+    // and is off otherwise, so a pane's own `visible` binding is kept.
+    Component {
+        id: hiderComp
+        Binding {
+            property: "visible"
+            value: false
+            restoreMode: Binding.RestoreBindingOrValue
+        }
+    }
+    function _syncPanes(): void {
+        if (!control._ready) {
+            return;
+        }
+        if (control._hooked === null) {
+            control._hooked = new WeakSet();
+        }
+        for (let i = 0; i < control.count; ++i) {
+            const pane = control.itemAt(i);
+            if (pane && !control._hooked.has(pane)) {
+                control._hooked.add(pane);
+                hiderComp.createObject(pane, {
+                    "target": pane,
+                    "when": Qt.binding(() => control._hides(pane))
+                });
+            }
+        }
+        Qt.callLater(control._restoreFocus);
+    }
+
+    function _contains(item: Item): bool {
+        for (let p = item; p; p = p.parent) {
+            if (p === control) {
+                return true;
+            }
+        }
+        return false;
+    }
+    function _firstFocusable(item: Item, depth: int): Item {
+        if (item.activeFocusOnTab && item.visible && item.enabled) {
+            return item;
+        }
+        if (depth < 12) {
+            for (let i = 0; i < item.children.length; ++i) {
+                const r = control._firstFocusable(item.children[i], depth + 1);
+                if (r) {
+                    return r;
+                }
+            }
+        }
+        return null;
+    }
+    // Whether focus is inside the view now. Taken just before a pane or the
+    // Back row hides: afterwards Qt has moved focus to the enclosing focus
+    // scope. Used once by _restoreFocus().
+    function _snapFocus(): void {
+        const win = control.Window.window;
+        const f = win ? win.activeFocusItem : null;
+        if (f && f !== win.contentItem && control._contains(f)) {
+            control._hadFocus = true;
+        }
+    }
+    // Focus that was in a pane or the Back row when it hid moves to the
+    // shown pane. Runs a turn after the change, and clears the record.
+    function _restoreFocus(): void {
+        const had = control._hadFocus;
+        control._hadFocus = false;
+        const win = control.Window.window;
+        if (!had || !win) {
+            return;
+        }
+        const f = win.activeFocusItem;
+        if (f && f !== win.contentItem && control._contains(f) && f.visible) {
+            return;
+        }
+        const pane = control.itemAt(control._paneShown());
+        if (!pane || !pane.visible) {
+            return;
+        }
+        const target = control._firstFocusable(pane, 0) ?? pane;
+        target.forceActiveFocus();
+    }
+    onCollapsibleChanged: {
+        control._snapFocus();
+        Qt.callLater(control._restoreFocus);
+    }
+    onCollapseWidthChanged: {
+        control._snapFocus();
+        Qt.callLater(control._restoreFocus);
+    }
+
+    // Whether Back would go somewhere.
+    function _canBack(): bool {
+        return control.collapsed && control._paneShown() > 0;
+    }
+
+    // Back one pane: the one before in the history, else the one before in order.
+    function _back(): void {
+        if (!control._canBack()) {
+            return;
+        }
+        const h = control._history.slice();
+        let to = control._paneShown() - 1;
+        while (h.length > 0) {
+            const t = h.pop();
+            if (t !== control._paneShown() && t >= 0 && t < control.count) {
+                to = t;
+                break;
+            }
+        }
+        control._history = h;
+        control._snapFocus();
+        control._goingBack = true;
+        control.currentPane = to;
+        control._goingBack = false;
+    }
+
+    onCurrentPaneChanged: {
+        control._snapFocus();
+        if (control.collapsed && !control._goingBack && control._previous !== control.currentPane) {
+            const h = control._history.slice();
+            if (h[h.length - 1] !== control._previous) {
+                h.push(control._previous);
+            }
+            // The oldest steps go first.
+            control._history = h.length > 64 ? h.slice(h.length - 64) : h;
+        }
+        control._slide(control._goingBack);
+        control._previous = control.currentPane;
+        control._syncPanes();
+    }
+    onCountChanged: control._syncPanes()
+    onCollapsedChanged: {
+        if (control.collapsed) {
+            // Keep a drag the timer has not written yet. The sizes are taken
+            // once: a drag back and forth over the width keeps the first.
+            if (saveTimer.running) {
+                control._saveNowForce();
+            }
+            if (control._expandedSizes.length === 0) {
+                control._expandedSizes = control.saveSizes();
+            }
+        } else {
+            control._history = [];
+            Qt.callLater(control._restoreExpanded);
+        }
+        control._syncPanes();
+    }
+    // The sizes from before the collapse, once the panes are back.
+    function _restoreExpanded(): void {
+        if (control.collapsed || control._expandedSizes.length === 0) {
+            return;
+        }
+        const sizes = control._expandedSizes;
+        control._expandedSizes = "";
+        control.restoreSizes(sizes);
+    }
+    function _saveNowForce() {
+        saveTimer.stop();
+        if (control.stateKey.length > 0) {
+            control._store.setValue("Sizes", control.saveSizes());
+        }
+    }
+
+    // The incoming pane slides in from the end (from a little way back when
+    // going back); the end state is the same with no motion.
+    function _slide(back: bool): void {
+        pushAnim.stop();
+        slide.x = 0;
+        if (control._ready && control.collapsed && control._pushDuration > 0 && control.width > 0) {
+            const dir = control.mirrored ? -1 : 1;
+            pushAnim.from = back ? -dir * control.width * 0.3 : dir * control.width;
+            pushAnim.restart();
+        }
+    }
+
+    // The back row: shown over the top while collapsed on any pane after the
+    // first. The panes start below it.
+    // (`padding` still counts; set it rather than `topPadding`.)
+    topPadding: control.padding + (backRow.visible ? backRow.height : 0)
+    // A pane sliding in stays inside the view.
+    // (Binding keeps an app's own `clip`.)
+    Binding {
+        target: control
+        property: "clip"
+        value: true
+        when: control.collapsed
+        restoreMode: Binding.RestoreBindingOrValue
+    }
+    // A property's object, not a child: a child of a container becomes one of
+    // its items (count, itemAt), and the panes would shift by one.
+    readonly property Item _backRowItem: Item {
+        id: backRow
+        parent: control
+        x: 0
+        y: 0
+        width: control.width
+        height: backButton.implicitHeight + TelamonStyle.spacing * 2
+        visible: control.collapsed && control._shown > 0
+        z: 2
+        ToolbarButton {
+            id: backButton
+            x: control.mirrored ? parent.width - width - TelamonStyle.spacing : TelamonStyle.spacing
+            anchors.verticalCenter: parent.verticalCenter
+            symbol: Symbols.ArrowBack
+            text: qsTr("Back")
+            focusable: true
+            // The arrow points the other way in a right-to-left layout.
+            transform: Scale {
+                origin.x: backButton.width / 2
+                xScale: control.mirrored ? -1 : 1
+            }
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("Back")
+            onClicked: control._back()
+        }
+    }
+    // Alt+Left goes back a pane while focus is inside and there is a pane to
+    // go back to; otherwise an enclosing TelamonNavigationStack gets it. The
+    // override keeps a stack's window-wide shortcut from firing first.
+    Keys.onShortcutOverride: event => {
+        if (event.key === Qt.Key_Left && (event.modifiers & Qt.AltModifier) && control._canBack()) {
+            event.accepted = true;
+        }
+    }
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Left && (event.modifiers & Qt.AltModifier) && control._canBack()) {
+            control._back();
+            event.accepted = true;
+        }
+    }
+    // The mouse Back button takes the click exclusively while there is a pane
+    // to go back to, so an enclosing stack does not pop as well. It sits over
+    // the panes: a pane that takes presses would otherwise keep the click.
+    // Other buttons pass through (the item itself takes no presses).
+    readonly property Item _backMouse: Item {
+        parent: control
+        anchors.fill: parent
+        z: 3
+        TapHandler {
+            acceptedButtons: Qt.BackButton
+            gesturePolicy: TapHandler.WithinBounds
+            grabPermissions: PointerHandler.CanTakeOverFromAnything
+            enabled: control._canBack()
+            onTapped: control._back()
+        }
+    }
+    Translate {
+        id: slide
+    }
+    NumberAnimation {
+        id: pushAnim
+        target: slide
+        property: "x"
+        to: 0
+        duration: control._pushDuration
+        easing.type: Easing.OutCubic
+    }
+
+    onResizingChanged: if (!resizing) {
+        _scheduleSave();
+    }
+    onWidthChanged: {
+        control._snapFocus();
+        Qt.callLater(control._restoreFocus);
+        _scheduleSave();
+    }
+    onHeightChanged: _scheduleSave()
+
+    Component.onCompleted: {
+        if (control.stateKey.length > 0) {
+            control.restoreSizes(control._store.value("Sizes", ""));
+        }
+        _ready = true;
+        // The panes slide as one: the content item carries the offset.
+        if (control.contentItem) {
+            control.contentItem.transform = slide;
+        }
+        control._previous = control.currentPane;
+        control._syncPanes();
+    }
+    Component.onDestruction: if (saveTimer.running) {
+        _saveNow();
+    }
+
+    Timer {
+        id: saveTimer
+        interval: 500
+        onTriggered: control._saveNow()
+    }
+
+    // Only read and written when stateKey is set.
+    readonly property TelamonSettings _store: TelamonSettings {
+        group: control.stateKey.length > 0 ? "TelamonSplitView-" + control.stateKey : ""
+    }
+
+    handle: Item {
+        id: handle
+
+        readonly property bool _vertical: control.orientation === Qt.Vertical
+        readonly property bool _active: QQC2.SplitHandle.hovered || QQC2.SplitHandle.pressed
+
+        // The line is 1 px; the rest is the grab area.
+        implicitWidth: handle._vertical ? control.width : 7
+        implicitHeight: handle._vertical ? 7 : control.height
+
+        Accessible.role: Accessible.Separator
+        Accessible.name: qsTr("Pane divider")
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: handle._vertical ? parent.width : (handle._active ? 3 : 1)
+            height: handle._vertical ? (handle._active ? 3 : 1) : parent.height
+            radius: handle._active ? width / 2 : 0
+            color: handle.QQC2.SplitHandle.pressed ? TelamonStyle.accent : handle.QQC2.SplitHandle.hovered ? TelamonStyle.alpha(TelamonStyle.accent, 0.6) : TelamonStyle.controlBorder
+        }
+        HoverHandler {
+            cursorShape: handle._vertical ? Qt.SplitVCursor : Qt.SplitHCursor
+        }
+    }
+}

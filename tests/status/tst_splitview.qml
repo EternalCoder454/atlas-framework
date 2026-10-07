@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasSplitView.collapsible: one pane at a time below collapseWidth, with a
+// TelamonSplitView.collapsible: one pane at a time below collapseWidth, with a
 // Back row.
 Item {
     id: root
@@ -12,7 +12,7 @@ Item {
 
     Component {
         id: svComp
-        AtlasSplitView {
+        TelamonSplitView {
             id: sv
             height: 300
             width: 600
@@ -65,7 +65,7 @@ Item {
             LayoutMirroring.childrenInherit: true
             width: 600
             height: 300
-            AtlasSplitView {
+            TelamonSplitView {
                 id: inner
                 anchors.fill: parent
                 collapsible: true
@@ -79,14 +79,14 @@ Item {
     }
     Component {
         id: navComp
-        AtlasNavigationStack {
+        TelamonNavigationStack {
             id: nav
             anchors.fill: parent
             initialItem: Item {
             }
             property Component page: Item {
                 property alias sv: inner
-                AtlasSplitView {
+                TelamonSplitView {
                     id: inner
                     anchors.fill: parent
                     collapsible: true
@@ -108,7 +108,7 @@ Item {
             property alias in0: a
             property alias in1: b
             property alias outside: other
-            AtlasSplitView {
+            TelamonSplitView {
                 id: inner
                 width: 300
                 height: 250
@@ -133,7 +133,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasSplitViewCollapse"
+        name: "TelamonSplitViewCollapse"
         when: windowShown
 
         function make(props) {
@@ -299,7 +299,7 @@ Item {
         }
 
         function test_rtl_expanded_puts_the_first_pane_at_the_right() {
-            skip("Qt's SplitView does not mirror; ROADMAP B2: AtlasSplitView RTL when expanded");
+            skip("Qt's SplitView does not mirror; ROADMAP B2: TelamonSplitView RTL when expanded");
             const holder = createTemporaryObject(rtlComp, root);
             const sv = holder.sv;
             verify(sv.p0.mapToItem(sv, 0, 0).x > sv.p1.mapToItem(sv, 0, 0).x);

@@ -1,5 +1,9 @@
 # A virtualized text view (1.5.0 item 38): requirements
 
+> Written before the 2.0.0 rename and left as it was: Atlas.Ui is now Telamon.Ui,
+> every `Atlas<Name>` type is `Telamon<Name>`, `atlas-ui` is `telamon-ui` and
+> the `atlas-framework-*` crates are `telamon-framework-*` (see CHANGELOG.md).
+
 What Atlas Notepad needs, from its session on 2026-10-05, plus what the
 other apps read. This is the input for the design page that comes before the
 code; the API, once it exists, is documented only in docs/reference.

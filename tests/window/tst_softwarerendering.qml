@@ -1,9 +1,9 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasStyle.softwareRendering: this test runs on the Qt Quick software
-// backend with detection on (the window test sets ATLAS_SOFTWARE_RENDERING to
+// TelamonStyle.softwareRendering: this test runs on the Qt Quick software
+// backend with detection on (the window test sets TELAMON_SOFTWARE_RENDERING to
 // empty, see tests/CMakeLists.txt), so the flag must turn true after the first
 // frames. Then the controls that animated must stand still, or step slowly
 // from a Timer: no running Animation.Infinite, no ShaderEffect.
@@ -17,34 +17,34 @@ TestCase {
 
     Component {
         id: glowComp
-        AtlasEdgeGlow {
+        TelamonEdgeGlow {
             anchors.fill: parent
             active: true
         }
     }
     Component {
         id: spinnerComp
-        AtlasSpinner {
+        TelamonSpinner {
             running: true
         }
     }
     Component {
         id: barComp
-        AtlasProgressBar {
+        TelamonProgressBar {
             width: 200
             indeterminate: true
         }
     }
     Component {
         id: workingBarComp
-        AtlasProgressBar {
+        TelamonProgressBar {
             width: 200
             value: 0.4
         }
     }
     Component {
         id: installComp
-        AtlasInstallButton {
+        TelamonInstallButton {
             installState: "installing"
             progress: -1
         }
@@ -60,7 +60,7 @@ TestCase {
     }
     Component {
         id: placeholderComp
-        AtlasPlaceholder {
+        TelamonPlaceholder {
             width: 200
             lines: 3
         }
@@ -119,11 +119,11 @@ TestCase {
     }
 
     function initTestCase() {
-        tryCompare(AtlasStyle, "softwareRendering", true);
+        tryCompare(TelamonStyle, "softwareRendering", true);
     }
 
     function test_flagTurnsTrueOnTheSoftwareBackend() {
-        compare(AtlasStyle.softwareRendering, true);
+        compare(TelamonStyle.softwareRendering, true);
     }
 
     function test_edgeGlowIsStaticUnderTheFlag() {

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Telamon App
+Comment=Telamon app template
+Exec=telamon-app-template
+Icon=applications-system
+Terminal=false
+Categories=Qt;KDE;System;
+StartupNotify=true

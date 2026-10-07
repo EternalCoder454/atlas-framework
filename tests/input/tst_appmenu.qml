@@ -1,18 +1,18 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasAppMenu: nested submenus, model-driven rows, exported shortcuts.
+// TelamonAppMenu: nested submenus, model-driven rows, exported shortcuts.
 Item {
     id: root
     width: 400
     height: 300
 
-    AtlasAction { id: openA; text: "Open" }
-    AtlasAction { id: reopenA; text: "Reopen Closed Tab" }
-    AtlasAction { id: clearA; text: "Clear List"; enabled: false }
-    AtlasAction { id: saveA; text: "Save" }
-    AtlasAction {
+    TelamonAction { id: openA; text: "Open" }
+    TelamonAction { id: reopenA; text: "Reopen Closed Tab" }
+    TelamonAction { id: clearA; text: "Clear List"; enabled: false }
+    TelamonAction { id: saveA; text: "Save" }
+    TelamonAction {
         id: withMenu
         text: "&Tools"
         menu: ContextMenu {
@@ -34,7 +34,7 @@ Item {
     }
     Component {
         id: menuComp
-        AtlasAppMenu {
+        TelamonAppMenu {
             _forceButton: true
         }
     }
@@ -49,7 +49,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasAppMenu"
+        name: "TelamonAppMenu"
         when: windowShown
 
         function test_plain_actions_and_separators() {
@@ -379,8 +379,8 @@ Item {
         }
 
         function test_action_menu_containing_itself_stops_at_the_depth_cap() {
-            const loop = Qt.createQmlObject('import Atlas.Ui; AtlasAction { text: "Loop" }', root);
-            const menu = Qt.createQmlObject('import Atlas.Ui; ContextMenu {}', root);
+            const loop = Qt.createQmlObject('import Telamon.Ui; TelamonAction { text: "Loop" }', root);
+            const menu = Qt.createQmlObject('import Telamon.Ui; ContextMenu {}', root);
             menu.addAction(loop);
             loop.menu = menu;
             const m = createTemporaryObject(menuComp, root, {
@@ -408,7 +408,7 @@ Item {
         }
 
         function test_action_rows_follow_the_action_and_other_objects_are_copied() {
-            const act = Qt.createQmlObject('import Atlas.Ui; AtlasAction { text: "Live"; checkable: true }', root);
+            const act = Qt.createQmlObject('import Telamon.Ui; TelamonAction { text: "Live"; checkable: true }', root);
             const plainObj = Qt.createQmlObject('import QtQml; QtObject { property string name: "Plain" }', root);
             const m = createTemporaryObject(menuComp, root, {
                 _forceNative: true,

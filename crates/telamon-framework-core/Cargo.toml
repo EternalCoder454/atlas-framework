@@ -1,0 +1,22 @@
+[package]
+name = "telamon-framework-core"
+description = "What every Telamon app uses: app identity, settings, logging, os-release"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+# `task`: one tokio runtime thread for background work whose result goes back
+# to the UI thread. Off by default: a light app pays for no async runtime.
+task = ["dep:tokio"]
+
+[dependencies]
+serde.workspace = true
+libc.workspace = true
+log.workspace = true
+tokio = { version = "1.53.2", features = ["rt", "time", "sync", "macros"], optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true

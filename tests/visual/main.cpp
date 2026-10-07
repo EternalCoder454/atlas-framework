@@ -1,19 +1,20 @@
-// Visual tests for Atlas.Ui: every ui/gallery/demos/*Demo.qml is loaded, grabbed
+// Visual tests for Telamon.Ui: every ui/gallery/demos/*Demo.qml is loaded, grabbed
 // and compared with a golden image. See tests/README.md.
 //
 // Environment (set by run-variant.sh through ctest):
-//   ATLAS_DEMO_DIR      the demos directory (required)
-//   ATLAS_DEMO_FILTER   regular expression on the demo name (without "Demo")
-//   ATLAS_GOLDEN_DIR    goldens, one directory per variant
-//   ATLAS_OUT_DIR       where actual and diff images of a failure go
-//   ATLAS_VARIANT       light, dark, accent, opaque, contrast,
+//   TELAMON_DEMO_DIR      the demos directory (required)
+//   TELAMON_DEMO_FILTER   regular expression on the demo name (without "Demo")
+//   TELAMON_GOLDEN_DIR    goldens, one directory per variant
+//   TELAMON_OUT_DIR       where actual and diff images of a failure go
+//   TELAMON_VARIANT       light, dark, accent, opaque, contrast,
 //                       rtl, compact or text200
-//   ATLAS_UPDATE_GOLDENS=1 rewrites the goldens that fail instead of failing
+//   TELAMON_UPDATE_GOLDENS=1 rewrites the goldens that fail instead of failing
 #include "../../tools/preview/variant.h"
 #include "../demolist.h"
 
 #include <QtQuickTest/quicktest.h>
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
@@ -58,8 +59,8 @@ class Goldens : public DemoList
     Q_OBJECT
 public:
     // True when this run rewrites the goldens instead of comparing.
-    Q_INVOKABLE bool updating() const { return qEnvironmentVariableIntValue("ATLAS_UPDATE_GOLDENS") == 1; }
-    Q_INVOKABLE QString variant() const { return env("ATLAS_VARIANT", QStringLiteral("light")); }
+    Q_INVOKABLE bool updating() const { return qEnvironmentVariableIntValue("TELAMON_UPDATE_GOLDENS") == 1; }
+    Q_INVOKABLE QString variant() const { return env("TELAMON_VARIANT", QStringLiteral("light")); }
 
     // Grabs `target` (an Item, or a window) and compares it with the golden of
     // `name`. Returns "" when it matches, else a sentence for the failure.
@@ -71,8 +72,8 @@ public:
         }
         actual = actual.convertToFormat(QImage::Format_RGB32);
 
-        const QString goldenPath = QDir(env("ATLAS_GOLDEN_DIR")).filePath(variant() + QLatin1Char('/') + name + QStringLiteral(".png"));
-        const QString outBase = QDir(env("ATLAS_OUT_DIR", QStringLiteral("visual-out"))).filePath(variant() + QLatin1Char('/') + name);
+        const QString goldenPath = QDir(env("TELAMON_GOLDEN_DIR")).filePath(variant() + QLatin1Char('/') + name + QStringLiteral(".png"));
+        const QString outBase = QDir(env("TELAMON_OUT_DIR", QStringLiteral("visual-out"))).filePath(variant() + QLatin1Char('/') + name);
         const QString actualPath = outBase + QStringLiteral(".actual.png");
         const QString diffPath = outBase + QStringLiteral(".diff.png");
 
@@ -98,7 +99,7 @@ private:
         QImage golden(goldenPath);
         if (golden.isNull()) {
             savePng(actual, actualPath);
-            return QStringLiteral("%1: no golden at %2 (actual picture: %3). Run with ATLAS_UPDATE_GOLDENS=1 and commit the result.")
+            return QStringLiteral("%1: no golden at %2 (actual picture: %3). Run with TELAMON_UPDATE_GOLDENS=1 and commit the result.")
                 .arg(name, goldenPath, actualPath);
         }
         golden = golden.convertToFormat(QImage::Format_RGB32);
@@ -172,9 +173,13 @@ class Setup : public QObject
 public slots:
     void applicationAvailable()
     {
+        // The About page's picture shows the application name (the executable's
+        // name, by default). This is fixture text, kept as it was before the
+        // framework was renamed so that the goldens are the same pictures.
+        QCoreApplication::setApplicationName(QStringLiteral("atlas-visual-tests"));
         // The variant's font, palette and layout direction (tools/preview/variant.cpp,
-        // shared with atlas-preview).
-        AtlasVariant::applyToApplication(qEnvironmentVariable("ATLAS_VARIANT"));
+        // shared with telamon-preview).
+        TelamonVariant::applyToApplication(qEnvironmentVariable("TELAMON_VARIANT"));
     }
     void qmlEngineAvailable(QQmlEngine *engine)
     {
@@ -185,6 +190,6 @@ private:
     Goldens m_goldens;
 };
 
-QUICK_TEST_MAIN_WITH_SETUP(atlas_visual, Setup)
+QUICK_TEST_MAIN_WITH_SETUP(telamon_visual, Setup)
 
 #include "main.moc"

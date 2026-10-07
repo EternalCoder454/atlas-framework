@@ -6,13 +6,13 @@
 #
 #   run-variant.sh <variant>
 #
-# Needs ATLAS_TEST_BIN, ATLAS_DEMO_DIR, ATLAS_GOLDEN_DIR, ATLAS_OUT_DIR (ctest
+# Needs TELAMON_TEST_BIN, TELAMON_DEMO_DIR, TELAMON_GOLDEN_DIR, TELAMON_OUT_DIR (ctest
 # sets them), and the colour schemes under tests/visual/schemes.
 set -euo pipefail
 
 variant=${1:?usage: run-variant.sh light|dark|accent|opaque|contrast|rtl|compact|text200}
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-: "${ATLAS_TEST_BIN:?}" "${ATLAS_DEMO_DIR:?}" "${ATLAS_GOLDEN_DIR:?}" "${ATLAS_OUT_DIR:?}"
+: "${TELAMON_TEST_BIN:?}" "${TELAMON_DEMO_DIR:?}" "${TELAMON_GOLDEN_DIR:?}" "${TELAMON_OUT_DIR:?}"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -42,18 +42,18 @@ accent)
 esac
 if [ "$variant" = opaque ]; then
     # Transparency off. It only shows on windows, so only those are compared.
-    printf '[Appearance]\nTransparency=false\n' >"$XDG_CONFIG_HOME/atlasrc"
-    export ATLAS_DEMO_FILTER='^(AtlasWindow|AtlasPage|AtlasAboutPage|ContextMenu|AtlasPopover|AtlasDialog|ConfirmDialog|AtlasCommandPalette|AtlasShortcutsDialog|Toast|AtlasToolTip|AtlasComboBox|AtlasDatePicker|AtlasTransparencySwitch)$'
+    printf '[Appearance]\nTransparency=false\n' >"$XDG_CONFIG_HOME/telamonrc"
+    export TELAMON_DEMO_FILTER='^(TelamonWindow|TelamonPage|TelamonAboutPage|ContextMenu|TelamonPopover|TelamonDialog|ConfirmDialog|TelamonCommandPalette|TelamonShortcutsDialog|Toast|TelamonToolTip|TelamonComboBox|TelamonDatePicker|TelamonTransparencySwitch)$'
 fi
 
-export ATLAS_VARIANT=$variant
+export TELAMON_VARIANT=$variant
 # The About page shows the OS and Qt version: pin them for the pictures.
-export ATLAS_UI_TEST_FIXED_ENV=1
+export TELAMON_UI_TEST_FIXED_ENV=1
 export QT_QUICK_BACKEND=software
-# Pin AtlasStyle.softwareRendering to false: the flag is detected on the first
+# Pin TelamonStyle.softwareRendering to false: the flag is detected on the first
 # frame, which would race the first grabs, and the goldens show the animated
-# controls. A test sets ATLAS_SOFTWARE_RENDERING (even empty, for detection).
-export ATLAS_SOFTWARE_RENDERING="${ATLAS_SOFTWARE_RENDERING-0}"
+# controls. A test sets TELAMON_SOFTWARE_RENDERING (even empty, for detection).
+export TELAMON_SOFTWARE_RENDERING="${TELAMON_SOFTWARE_RENDERING-0}"
 export QT_SCALE_FACTOR=1
 export QT_FONT_DPI=96
 export QT_QPA_PLATFORM=xcb
@@ -62,14 +62,14 @@ export QT_QPA_PLATFORMTHEME=
 if [ "$variant" = contrast ]; then
     # Qt learns "high contrast" only from the settings portal: a stand-in
     # answers on the private bus (see fake-portal.cpp).
-    : "${ATLAS_FAKE_PORTAL:?}"
+    : "${TELAMON_FAKE_PORTAL:?}"
     export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 fi
 export QT_LOGGING_RULES='qt.qpa.fonts=false'
 unset WAYLAND_DISPLAY KDE_FULL_SESSION XDG_CURRENT_DESKTOP
 # English, whatever the machine's language, so a translation never reaches the
 # pictures. The i18n test brings its own catalogue and language: it keeps them.
-if [ -z "${ATLAS_UI_TRANSLATIONS_DIR:-}" ]; then
+if [ -z "${TELAMON_UI_TRANSLATIONS_DIR:-}" ]; then
     export LANG=C.UTF-8 LC_ALL=C.UTF-8
     unset LANGUAGE
 fi
@@ -100,7 +100,7 @@ grep -q '<listen>unix:dir=' "$busconf" || {
     echo "run-variant: the test bus config has no listen address" >&2
     exit 1
 }
-display=$((100 + $(printf '%s' "$ATLAS_TEST_BIN $variant $ATLAS_OUT_DIR" | cksum | cut -d' ' -f1) % 800))
+display=$((100 + $(printf '%s' "$TELAMON_TEST_BIN $variant $TELAMON_OUT_DIR" | cksum | cut -d' ' -f1) % 800))
 rc=0
 if [ "$variant" = contrast ]; then
     # Start the portal stand-in inside the bus, wait until it answers, run the
@@ -119,9 +119,9 @@ if [ "$variant" = contrast ]; then
         done
         [ -e "$ready" ] || { echo "fake-portal did not start" >&2; exit 1; }
         "$@"
-    ' bash "$ATLAS_FAKE_PORTAL" "$tmp/portal-ready" \
-        xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
+    ' bash "$TELAMON_FAKE_PORTAL" "$tmp/portal-ready" \
+        xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$TELAMON_TEST_BIN" -platform xcb || rc=$?
 else
-    dbus-run-session --config-file="$busconf" -- xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$ATLAS_TEST_BIN" -platform xcb || rc=$?
+    dbus-run-session --config-file="$busconf" -- xvfb-run -a -n "$display" -s "-screen 0 1920x1080x24" "$TELAMON_TEST_BIN" -platform xcb || rc=$?
 fi
 exit "$rc"

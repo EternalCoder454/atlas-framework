@@ -1,5 +1,6 @@
 #include "appearance.h"
 
+#include "legacyconfig.h"
 #include "portalappearance.h"
 #include "textscale.h"
 
@@ -16,6 +17,7 @@
 #include <QRegion>
 #include <QtMath>
 #include <QSGRendererInterface>
+#include <QStandardPaths>
 #include <QtGui/qtguiglobal.h>
 #if QT_CONFIG(vulkan)
 #include <QVulkanFunctions>
@@ -38,7 +40,7 @@ constexpr auto kFactorKey = "AnimationDurationFactor";
 constexpr qreal kDefaultPointSize = 10.0;
 constexpr auto kUiFamily = "IBM Plex Sans";
 constexpr auto kMonoFamily = "JetBrains Mono";
-// Atlas violet and its text, per theme: AtlasOS's colour schemes.
+// Telamon violet and its text, per theme: Telamon OS's colour schemes.
 const QColor kVioletLight(0x68, 0x58, 0xE2);
 const QColor kVioletDark(0x8A, 0x7A, 0xF4);
 
@@ -76,9 +78,25 @@ void applyPalette()
 }
 }
 
+namespace
+{
+// The shared settings file. Telamon.Ui 1.x called it `atlasrc`: the first
+// time, while there is no `telamonrc`, that one is copied (an app that has
+// not moved to 2.0.0 keeps using it, and the two switches are separate from
+// then on).
+KSharedConfigPtr openSharedConfig()
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+    if (!dir.isEmpty()) {
+        LegacyConfig::adoptFile(dir + QStringLiteral("/telamonrc"), dir + QStringLiteral("/atlasrc"));
+    }
+    return KSharedConfig::openConfig(QStringLiteral("telamonrc"), KConfig::FullConfig);
+}
+}
+
 Appearance::Appearance(QObject *parent)
     : QObject(parent)
-    , m_config(KSharedConfig::openConfig(QStringLiteral("atlasrc"), KConfig::FullConfig))
+    , m_config(openSharedConfig())
 {
     m_transparency = m_config->group(QLatin1String(kGroup)).readEntry(kKey, true);
     m_blurAvailable = KWindowEffects::isEffectAvailable(KWindowEffects::BlurBehind);
@@ -111,12 +129,12 @@ Appearance::Appearance(QObject *parent)
     readSystem();
     readMotion();
 
-    const QByteArray forced = qgetenv("ATLAS_SOFTWARE_RENDERING");
+    const QByteArray forced = LegacyConfig::env("TELAMON_SOFTWARE_RENDERING", "ATLAS_SOFTWARE_RENDERING");
     if (forced == "1" || forced == "0") {
         m_softwareRendering = forced == "1";
         m_renderingKnown = true;
     } else if (!forced.isEmpty()) {
-        qWarning("Atlas.Ui: ignoring ATLAS_SOFTWARE_RENDERING=\"%s\" (use 1 or 0)", forced.left(32).constData());
+        qWarning("Telamon.Ui: ignoring TELAMON_SOFTWARE_RENDERING (or ATLAS_SOFTWARE_RENDERING)=\"%s\" (use 1 or 0)", forced.left(32).constData());
     }
 
     if (qGuiApp) {
@@ -150,7 +168,7 @@ QString Appearance::monoFamily() const
     return hasFamily(QLatin1String(kMonoFamily)) ? QLatin1String(kMonoFamily) : QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
 }
 
-void atlasUiApplyBrand()
+void telamonUiApplyBrand()
 {
     if (!qGuiApp) {
         return;
@@ -312,7 +330,7 @@ void Appearance::applyRendering(QQuickWindow *window, std::optional<bool> result
         return;
     }
     if (!result) {
-        qWarning("Atlas.Ui: could not tell the rendering mode (graphics API %d, device \"%s\"): assuming hardware; set ATLAS_SOFTWARE_RENDERING=1 to force", api,
+        qWarning("Telamon.Ui: could not tell the rendering mode (graphics API %d, device \"%s\"): assuming hardware; set TELAMON_SOFTWARE_RENDERING=1 to force", api,
                  device.toUtf8().constData());
         if (window) {
             dropProbe(window);
@@ -324,7 +342,7 @@ void Appearance::applyRendering(QQuickWindow *window, std::optional<bool> result
     for (QQuickWindow *w : windows) {
         dropProbe(w);
     }
-    qInfo("Atlas.Ui: graphics API %d, device \"%s\": software rendering %s", api, device.toUtf8().constData(), *result ? "yes" : "no");
+    qInfo("Telamon.Ui: graphics API %d, device \"%s\": software rendering %s", api, device.toUtf8().constData(), *result ? "yes" : "no");
     if (*result != m_softwareRendering) {
         m_softwareRendering = *result;
         Q_EMIT softwareRenderingChanged();
@@ -350,7 +368,7 @@ void Appearance::readSystem()
     qreal scale = qGuiApp->font().pointSizeF() / kDefaultPointSize;
     // A pixel-sized font has no point size (-1): that and NaN are the default;
     // anything else is held between 0.5 and 4.
-    scale = AtlasTextScale::clamp(scale);
+    scale = TelamonTextScale::clamp(scale);
 
     if (mine != m_colorScheme) {
         m_colorScheme = mine;
@@ -372,7 +390,7 @@ void Appearance::readSystem()
 
 void Appearance::readMotion()
 {
-    bool reduced = qEnvironmentVariable("ATLAS_REDUCED_MOTION") == QLatin1String("1");
+    bool reduced = LegacyConfig::env("TELAMON_REDUCED_MOTION", "ATLAS_REDUCED_MOTION") == "1";
     if (!reduced) {
         m_globals->reparseConfiguration();
         const QString raw = m_globals->group(QLatin1String(kGlobalsGroup)).readEntry(kFactorKey, QString());
@@ -430,7 +448,7 @@ void Appearance::applyBlur(QWindow *window)
     if (!window) {
         return;
     }
-    // An empty region is the whole window. A frameless AtlasWindow rounds its
+    // An empty region is the whole window. A frameless TelamonWindow rounds its
     // top corners (its _cornerRadius): the blur leaves them out too, or a
     // square of blur would show behind each one.
     QRegion region;

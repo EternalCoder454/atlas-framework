@@ -1,8 +1,8 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasPreferencesDialog and AtlasPreferencesPage (docs/api-1.5.0.md, item
+// TelamonPreferencesDialog and TelamonPreferencesPage (docs/api-1.5.0.md, item
 // 27): the sidebar only for two pages or more, page switching, the search over
 // labels and help, choosing a result, Escape clearing the search before it
 // closes, and the dialog's settings reaching the entries.
@@ -21,15 +21,15 @@ TestCase {
 
     Component {
         id: storeComp
-        AtlasSettings {
-            fileName: "atlas-prefs-test"
+        TelamonSettings {
+            fileName: "telamon-prefs-test"
             group: "Prefs"
         }
     }
 
     Component {
         id: dialogComp
-        AtlasPreferencesDialog {
+        TelamonPreferencesDialog {
             id: d
             property alias hidden: hidden
             property alias port: port
@@ -37,58 +37,58 @@ TestCase {
             property alias needed: needed
             property alias pageB: pageB
             property alias pageA: pageA
-            AtlasPreferencesPage {
+            TelamonPreferencesPage {
                 id: pageA
                 title: "General"
                 symbol: Symbols.Settings
                 Section {
-                    AtlasFormEntry {
+                    TelamonFormEntry {
                         label: "Show hidden files"
                         help: "Dotfiles too"
                         settingKey: "Hidden"
-                        AtlasSwitch {
+                        TelamonSwitch {
                             id: hidden
                         }
                     }
-                    AtlasFormEntry {
+                    TelamonFormEntry {
                         label: "Thing hidden by the app"
                         visible: false
-                        AtlasSwitch {
+                        TelamonSwitch {
                         }
                     }
-                    AtlasFormEntry {
+                    TelamonFormEntry {
                         label: "Disabled thing"
                         enabled: false
-                        AtlasSwitch {
+                        TelamonSwitch {
                         }
                     }
                 }
             }
-            AtlasPreferencesPage {
+            TelamonPreferencesPage {
                 id: pageB
                 title: "Network"
                 symbol: Symbols.Language
                 Section {
-                    AtlasFormEntry {
+                    TelamonFormEntry {
                         id: portEntry
                         label: "Proxy port"
-                        AtlasSpinBox {
+                        TelamonSpinBox {
                             id: port
                             from: 1
                             to: 65535
                         }
                     }
-                    AtlasFormEntry {
+                    TelamonFormEntry {
                         label: "Thing hidden on another page"
                         visible: false
-                        AtlasSwitch {
+                        TelamonSwitch {
                         }
                     }
-                    AtlasFormEntry {
+                    TelamonFormEntry {
                         id: needed
                         label: "Needed on another page"
                         required: true
-                        AtlasTextField {
+                        TelamonTextField {
                         }
                     }
                 }
@@ -98,13 +98,13 @@ TestCase {
 
     Component {
         id: oneComp
-        AtlasPreferencesDialog {
-            AtlasPreferencesPage {
+        TelamonPreferencesDialog {
+            TelamonPreferencesPage {
                 title: "Only"
                 Section {
-                    AtlasFormEntry {
+                    TelamonFormEntry {
                         label: "Thing"
-                        AtlasSwitch {
+                        TelamonSwitch {
                         }
                     }
                 }
@@ -114,12 +114,12 @@ TestCase {
 
     Component {
         id: boundComp
-        AtlasPreferencesDialog {
+        TelamonPreferencesDialog {
             currentIndex: app.page
-            AtlasPreferencesPage {
+            TelamonPreferencesPage {
                 title: "One"
             }
-            AtlasPreferencesPage {
+            TelamonPreferencesPage {
                 title: "Two"
             }
         }
@@ -147,16 +147,16 @@ TestCase {
     }
 
     function search(d) {
-        return find(d.contentItem, i => i.objectName === "atlasPreferencesSearch");
+        return find(d.contentItem, i => i.objectName === "telamonPreferencesSearch");
     }
 
     function test_one_page_has_no_sidebar() {
         const d = open(oneComp);
-        const nav = find(d.contentItem, i => i.objectName === "atlasPreferencesSidebar");
+        const nav = find(d.contentItem, i => i.objectName === "telamonPreferencesSidebar");
         verify(nav);
         verify(!nav.visible);
         const d2 = open(dialogComp);
-        const nav2 = find(d2.contentItem, i => i.objectName === "atlasPreferencesSidebar");
+        const nav2 = find(d2.contentItem, i => i.objectName === "telamonPreferencesSidebar");
         verify(nav2.visible);
     }
 
@@ -193,7 +193,7 @@ TestCase {
         compare(d._results[0].pageTitle, "Network");
         s.text = "DOTFILES";
         tryVerify(() => d._results.length === 1 && d._results[0].text === "Show hidden files");
-        const row = find(d.contentItem, i => i.atlasRow === true && i.title === "Show hidden files");
+        const row = find(d.contentItem, i => i.telamonRow === true && i.title === "Show hidden files");
         verify(row);
         compare(row.subtitle, "General");
     }
@@ -241,12 +241,12 @@ TestCase {
         // found as soon as it is visible, a polish before it has a size: a
         // click then lands beside it (width 0), so wait for the layout.
         let row = null;
-        tryVerify(() => (row = find(d.contentItem, i => i.atlasRow === true && i.title === "Proxy port" && i.visible && i.chevron === true && i.width > 0)) !== null);
+        tryVerify(() => (row = find(d.contentItem, i => i.telamonRow === true && i.title === "Proxy port" && i.visible && i.chevron === true && i.width > 0)) !== null);
         mouseClick(row);
         tryCompare(d, "currentIndex", 1);
         compare(s.text, "", "the search is cleared");
         tryVerify(() => d.port.activeFocus, 3000);
-        if (!AtlasStyle.reducedMotion) {
+        if (!TelamonStyle.reducedMotion) {
             tryVerify(() => spy.count > 0, 3000, "the row flashes");
         } else {
             wait(100);
@@ -278,7 +278,7 @@ TestCase {
         const s = search(d);
         s.text = "port";
         tryVerify(() => d._results.length === 1);
-        const row = find(d.contentItem, i => i.atlasRow === true && i.title === "Proxy port");
+        const row = find(d.contentItem, i => i.telamonRow === true && i.title === "Proxy port");
         row.forceActiveFocus();
         keyClick(Qt.Key_Escape);
         compare(s.text, "");
