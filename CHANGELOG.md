@@ -9,6 +9,19 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.1
+
+- Fix: the filled symbol of a selected `SidebarItem` (and any `Symbol` with
+  `filled: true`) was drawn broken on a desktop: a solid monitor with its
+  inner outline showing through, a house with its door cut out wrong, a
+  speaker with stray shapes. `Symbol` now draws its glyph with
+  `Text.NativeRendering`. The scene graph's default distance-field text could
+  not draw the symbol fonts' FILL 1 outlines (they lay a reversed copy of each
+  counter over the counter), so the software renderer, which the visual tests
+  ran on, drew the right picture and a GPU did not. This was so in 1.x too. No
+  API changed. New tests `visual-filled-symbols-1` and `-1.7` draw a selected
+  `SidebarItem` per symbol on the GPU renderer, at scale 1 and 1.7.
+
 ## 2.0.0
 
 The rename. **atlas-framework is the Telamon framework**, the OS AtlasOS is
