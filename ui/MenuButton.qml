@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
@@ -11,14 +13,24 @@ SecondaryButton {
     readonly property var _actionObject: control.action
     symbol: _actionObject && _actionObject.symbol !== undefined ? _actionObject.symbol : 0
 
-    default property alias items: menu.contentData
+    // The menu's items. The menu itself is made on the first open (most
+    // menus are never opened, and a menu costs a popup, a list and their
+    // theme objects); it takes these as its content then.
+    default property list<QtObject> items
+    property QQC2.Menu _menu: null
+    function _ensureMenu(): QQC2.Menu {
+        if (!_menu) {
+            _menu = menuComponent.createObject(control) as QQC2.Menu;
+        }
+        return _menu;
+    }
 
     rightPadding: control.mirrored ? leftPadding : leftPadding + Kirigami.Units.iconSizes.small
     leftPadding: control.mirrored ? AtlasStyle.spacingLarge + AtlasStyle.spacingSmall + Kirigami.Units.iconSizes.small : AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
     Accessible.role: Accessible.ButtonMenu
     // Qt has no Accessible.expanded for QML: the state is the description,
     // and a change of it is announced (see the menu below).
-    Accessible.description: menu.visible ? qsTr("Expanded") : qsTr("Collapsed")
+    Accessible.description: control._menu && control._menu.visible ? qsTr("Expanded") : qsTr("Collapsed")
     QtObject {
         id: priv
         // When the menu last began to close, and whether it was open when the
@@ -26,7 +38,7 @@ SecondaryButton {
         property real hiddenAt: 0
         property bool openAtPress: false
         function announceState() {
-            control.Accessible.announce(menu.visible ? qsTr("Expanded") : qsTr("Collapsed"));
+            control.Accessible.announce(control._menu && control._menu.visible ? qsTr("Expanded") : qsTr("Collapsed"));
         }
     }
     // A second click on the button closes the menu. Before, the press closed
@@ -34,13 +46,14 @@ SecondaryButton {
     // so the menu could only be closed from somewhere else. The press that
     // closes the menu runs just before the button sees it, hence the short
     // window on hiddenAt.
-    onPressed: priv.openAtPress = menu.opened || Date.now() - priv.hiddenAt < 150
+    onPressed: priv.openAtPress = (control._menu !== null && control._menu.opened) || Date.now() - priv.hiddenAt < 150
     onClicked: {
         if (priv.openAtPress) {
             priv.openAtPress = false;
-            menu.close();
+            control._menu?.close();
             return;
         }
+        const menu = control._ensureMenu();
         // The menu opens under the end the label starts from: mirrored, flush right.
         menu.popup(control, control.mirrored ? control.width - menu.implicitWidth : 0, control.height + 4);
     }
@@ -57,12 +70,15 @@ SecondaryButton {
         Accessible.ignored: true
     }
 
-    QQC2.Menu {
-        id: menu
-        onVisibleChanged: priv.announceState()
-        onAboutToHide: priv.hiddenAt = Date.now()
-        delegate: QQC2.MenuItem {
-            Kirigami.MnemonicData.enabled: false
+    Component {
+        id: menuComponent
+        QQC2.Menu {
+            contentData: control.items
+            onVisibleChanged: priv.announceState()
+            onAboutToHide: priv.hiddenAt = Date.now()
+            delegate: QQC2.MenuItem {
+                Kirigami.MnemonicData.enabled: false
+            }
         }
     }
 }
