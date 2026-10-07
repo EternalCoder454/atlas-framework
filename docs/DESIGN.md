@@ -138,7 +138,7 @@ static or slow under it.
 
 The reference pages in `docs/reference/` are the single source for what each
 type, property, signal and method does (published at
-<https://atlasos.eterneon.net/framework>). This file keeps the design rules,
+<https://telamon.eterneon.net/framework>). This file keeps the design rules,
 the architecture and the reasoning, and does not describe types: change the
 page in the same commit as the API, and link to it from anywhere else.
 

@@ -24,7 +24,7 @@ import Atlas.Ui
 PrimaryButton { text: qsTr("Share"); symbol: Symbols.Share }
 ```
 
-The API reference is on <https://atlasos.eterneon.net/framework>; its source,
+The API reference is on <https://telamon.eterneon.net/framework>; its source,
 [docs/reference/](docs/reference/), is the one place the API is described.
 Read [docs/DESIGN.md](docs/DESIGN.md) first: the design rules for Atlas apps,
 how apps use Atlas.Ui, and the compatibility rules for changing it.

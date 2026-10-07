@@ -4366,11 +4366,11 @@ mod tests {
 
     #[test]
     fn default_endpoint_store_url() {
-        let ep = Endpoint::parse("https://atlasos@atlasos.eterneon.net/crash/1").unwrap();
+        let ep = Endpoint::parse("https://atlasos@telamon.eterneon.net/crash/1").unwrap();
         assert_eq!(ep.key, "atlasos");
         assert_eq!(
             ep.store_url,
-            "https://atlasos.eterneon.net/crash/api/1/store/"
+            "https://telamon.eterneon.net/crash/api/1/store/"
         );
         let shipped = include_str!("../data/atlas/crash-reporting.toml");
         let dsn = toml_value(shipped, "dsn").unwrap();
