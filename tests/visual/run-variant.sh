@@ -8,6 +8,10 @@
 #
 # Needs TELAMON_TEST_BIN, TELAMON_DEMO_DIR, TELAMON_GOLDEN_DIR, TELAMON_OUT_DIR (ctest
 # sets them), and the colour schemes under tests/visual/schemes.
+#
+# Optional: TELAMON_TEST_BACKEND=opengl runs the GPU renderer (Mesa's software
+# OpenGL in the container) instead of the software one, and TELAMON_TEST_SCALE
+# sets the scale factor (default 1). Only visual-filled-symbols uses them.
 set -euo pipefail
 
 variant=${1:?usage: run-variant.sh light|dark|accent|opaque|contrast|rtl|compact|text200}
@@ -49,12 +53,25 @@ fi
 export TELAMON_VARIANT=$variant
 # The About page shows the OS and Qt version: pin them for the pictures.
 export TELAMON_UI_TEST_FIXED_ENV=1
-export QT_QUICK_BACKEND=software
+backend=${TELAMON_TEST_BACKEND:-software}
+case $backend in
+software) export QT_QUICK_BACKEND=software ;;
+opengl)
+    # The scene graph's own renderer, the one a desktop runs, on Mesa's software
+    # OpenGL so that it needs no GPU and draws the same on every machine.
+    unset QT_QUICK_BACKEND
+    export QSG_RHI_BACKEND=opengl LIBGL_ALWAYS_SOFTWARE=1
+    ;;
+*)
+    echo "run-variant: unknown TELAMON_TEST_BACKEND: $backend" >&2
+    exit 2
+    ;;
+esac
 # Pin TelamonStyle.softwareRendering to false: the flag is detected on the first
 # frame, which would race the first grabs, and the goldens show the animated
 # controls. A test sets TELAMON_SOFTWARE_RENDERING (even empty, for detection).
 export TELAMON_SOFTWARE_RENDERING="${TELAMON_SOFTWARE_RENDERING-0}"
-export QT_SCALE_FACTOR=1
+export QT_SCALE_FACTOR=${TELAMON_TEST_SCALE:-1}
 export QT_FONT_DPI=96
 export QT_QPA_PLATFORM=xcb
 export QT_QUICK_CONTROLS_STYLE=org.kde.desktop
