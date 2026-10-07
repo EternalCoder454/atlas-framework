@@ -788,70 +788,11 @@ FocusScope {
                 Repeater {
                     model: root.columns.length
 
-                    Item {
-                        id: cell
-                        required property int index
-                        readonly property var column: root.columns[index]
-                        readonly property var value: row.model[column.role]
-                        // A value the machine doesn't report (NaN) is cold.
-                        readonly property real heat: column.heat > 0 && Number(value) > 0 ? Math.min(1, Number(value) / column.heat) : 0
-                        readonly property real indent: index === 0 ? row.indent : 0
-
-                        visible: !root._hidden[index]
-                        width: root.widths[index] ?? 0
-                        height: row.height
-
-                        // Heat: a small bar at the leading edge of the cell's bottom,
-                        // as wide as the load. The cell is not filled, and on a
-                        // selected row the bar takes the accent so no data colour
-                        // fights the selection. Hidden at idle.
-                        Rectangle {
-                            visible: cell.heat > 0.02
-                            anchors.left: parent.left
-                            anchors.leftMargin: root.cellPadding
-                            y: parent.height - height - AtlasStyle.spacingXSmall - 1
-                            width: Math.max(height, Math.round((parent.width - 2 * root.cellPadding) * cell.heat))
-                            height: 3
-                            radius: height / 2
-                            color: row.selected ? AtlasStyle.accent : AtlasStyle.warning
-                        }
-
-                        Loader {
-                            id: custom
-                            active: cell.column.cell !== undefined && cell.visible
-                            anchors.fill: parent
-                            anchors.leftMargin: root.cellPadding
-                            anchors.rightMargin: root.cellPadding
-                            sourceComponent: cell.column.cell
-                            onLoaded: {
-                                item.value = Qt.binding(() => cell.value);
-                                item.row = Qt.binding(() => row.model);
-                                item.column = Qt.binding(() => cell.column);
-                            }
-                        }
-
-                        RowLayout {
-                            visible: !custom.active
-                            anchors.fill: parent
-                            anchors.leftMargin: root.cellPadding + (cell.index === 0 && (root.expandableRole || row.depth > 0) ? Kirigami.Units.iconSizes.small + cell.indent : 0)
-                            anchors.rightMargin: root.cellPadding
-                            spacing: Kirigami.Units.smallSpacing
-
-                            Kirigami.Icon {
-                                visible: cell.column.iconRole !== undefined
-                                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                                Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                                source: cell.column.iconRole ? (row.model[cell.column.iconRole] || "application-x-executable") : ""
-                            }
-                            QQC2.Label {
-                                Layout.fillWidth: true
-                                text: cell.column.text ? cell.column.text(cell.value, row.model) : (cell.value ?? "")
-                                horizontalAlignment: cell.column.align === Qt.AlignRight ? Text.AlignRight : Text.AlignLeft
-                                elide: Text.ElideRight
-                                textFormat: Text.PlainText
-                                font.features: cell.column.align === Qt.AlignRight ? { "tnum": 1 } : {}
-                            }
-                        }
+                    Cell {
+                        rowModel: row.model
+                        rowSelected: row.selected
+                        rowDepth: row.depth
+                        rowIndent: row.indent
                     }
                 }
             }
@@ -913,6 +854,168 @@ FocusScope {
                     if (mouse.button === Qt.LeftButton) {
                         root.activated(row.index);
                     }
+                }
+            }
+        }
+    }
+
+    // One cell of a row. A table holds hundreds of them, so each makes only
+    // what its column draws: a plain column is this Loader and one Text; the
+    // icon, the heat bar and the custom cell's holder come only with the
+    // columns that have them. The Loader's width is its item's, which sets
+    // it to the column's.
+    component Cell: Loader {
+        required property int index
+        required property var rowModel
+        required property bool rowSelected
+        required property int rowDepth
+        required property real rowIndent
+        readonly property var column: root.columns[index]
+        readonly property var value: rowModel[column.role]
+        // A value the machine doesn't report (NaN) is cold.
+        readonly property real heat: column.heat > 0 && Number(value) > 0 ? Math.min(1, Number(value) / column.heat) : 0
+        readonly property real indent: index === 0 ? rowIndent : 0
+        // From the cell's start edge to its text (or icon): the padding,
+        // and in a tree the chevron and the indent.
+        readonly property real leading: root.cellPadding + (index === 0 && (root.expandableRole || rowDepth > 0) ? Kirigami.Units.iconSizes.small + indent : 0)
+
+        visible: !root._hidden[index]
+        sourceComponent: column.cell !== undefined ? customCell : column.iconRole !== undefined ? (column.heat > 0 ? iconHeatCell : iconCell) : column.heat > 0 ? heatCell : textCell
+    }
+
+    // A cell's text. A Text, not a Label: it takes the font and colour a
+    // Label here has from cellLabel and figureLabel below, and draws the same
+    // pixels without a theme object and a hover handler per cell.
+    component CellText: Text {
+        property Cell cell
+        text: cell.column.text ? cell.column.text(cell.value, cell.rowModel) : (cell.value ?? "")
+        horizontalAlignment: cell.column.align === Qt.AlignRight ? Text.AlignRight : Text.AlignLeft
+        elide: Text.ElideRight
+        textFormat: Text.PlainText
+        color: cellLabel.color
+        font: cell.column.align === Qt.AlignRight ? figureLabel.font : cellLabel.font
+    }
+    // A cell's text with no icon: as wide as the cell, with its text where
+    // the RowLayout it replaces put it (at `leading` from the start edge, the
+    // width rounded to the pixel, centred on the pixel grid, never taller
+    // than the row).
+    component PlainCellText: CellText {
+        readonly property real _textWidth: Math.max(0, Math.floor(width - cell.leading - root.cellPadding + 0.5))
+        width: root.widths[cell.index] ?? 0
+        height: Math.min(implicitHeight, root.rowHeight)
+        y: Math.floor((root.rowHeight - height) / 2 + 0.5)
+        leftPadding: root.mirrored ? width - cell.leading - _textWidth : cell.leading
+        rightPadding: root.mirrored ? cell.leading : width - cell.leading - _textWidth
+    }
+    // An icon before the text, for a column with `iconRole`.
+    component CellIconRow: RowLayout {
+        id: iconRow
+        property Cell cell
+        anchors.fill: parent
+        anchors.leftMargin: cell.leading
+        anchors.rightMargin: root.cellPadding
+        spacing: Kirigami.Units.smallSpacing
+
+        Kirigami.Icon {
+            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+            source: iconRow.cell.column.iconRole ? (iconRow.cell.rowModel[iconRow.cell.column.iconRole] || "application-x-executable") : ""
+        }
+        CellText {
+            cell: iconRow.cell
+            Layout.fillWidth: true
+        }
+    }
+    // Heat: a small bar at the leading edge of the cell's bottom, as wide as
+    // the load. The cell is not filled, and on a selected row the bar takes
+    // the accent so no data colour fights the selection. Hidden at idle.
+    component HeatBar: Rectangle {
+        property Cell cell
+        visible: cell.heat > 0.02
+        anchors.left: parent.left
+        anchors.leftMargin: root.cellPadding
+        y: parent.height - height - AtlasStyle.spacingXSmall - 1
+        width: Math.max(height, Math.round((parent.width - 2 * root.cellPadding) * cell.heat))
+        height: 3
+        radius: height / 2
+        color: cell.rowSelected ? AtlasStyle.accent : AtlasStyle.warning
+    }
+    // The font and colour of every cell's text: a Label's in this table.
+    QQC2.Label {
+        id: cellLabel
+        visible: false
+    }
+    QQC2.Label {
+        id: figureLabel
+        visible: false
+        font.features: { "tnum": 1 }
+    }
+    Component {
+        id: textCell
+        PlainCellText {
+            cell: parent as Cell
+        }
+    }
+    Component {
+        id: heatCell
+        Item {
+            id: heatItem
+            readonly property Cell cell: parent as Cell
+            width: root.widths[cell.index] ?? 0
+            height: root.rowHeight
+            HeatBar {
+                cell: heatItem.cell
+            }
+            PlainCellText {
+                cell: heatItem.cell
+            }
+        }
+    }
+    Component {
+        id: iconCell
+        Item {
+            id: iconItem
+            readonly property Cell cell: parent as Cell
+            width: root.widths[cell.index] ?? 0
+            height: root.rowHeight
+            CellIconRow {
+                cell: iconItem.cell
+            }
+        }
+    }
+    Component {
+        id: iconHeatCell
+        Item {
+            id: iconHeatItem
+            readonly property Cell cell: parent as Cell
+            width: root.widths[cell.index] ?? 0
+            height: root.rowHeight
+            HeatBar {
+                cell: iconHeatItem.cell
+            }
+            CellIconRow {
+                cell: iconHeatItem.cell
+            }
+        }
+    }
+    // A column's own `cell` Component, given `value`, `row` and `column`.
+    Component {
+        id: customCell
+        Item {
+            id: customItem
+            readonly property Cell cell: parent as Cell
+            width: root.widths[cell.index] ?? 0
+            height: root.rowHeight
+            Loader {
+                active: customItem.cell.visible
+                anchors.fill: parent
+                anchors.leftMargin: root.cellPadding
+                anchors.rightMargin: root.cellPadding
+                sourceComponent: customItem.cell.column.cell
+                onLoaded: {
+                    item.value = Qt.binding(() => customItem.cell.value);
+                    item.row = Qt.binding(() => customItem.cell.rowModel);
+                    item.column = Qt.binding(() => customItem.cell.column);
                 }
             }
         }
