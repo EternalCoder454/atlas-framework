@@ -23,9 +23,11 @@
 # exactly FRAMEWORK_COMMIT, and crates.io packages the app already had or the
 # framework's own Cargo.lock names. Anything else, and nothing is pushed.
 #
-# Every `atlas-framework-*` git dependency on this repository, pinned by rev,
-# tag or branch, becomes `tag = "<vX.Y.Z>"`. Nothing else changes: the app's
-# own `atlas-ui >=` requirement is its decision.
+# Every `atlas-framework-*` git dependency on this repository pinned by tag or
+# branch becomes `tag = "<vX.Y.Z>"`; one pinned by rev stays a rev, of the
+# commit the tag names (an app's CI may require revs, as Notepad's does).
+# Nothing else changes: the app's own `atlas-ui >=` requirement is its
+# decision.
 set -euo pipefail
 
 usage() {
@@ -52,12 +54,14 @@ dir=$(realpath -m -- "$dir")
 max_manifest=1048576
 
 # Moves the pins in the Cargo.toml files named, in place. Only inline tables
-# naming this repository; the pin key may come before or after `git`.
+# naming this repository; the pin key may come before or after `git`. A rev
+# pin moves to $fw_commit, any other to the tag.
 move_pins() {
     # shellcheck disable=SC2016 # perl, not shell, expands these
-    TAG=$tag timeout 60 perl -0pi -e '
-        s#(atlas-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?"[^}\n]*?)\b(?:rev|tag|branch)\s*=\s*"[^"]*"#$1tag = "$ENV{TAG}"#g;
-        s#(atlas-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?)\b(?:rev|tag|branch)\s*=\s*"[^"]*"([^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?")#$1tag = "$ENV{TAG}"$2#g;
+    TAG=$tag COMMIT=$fw_commit timeout 60 perl -0pi -e '
+        sub pin { $_[0] eq "rev" ? qq(rev = "$ENV{COMMIT}") : qq(tag = "$ENV{TAG}") }
+        s#(atlas-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?"[^}\n]*?)\b(rev|tag|branch)\s*=\s*"[^"]*"#$1 . pin($2)#ge;
+        s#(atlas-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?)\b(rev|tag|branch)\s*=\s*"[^"]*"([^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?")#$1 . pin($2) . $3#ge;
     ' -- "$@"
 }
 
@@ -91,6 +95,10 @@ if [ "$mode" = lock ]; then
     export RUSTUP_TOOLCHAIN=stable
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
+    # The commit the tag names (peeled, for an annotated tag), for rev pins.
+    fw_commit=$(git ls-remote https://github.com/EternalCoder454/atlas-framework "refs/tags/$tag" "refs/tags/$tag^{}" |
+        sort -k2 | awk 'END { print $1 }')
+    [[ $fw_commit =~ ^[0-9a-f]{40}$ ]] || { echo "atlas-framework has no tag $tag" >&2; exit 1; }
     git clone --quiet --depth 1 "$url" "$work/app"
     cd "$work/app"
     base=$(git rev-parse HEAD)
@@ -218,7 +226,7 @@ while IFS= read -r m; do
     # table): a person has to.
     left=$({
         grep -nE '^[[:space:]]*atlas-framework-[a-z0-9-]+[[:space:]]*=.*github\.com/EternalCoder454/atlas-framework' "$tmp/manifest" |
-            grep -vF "tag = \"$tag\"" || true
+            grep -vF -e "tag = \"$tag\"" -e "rev = \"$fw_commit\"" || true
         grep -nE '^[[:space:]]*\[([^]]*\.)?atlas-framework-[a-z0-9-]+\]' "$tmp/manifest" || true
     })
     if [ -n "$left" ]; then
@@ -263,6 +271,8 @@ lock_packages() {
 fw_names=$(lock_packages "$fw_lock" | cut -d' ' -f1 | sort -u)
 fw_source="git+https://github.com/EternalCoder454/atlas-framework?tag=$tag#$fw_commit"
 fw_source_git="git+https://github.com/EternalCoder454/atlas-framework.git?tag=$tag#$fw_commit"
+fw_source_rev="git+https://github.com/EternalCoder454/atlas-framework?rev=$fw_commit#$fw_commit"
+fw_source_rev_git="git+https://github.com/EternalCoder454/atlas-framework.git?rev=$fw_commit#$fw_commit"
 crates_io="registry+https://github.com/rust-lang/crates.io-index"
 
 # Cargo.lock: from the lock job, only over lock files the base has, only what
@@ -290,7 +300,8 @@ while IFS= read -r lock; do
     while read -r name version source; do
         shown="${lock//[^A-Za-z0-9 ._\/-]/?}: ${name//[^A-Za-z0-9._-]/?} ${version//[^A-Za-z0-9.+-]/?}"
         if [[ $name == atlas-framework-* ]]; then
-            if [ "$source" = "$fw_source" ] || [ "$source" = "$fw_source_git" ]; then
+            if [ "$source" = "$fw_source" ] || [ "$source" = "$fw_source_git" ] ||
+                [ "$source" = "$fw_source_rev" ] || [ "$source" = "$fw_source_rev_git" ]; then
                 continue
             fi
         elif [ "$source" = "$crates_io" ] &&
