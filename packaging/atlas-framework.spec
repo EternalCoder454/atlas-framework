@@ -9,7 +9,7 @@
 %endif
 
 Name:           atlas-framework
-Version:        1.6.0
+Version:        1.6.1
 Release:        1%{?dist}
 Summary:        The shared base of Atlas apps: Atlas.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -187,6 +187,10 @@ fi
 %{_datadir}/applications/net.eterneon.atlas.symbols.desktop
 
 %changelog
+* Tue Oct 06 2026 Atlas <atlas@eterneon.net> - 1.6.1-1
+- Atlas.Ui: the GPU switch on HiDPI screens works (it read the RHI API, not
+  the software scene graph backend, and ran only at the start-up check).
+
 * Tue Oct 06 2026 Atlas <atlas@eterneon.net> - 1.6.0-1
 - Atlas.Ui: every AtlasWindow has an alpha surface from the start (no black
   corners or grey content on Wayland's CPU path); apps that ask for the
