@@ -1,8 +1,8 @@
-# The development container for atlas-framework: Atlas.Ui, the gallery, the
+# The development container for telamon-framework: Telamon.Ui, the gallery, the
 # template and the Rust crates build and run headless in it. The host has no
 # Qt development packages.
 #
-#   podman build -t localhost/atlas-framework-dev:44 -f packaging/Containerfile.dev packaging
+#   podman build -t localhost/telamon-framework-dev:44 -f packaging/Containerfile.dev packaging
 FROM registry.fedoraproject.org/fedora:44
 RUN dnf -y -q --setopt=install_weak_deps=False install \
         cmake ninja-build ccache gcc-c++ git-core rpm-build desktop-file-utils libappstream-glib \

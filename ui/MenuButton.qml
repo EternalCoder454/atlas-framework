@@ -26,7 +26,7 @@ SecondaryButton {
     }
 
     rightPadding: control.mirrored ? leftPadding : leftPadding + Kirigami.Units.iconSizes.small
-    leftPadding: control.mirrored ? AtlasStyle.spacingLarge + AtlasStyle.spacingSmall + Kirigami.Units.iconSizes.small : AtlasStyle.spacingLarge + AtlasStyle.spacingSmall
+    leftPadding: control.mirrored ? TelamonStyle.spacingLarge + TelamonStyle.spacingSmall + Kirigami.Units.iconSizes.small : TelamonStyle.spacingLarge + TelamonStyle.spacingSmall
     Accessible.role: Accessible.ButtonMenu
     // Qt has no Accessible.expanded for QML: the state is the description,
     // and a change of it is announced (see the menu below).
@@ -59,7 +59,7 @@ SecondaryButton {
     }
 
     Kirigami.Icon {
-        x: control.mirrored ? AtlasStyle.spacingSmall + 2 : parent.width - width - AtlasStyle.spacingSmall - 2
+        x: control.mirrored ? TelamonStyle.spacingSmall + 2 : parent.width - width - TelamonStyle.spacingSmall - 2
         anchors.verticalCenter: parent.verticalCenter
         source: "arrow-down"
         isMask: true

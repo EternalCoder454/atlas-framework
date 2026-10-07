@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 // A user edit must not end an app's binding on the property the user edits
 // (docs/api-1.5.0.md, Part 1). Each control is made in the three app styles:
@@ -22,7 +22,7 @@ Item {
 
     Component {
         id: ratingAccept
-        AtlasRating {
+        TelamonRating {
             readOnly: false
             value: app.rating
             onEdited: app.rating = value
@@ -30,21 +30,21 @@ Item {
     }
     Component {
         id: ratingRefuse
-        AtlasRating {
+        TelamonRating {
             readOnly: false
             value: app.rating
         }
     }
     Component {
         id: ratingLiteral
-        AtlasRating {
+        TelamonRating {
             readOnly: false
             value: 2
         }
     }
     Component {
         id: segAccept
-        AtlasSegmentedControl {
+        TelamonSegmentedControl {
             model: ["A", "B", "C"]
             currentIndex: app.index
             onActivated: index => app.index = index
@@ -52,40 +52,40 @@ Item {
     }
     Component {
         id: segRefuse
-        AtlasSegmentedControl {
+        TelamonSegmentedControl {
             model: ["A", "B", "C"]
             currentIndex: app.index
         }
     }
     Component {
         id: segLiteral
-        AtlasSegmentedControl {
+        TelamonSegmentedControl {
             model: ["A", "B", "C"]
             currentIndex: 0
         }
     }
     Component {
         id: colorAccept
-        AtlasColorField {
+        TelamonColorField {
             color: app.color
             onEdited: app.color = color
         }
     }
     Component {
         id: colorRefuse
-        AtlasColorField {
+        TelamonColorField {
             color: app.color
         }
     }
     Component {
         id: colorLiteral
-        AtlasColorField {
+        TelamonColorField {
             color: "#112233"
         }
     }
     Component {
         id: fontAccept
-        AtlasFontPicker {
+        TelamonFontPicker {
             font.family: app.family
             font.pointSize: app.size
             onEdited: {
@@ -96,14 +96,14 @@ Item {
     }
     Component {
         id: fontRefuse
-        AtlasFontPicker {
+        TelamonFontPicker {
             font.family: app.family
             font.pointSize: app.size
         }
     }
     Component {
         id: fontLiteral
-        AtlasFontPicker {
+        TelamonFontPicker {
             font.family: "Sans Serif"
             font.pointSize: 11
         }

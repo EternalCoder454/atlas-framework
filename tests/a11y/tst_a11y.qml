@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
 // One test row per ui/gallery/demos/*Demo.qml, found at run time. A new
 // control with a demo needs no change here: it fails if something the
@@ -21,30 +21,30 @@ Rectangle {
     readonly property var tabOrderExceptions: ({
             // The copy button sits in the corner over the code: the code is
             // read first, then the button.
-            "AtlasCodeView": "copy button overlays the code",
+            "TelamonCodeView": "copy button overlays the code",
             // The demo lays three zones out in two columns, top to bottom.
-            "AtlasDropZone": "demo is in two columns",
+            "TelamonDropZone": "demo is in two columns",
             // Two columns of views, Tab going cell by cell; each view centres
             // its status in its own body (a table's below its header), so the
             // buttons of one row are not level.
-            "AtlasStatus": "demo is in two columns of differently shaped views",
+            "TelamonStatus": "demo is in two columns of differently shaped views",
             // The popup puts its children in the order body, header, footer
             // and Tab follows that order, so Back and Close come after the
             // fields. QML cannot reorder an item's children (there is no
             // stackBefore; re-parenting the body would break the popup's own
             // layout), so the order is left as Qt makes it.
-            "AtlasDialog": "Qt's popup chain is body, header, footer",
-            // An AtlasDialog (as above) with the page sidebar as a column:
+            "TelamonDialog": "Qt's popup chain is body, header, footer",
+            // A TelamonDialog (as above) with the page sidebar as a column:
             // Tab goes down the sidebar, then the search field and the page,
             // while rows across both columns would mix them.
-            "AtlasPreferencesDialog": "dialog with a sidebar column"
+            "TelamonPreferencesDialog": "dialog with a sidebar column"
         })
 
     // Demos the Tab walk cannot run on at all.
     readonly property var tabOrderSkipped: ({
             // A separate top-level window: the test's key events go to the
             // stage's window, not to it.
-            "AtlasWindow": "separate window"
+            "TelamonWindow": "separate window"
         })
 
     TestCase {

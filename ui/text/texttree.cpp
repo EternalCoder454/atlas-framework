@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <atomic>
 
-namespace AtlasTextDetail {
+namespace TelamonTextDetail {
 
 namespace {
 
@@ -547,12 +547,12 @@ QString checkNode(const Node &n, bool isRoot, int depth, int *leafDepth, Agg *ou
 
 // ---- The snapshot ----
 
-class SnapshotImpl final : public AtlasTextSnapshotInterface
+class SnapshotImpl final : public TelamonTextSnapshotInterface
 {
 public:
     SnapshotImpl(TextTree t, quint64 r) : m_tree(std::move(t)), m_revision(r) {}
 
-    int abiVersion() const override { return ATLAS_TEXTSNAPSHOT_ABI_VERSION; }
+    int abiVersion() const override { return TELAMON_TEXTSNAPSHOT_ABI_VERSION; }
     void ref() const override { m_ref.fetch_add(1, std::memory_order_relaxed); }
     void deref() const override
     {
@@ -572,7 +572,7 @@ public:
     QString text(qsizetype start, qsizetype end) const override { return m_tree.text(start, end); }
     QByteArray utf8(qsizetype start, qsizetype end) const override { return m_tree.utf8(start, end); }
     qsizetype chunkCount() const override { return m_tree.chunkCount(); }
-    AtlasTextChunk chunkAt(qsizetype index) const override { return m_tree.chunkAt(index); }
+    TelamonTextChunk chunkAt(qsizetype index) const override { return m_tree.chunkAt(index); }
     qsizetype chunkIndexAtByte(qsizetype offset) const override { return m_tree.chunkIndexAtByte(offset); }
 
 private:
@@ -844,9 +844,9 @@ QByteArray TextTree::utf8(qsizetype start, qsizetype end) const
     return out;
 }
 
-AtlasTextChunk TextTree::chunkAt(qsizetype index) const
+TelamonTextChunk TextTree::chunkAt(qsizetype index) const
 {
-    AtlasTextChunk c;
+    TelamonTextChunk c;
     if (index < 0 || index >= pieceCount())
         return c;
     const Loc loc = locate(m_root, Metric::Piece, index);
@@ -910,10 +910,10 @@ int TextTree::height() const
     return h;
 }
 
-AtlasTextSnapshot makeSnapshot(const TextTree &tree, quint64 revision)
+TelamonTextSnapshot makeSnapshot(const TextTree &tree, quint64 revision)
 {
     // The handle takes the one reference; nothing else owns the object.
-    return AtlasTextSnapshot(new SnapshotImpl(tree, revision));
+    return TelamonTextSnapshot(new SnapshotImpl(tree, revision));
 }
 
-} // namespace AtlasTextDetail
+} // namespace TelamonTextDetail

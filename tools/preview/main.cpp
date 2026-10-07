@@ -1,9 +1,9 @@
-// atlas-preview: loads a page or component of an Atlas app offscreen in the
+// telamon-preview: loads a page or component of a Telamon app offscreen in the
 // visual-test matrix (light, dark, accent, opaque, rtl, text200, compact,
 // contrast) and writes one PNG per variant plus the QML warnings. See
 // tools/README.md.
 //
-//   atlas-preview <file.qml> --out <dir> [--size WxH] [-I <import path>]...
+//   telamon-preview <file.qml> --out <dir> [--size WxH] [-I <import path>]...
 //
 // Exit 0: pictures written, no warnings. 1: pictures written, QML warnings
 // (listed on stderr and in <dir>/<name>-warnings.txt). 2: bad usage or a file
@@ -58,7 +58,7 @@
 #include <functional>
 #include <memory>
 
-using AtlasVariant::names;
+using TelamonVariant::names;
 
 namespace {
 
@@ -76,10 +76,10 @@ constexpr int kPortalSeconds = 100;
 constexpr int kGraceMs = 3000;
 // The parent puts a random value in this variable for the processes it starts:
 // the hidden --internal-* modes refuse to run without it.
-const char kTokenVariable[] = "ATLAS_PREVIEW_PRIVATE";
-const char kScratchVariable[] = "ATLAS_PREVIEW_SCRATCH";
+const char kTokenVariable[] = "TELAMON_PREVIEW_PRIVATE";
+const char kScratchVariable[] = "TELAMON_PREVIEW_SCRATCH";
 // The parent's process id: a helper that finds it gone ends at once.
-const char kRootVariable[] = "ATLAS_PREVIEW_ROOT";
+const char kRootVariable[] = "TELAMON_PREVIEW_ROOT";
 
 // Control characters other than a tab and a newline, C1 controls and the
 // Unicode line and bidi controls become '?': a message from QML or a file name
@@ -234,9 +234,9 @@ const char kHostQml[] = R"QML(
 import QtQuick
 import QtQuick.Controls
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
-// What atlas-preview puts the previewed page in: the stage the visual tests
+// What telamon-preview puts the previewed page in: the stage the visual tests
 // use (the theme's background), mirrored for the rtl variant, with the
 // density of the compact variant. A previewed window gets the same through
 // mirrorWindow().
@@ -245,13 +245,13 @@ Rectangle {
 
     property bool rtl: false
     property bool compact: false
-    readonly property bool highContrast: AtlasStyle.highContrast
+    readonly property bool highContrast: TelamonStyle.highContrast
 
     color: Kirigami.Theme.backgroundColor
     LayoutMirroring.enabled: rtl
     LayoutMirroring.childrenInherit: true
 
-    Component.onCompleted: AtlasStyle.density = compact ? AtlasStyle.Compact : AtlasStyle.Normal
+    Component.onCompleted: TelamonStyle.density = compact ? TelamonStyle.Compact : TelamonStyle.Normal
 
     // An RTL app mirrors its windows' content and overlay (Qt does not do it).
     function mirrorWindow(w: Window) {
@@ -347,7 +347,7 @@ int renderVariant(int argc, char **argv, const QString &variant, const QString &
     qunsetenv(kTokenVariable);
     qunsetenv(kRootVariable);
     QApplication app(argc, argv);
-    AtlasVariant::applyToApplication(variant);
+    TelamonVariant::applyToApplication(variant);
     qInstallMessageHandler(messageHandler);
 
     // A stuck page must not hang CI.
@@ -362,12 +362,12 @@ int renderVariant(int argc, char **argv, const QString &variant, const QString &
     }
 
     QQmlComponent hostComponent(&engine);
-    hostComponent.setData(QByteArray(kHostQml), QUrl::fromLocalFile(QCoreApplication::applicationDirPath() + QStringLiteral("/atlas-preview-host.qml")));
+    hostComponent.setData(QByteArray(kHostQml), QUrl::fromLocalFile(QCoreApplication::applicationDirPath() + QStringLiteral("/telamon-preview-host.qml")));
     std::unique_ptr<QObject> hostObject(hostComponent.createWithInitialProperties(
         {{QStringLiteral("rtl"), variant == QLatin1String("rtl")}, {QStringLiteral("compact"), variant == QLatin1String("compact")}}));
     auto *host = qobject_cast<QQuickItem *>(hostObject.get());
     if (!host) {
-        say(QStringLiteral("error: cannot load Atlas.Ui (is it installed, or on the import path with -I or QML_IMPORT_PATH?) [status %1]: %2")
+        say(QStringLiteral("error: cannot load Telamon.Ui (is it installed, or on the import path with -I or QML_IMPORT_PATH?) [status %1]: %2")
                 .arg(int(hostComponent.status()))
                 .arg(hostComponent.errorString().trimmed()));
         finish(kExitError);
@@ -466,7 +466,7 @@ int runPortal(int argc, char **argv, const QString &readyFile)
 {
     dieWithParent();
     QCoreApplication app(argc, argv);
-    return AtlasVariant::runFakePortal(readyFile, kPortalSeconds);
+    return TelamonVariant::runFakePortal(readyFile, kPortalSeconds);
 }
 
 bool writeFile(const QString &path, const QByteArray &data)
@@ -491,13 +491,13 @@ bool setupScratch(const QString &base, const QString &variant, QString *problem)
         *problem = QStringLiteral("cannot make %1").arg(base);
         return false;
     }
-    const QByteArray scheme = AtlasVariant::kdeglobals(variant);
+    const QByteArray scheme = TelamonVariant::kdeglobals(variant);
     if (scheme.isEmpty() || !writeFile(config + QStringLiteral("/kdeglobals"), scheme)) {
         *problem = QStringLiteral("cannot write the colour scheme of the %1 variant").arg(variant);
         return false;
     }
-    if (AtlasVariant::transparencyOff(variant) && !writeFile(config + QStringLiteral("/atlasrc"), "[Appearance]\nTransparency=false\n")) {
-        *problem = QStringLiteral("cannot write atlasrc");
+    if (TelamonVariant::transparencyOff(variant) && !writeFile(config + QStringLiteral("/telamonrc"), "[Appearance]\nTransparency=false\n")) {
+        *problem = QStringLiteral("cannot write telamonrc");
         return false;
     }
     const QString busConfig = base + QStringLiteral("/bus.conf");
@@ -532,7 +532,7 @@ int runHost(int argc, char **argv, const QStringList &renderArgs)
         return kExitError;
     }
     if (daemonPath.isEmpty()) {
-        say(QStringLiteral("error: atlas-preview needs dbus-daemon (package dbus-daemon)"));
+        say(QStringLiteral("error: telamon-preview needs dbus-daemon (package dbus-daemon)"));
         return kExitError;
     }
     bool interrupted = false;
@@ -652,7 +652,7 @@ bool prepare(Job &job, const QString &root, const QStringList &renderArgs, QProc
 {
     const QString base = QDir(root).filePath(job.variant);
     const QString config = base + QStringLiteral("/config");
-    if (AtlasVariant::kdeglobals(job.variant).isEmpty()) {
+    if (TelamonVariant::kdeglobals(job.variant).isEmpty()) {
         *problem = QStringLiteral("no colour scheme for the %1 variant").arg(job.variant);
         return false;
     }
@@ -694,9 +694,9 @@ bool prepare(Job &job, const QString &root, const QStringList &renderArgs, QProc
 int runParent(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    QCoreApplication::setApplicationName(QStringLiteral("atlas-preview"));
+    QCoreApplication::setApplicationName(QStringLiteral("telamon-preview"));
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("Loads a QML page offscreen in Atlas.Ui's visual-test matrix (%1) and writes one PNG per variant.")
+    parser.setApplicationDescription(QStringLiteral("Loads a QML page offscreen in Telamon.Ui's visual-test matrix (%1) and writes one PNG per variant.")
                                          .arg(names().join(QStringLiteral(", "))));
     parser.addHelpOption();
     parser.addPositionalArgument(QStringLiteral("file.qml"), QStringLiteral("The page or component to load."));
@@ -707,7 +707,7 @@ int runParent(int argc, char **argv)
     parser.addOption(sizeOption);
     parser.addOption(importOption);
     if (!parser.parse(QCoreApplication::arguments())) {
-        say(QStringLiteral("atlas-preview: %1").arg(parser.errorText()));
+        say(QStringLiteral("telamon-preview: %1").arg(parser.errorText()));
         return kExitError;
     }
     if (parser.isSet(QStringLiteral("help"))) {
@@ -715,17 +715,17 @@ int runParent(int argc, char **argv)
         return 0;
     }
     if (parser.positionalArguments().size() != 1 || !parser.isSet(outOption)) {
-        say(QStringLiteral("usage: atlas-preview <file.qml> --out <dir> [--size WxH] [-I <import path>]..."));
+        say(QStringLiteral("usage: telamon-preview <file.qml> --out <dir> [--size WxH] [-I <import path>]..."));
         return kExitError;
     }
     const QFileInfo info(parser.positionalArguments().first());
     if (!info.isFile() || !info.isReadable() || info.suffix().compare(QLatin1String("qml"), Qt::CaseInsensitive) != 0) {
-        say(QStringLiteral("atlas-preview: %1 is not a readable .qml file").arg(info.filePath()));
+        say(QStringLiteral("telamon-preview: %1 is not a readable .qml file").arg(info.filePath()));
         return kExitError;
     }
     QSize size;
     if (parser.isSet(sizeOption) && !parseSize(parser.value(sizeOption), &size)) {
-        say(QStringLiteral("atlas-preview: --size is WIDTHxHEIGHT, each 1 to %1: %2").arg(kLargestSide).arg(parser.value(sizeOption)));
+        say(QStringLiteral("telamon-preview: --size is WIDTHxHEIGHT, each 1 to %1: %2").arg(kLargestSide).arg(parser.value(sizeOption)));
         return kExitError;
     }
     QStringList importPaths;
@@ -746,13 +746,13 @@ int runParent(int argc, char **argv)
         }
     });
     if (!desktopStyleInstalled()) {
-        say(QStringLiteral("atlas-preview: the org.kde.desktop style is not installed (package kf6-qqc2-desktop-style); the pictures would be made in another style"));
+        say(QStringLiteral("telamon-preview: the org.kde.desktop style is not installed (package kf6-qqc2-desktop-style); the pictures would be made in another style"));
         return kExitError;
     }
     const QString outDir = QDir(parser.value(outOption)).absolutePath();
     const bool outExisted = QFileInfo::exists(outDir);
     if (!QDir().mkpath(outDir)) {
-        say(QStringLiteral("atlas-preview: cannot create %1").arg(outDir));
+        say(QStringLiteral("telamon-preview: cannot create %1").arg(outDir));
         return kExitError;
     }
     if (!outExisted) {
@@ -762,7 +762,7 @@ int runParent(int argc, char **argv)
         QString problem;
         const int fd = openOutDir(outDir, &problem);
         if (fd < 0) {
-            say(QStringLiteral("atlas-preview: %1").arg(problem));
+            say(QStringLiteral("telamon-preview: %1").arg(problem));
             return kExitError;
         }
         ::close(fd);
@@ -770,9 +770,9 @@ int runParent(int argc, char **argv)
     const QString file = info.canonicalFilePath();
     const QString stem = info.completeBaseName();
 
-    QTemporaryDir scratch(QDir::tempPath() + QStringLiteral("/atlas-preview-XXXXXX"));
+    QTemporaryDir scratch(QDir::tempPath() + QStringLiteral("/telamon-preview-XXXXXX"));
     if (!scratch.isValid()) {
-        say(QStringLiteral("atlas-preview: cannot make a temporary directory"));
+        say(QStringLiteral("telamon-preview: cannot make a temporary directory"));
         return kExitError;
     }
 
@@ -794,7 +794,7 @@ int runParent(int argc, char **argv)
         }
         QString problem;
         if (!prepare(*job, scratch.path(), args, env, &problem)) {
-            say(QStringLiteral("atlas-preview: %1").arg(problem));
+            say(QStringLiteral("telamon-preview: %1").arg(problem));
             return kExitError;
         }
         jobs << job;
@@ -870,7 +870,7 @@ int runParent(int argc, char **argv)
     }
 
     if (interrupted) {
-        say(QStringLiteral("atlas-preview: interrupted"));
+        say(QStringLiteral("telamon-preview: interrupted"));
         return kExitError;
     }
     // Report in matrix order: errors first, then the warnings, each message once
@@ -883,7 +883,7 @@ int runParent(int argc, char **argv)
         const QString err = QString::fromUtf8(job->err).trimmed();
         if (job->code == kExitError || (job->code != 0 && job->code != kExitWarnings)) {
             failed = true;
-            say(QStringLiteral("atlas-preview: %1: %2").arg(job->variant, err.isEmpty() ? QStringLiteral("failed (exit %1)").arg(job->code) : err));
+            say(QStringLiteral("telamon-preview: %1: %2").arg(job->variant, err.isEmpty() ? QStringLiteral("failed (exit %1)").arg(job->code) : err));
         } else {
             ++pictures;
         }
@@ -913,11 +913,11 @@ int runParent(int argc, char **argv)
             say(QStringLiteral("warning: %1").arg(r));
         }
         if (!writeFile(warningsPath, (report.join(QLatin1Char('\n')) + QLatin1Char('\n')).toUtf8())) {
-            say(QStringLiteral("atlas-preview: cannot write %1").arg(warningsPath));
+            say(QStringLiteral("telamon-preview: cannot write %1").arg(warningsPath));
             failed = true;
         }
     }
-    std::fprintf(stdout, "atlas-preview: %d of %lld pictures in %s, %lld warning(s)\n", pictures, static_cast<long long>(names().size()), qUtf8Printable(clean(outDir)),
+    std::fprintf(stdout, "telamon-preview: %d of %lld pictures in %s, %lld warning(s)\n", pictures, static_cast<long long>(names().size()), qUtf8Printable(clean(outDir)),
                  static_cast<long long>(report.size()));
     if (failed) {
         return kExitError;
@@ -938,7 +938,7 @@ int main(int argc, char **argv)
         return a;
     }();
     if (!args.isEmpty() && args.at(0).startsWith(QLatin1String("--internal-")) && !privateModeAllowed()) {
-        say(QStringLiteral("atlas-preview: the --internal-* options are for atlas-preview itself"));
+        say(QStringLiteral("telamon-preview: the --internal-* options are for telamon-preview itself"));
         return kExitError;
     }
     if (args.size() == 2 && args.at(0) == QLatin1String("--internal-portal")) {
@@ -968,8 +968,8 @@ int main(int argc, char **argv)
                 importPaths << value;
             }
         }
-        if (!AtlasVariant::isValid(variant) || file.isEmpty() || png.isEmpty()) {
-            say(QStringLiteral("atlas-preview: an internal option is for atlas-preview itself"));
+        if (!TelamonVariant::isValid(variant) || file.isEmpty() || png.isEmpty()) {
+            say(QStringLiteral("telamon-preview: an internal option is for telamon-preview itself"));
             return kExitError;
         }
         return renderVariant(argc, argv, variant, file, png, size, importPaths);

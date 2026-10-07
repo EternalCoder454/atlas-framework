@@ -2,7 +2,7 @@
 // that Appearance and AccessibilityState use (contrast, reduced-motion,
 // accent-color), read once with ReadAll and followed through SettingChanged.
 // Every value from the bus is type- and range-checked; without a portal the
-// defaults stay. Described in docs/reference/atlas-ui/accessibility-state.md.
+// defaults stay. Described in docs/reference/telamon-ui/accessibility-state.md.
 #pragma once
 
 #include <QColor>

@@ -1,0 +1,18 @@
+[package]
+name = "telamon-framework-ui"
+description = "Starts a Telamon app: app ID, names, style, single instance, crash and log hooks, the Telamon.Ui About data"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+links = "telamon_framework_ui"
+
+[dependencies]
+telamon-framework-core.workspace = true
+telamon-framework-system.workspace = true
+log.workspace = true
+libc.workspace = true
+
+[build-dependencies]
+cxx-qt-build = "0.10"

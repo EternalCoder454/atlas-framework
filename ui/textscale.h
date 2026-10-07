@@ -5,7 +5,7 @@
 #include <QtGlobal>
 #include <cmath>
 
-namespace AtlasTextScale {
+namespace TelamonTextScale {
 inline constexpr qreal kMin = 0.5;
 inline constexpr qreal kMax = 4.0;
 inline constexpr qreal kDefault = 1.0;

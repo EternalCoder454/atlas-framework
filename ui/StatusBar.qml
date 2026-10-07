@@ -11,11 +11,11 @@ Item {
 
     default property alias content: row.data
 
-    // AtlasStyle.Normal or AtlasStyle.Compact; Compact shrinks the height and
-    // the vertical padding to about 75%. Follows the app-wide AtlasStyle.density
+    // TelamonStyle.Normal or TelamonStyle.Compact; Compact shrinks the height and
+    // the vertical padding to about 75%. Follows the app-wide TelamonStyle.density
     // unless set here.
-    property int density: AtlasStyle.density
-    readonly property real _k: density === AtlasStyle.Compact ? 0.75 : 1
+    property int density: TelamonStyle.density
+    readonly property real _k: density === TelamonStyle.Compact ? 0.75 : 1
 
     implicitWidth: row.implicitWidth
     implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.6 * _k)
@@ -43,15 +43,15 @@ Item {
         anchors.top: parent.top
         width: parent.width
         height: 1
-        color: AtlasStyle.separator
+        color: TelamonStyle.separator
     }
 
     RowLayout {
         id: row
         anchors.fill: parent
         anchors.topMargin: 1
-        anchors.leftMargin: AtlasStyle.spacingSmall
-        anchors.rightMargin: AtlasStyle.spacingSmall
+        anchors.leftMargin: TelamonStyle.spacingSmall
+        anchors.rightMargin: TelamonStyle.spacingSmall
         spacing: 0
         onChildrenChanged: control.refresh()
     }

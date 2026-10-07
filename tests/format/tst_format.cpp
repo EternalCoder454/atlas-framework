@@ -1,7 +1,7 @@
-// AtlasFormat (ui/atlasformat.cpp, compiled into the test): every function in
+// TelamonFormat (ui/telamonformat.cpp, compiled into the test): every function in
 // en_US and de_DE, with 0, 1023, 1024, huge, negative, NaN, invalid dates and
 // the plural forms.
-#include "atlasformat.h"
+#include "telamonformat.h"
 
 #include <QtTest>
 
@@ -16,7 +16,7 @@ static const QString nb = QString(QChar(0x00A0));
 class TestFormat : public QObject
 {
     Q_OBJECT
-    AtlasFormat f;
+    TelamonFormat f;
 
 private Q_SLOTS:
     void bytes()

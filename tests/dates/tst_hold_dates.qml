@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 // A user edit must not end an app's binding on `selectedDate`, `month` or
 // `year` (docs/api-1.5.0.md, Part 1). The three app styles: bound and taking
@@ -22,7 +22,7 @@ TestCase {
 
     Component {
         id: calAccept
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             selectedDate: app.day
@@ -31,7 +31,7 @@ TestCase {
     }
     Component {
         id: calRefuse
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             selectedDate: app.day
@@ -39,7 +39,7 @@ TestCase {
     }
     Component {
         id: calLiteral
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             selectedDate: new Date(2026, 2, 5)
@@ -48,7 +48,7 @@ TestCase {
     // The app owns the month shown.
     Component {
         id: calMonthBound
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             month: app.month
@@ -57,7 +57,7 @@ TestCase {
     // The app owns the month and also binds the selection, in both orders.
     Component {
         id: calBothA
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             selectedDate: app.day
@@ -66,7 +66,7 @@ TestCase {
     }
     Component {
         id: calBothB
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             month: app.month
@@ -75,7 +75,7 @@ TestCase {
     }
     Component {
         id: pickAccept
-        AtlasDatePicker {
+        TelamonDatePicker {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             clearable: true
@@ -85,7 +85,7 @@ TestCase {
     }
     Component {
         id: pickRefuse
-        AtlasDatePicker {
+        TelamonDatePicker {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             clearable: true
@@ -94,7 +94,7 @@ TestCase {
     }
     Component {
         id: pickLiteral
-        AtlasDatePicker {
+        TelamonDatePicker {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             clearable: true
@@ -246,7 +246,7 @@ TestCase {
     }
     Component {
         id: calLiteralSeptember
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             selectedDate: new Date(2026, 8, 5)
@@ -336,14 +336,14 @@ TestCase {
 
     Component {
         id: calDefault
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
         }
     }
     Component {
         id: calLiteralMonth
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
             month: 5

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 // Regression tests for names that qmllint showed as unqualified or missing and
 // that did not resolve at run time: an object nested in another (a Behavior, a
@@ -14,14 +14,14 @@ Item {
 
     Component {
         id: switcherComp
-        AtlasViewSwitcher {
+        TelamonViewSwitcher {
             model: [{ text: "One" }, { text: "Two" }, { text: "Three" }]
             currentIndex: 0
         }
     }
     Component {
         id: flowComp
-        AtlasFlowLayout {
+        TelamonFlowLayout {
             width: 200
         }
     }
@@ -49,7 +49,7 @@ Item {
     }
     Component {
         id: navComp
-        AtlasNavigationStack {
+        TelamonNavigationStack {
             width: 400
             height: 300
             initialItem: pageComp
@@ -129,7 +129,7 @@ Item {
             tryVerify(() => tint.visible && tint._shown !== null);
             sw.currentIndex = 2;
             compare(tint._springing, true);
-            if (!AtlasStyle.reducedMotion) {
+            if (!TelamonStyle.reducedMotion) {
                 // The Behavior is on: the lag starts away from 0 and settles to it.
                 verify(Math.abs(tint._slideX) > 0);
             }

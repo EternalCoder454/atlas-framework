@@ -1,5 +1,5 @@
 // The visual-test matrix, shared by tests/visual (the goldens) and
-// atlas-preview: which variants there are, and what each one does to the
+// telamon-preview: which variants there are, and what each one does to the
 // application (font, palette, layout direction) and to its configuration
 // (colour scheme, transparency).
 #pragma once
@@ -8,7 +8,7 @@
 #include <QString>
 #include <QStringList>
 
-namespace AtlasVariant {
+namespace TelamonVariant {
 
 // light, dark, accent, opaque, rtl, text200, compact, contrast.
 QStringList names();
@@ -23,7 +23,7 @@ void applyToApplication(const QString &variant);
 // colour for `accent`. Empty for an unknown variant.
 QByteArray kdeglobals(const QString &variant);
 
-// True when the variant runs with transparency off (atlasrc: [Appearance] Transparency=false).
+// True when the variant runs with transparency off (telamonrc: [Appearance] Transparency=false).
 bool transparencyOff(const QString &variant);
 
-} // namespace AtlasVariant
+} // namespace TelamonVariant

@@ -1,0 +1,343 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import QtQuick.Templates as T
+import org.kde.kirigami as Kirigami
+
+// The results list of a launcher: rows grouped under section headings, each
+// with an icon (or symbol), a title, a subtitle and a shortcut hint. It
+// scrolls on its own and makes rows only for what is on screen. The search
+// field keeps the keyboard focus; it hands the list the keys it doesn't use:
+//
+//   SearchField { id: field; Keys.onPressed: event => results.handleKey(event) }
+//   TelamonSearchResults {
+//       id: results
+//       model: hits                    // a QAbstractItemModel, or a JS array
+//       textRole: "title"
+//       subtitleRole: "subtitle"
+//       iconRole: "icon"               // an icon name or an image url
+//       symbolRole: "symbol"           // or Symbols.<Name>, if no icon
+//       sectionRole: "kind"            // rows with the same value group
+//       shortcutRole: "shortcut"       // "Ctrl+1": a hint, not a binding
+//       placeholderText: qsTr("No Results")
+//       onActivated: index => run(index)
+//   }
+//
+// Every role is optional. `handleKey(event)` takes Up, Down, Page Up,
+// Page Down and Enter and returns true if it used the key; or call
+// `moveCurrent(delta)` and `activateCurrent()` yourself. The model must
+// keep rows of one section together. The mouse moves the highlight and a
+// click activates.
+T.Control {
+    id: control
+
+    property var model
+    property string textRole: "text"
+    property string subtitleRole
+    property string iconRole
+    property string symbolRole
+    property string sectionRole
+    property string shortcutRole
+    property alias currentIndex: list.currentIndex
+    // Shown in the middle when there are no rows.
+    property string placeholderText
+    readonly property alias count: list.count
+
+    signal activated(int index)
+
+    // Moves the highlight by `delta` rows, staying on the first or last row.
+    // With no highlight yet, forward goes to the first row and backward to the last.
+    function moveCurrent(delta) {
+        if (list.count === 0 || delta === 0) {
+            return;
+        }
+        if (list.currentIndex < 0) {
+            list.currentIndex = delta > 0 ? 0 : list.count - 1;
+        } else {
+            list.currentIndex = Math.max(0, Math.min(list.count - 1, list.currentIndex + delta));
+        }
+        list.positionViewAtIndex(list.currentIndex, ListView.Contain);
+    }
+    // Emits activated() for the highlighted row, if there is one.
+    function activateCurrent() {
+        if (list.currentIndex >= 0 && list.currentIndex < list.count) {
+            control.activated(list.currentIndex);
+        }
+    }
+    // Lets a search field pass on its keys: true if the key was used.
+    function handleKey(event) {
+        switch (event.key) {
+        case Qt.Key_Up:
+        case Qt.Key_Down:
+        case Qt.Key_PageUp:
+        case Qt.Key_PageDown:
+            if (list.count === 0) {
+                return false; // nothing to move over: the key is the caller's
+            }
+            break;
+        default:
+            break;
+        }
+        switch (event.key) {
+        case Qt.Key_Up:
+            control.moveCurrent(-1);
+            break;
+        case Qt.Key_Down:
+            control.moveCurrent(1);
+            break;
+        case Qt.Key_PageUp:
+            control.moveCurrent(-priv.page);
+            break;
+        case Qt.Key_PageDown:
+            control.moveCurrent(priv.page);
+            break;
+        case Qt.Key_Return:
+        case Qt.Key_Enter:
+            if (event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier)) {
+                return false; // Shift+Enter and Ctrl+Enter are the app's
+            }
+            if (event.isAutoRepeat) {
+                break;
+            }
+            control.activateCurrent();
+            break;
+        default:
+            return false;
+        }
+        event.accepted = true;
+        return true;
+    }
+
+    QtObject {
+        id: priv
+        // The small font in bold; `font.bold` cannot be set beside `font:`.
+        readonly property font strong: {
+            const f = Qt.font({ "family": TelamonStyle.fontFamily, "pointSize": TelamonStyle.fontSizeCaption });
+            const o = {
+                "family": f.family,
+                "bold": true
+            };
+            if (f.pixelSize > 0) {
+                o.pixelSize = f.pixelSize;
+            } else {
+                o.pointSize = f.pointSize;
+            }
+            return Qt.font(o);
+        }
+        readonly property real rowHeight: Math.round(Kirigami.Units.gridUnit * 2.9 * (TelamonStyle.compact ? 0.75 : 1))
+        readonly property real headerHeight: Math.round(Kirigami.Units.gridUnit * 1.8 * (TelamonStyle.compact ? 0.75 : 1))
+        readonly property int page: Math.max(1, Math.floor(list.height / priv.rowHeight) - 1)
+        function pick(model, role) {
+            if (role.length > 0) {
+                return model[role] ?? model.modelData?.[role];
+            }
+            return undefined;
+        }
+    }
+
+    implicitWidth: Kirigami.Units.gridUnit * 30
+    implicitHeight: Kirigami.Units.gridUnit * 20
+    focusPolicy: Qt.StrongFocus
+
+    Accessible.role: Accessible.List
+    Accessible.focusable: true
+
+    Keys.onPressed: event => control.handleKey(event)
+
+    background: null
+
+    contentItem: Item {
+        ListView {
+            id: list
+            anchors.fill: parent
+            model: control.model
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            keyNavigationEnabled: false
+            activeFocusOnTab: false
+            currentIndex: 0
+            reuseItems: true
+            cacheBuffer: 0
+            highlightMoveDuration: TelamonStyle.durationShort
+            highlightMoveVelocity: -1
+            highlightResizeDuration: 0
+
+            section.property: control.sectionRole
+            section.criteria: ViewSection.FullString
+            section.delegate: Item {
+                required property string section
+                width: ListView.view.width
+                height: priv.headerHeight
+                Accessible.role: Accessible.StaticText
+                Accessible.name: section
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: TelamonStyle.spacingLarge * 2
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: TelamonStyle.spacingSmall
+                    text: parent.section
+                    font: priv.strong
+                    color: TelamonStyle.textMuted
+                    textFormat: Text.PlainText
+                }
+            }
+
+            highlight: Item {
+                z: 0
+                Rectangle {
+                    id: pill
+                    anchors.fill: parent
+                    anchors.leftMargin: TelamonStyle.spacingSmall
+                    anchors.rightMargin: TelamonStyle.spacingSmall
+                    radius: TelamonStyle.radiusSmall
+                    color: TelamonStyle.selection
+                    TelamonFocusRing {
+                        radius: pill.radius + gap
+                        shown: control.visualFocus
+                    }
+                }
+            }
+
+            T.ScrollBar.vertical: T.ScrollBar {
+                id: bar
+                policy: T.ScrollBar.AsNeeded
+                contentItem: Rectangle {
+                    implicitWidth: Math.round(TelamonStyle.spacingSmall * 1.5)
+                    radius: width / 2
+                    color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.3)
+                    opacity: bar.active ? 1 : 0
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: TelamonStyle.durationShort
+                        }
+                    }
+                }
+                background: null
+            }
+
+            delegate: Item {
+                id: row
+                required property int index
+                required property var model
+                readonly property bool current: ListView.isCurrentItem
+                readonly property string title: {
+                    const t = priv.pick(row.model, control.textRole);
+                    return t !== undefined ? String(t) : typeof row.model.modelData === "string" ? row.model.modelData : "";
+                }
+                readonly property string subtitle: String(priv.pick(row.model, control.subtitleRole) ?? "")
+                readonly property string iconName: String(priv.pick(row.model, control.iconRole) ?? "")
+                readonly property int symbolValue: Number(priv.pick(row.model, control.symbolRole) ?? 0)
+                readonly property string shortcut: String(priv.pick(row.model, control.shortcutRole) ?? "")
+
+                width: ListView.view.width
+                height: priv.rowHeight
+                Accessible.role: Accessible.ListItem
+                Accessible.name: row.title
+                Accessible.description: row.subtitle
+                Accessible.selected: row.current
+                Accessible.focusable: true
+                Accessible.onPressAction: control.activated(row.index)
+
+                Item {
+                    id: iconBox
+                    anchors.left: parent.left
+                    anchors.leftMargin: TelamonStyle.spacingLarge * 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Kirigami.Units.iconSizes.medium
+                    height: width
+                    Kirigami.Icon {
+                        anchors.fill: parent
+                        visible: row.iconName.length > 0
+                        source: row.iconName
+                        isMask: false
+                    }
+                    // Made only for rows that have no icon.
+                    Loader {
+                        anchors.centerIn: parent
+                        active: row.iconName.length === 0 && row.symbolValue !== 0
+                        sourceComponent: Symbol {
+                            icon: row.symbolValue
+                            size: Math.round(iconBox.width * 0.8)
+                            color: TelamonStyle.accent
+                        }
+                    }
+                }
+                Column {
+                    anchors.left: iconBox.right
+                    anchors.leftMargin: TelamonStyle.spacingLarge
+                    anchors.right: hint.visible ? hint.left : parent.right
+                    anchors.rightMargin: TelamonStyle.spacingLarge * 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        width: parent.width
+                        Accessible.ignored: true // the row carries the name
+                        text: row.title
+                        font.family: TelamonStyle.fontFamily
+                        font.pointSize: TelamonStyle.fontSizeBody
+                        color: TelamonStyle.text
+                        textFormat: Text.PlainText
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        visible: row.subtitle.length > 0
+                        width: parent.width
+                        Accessible.ignored: true
+                        text: row.subtitle
+                        font.family: TelamonStyle.fontFamily
+                        font.pointSize: TelamonStyle.fontSizeCaption
+                        color: TelamonStyle.textMuted
+                        textFormat: Text.PlainText
+                        elide: Text.ElideRight
+                    }
+                }
+                Text {
+                    id: hint
+                    visible: row.shortcut.length > 0
+                    anchors.right: parent.right
+                    anchors.rightMargin: TelamonStyle.spacingLarge * 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    Accessible.ignored: true
+                    text: row.shortcut
+                    font.family: TelamonStyle.fontFamily
+                    font.pointSize: TelamonStyle.fontSizeCaption
+                    color: TelamonStyle.textMuted
+                    textFormat: Text.PlainText
+                }
+
+                HoverHandler {
+                    // Only a moving pointer takes the highlight, so a list
+                    // scrolling under a still pointer doesn't.
+                    onPointChanged: {
+                        if (hovered && list.currentIndex !== row.index) {
+                            list.currentIndex = row.index;
+                        }
+                    }
+                }
+                TapHandler {
+                    onTapped: {
+                        list.currentIndex = row.index;
+                        control.activated(row.index);
+                    }
+                }
+            }
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: TelamonStyle.spacingSmall
+            visible: list.count === 0 && control.placeholderText.length > 0
+            Symbol {
+                anchors.horizontalCenter: parent.horizontalCenter
+                icon: Symbols.SearchOff
+                size: Kirigami.Units.iconSizes.large
+                color: TelamonStyle.textMuted
+            }
+            Text {
+                text: control.placeholderText
+                font.family: TelamonStyle.fontFamily
+                font.pointSize: TelamonStyle.fontSizeBody
+                color: TelamonStyle.textMuted
+                textFormat: Text.PlainText
+            }
+        }
+    }
+}

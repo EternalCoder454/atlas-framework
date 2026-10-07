@@ -1,6 +1,6 @@
 import QtQuick
 
 // Soft tinted button with a hairline border.
-AtlasButton {
+TelamonButton {
     prominent: false
 }

@@ -31,11 +31,11 @@ ColumnLayout {
     signal foldRequested(bool fold)
 
     Layout.fillWidth: true
-    spacing: AtlasStyle.spacingSmall
+    spacing: TelamonStyle.spacingSmall
 
     QQC2.Label {
         visible: root.title.length > 0 && !root.foldable
-        Layout.leftMargin: AtlasStyle.spacingLarge
+        Layout.leftMargin: TelamonStyle.spacingLarge
         text: root.title
         font.bold: true
         opacity: 0.65
@@ -51,8 +51,8 @@ ColumnLayout {
         // settles at no room for the title at all.
         Layout.fillWidth: true
         // The wider space on the title's side, either way round.
-        leftPadding: mirrored ? AtlasStyle.spacingSmall : AtlasStyle.spacingLarge
-        rightPadding: mirrored ? AtlasStyle.spacingLarge : AtlasStyle.spacingSmall
+        leftPadding: mirrored ? TelamonStyle.spacingSmall : TelamonStyle.spacingLarge
+        rightPadding: mirrored ? TelamonStyle.spacingLarge : TelamonStyle.spacingSmall
         topPadding: 2
         bottomPadding: 2
         hoverEnabled: true
@@ -80,20 +80,20 @@ ColumnLayout {
         // Around the title and chevron only, not the whole row.
         background: Rectangle {
             x: fold.mirrored ? fold.width - width : 0
-            width: Math.min(fold.width, label.implicitWidth + chevron.width + AtlasStyle.spacingSmall + fold.leftPadding + fold.rightPadding)
+            width: Math.min(fold.width, label.implicitWidth + chevron.width + TelamonStyle.spacingSmall + fold.leftPadding + fold.rightPadding)
             height: fold.height
-            radius: AtlasStyle.radiusSmall
-            color: AtlasStyle.alpha(Kirigami.Theme.textColor, fold.pressed ? 0.1 : fold.hovered ? 0.05 : 0)
+            radius: TelamonStyle.radiusSmall
+            color: TelamonStyle.alpha(Kirigami.Theme.textColor, fold.pressed ? 0.1 : fold.hovered ? 0.05 : 0)
             border.width: fold.visualFocus ? 2 : 0
-            border.color: AtlasStyle.focus
+            border.color: TelamonStyle.focus
         }
 
         contentItem: RowLayout {
-            spacing: AtlasStyle.spacingSmall
+            spacing: TelamonStyle.spacingSmall
 
             QQC2.Label {
                 id: label
-                Layout.maximumWidth: Math.max(0, fold.availableWidth - Kirigami.Units.iconSizes.small - AtlasStyle.spacingSmall)
+                Layout.maximumWidth: Math.max(0, fold.availableWidth - Kirigami.Units.iconSizes.small - TelamonStyle.spacingSmall)
                 text: fold.text
                 font.bold: true
                 opacity: 0.65
@@ -119,11 +119,11 @@ ColumnLayout {
         visible: !root.folded
         Layout.fillWidth: true
         implicitHeight: col.implicitHeight + 2
-        radius: AtlasStyle.radius
+        radius: TelamonStyle.radius
         // A solid card over the page: dense forms stay readable.
-        color: AtlasStyle.surface
+        color: TelamonStyle.surface
         border.width: 1
-        border.color: AtlasStyle.separator
+        border.color: TelamonStyle.separator
 
         ColumnLayout {
             id: col
@@ -136,13 +136,13 @@ ColumnLayout {
     Text {
         visible: root.footer.length > 0 && !root.folded
         Layout.fillWidth: true
-        Layout.leftMargin: AtlasStyle.spacingLarge
-        Layout.rightMargin: AtlasStyle.spacingLarge
+        Layout.leftMargin: TelamonStyle.spacingLarge
+        Layout.rightMargin: TelamonStyle.spacingLarge
         text: root.footer
         wrapMode: Text.Wrap
-        font.family: AtlasStyle.fontFamily
-        font.pointSize: AtlasStyle.fontSizeCaption
-        color: AtlasStyle.textMuted
+        font.family: TelamonStyle.fontFamily
+        font.pointSize: TelamonStyle.fontSizeCaption
+        color: TelamonStyle.textMuted
         textFormat: Text.PlainText
     }
 }

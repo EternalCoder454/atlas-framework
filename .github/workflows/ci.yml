@@ -12,11 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Atlas.Ui, the crates, the performance check and the RPM build run as
+  # Telamon.Ui, the crates, the performance check and the RPM build run as
   # parallel jobs, each in its own container with its own build cache, so a
   # push is checked in about the time of the slowest one instead of the sum.
   ui:
-    # Atlas.Ui, the gallery and the tests: build, qmllint, visual, a11y and
+    # Telamon.Ui, the gallery and the tests: build, qmllint, visual, a11y and
     # state tests, and the API snapshot.
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -28,7 +28,7 @@ jobs:
       # no-new-privileges, but not --cap-drop=all: root in the container needs
       # DAC_OVERRIDE to write the checkout, which the runner user owns.
       # git runs as root on a checkout the runner user owns: safe.directory lets it.
-      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
+      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src telamon-framework-dev:ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,8 +51,8 @@ jobs:
           key: ccache-ui-${{ hashFiles('packaging/Containerfile.dev') }}-${{ github.sha }}
           restore-keys: ccache-ui-${{ hashFiles('packaging/Containerfile.dev') }}-
 
-      - name: Build Atlas.Ui, the gallery, the tests and the API dump
-        run: $RUN bash -c 'cmake -S . -B build -G Ninja -DATLAS_UI_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build && ccache --show-stats'
+      - name: Build Telamon.Ui, the gallery, the tests and the API dump
+        run: $RUN bash -c 'cmake -S . -B build -G Ninja -DTELAMON_UI_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build && ccache --show-stats'
 
       - name: qmllint
         # Warnings don't fail qmllint itself; any count but the budget fails here.
@@ -111,7 +111,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -w /src -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src atlas-framework-dev:ci
+      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -w /src -e CARGO_TARGET_DIR=/src/target -e QMAKE=/usr/bin/qmake6 -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src telamon-framework-dev:ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -161,13 +161,20 @@ jobs:
             echo "::notice::No v* tag and not a pull request: cargo-semver-checks has no baseline, skipped"
             exit 0
           fi
+          # 2.0.0 renamed every crate: a baseline from before it has no package
+          # of these names to compare with, and cargo-semver-checks would fail
+          # on that. Later releases have one.
+          if ! git cat-file -e "$ref:crates/telamon-framework-core/Cargo.toml" 2>/dev/null; then
+            echo "::notice::$ref has no telamon-framework crates (the 2.0.0 rename): cargo-semver-checks has no baseline, skipped"
+            exit 0
+          fi
           git worktree add "$RUNNER_TEMP/baseline" "$ref"
           echo "root=$RUNNER_TEMP/baseline" >> "$GITHUB_OUTPUT"
           echo "Baseline: $ref"
 
       - name: cargo semver-checks
         if: steps.baseline.outputs.root != ''
-        run: docker run --rm --security-opt no-new-privileges -v "${{ github.workspace }}:/src" -v "${{ github.workspace }}/.cargo-registry:/opt/cargo/registry" -v "${{ steps.baseline.outputs.root }}:/baseline:ro" -w /src -e CARGO_TARGET_DIR=/src/target/semver -e QMAKE=/usr/bin/qmake6 atlas-framework-dev:ci cargo semver-checks --workspace --baseline-root /baseline
+        run: docker run --rm --security-opt no-new-privileges -v "${{ github.workspace }}:/src" -v "${{ github.workspace }}/.cargo-registry:/opt/cargo/registry" -v "${{ steps.baseline.outputs.root }}:/baseline:ro" -w /src -e CARGO_TARGET_DIR=/src/target/semver -e QMAKE=/usr/bin/qmake6 telamon-framework-dev:ci cargo semver-checks --workspace --baseline-root /baseline
 
       # Written only by a green push to main (see the compiler cache in `ui`).
       - name: Own and trim the cargo cache
@@ -193,19 +200,19 @@ jobs:
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
   perf:
-    # The app template on this Atlas.Ui, headless, against perf/budget.json.
+    # The app template on this Telamon.Ui, headless, against perf/budget.json.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       # Startup time on a shared runner is noisy: over budget it only warns.
       # The template's CMake tree is built fresh every run, at a fixed path in
-      # the container (ATLAS_PERF_TEMPLATE_BUILD), because qmlcachegen compiles
-      # the template's QML against the installed Atlas.Ui, which Ninja does not
+      # the container (TELAMON_PERF_TEMPLATE_BUILD), because qmlcachegen compiles
+      # the template's QML against the installed Telamon.Ui, which Ninja does not
       # track: a restored tree would pass against stale compiled QML. Only
       # Corrosion's cargo directory is kept: it ignores CARGO_TARGET_DIR and
       # always builds in <cmake tree>/cargo, so the host's .perf-target is
       # mounted there. The fixed path keeps cargo's fingerprints valid.
-      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -v ${{ github.workspace }}/.perf-target:/tmp/perf-template/cargo -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e QMAKE=/usr/bin/qmake6 -e ATLAS_PERF_TEMPLATE_BUILD=/tmp/perf-template -e PERF_WARN_ONLY=startup_ms atlas-framework-dev:ci
+      RUN: docker run --rm --security-opt no-new-privileges -v ${{ github.workspace }}:/src -v ${{ github.workspace }}/.cargo-registry:/opt/cargo/registry -v ${{ github.workspace }}/.perf-target:/tmp/perf-template/cargo -w /src -e CCACHE_DIR=/src/.ccache -e CCACHE_BASEDIR=/src -e CCACHE_MAXSIZE=400M -e QMAKE=/usr/bin/qmake6 -e TELAMON_PERF_TEMPLATE_BUILD=/tmp/perf-template -e PERF_WARN_ONLY=startup_ms telamon-framework-dev:ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -217,7 +224,7 @@ jobs:
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          # Atlas.Ui's objects, the downloaded crates and the template's cargo directory.
+          # Telamon.Ui's objects, the downloaded crates and the template's cargo directory.
           path: |
             .ccache
             .cargo-registry
@@ -226,7 +233,7 @@ jobs:
           # Only the container in the prefix: a dependency bump starts from the previous cache.
           restore-keys: perf-${{ hashFiles('packaging/Containerfile.dev') }}-
 
-      - name: Build Atlas.Ui
+      - name: Build Telamon.Ui
         run: |
           mkdir -p .perf-target
           $RUN bash -c 'cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && cmake --build build'
@@ -308,7 +315,7 @@ jobs:
           retention-days: 7
 
   apps:
-    # The Atlas apps against this Atlas.Ui: a type named like one of an app's own
+    # The Telamon apps against this Telamon.Ui: a type named like one of an app's own
     # files breaks that app (it fails here); rule 6 findings belong to the apps
     # and are only printed.
     runs-on: ubuntu-latest

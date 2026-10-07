@@ -1,0 +1,7 @@
+[General]
+CrashReports=true
+Language=nl_NL
+
+[Restart]
+ScheduledAt=1700000000
+Note=a\sb\nc

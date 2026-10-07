@@ -9,7 +9,7 @@
 #include <chrono>
 #include <cstring>
 
-namespace AtlasTextDetail {
+namespace TelamonTextDetail {
 
 namespace {
 
@@ -637,40 +637,40 @@ TextBuffer::Change TextBuffer::replace(qsizetype start, qsizetype end, const QSt
 
 // ---- Line endings ----
 
-AtlasText::LineEnding TextBuffer::lineEnding() const
+TelamonText::LineEnding TextBuffer::lineEnding() const
 {
     const LineBreakCounts c = m_tree.lineBreaks();
     const int kinds = (c.lf > 0) + (c.crlf > 0) + (c.cr > 0);
     if (kinds >= 2)
-        return AtlasText::LineEnding::Mixed;
+        return TelamonText::LineEnding::Mixed;
     if (c.crlf > 0)
-        return AtlasText::LineEnding::CRLF;
+        return TelamonText::LineEnding::CRLF;
     if (c.cr > 0)
-        return AtlasText::LineEnding::CR;
-    return AtlasText::LineEnding::LF;
+        return TelamonText::LineEnding::CR;
+    return TelamonText::LineEnding::LF;
 }
 
-AtlasText::LineEnding TextBuffer::dominantLineEnding() const
+TelamonText::LineEnding TextBuffer::dominantLineEnding() const
 {
     const LineBreakCounts c = m_tree.lineBreaks();
     if (c.crlf > c.lf && c.crlf >= c.cr)
-        return AtlasText::LineEnding::CRLF;
+        return TelamonText::LineEnding::CRLF;
     if (c.cr > c.lf && c.cr > c.crlf)
-        return AtlasText::LineEnding::CR;
-    return AtlasText::LineEnding::LF;
+        return TelamonText::LineEnding::CR;
+    return TelamonText::LineEnding::LF;
 }
 
-TextBuffer::Change TextBuffer::convertLineEndings(AtlasText::LineEnding kind)
+TextBuffer::Change TextBuffer::convertLineEndings(TelamonText::LineEnding kind)
 {
     Change c;
-    if (m_loading || kind == AtlasText::LineEnding::Mixed)
+    if (m_loading || kind == TelamonText::LineEnding::Mixed)
         return c;
     c.ok = true;
     const LineBreakCounts counts = m_tree.lineBreaks();
     if (counts.lf + counts.crlf + counts.cr == 0 || lineEnding() == kind)
         return c;
-    const char *eol = kind == AtlasText::LineEnding::CRLF ? "\r\n" : kind == AtlasText::LineEnding::CR ? "\r" : "\n";
-    const int eolLen = kind == AtlasText::LineEnding::CRLF ? 2 : 1;
+    const char *eol = kind == TelamonText::LineEnding::CRLF ? "\r\n" : kind == TelamonText::LineEnding::CR ? "\r" : "\n";
+    const int eolLen = kind == TelamonText::LineEnding::CRLF ? 2 : 1;
 
     std::vector<Piece> old = m_tree.pieces();
     std::vector<Piece> fresh;
@@ -718,4 +718,4 @@ TextBuffer::Change TextBuffer::convertLineEndings(AtlasText::LineEnding kind)
     return c;
 }
 
-} // namespace AtlasTextDetail
+} // namespace TelamonTextDetail

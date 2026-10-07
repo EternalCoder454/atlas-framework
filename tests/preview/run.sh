@@ -1,15 +1,15 @@
 #!/bin/bash
-# atlas-preview on small pages: a good page writes the 8 variant pictures and
+# telamon-preview on small pages: a good page writes the 8 variant pictures and
 # exits 0, a page that warns exits 1 (pictures and warnings written), a broken
 # file and bad arguments exit 2.
 #
-#   run.sh <atlas-preview>
+#   run.sh <telamon-preview>
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
-bin=${1:?usage: run.sh <atlas-preview>}
+bin=${1:?usage: run.sh <telamon-preview>}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-fail() { echo "atlas-preview: $1" >&2; exit 1; }
+fail() { echo "telamon-preview: $1" >&2; exit 1; }
 # Nothing may reach the desktop: no display, and the tool's own offscreen platform.
 unset DISPLAY WAYLAND_DISPLAY QT_QPA_PLATFORM
 variants="light dark accent opaque rtl text200 compact contrast"
@@ -45,8 +45,8 @@ n=$(find "$tmp/warns" -name '*.png' | wc -l)
 # A window as the root: grabbed as it is, with its own size.
 cat >"$tmp/win.qml" <<'QML'
 import QtQuick
-import Atlas.Ui
-AtlasWindow {
+import Telamon.Ui
+TelamonWindow {
     width: 500
     height: 300
     visible: true
@@ -100,20 +100,20 @@ mkdir "$tmp/t"
 TMPDIR="$tmp/t" "$bin" "$here/good.qml" --out "$tmp/killed" >/dev/null 2>&1 &
 pid=$!
 for _ in $(seq 1 100); do
-    pgrep -f -- "--config-file=$tmp/t/atlas-preview-" >/dev/null && break
+    pgrep -f -- "--config-file=$tmp/t/telamon-preview-" >/dev/null && break
     sleep 0.1
 done
-pgrep -f -- "--config-file=$tmp/t/atlas-preview-" >/dev/null || fail "no private bus started for the kill test"
+pgrep -f -- "--config-file=$tmp/t/telamon-preview-" >/dev/null || fail "no private bus started for the kill test"
 kill -9 "$pid"
 wait "$pid" 2>/dev/null
 sleep 2
-if pgrep -f -- "--config-file=$tmp/t/atlas-preview-" >/dev/null; then
-    pkill -f -- "--config-file=$tmp/t/atlas-preview-"
+if pgrep -f -- "--config-file=$tmp/t/telamon-preview-" >/dev/null; then
+    pkill -f -- "--config-file=$tmp/t/telamon-preview-"
     fail "a dbus-daemon survived its killed parent"
 fi
-if pgrep -f -- "--internal-" >/dev/null && pgrep -f -- "$tmp/t/atlas-preview-" >/dev/null; then
+if pgrep -f -- "--internal-" >/dev/null && pgrep -f -- "$tmp/t/telamon-preview-" >/dev/null; then
     fail "a helper survived its killed parent"
 fi
 # Only the (empty) top-level directory may stay: no files, no bus sockets.
 [ -z "$(find "$tmp/t" -mindepth 2 -print -quit)" ] || fail "files left in the scratch directory after a kill: $(find "$tmp/t" -mindepth 2 | head -3)"
-echo "atlas-preview ok"
+echo "telamon-preview ok"

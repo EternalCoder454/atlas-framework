@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 Item {
     id: root
@@ -10,7 +10,7 @@ Item {
 
     Component {
         id: carouselComp
-        AtlasScreenshotCarousel {
+        TelamonScreenshotCarousel {
             anchors.fill: parent
             expandable: true
             sources: ["file:///nonexistent/a.png", "file:///nonexistent/b.png", "file:///nonexistent/c.png"]
@@ -18,7 +18,7 @@ Item {
     }
     Component {
         id: shelfComp
-        AtlasShelf {
+        TelamonShelf {
             width: root.width
             title: "Shelf"
             model: [
@@ -29,7 +29,7 @@ Item {
     }
     Component {
         id: rtlShelfComp
-        AtlasShelf {
+        TelamonShelf {
             width: root.width
             LayoutMirroring.enabled: true
             LayoutMirroring.childrenInherit: true
@@ -38,7 +38,7 @@ Item {
     }
     Component {
         id: openAtCreationComp
-        AtlasScreenshotCarousel {
+        TelamonScreenshotCarousel {
             anchors.fill: parent
             expandable: true
             expanded: true
@@ -48,7 +48,7 @@ Item {
     }
     Component {
         id: noWindowComp
-        AtlasScreenshotCarousel {
+        TelamonScreenshotCarousel {
             expandable: true
             expanded: true
             sources: ["file:///nonexistent/a.png"]
@@ -87,7 +87,7 @@ Item {
 
     Component {
         id: customShelfComp
-        AtlasShelf {
+        TelamonShelf {
             width: root.width
             model: 5
             delegate: Rectangle {
@@ -100,13 +100,13 @@ Item {
     }
     Component {
         id: installComp
-        AtlasInstallButton {}
+        TelamonInstallButton {}
     }
     Component {
         id: cardComp
-        AtlasAppCard {
+        TelamonAppCard {
             width: 400
-            name: "Atlas Notepad"
+            name: "Telamon Notepad"
             summary: "Plain text"
             sizeText: "12 MB"
         }
@@ -228,7 +228,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasShelf"
+        name: "TelamonShelf"
         when: windowShown
 
         function make(comp, props) {

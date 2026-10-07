@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
 // Every symbol in a searchable grid. Pick one to see it large and copy the
 // QML that draws it, with the style, fill and weight set here.
@@ -59,7 +59,7 @@ Item {
                 Layout.fillWidth: true
                 type: "warning"
                 shown: root.styleMissing
-                text: qsTr("Outlined and Sharp need atlas-symbols-fonts-extra")
+                text: qsTr("Outlined and Sharp need telamon-symbols-fonts-extra")
             }
 
             RowLayout {
@@ -87,7 +87,7 @@ Item {
                 QQC2.Label {
                     text: qsTr("Filled")
                 }
-                AtlasSwitch {
+                TelamonSwitch {
                     checked: root.filled
                     onToggled: root.filled = checked
                     Accessible.name: qsTr("Filled")
@@ -124,8 +124,8 @@ Item {
                     background: Rectangle {
                         anchors.fill: parent
                         anchors.margins: 3
-                        radius: 10 // atlas-lint: allow-raw swatch tile shape
-                        color: root.selected === cell.modelData ? AtlasStyle.alpha(AtlasStyle.accent, 0.18) : AtlasStyle.alpha(Kirigami.Theme.textColor, cell.hovered ? 0.06 : 0)
+                        radius: 10 // telamon-lint: allow-raw swatch tile shape
+                        color: root.selected === cell.modelData ? TelamonStyle.alpha(TelamonStyle.accent, 0.18) : TelamonStyle.alpha(Kirigami.Theme.textColor, cell.hovered ? 0.06 : 0)
                     }
                     contentItem: ColumnLayout {
                         spacing: Kirigami.Units.smallSpacing
@@ -171,9 +171,9 @@ Item {
                     style: root.style
                     filled: root.filled
                     weight: root.weight
-                    color: AtlasStyle.accent
+                    color: TelamonStyle.accent
                 }
-                // atlas-lint: allow the gallery shows Kirigami.Heading as is
+                // telamon-lint: allow the gallery shows Kirigami.Heading as is
                 Kirigami.Heading {
                     Layout.fillWidth: true
                     Layout.topMargin: Kirigami.Units.largeSpacing
@@ -194,12 +194,12 @@ Item {
                     Layout.topMargin: Kirigami.Units.gridUnit
                     text: qsTr("Weight %1").arg(root.weight)
                 }
-                AtlasSlider {
+                TelamonSlider {
                     Layout.fillWidth: true
                     from: 100
                     to: 700
                     stepSize: 100
-                    snapMode: AtlasSlider.SnapAlways
+                    snapMode: TelamonSlider.SnapAlways
                     value: root.weight
                     onMoved: root.weight = value
                     Accessible.name: qsTr("Weight")
@@ -209,8 +209,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.topMargin: Kirigami.Units.largeSpacing
                     implicitHeight: code.implicitHeight + Kirigami.Units.largeSpacing * 2
-                    radius: AtlasStyle.radiusLarge
-                    color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.06)
+                    radius: TelamonStyle.radiusLarge
+                    color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.06)
                     QQC2.Label {
                         id: code
                         anchors.fill: parent

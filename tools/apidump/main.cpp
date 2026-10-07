@@ -1,19 +1,19 @@
-// apidump: prints the public API of the built Atlas.Ui module, one sorted line
+// apidump: prints the public API of the built Telamon.Ui module, one sorted line
 // per item, for tools/check-api.sh to compare with api/ in the repository.
 //
-//   apidump <qml-root> <atlas-ui.api> <symbols.txt>
+//   apidump <qml-root> <telamon-ui.api> <symbols.txt>
 //
-// <qml-root> is the directory holding Atlas/Ui (the build directory). For every
+// <qml-root> is the directory holding Telamon/Ui (the build directory). For every
 // type in the module's qmldir and every creatable or singleton type in its
 // qmltypes file, the tool makes one instance (a singleton is read; nothing is
 // shown) and walks the instance's QMetaObject chain while the classes belong to
-// Atlas.Ui: QML-defined types ("_QMLTYPE_" in the class name) and the C++ classes
+// Telamon.Ui: QML-defined types ("_QMLTYPE_" in the class name) and the C++ classes
 // named in the qmltypes file.
 //
 //   Type.property name: type [readonly]
 //   Type.signal name(type name, ...)
 //   Type.method name(type name, ...): returnType
-//   Type.base ClassName                    (the first class outside Atlas.Ui that
+//   Type.base ClassName                    (the first class outside Telamon.Ui that
 //                                            the type derives from)
 //   Type.enum Name: Value = number          (one line per value, so a new value
 //                                            reads as an addition, not a change)
@@ -75,7 +75,7 @@ QList<QmlTypesComponent> parseQmlTypes(const QString &text)
             c.name = m.captured(1);
         } else if (auto e = exportsLine.match(line); e.hasMatch()) {
             for (auto it = quoted.globalMatch(e.captured(1)); it.hasNext();) {
-                // "Atlas.Ui/LiveChartItem 1.0"
+                // "Telamon.Ui/LiveChartItem 1.0"
                 const QString exported = it.next().captured(1);
                 c.exportedNames << exported.section(QLatin1Char('/'), 1).section(QLatin1Char(' '), 0, 0);
             }
@@ -117,12 +117,12 @@ void addEnum(QStringList &lines, const QString &type, const QString &name, const
     }
 }
 
-void dumpMetaObject(const QString &type, const QMetaObject *start, const QSet<QString> &atlasClasses, QStringList &lines)
+void dumpMetaObject(const QString &type, const QMetaObject *start, const QSet<QString> &telamonClasses, QStringList &lines)
 {
     for (const QMetaObject *mo = start; mo; mo = mo->superClass()) {
         const QString className = QString::fromLatin1(mo->className());
-        if (!className.contains(QLatin1String("_QMLTYPE_")) && !atlasClasses.contains(className)) {
-            // The first class outside Atlas.Ui: changing it changes what the
+        if (!className.contains(QLatin1String("_QMLTYPE_")) && !telamonClasses.contains(className)) {
+            // The first class outside Telamon.Ui: changing it changes what the
             // type inherits, so it is part of the contract. Qt's counters
             // ("QQuickItem_QML_12") depend on load order: drop them.
             static const QRegularExpression counter(QStringLiteral("_QML(?:TYPE)?_[0-9]+$"));
@@ -195,11 +195,11 @@ int main(int argc, char *argv[])
     qputenv("QT_QUICK_BACKEND", "software");
     QApplication app(argc, argv);
     if (argc != 4) {
-        std::fprintf(stderr, "usage: apidump <qml-root> <atlas-ui.api> <symbols.txt>\n");
+        std::fprintf(stderr, "usage: apidump <qml-root> <telamon-ui.api> <symbols.txt>\n");
         return 2;
     }
     const QString root = QDir(QString::fromLocal8Bit(argv[1])).absolutePath();
-    const QString moduleDir = root + QStringLiteral("/Atlas/Ui");
+    const QString moduleDir = root + QStringLiteral("/Telamon/Ui");
 
     QString error;
     const QString qmldir = readFile(moduleDir + QStringLiteral("/qmldir"), &error);
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
         std::fprintf(stderr, "apidump: %s\n", qPrintable(error));
         return 1;
     }
-    QString typesFile = QStringLiteral("atlasui.qmltypes");
+    QString typesFile = QStringLiteral("telamonui.qmltypes");
     QStringList qmlTypeNames; // QML-defined, from the qmldir
     QSet<QString> qmlSingletons; // those the qmldir marks `singleton`
     for (const QString &line : qmldir.split(QLatin1Char('\n'))) {
@@ -229,12 +229,12 @@ int main(int argc, char *argv[])
     }
 
     // The module's own classes. The qmltypes also describes the Qt base classes
-    // an Atlas type derives from (QAbstractItemModel...): those are Qt's API.
+    // a Telamon type derives from (QAbstractItemModel...): those are Qt's API.
     static const QRegularExpression qtClass(QStringLiteral("^Q[A-Z]"));
-    QSet<QString> atlasClasses;
+    QSet<QString> telamonClasses;
     for (const QmlTypesComponent &c : components) {
         if (!qtClass.match(c.name).hasMatch()) {
-            atlasClasses.insert(c.name);
+            telamonClasses.insert(c.name);
         }
     }
     // The type names to dump: QML-defined from the qmldir, C++ from the exports.
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
     QHash<QString, const QmlTypesComponent *> cppTypes;
     for (const QmlTypesComponent &c : components) {
         for (const QString &exported : c.exportedNames) {
-            // A C++ helper named "...Private" is not API (AtlasColorsPrivate).
+            // A C++ helper named "...Private" is not API (TelamonColorsPrivate).
             if (!typeNames.contains(exported) && !exported.endsWith(QLatin1String("Private"))) {
                 cppTypes.insert(exported, &c);
             }
@@ -257,8 +257,8 @@ int main(int argc, char *argv[])
 
     const auto instance = [&](const QString &name, bool singleton) -> QObject * {
         QQmlComponent component(&engine);
-        const QByteArray source = singleton ? QByteArray("import QtQml\nimport Atlas.Ui\nQtObject { property var v: ") + name.toUtf8() + " }"
-                                            : QByteArray("import QtQuick\nimport Atlas.Ui\n") + name.toUtf8() + " {}";
+        const QByteArray source = singleton ? QByteArray("import QtQml\nimport Telamon.Ui\nQtObject { property var v: ") + name.toUtf8() + " }"
+                                            : QByteArray("import QtQuick\nimport Telamon.Ui\n") + name.toUtf8() + " {}";
         component.setData(source, QUrl(QStringLiteral("file:///apidump/%1.qml").arg(name)));
         if (component.isError()) {
             std::fprintf(stderr, "apidump: cannot load %s: %s\n", qPrintable(name), qPrintable(component.errorString()));
@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
             continue;
         }
         QStringList typeLines;
-        dumpMetaObject(name, object->metaObject(), atlasClasses, typeLines);
+        dumpMetaObject(name, object->metaObject(), telamonClasses, typeLines);
         // The Symbols names are thousands of lines: their own file.
         if (name == QLatin1String("Symbols")) {
             const QString prefix = QStringLiteral("Symbols.enum Name: ");

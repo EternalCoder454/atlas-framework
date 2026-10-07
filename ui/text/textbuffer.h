@@ -1,4 +1,4 @@
-// The text buffer behind AtlasTextView (1.5.0 item 38, step 1a): a TextTree plus
+// The text buffer behind TelamonTextView (1.5.0 item 38, step 1a): a TextTree plus
 // loading, editing and line endings. Pure QtCore, no QQuickItem.
 //
 // Threads. A TextBuffer belongs to one thread (the GUI thread in the view): all
@@ -10,7 +10,7 @@
 
 #include "texttree.h"
 
-#include <atlas/textview.h>
+#include <telamon/textview.h>
 
 #include <deque>
 #include <functional>
@@ -22,7 +22,7 @@
 #include <QMutex>
 #include <QString>
 
-namespace AtlasTextDetail {
+namespace TelamonTextDetail {
 
 struct LoadState;
 
@@ -70,8 +70,8 @@ public:
     TextBuffer &operator=(const TextBuffer &) = delete;
 
     const TextTree &tree() const { return m_tree; }
-    // The text as it is now. O(1); see AtlasTextSnapshot for what it may do.
-    AtlasTextSnapshot snapshot() const { return makeSnapshot(m_tree, m_revision); }
+    // The text as it is now. O(1); see TelamonTextSnapshot for what it may do.
+    TelamonTextSnapshot snapshot() const { return makeSnapshot(m_tree, m_revision); }
     // Grows with every edit, load step and conversion; never reused.
     quint64 revision() const { return m_revision; }
 
@@ -135,14 +135,14 @@ public:
 
     // ---- Line endings ----
     // LF for an empty text; Mixed when two kinds or more are present.
-    AtlasText::LineEnding lineEnding() const;
+    TelamonText::LineEnding lineEnding() const;
     // The kind that has the most breaks. Ties: LF wins over both others, CRLF
     // wins over CR; LF when there are no breaks.
-    AtlasText::LineEnding dominantLineEnding() const;
+    TelamonText::LineEnding dominantLineEnding() const;
     // Rewrites every break as `kind`, as one change covering the whole text.
     // Nothing happens (ok, unchanged) when the text already uses only `kind`;
     // `kind` Mixed is refused.
-    Change convertLineEndings(AtlasText::LineEnding kind);
+    Change convertLineEndings(TelamonText::LineEnding kind);
 
 private:
     struct Slot {
@@ -188,4 +188,4 @@ struct SeqResult {
 };
 SeqResult checkUtf8Sequence(const uchar *p, qsizetype avail);
 
-} // namespace AtlasTextDetail
+} // namespace TelamonTextDetail

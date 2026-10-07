@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 
-// A strip of document tabs in the Atlas look, after Windows 11 Notepad: each
+// A strip of document tabs in the Telamon look, after Windows 11 Notepad: each
 // tab is softly rounded like a SidebarItem, with an accent tint for the
 // current one (one highlight that slides to the new tab), a dot when it holds unsaved changes and a close button on
 // hover. A "+" after the last tab asks for a new one. The strip scrolls
@@ -38,14 +38,14 @@ Item {
     signal moved(int from, int to)
     signal contextMenuRequested(int index, point position)
 
-    // AtlasStyle.Normal or AtlasStyle.Compact; Compact shrinks the height and
-    // the vertical padding to about 75%. Follows the app-wide AtlasStyle.density
+    // TelamonStyle.Normal or TelamonStyle.Compact; Compact shrinks the height and
+    // the vertical padding to about 75%. Follows the app-wide TelamonStyle.density
     // unless set here.
-    property int density: AtlasStyle.density
-    readonly property real _k: density === AtlasStyle.Compact ? 0.75 : 1
+    property int density: TelamonStyle.density
+    readonly property real _k: density === TelamonStyle.Compact ? 0.75 : 1
 
     implicitWidth: Kirigami.Units.gridUnit * 30
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * _k) + Math.round(AtlasStyle.spacingSmall * 2 * _k)
+    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * _k) + Math.round(TelamonStyle.spacingSmall * 2 * _k)
     Accessible.role: Accessible.PageTabList
     Accessible.name: qsTr("Tabs")
 
@@ -79,9 +79,9 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: AtlasStyle.spacingSmall
-        anchors.rightMargin: AtlasStyle.spacingSmall
-        spacing: AtlasStyle.spacingSmall
+        anchors.leftMargin: TelamonStyle.spacingSmall
+        anchors.rightMargin: TelamonStyle.spacingSmall
+        spacing: TelamonStyle.spacingSmall
 
         ListView {
             id: list
@@ -102,7 +102,7 @@ Item {
             Layout.preferredWidth: contentWidth
             Layout.maximumWidth: contentWidth
             orientation: ListView.Horizontal
-            spacing: AtlasStyle.spacingXSmall
+            spacing: TelamonStyle.spacingXSmall
             clip: true
             // Every tab is built, so the strip scrolls by real widths, not
             // estimates that are corrected (and clamp contentX) later.
@@ -120,8 +120,8 @@ Item {
                 id: tint
                 z: -1
                 visible: list.currentItem !== null
-                radius: AtlasStyle.radiusSmall
-                color: AtlasStyle.selection
+                radius: TelamonStyle.radiusSmall
+                color: TelamonStyle.selection
                 property Item _item: list.currentItem
                 // Where the tint sits (follows the item directly) and how far it still
                 // lags behind after a selection change (springs back to 0).
@@ -138,14 +138,14 @@ Item {
                 width: Math.max(0, tint._baseW + tint._slideW)
                 height: tint._baseH
                 Behavior on _slideX {
-                    enabled: tint._springing && !AtlasStyle.reducedMotion
-                    AtlasSpringAnimation {
+                    enabled: tint._springing && !TelamonStyle.reducedMotion
+                    TelamonSpringAnimation {
                         expressive: true
                     }
                 }
                 Behavior on _slideW {
-                    enabled: tint._springing && !AtlasStyle.reducedMotion
-                    AtlasSpringAnimation {
+                    enabled: tint._springing && !TelamonStyle.reducedMotion
+                    TelamonSpringAnimation {
                         expressive: true
                     }
                 }
@@ -274,8 +274,8 @@ Item {
                 implicitWidth: Math.min(control.maxTabWidth, contentItem.implicitWidth + leftPadding + rightPadding)
                 implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9 * control._k)
                 height: list.height
-                leftPadding: AtlasStyle.spacingLarge
-                rightPadding: AtlasStyle.spacingSmall
+                leftPadding: TelamonStyle.spacingLarge
+                rightPadding: TelamonStyle.spacingSmall
                 hoverEnabled: true
                 // Tab reaches the current tab only, and a click never takes the
                 // focus (the editor keeps it).
@@ -355,7 +355,7 @@ Item {
                 onHoveredChanged: if (tab.hovered && !tab._tip) tab._tip = tipComponent.createObject(tab)
                 Component {
                     id: tipComponent
-                    AtlasToolTip {
+                    TelamonToolTip {
                         text: tab.toolTipText
                         shown: tab.hovered && tab.toolTipText.length > 0 && !dragHandler.active && !closeButton.hovered
                     }
@@ -412,18 +412,18 @@ Item {
                 }
 
                 background: Rectangle {
-                    radius: AtlasStyle.radiusSmall
+                    radius: TelamonStyle.radiusSmall
                     // The current tab is tinted by the list's sliding highlight,
                     // except while it is dragged away from it.
-                    color: tab.current ? (dragHandler.active ? AtlasStyle.selection : "transparent") : tab.down ? AtlasStyle.pressed : tab.hovered ? AtlasStyle.hover : "transparent"
+                    color: tab.current ? (dragHandler.active ? TelamonStyle.selection : "transparent") : tab.down ? TelamonStyle.pressed : tab.hovered ? TelamonStyle.hover : "transparent"
                     Behavior on color {
                         ColorAnimation {
-                            duration: AtlasStyle.durationShort
+                            duration: TelamonStyle.durationShort
                         }
                     }
 
                     // Inside the tab: the list clips what lies outside.
-                    AtlasFocusRing {
+                    TelamonFocusRing {
                         gap: 0
                         radius: parent.radius
                         shown: tab.visualFocus && tab.current
@@ -438,33 +438,33 @@ Item {
                         width: 2
                         height: parent.height - 8
                         radius: 1
-                        color: AtlasStyle.accent
+                        color: TelamonStyle.accent
                     }
                 }
 
                 contentItem: RowLayout {
-                    spacing: AtlasStyle.spacingSmall
+                    spacing: TelamonStyle.spacingSmall
                     Rectangle {
                         visible: tab.modified
                         Layout.preferredWidth: 7
                         Layout.preferredHeight: 7
                         radius: 3.5
-                        color: AtlasStyle.textMuted
+                        color: TelamonStyle.textMuted
                     }
                     Text {
                         Accessible.ignored: true
                         Layout.fillWidth: true
                         text: tab.title
-                        font.family: AtlasStyle.fontFamily
-                        font.pointSize: AtlasStyle.fontSizeBody
+                        font.family: TelamonStyle.fontFamily
+                        font.pointSize: TelamonStyle.fontSizeBody
                         font.weight: tab.current ? Font.Medium : Font.Normal
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
-                        color: tab.current ? AtlasStyle.text : AtlasStyle.textMuted
+                        color: tab.current ? TelamonStyle.text : TelamonStyle.textMuted
                     }
                     T.AbstractButton {
                         id: closeButton
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.small + AtlasStyle.spacingSmall * 2
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small + TelamonStyle.spacingSmall * 2
                         Layout.preferredHeight: Layout.preferredWidth
                         // Always takes its room, so a tab keeps its width on hover.
                         opacity: tab.showClose ? 1 : 0
@@ -475,12 +475,12 @@ Item {
                         onClicked: control.closeRequested(tab.index)
                         background: Rectangle {
                             radius: width / 2
-                            color: closeButton.down ? AtlasStyle.pressed : closeButton.hovered ? AtlasStyle.hover : "transparent"
+                            color: closeButton.down ? TelamonStyle.pressed : closeButton.hovered ? TelamonStyle.hover : "transparent"
                         }
                         contentItem: Kirigami.Icon {
                             source: "window-close"
                             isMask: true
-                            color: AtlasStyle.textMuted
+                            color: TelamonStyle.textMuted
                         }
                     }
                 }
@@ -499,7 +499,7 @@ Item {
 
         RowLayout {
             id: trailingRow
-            spacing: AtlasStyle.spacingSmall
+            spacing: TelamonStyle.spacingSmall
         }
     }
 }

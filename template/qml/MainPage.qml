@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
-AtlasPage {
+TelamonPage {
     id: page
 
     required property var backend
@@ -20,7 +20,7 @@ AtlasPage {
 
     StatusHero {
         iconName: "checkmark"
-        headline: qsTr("Hello from an Atlas app")
+        headline: qsTr("Hello from a Telamon app")
         subtitle: page.backend.status
 
         PrimaryButton {
@@ -197,7 +197,7 @@ AtlasPage {
         }
 
         property var groupOpen: true
-        readonly property var names: [["Firefox", "firefox"], ["Konsole", "utilities-terminal"], ["Dolphin", "system-file-manager"], ["Kate", "kate"], ["Atlas Updater", "system-software-update"], ["KWin", "kwin"], ["Plasma Shell", "plasma"], ["PipeWire", "audio-card"], ["Discover", "plasmadiscover"], ["Spectacle", "spectacle"], ["Okular", "okular"], ["Gwenview", "gwenview"]]
+        readonly property var names: [["Firefox", "firefox"], ["Konsole", "utilities-terminal"], ["Dolphin", "system-file-manager"], ["Kate", "kate"], ["Telamon Updater", "system-software-update"], ["KWin", "kwin"], ["Plasma Shell", "plasma"], ["PipeWire", "audio-card"], ["Discover", "plasmadiscover"], ["Spectacle", "spectacle"], ["Okular", "okular"], ["Gwenview", "gwenview"]]
         property var load: names.map((_, i) => ({ cpu: (i * 7) % 30, memory: 80 + i * 37 }))
 
         // The rows in their new order, moved and updated in place the way a

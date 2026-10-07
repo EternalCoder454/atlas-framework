@@ -1,5 +1,6 @@
 #include "accessibilitystate.h"
 
+#include "legacyconfig.h"
 #include "portalappearance.h"
 
 #include <QAccessibilityHints>
@@ -28,7 +29,7 @@ void AccessibilityState::refresh()
 {
     const PortalAppearance *portal = PortalAppearance::shared();
     const bool contrast = (qGuiApp && qGuiApp->styleHints()->accessibility()->contrastPreference() == Qt::ContrastPreference::HighContrast) || (portal && portal->highContrast());
-    const bool motion = qEnvironmentVariable("ATLAS_REDUCED_MOTION") == QLatin1String("1") || (portal && portal->reducedMotion());
+    const bool motion = LegacyConfig::env("TELAMON_REDUCED_MOTION", "ATLAS_REDUCED_MOTION") == "1" || (portal && portal->reducedMotion());
     const QColor accent = portal ? portal->accentColor() : QColor();
     if (contrast != m_highContrast) {
         m_highContrast = contrast;

@@ -49,11 +49,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "atlas-app-template"
+name = "telamon-app-template"
 version = "0.1.0"
 dependencies = [
- "atlas-framework-system",
- "atlas-framework-ui",
+ "telamon-framework-system",
+ "telamon-framework-ui",
  "cxx",
  "cxx-qt",
  "cxx-qt-build",
@@ -62,7 +62,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "atlas-framework-core"
+name = "telamon-framework-core"
 version = "1.6.1"
 dependencies = [
  "libc",
@@ -71,10 +71,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "atlas-framework-system"
+name = "telamon-framework-system"
 version = "1.6.1"
 dependencies = [
- "atlas-framework-core",
+ "telamon-framework-core",
  "getrandom 0.3.4",
  "libc",
  "log",
@@ -86,11 +86,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "atlas-framework-ui"
+name = "telamon-framework-ui"
 version = "1.6.1"
 dependencies = [
- "atlas-framework-core",
- "atlas-framework-system",
+ "telamon-framework-core",
+ "telamon-framework-system",
  "cxx-qt-build",
  "libc",
  "log",

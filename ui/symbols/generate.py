@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update Atlas.Ui's symbols from a Google Fonts download of Material Symbols.
+"""Update Telamon.Ui's symbols from a Google Fonts download of Material Symbols.
 
     uv run --with fonttools ui/symbols/generate.py <download.zip>
 
@@ -7,7 +7,8 @@ The zip is what fonts.google.com gives for Material Symbols Outlined, Rounded
 and Sharp together (one family alone works too, but all three must be there
 before an update ships). It writes, next to this script:
 
-  MaterialSymbols{Outlined,Rounded,Sharp}.ttf   the variable fonts
+  TelamonSymbols{Outlined,Rounded,Sharp}.ttf    the variable fonts, renamed (see
+                                                rename_family)
   LICENSE.txt                                   their licence (Apache 2.0)
   symbolnames.h                                 the Symbols.<Name> enum
   symboltable.inc                               name -> codepoint, for lookups
@@ -52,6 +53,22 @@ def enum_key(name: str) -> str:
     if m:
         parts[0:1] = [number_words(int(m.group(1)))] + ([m.group(2)] if m.group(2) else [])
     return "".join(p[:1].upper() + p[1:] for p in parts)
+
+
+def rename_family(data: bytes) -> bytes:
+    """The font with its names changed from "Material Symbols <Style>" to
+    "Telamon Symbols <Style>" (family, full and PostScript names), and nothing
+    else changed. Telamon.Ui asks for that family, so it never picks up (or is
+    picked up by) the Material Symbols fonts of the Atlas.Ui 1.x packages,
+    which stay installable beside this one. The Apache-2.0 licence allows it."""
+    font = TTFont(BytesIO(data))
+    for record in font["name"].names:
+        text = record.toUnicode()
+        if "Material" in text:
+            record.string = text.replace("Material Symbols", "Telamon Symbols").replace("MaterialSymbols", "TelamonSymbols")
+    out = BytesIO()
+    font.save(out)
+    return out.getvalue()
 
 
 def read_symbols(font: TTFont):
@@ -133,7 +150,7 @@ def main():
         keys[key] = name
 
     for style, data in fonts.items():
-        (HERE / f"MaterialSymbols{style}.ttf").write_bytes(data)
+        (HERE / f"TelamonSymbols{style}.ttf").write_bytes(rename_family(data))
     if licence:
         (HERE / "LICENSE.txt").write_bytes(licence)
 

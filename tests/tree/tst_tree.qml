@@ -1,13 +1,13 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 Item {
     id: stage
     width: 400
     height: 400
 
-    AtlasTreeModel {
+    TelamonTreeModel {
         id: tree
         items: [
             { text: "Alpha", children: [{ text: "Apple" }, { text: "Avocado", children: [{ text: "Hass" }] }] },
@@ -18,7 +18,7 @@ Item {
 
     Component {
         id: viewC
-        AtlasTreeView {
+        TelamonTreeView {
             anchors.fill: parent
             model: tree
         }
@@ -103,7 +103,7 @@ Item {
         }
 
         function test_multi() {
-            view.selectionMode = AtlasTreeView.MultiSelection;
+            view.selectionMode = TelamonTreeView.MultiSelection;
             keyClick(Qt.Key_Down, Qt.ShiftModifier);
             keyClick(Qt.Key_Down, Qt.ShiftModifier);
             verify(view.selectionModel.isSelected(tree.index(0, 0)));
@@ -124,13 +124,13 @@ Item {
         }
 
         function test_enum_values() {
-            compare(AtlasTreeView.SingleSelection, 0);
-            compare(AtlasTreeView.MultiSelection, 1);
-            compare(AtlasTreeView.NoSelection, 2);
+            compare(TelamonTreeView.SingleSelection, 0);
+            compare(TelamonTreeView.MultiSelection, 1);
+            compare(TelamonTreeView.NoSelection, 2);
         }
 
         function test_no_selection() {
-            view.selectionMode = AtlasTreeView.NoSelection;
+            view.selectionMode = TelamonTreeView.NoSelection;
             keyClick(Qt.Key_Down);
             compare(name(), "Beta");
             keyClick(Qt.Key_Space);
@@ -142,7 +142,7 @@ Item {
         }
 
         function test_select_all_and_clear() {
-            view.selectionMode = AtlasTreeView.MultiSelection;
+            view.selectionMode = TelamonTreeView.MultiSelection;
             view.selectAll();
             compare(view.selectionModel.selectedIndexes.length, 3);
             view.clearSelection();
@@ -151,13 +151,13 @@ Item {
             compare(view.selectionModel.selectedIndexes.length, 3);
             view.clearSelection();
             // In single mode selectAll does nothing.
-            view.selectionMode = AtlasTreeView.SingleSelection;
+            view.selectionMode = TelamonTreeView.SingleSelection;
             view.selectAll();
             verify(!view.selectionModel.hasSelection);
         }
 
         function test_range_across_levels_in_one_selection() {
-            view.selectionMode = AtlasTreeView.MultiSelection;
+            view.selectionMode = TelamonTreeView.MultiSelection;
             view.expandAll();
             tryCompare(view, "count", 7);
             keyClick(Qt.Key_End);
@@ -189,7 +189,7 @@ Item {
         }
 
         function test_anchor_resets_on_items_change() {
-            view.selectionMode = AtlasTreeView.MultiSelection;
+            view.selectionMode = TelamonTreeView.MultiSelection;
             keyClick(Qt.Key_End);
             keyClick(Qt.Key_Up, Qt.ShiftModifier);
             tree.items = [{ text: "One" }, { text: "Two" }, { text: "Three" }];

@@ -70,16 +70,16 @@ class DocsCase(unittest.TestCase):
 
 
 class ApiCoverage(DocsCase):
-    """Every type and public member in the API file is on an atlas-ui page."""
+    """Every type and public member in the API file is on a telamon-ui page."""
 
     API = (
-        "AtlasButton.enum Variant: Default = 0\n"
-        "AtlasButton.enum Variant: Ghost = 3\n"
-        "AtlasButton.property busy: bool\n"
-        "AtlasButton.property _hidden: int\n"
-        "AtlasButton.signal pressed()\n"
-        "AtlasButton.method open(QVariant x): void\n"
-        "AtlasButton.type\n"
+        "TelamonButton.enum Variant: Default = 0\n"
+        "TelamonButton.enum Variant: Ghost = 3\n"
+        "TelamonButton.property busy: bool\n"
+        "TelamonButton.property _hidden: int\n"
+        "TelamonButton.signal pressed()\n"
+        "TelamonButton.method open(QVariant x): void\n"
+        "TelamonButton.type\n"
         "DataTable.property busy: bool\n"
         "DataTable.property rows: int\n"
         "DataTable.type\n"
@@ -88,9 +88,9 @@ class ApiCoverage(DocsCase):
         "## Properties\n\n| Name | Type |\n|---|---|\n| `busy` | `bool` |\n\n"
         "## Signals\n\n| Name | Description |\n|---|---|\n| `pressed()` | Pressed. |\n\n"
         "## Methods\n\n- `open(x)`: opens it.\n\n"
-        "## Enums\n\n| Value | Description |\n|---|---|\n| `AtlasButton.Default` | Plain. |\n| `AtlasButton.Ghost` | Bare. |\n"
+        "## Enums\n\n| Value | Description |\n|---|---|\n| `TelamonButton.Default` | Plain. |\n| `TelamonButton.Ghost` | Bare. |\n"
     )
-    TABLE = "Like [AtlasButton](atlas-button.md).\n\n| Name | Type |\n|---|---|\n| `rows` | `int` |\n"
+    TABLE = "Like [TelamonButton](telamon-button.md).\n\n| Name | Type |\n|---|---|\n| `rows` | `int` |\n"
 
     def setUp(self):
         super().setUp()
@@ -98,12 +98,12 @@ class ApiCoverage(DocsCase):
         os.makedirs(os.path.join(self.tmp, "ui"))
         self.api = os.path.join(self.tmp, "api", "t.api")
         self.set_api(self.API)
-        self.qml("DataTable", "import QtQuick\n\nAtlasButton {\n}\n")
-        self.qml("AtlasButton", "import QtQuick.Controls as QQC2\n\nQQC2.Button {\n}\n")
+        self.qml("DataTable", "import QtQuick\n\nTelamonButton {\n}\n")
+        self.qml("TelamonButton", "import QtQuick.Controls as QQC2\n\nQQC2.Button {\n}\n")
         docs.API = self.api
-        self.write("atlas-ui/index.md", page(title="Atlas.Ui"))
-        self.write("atlas-ui/atlas-button.md", page(self.BUTTON))
-        self.write("atlas-ui/data-table.md", page(self.TABLE))
+        self.write("telamon-ui/index.md", page(title="Telamon.Ui"))
+        self.write("telamon-ui/telamon-button.md", page(self.BUTTON))
+        self.write("telamon-ui/data-table.md", page(self.TABLE))
 
     def set_api(self, text):
         with open(self.api, "w") as f:
@@ -117,44 +117,44 @@ class ApiCoverage(DocsCase):
         self.assertClean(self.errors())
 
     def test_missing_page(self):
-        os.remove(os.path.join(self.ref, "atlas-ui/data-table.md"))
-        self.assertFlags(self.errors(), "atlas-ui/data-table.md: no page for DataTable")
+        os.remove(os.path.join(self.ref, "telamon-ui/data-table.md"))
+        self.assertFlags(self.errors(), "telamon-ui/data-table.md: no page for DataTable")
 
     def test_missing_member_names_page_and_member(self):
-        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("- `open(x)`: opens it.", "Nothing.")
-                                                    .replace("| `AtlasButton.Ghost` | Bare. |\n", "")))
+        self.write("telamon-ui/telamon-button.md", page(self.BUTTON.replace("- `open(x)`: opens it.", "Nothing.")
+                                                    .replace("| `TelamonButton.Ghost` | Bare. |\n", "")))
         errors = self.errors()
-        self.assertFlags(errors, "atlas-ui/atlas-button.md: `open` of AtlasButton")
-        self.assertFlags(errors, "`Ghost` of AtlasButton")
+        self.assertFlags(errors, "telamon-ui/telamon-button.md: `open` of TelamonButton")
+        self.assertFlags(errors, "`Ghost` of TelamonButton")
 
     def test_name_in_prose_does_not_count(self):
         # Only a table's first cell, a heading or a list item's start documents a name.
-        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("| `busy` | `bool` |\n", "")
+        self.write("telamon-ui/telamon-button.md", page(self.BUTTON.replace("| `busy` | `bool` |\n", "")
                                                     + "\nWhile `busy` it spins.\n"))
-        self.assertFlags(self.errors(), "atlas-button.md: `busy`")
+        self.assertFlags(self.errors(), "telamon-button.md: `busy`")
 
     def test_qualified_name_in_another_cell_does_not_count(self):
-        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("| `busy` | `bool` |", "| `x` | `Foo.busy` |")))
-        self.assertFlags(self.errors(), "atlas-button.md: `busy`")
+        self.write("telamon-ui/telamon-button.md", page(self.BUTTON.replace("| `busy` | `bool` |", "| `x` | `Foo.busy` |")))
+        self.assertFlags(self.errors(), "telamon-button.md: `busy`")
 
     def test_inherited_member_needs_link_to_base_page(self):
-        self.write("atlas-ui/data-table.md", page(self.TABLE.replace("Like [AtlasButton](atlas-button.md).", "Like AtlasButton.")))
-        self.assertFlags(self.errors(), "atlas-ui/data-table.md: `busy`")
+        self.write("telamon-ui/data-table.md", page(self.TABLE.replace("Like [TelamonButton](telamon-button.md).", "Like TelamonButton.")))
+        self.assertFlags(self.errors(), "telamon-ui/data-table.md: `busy`")
 
     def test_a_link_to_a_type_that_is_not_the_base_does_not_count(self):
         self.qml("DataTable", "import QtQuick\n\nItem {\n}\n")
-        self.assertFlags(self.errors(), "atlas-ui/data-table.md: `busy`")
+        self.assertFlags(self.errors(), "telamon-ui/data-table.md: `busy`")
 
     def test_inherited_member_must_be_on_the_base_page(self):
-        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("| `busy` | `bool` |\n", "")))
+        self.write("telamon-ui/telamon-button.md", page(self.BUTTON.replace("| `busy` | `bool` |\n", "")))
         errors = self.errors()
-        self.assertFlags(errors, "atlas-button.md: `busy`")
+        self.assertFlags(errors, "telamon-button.md: `busy`")
         self.assertFlags(errors, "data-table.md: `busy`")
 
     def test_inheritance_is_followed_through_several_types(self):
-        self.set_api(self.API + "AtlasSuperTable.property busy: bool\nAtlasSuperTable.type\n")
-        self.qml("AtlasSuperTable", "DataTable {\n}\n")
-        self.write("atlas-ui/atlas-super-table.md", page("Like [DataTable](data-table.md).\n"))
+        self.set_api(self.API + "TelamonSuperTable.property busy: bool\nTelamonSuperTable.type\n")
+        self.qml("TelamonSuperTable", "DataTable {\n}\n")
+        self.write("telamon-ui/telamon-super-table.md", page("Like [DataTable](data-table.md).\n"))
         self.assertClean(self.errors())
 
     def test_private_members_are_not_required(self):
@@ -165,26 +165,26 @@ class ApiCoverage(DocsCase):
         self.assertFlags(self.errors(), "unrecognised line")
 
     def test_base_lines_are_not_members(self):
-        self.set_api(self.API + "AtlasButton.base QQuickItem\n")
+        self.set_api(self.API + "TelamonButton.base QQuickItem\n")
         self.assertClean(self.errors())
 
     def test_names_in_fences_do_not_count(self):
-        self.write("atlas-ui/atlas-button.md", page(self.BUTTON.replace("- `open(x)`: opens it.",
+        self.write("telamon-ui/telamon-button.md", page(self.BUTTON.replace("- `open(x)`: opens it.",
                                                     "~~~qml\n```\n- `open(x)`: no\n```\n~~~")))
         self.assertFlags(self.errors(), "`open`")
 
     def test_no_api_skips_the_check(self):
         docs.API = None
-        self.write("atlas-ui/atlas-button.md", page("Nothing.\n"))
+        self.write("telamon-ui/telamon-button.md", page("Nothing.\n"))
         self.assertClean(self.errors())
 
     def test_cli_api_option(self):
-        self.write("atlas-ui/atlas-button.md", page("`busy`\n"))
+        self.write("telamon-ui/telamon-button.md", page("`busy`\n"))
         with self.assertRaises(SystemExit):
             docs.main(["docs.py", "--root", self.ref, "--api", self.api, "check"])
 
     def test_page_slug(self):
-        self.assertEqual(docs.page_slug("AtlasButton"), "atlas-button")
+        self.assertEqual(docs.page_slug("TelamonButton"), "telamon-button")
         self.assertEqual(docs.page_slug("DataTable"), "data-table")
         self.assertEqual(docs.page_slug("AccessibilityState"), "accessibility-state")
 
@@ -557,7 +557,7 @@ class BuildAndGit(DocsCase):
         repo = os.path.join(self.tmp, "repo")
         os.makedirs(repo)
         with open(os.path.join(repo, "CMakeLists.txt"), "w") as f:
-            f.write("project(atlas-framework VERSION 1.2.3)\n")
+            f.write("project(telamon-framework VERSION 1.2.3)\n")
         env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
                "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
                "GIT_COMMITTER_EMAIL": "t@t", "PATH": os.environ["PATH"]}
@@ -594,7 +594,7 @@ class BuildAndGit(DocsCase):
         docs.ROOT = os.path.join(self.tmp, "norepo")
         os.makedirs(docs.ROOT)
         with open(os.path.join(docs.ROOT, "CMakeLists.txt"), "w") as f:
-            f.write("project(atlas-framework VERSION 1.2.3)\n")
+            f.write("project(telamon-framework VERSION 1.2.3)\n")
         self.addCleanup(setattr, docs, "ROOT", ROOT_AT_START)
         overview, libraries, errors = docs.check()
         with self.assertRaises(SystemExit) as cm:

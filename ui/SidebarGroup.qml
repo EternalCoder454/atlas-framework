@@ -42,7 +42,7 @@ ColumnLayout {
         return false;
     }
 
-    // Hooks for AtlasSidebar (filtering, hit testing); not for apps.
+    // Hooks for TelamonSidebar (filtering, hit testing); not for apps.
     readonly property Item _header: header
     readonly property Item _entries: entries
 
@@ -51,7 +51,7 @@ ColumnLayout {
 
     Layout.fillWidth: true
     // The gap between entries; match the sidebar column it sits in.
-    spacing: AtlasStyle.spacingXSmall
+    spacing: TelamonStyle.spacingXSmall
 
     SidebarItem {
         id: header

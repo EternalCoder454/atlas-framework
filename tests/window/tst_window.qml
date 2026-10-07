@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 TestCase {
     name: "WindowState"
@@ -12,7 +12,7 @@ TestCase {
 
     Component {
         id: winComp
-        AtlasWindow {
+        TelamonWindow {
             visible: true
             width: 320
             height: 240
@@ -21,7 +21,7 @@ TestCase {
     // Reads the file the way an app would.
     Component {
         id: settingsComp
-        AtlasSettings {}
+        TelamonSettings {}
     }
 
     function settingsFor(key) {

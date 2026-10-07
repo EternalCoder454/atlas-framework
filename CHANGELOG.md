@@ -1,14 +1,180 @@
 # Changelog
 
-What each atlas-framework release brings to apps. One version covers the whole
-repository: Atlas.Ui (`atlas-ui`), the fonts, the gallery and the Rust crates.
-Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
-Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
-something it added. The packaging spec's `%changelog` repeats the package side.
+What each release of the Telamon framework brings to apps. (Until 2.0.0 it
+was atlas-framework and its module Atlas.Ui: the entries below 2.0.0 keep
+the names of their time.) One version covers the whole repository:
+Telamon.Ui (`telamon-ui`), the fonts, the gallery and the Rust crates. Apps
+pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
+Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
+they use something it added. The packaging spec's `%changelog` repeats the
+package side.
 
-## Unreleased
+## 2.0.0
 
-- Change: Atlas.Ui is lighter in every app, with no change to its API or
+The rename. **atlas-framework is the Telamon framework**, the OS AtlasOS is
+Telamon OS and the brand is Telamon. Everything the framework is called changed
+in this one release, and nothing else about the API did: every member of every
+type is as it was, so an app moves by renaming (see "Migrating from Atlas.Ui
+1.x" below, and `tools/migrate-app-to-telamon.sh`).
+
+- Breaking: the QML module `Atlas.Ui` is `Telamon.Ui` (install directory
+  `/usr/lib64/qt6/qml/Telamon/Ui`, plugin `libtelamonui.so`), and every type
+  with the prefix is renamed: `AtlasWindow` is `TelamonWindow`, `AtlasStyle`
+  `TelamonStyle`, `AtlasLabel`, `AtlasPage`, `AtlasSidebar`, `AtlasSettings`,
+  `AtlasApp`, `AtlasPortal`, `AtlasTextView` and the other 100 types
+  of the API (`api/telamon-ui.api` lists them). Types without the prefix (`Section`,
+  `SectionRow`, `SidebarItem`, `InfoBanner`, `SearchField`, `DataTable`,
+  `MenuButton`, `Symbols`, ...) keep their names, and so do all properties,
+  signals, functions and enum values. `TelamonApp.uiVersion` is `"2.0.0"`.
+- Breaking: the crates `atlas-framework-{core,ui,system,flatpak}` are
+  `telamon-framework-{core,ui,system,flatpak}` (library names
+  `telamon_framework_*`, so `use telamon_framework_ui::...`), and the C header
+  `include/atlas/app.h` is `include/telamon/app.h` (also `textview.h` and
+  `textsnapshot.h`) with `telamon_app_init`, `telamon_app_ready`,
+  `telamon_app_require_ui` and `telamon_app_run`; the macros
+  `ATLAS_TEXTVIEW_INTERFACE_VERSION` and `ATLAS_TEXTSNAPSHOT_ABI_VERSION` and
+  the interface IDs `net.eterneon.Atlas.TextView/1` and friends follow. The
+  `app!` macro, `AppInfo` and every other public item are unchanged.
+- Breaking: the packages are `telamon-ui`, `telamon-symbols-fonts`,
+  `telamon-symbols-fonts-extra` and `telamon-symbols` (the gallery, now
+  "Telamon Gallery", `net.eterneon.telamon.symbols`), built from
+  `telamon-framework` (spec `packaging/telamon-framework.spec`). The preview
+  tool is `telamon-preview`. `api/atlas-ui.api` is `api/telamon-ui.api`, and the
+  reference pages moved with it (published at
+  <https://telamon.eterneon.net/framework>, library `telamon-ui`, pages
+  `telamon-<type>`).
+- Breaking: the Material Symbols fonts are the families "Telamon Symbols
+  Rounded", "Telamon Symbols Outlined" and "Telamon Symbols Sharp" (the same
+  glyphs; installed in `/usr/share/fonts/telamon-symbols`). `Symbol` and
+  `Symbols.family()` use them. An app that names "Material Symbols Rounded"
+  itself must change it.
+- Breaking: development and tool variables are `TELAMON_*`
+  (`TELAMON_UI_DEV_PATHS`, `TELAMON_UI_TESTS`, `TELAMON_UPDATE_GOLDENS`,
+  `TELAMON_KF6_INCLUDEDIR`, `TELAMON_BUILD_CACHE`, ...). The three a user may
+  set, `TELAMON_SOFTWARE_RENDERING`, `TELAMON_REDUCED_MOTION` and
+  `TELAMON_LOG`, still accept `ATLAS_SOFTWARE_RENDERING`,
+  `ATLAS_REDUCED_MOTION` and `ATLAS_LOG` when the new name is not set (so does
+  `build-rpm.sh` for `ATLAS_BUILD_CACHE` and `ATLAS_ALLOW_DIRTY`).
+- Change: names the framework puts on disk, in the journal and in logs follow:
+  the settings file is `~/.config/telamon-<app>rc` (`AppInfo::short_name()` is
+  `telamon-<last part of the ID>`, and a leftover `atlas-` in the ID is
+  dropped as before), its group is `[Telamon]` (`Format=`, `SchemaVersion=`;
+  `settings::SCHEMA_GROUP` is `"Telamon"`), the shared switch is
+  `~/.config/telamonrc`, the notification component and the user's choices are
+  `telamon-<app>.notifyrc`, crash reporting is
+  `~/.config/telamon/crash-reporting.toml`, `/etc/telamon/...` and
+  `/usr/share/telamon/...` with state in `$XDG_STATE_HOME/telamon`, the
+  journal identifier is `telamon-<app>` (`journalctl -t telamon-updater`), the
+  journal field `ATLAS_TARGET` is `TELAMON_TARGET`, and the logging categories
+  are `telamon.ui.*` (`telamon.ui.renderer`, ...).
+- New: `AppInfo::legacy_short_name()`, `crash::Settings::legacy_path()`,
+  `crash::LEGACY_SYSTEM_CONFIG` and `crash::LEGACY_DEFAULT_CONFIG`, for the
+  1.x names below.
+
+### Installs beside Atlas.Ui 1.x
+
+Apps move one by one, so for now both generations are installed. The new
+packages share nothing with `atlas-ui`, `atlas-symbols-fonts`,
+`atlas-symbols-fonts-extra` and `atlas-symbols`: not a package name, a file
+path, a font family, a QML module or a desktop file, and there is **no
+`Obsoletes:` or `Conflicts:`** for them. (The spec's `%check` fails if any
+installed path contains "atlas".) A later release will obsolete the atlas-*
+packages, once no app imports `Atlas.Ui` any more. An app that has not moved
+keeps working on its `atlas-ui`; one that has needs `telamon-ui`.
+
+### What 1.x wrote is still read
+
+The crates and Telamon.Ui read the old name while the new one is absent, once
+and one way (the old file is left alone, so an app that has not moved keeps
+using it, and the two stop following each other):
+
+- `~/.config/atlas-<app>rc` is copied to `telamon-<app>rc` the first time
+  `Settings::for_app` (Rust) or a `TelamonSettings` (QML) asks for it, with
+  `[Atlas]` renamed to `[Telamon]` (also in a `SchemaVersion` that
+  `migrate` finds there). `~/.config/atlasrc`, the shared transparency
+  switch, is copied to `telamonrc`.
+- `~/.config/atlas/crash-reporting.toml` is read until the new file exists,
+  `/etc/atlas/crash-reporting.toml` (an administrator's `dsn`, also an empty
+  one that turns sending off) and `/usr/share/atlas/crash-reporting.toml`
+  after the new ones, and `$XDG_STATE_HOME/atlas` (reports waiting for the
+  user, the sent history, the markers, the rotating ID) is moved to
+  `telamon` in one rename when the new directory does not exist.
+- `~/.config/atlas-<app>.notifyrc`, the user's per-event notification
+  choices, counts for an event the new file has no entry for.
+- `ATLAS_SOFTWARE_RENDERING`, `ATLAS_REDUCED_MOTION` and `ATLAS_LOG`.
+
+Each has a test (`tests/legacy_adopt.rs`, `settings`, `crash`, `notify` and
+`log` unit tests, `tests/settings`). Until the apps have moved, the two
+generations do not share the transparency switch and the crash-reporting
+state once the new ones exist: change one in an app of each generation if it
+matters.
+
+### Not renamed (yet)
+
+- The GitHub repository stays `EternalCoder454/atlas-framework` until it is
+  renamed in one batch with the others: apps keep `git =
+  "https://github.com/EternalCoder454/atlas-framework"` (and the
+  `app-checks.yml` URL) with the new crate names and `tag = "v2.0.0"`.
+- What other components own: the crash relay's DSN key (`atlasos@` in
+  `crash-reporting.toml`, which the server checks) and the fields of what
+  `crash::send` posts (`release`, the `atlasos_version` tag, the category
+  "Atlas app", the OS name "AtlasOS"), the issue repository
+  `EternalCoder454/AtlasOS`, `/var/lib/atlas-core` and `/var/lib/atlasos`, the
+  os-release `ID`, the image name and `atlas-system-helper`. They change with
+  the component that owns them.
+- The sample texts of the gallery's demos that show in a golden picture keep
+  their wording ("Atlas Notepad", `AtlasListView: ...`, "Atlas Test OS"):
+  every golden is the same picture, to the byte, as in 1.6.1, and only its
+  file name changed. The texts are fixtures, not the framework's names.
+- The release workflow opens no pull requests in the apps for this release
+  (the crate names changed; a major version in general): they move by hand.
+
+### Migrating from Atlas.Ui 1.x
+
+An app moves in one commit, after the release is tagged (the pin points to
+`v2.0.0`) and with `telamon-ui` 2.0.0 and `telamon-symbols-fonts` installable
+where it builds. `tools/migrate-app-to-telamon.sh` does the mechanical part;
+run it in the app's repository, from a clean tree:
+
+```sh
+path/to/telamon-framework/tools/migrate-app-to-telamon.sh --dry-run   # what would change
+path/to/telamon-framework/tools/migrate-app-to-telamon.sh             # change it
+scripts/dev.sh cargo update -p telamon-framework-ui                   # (and -core, -system, -flatpak as used)
+```
+
+It rewrites, as whole words and only names the framework had, and prints each
+file with what it did: `import Atlas.Ui` and the 111 `Atlas<Name>` names, the
+text interface IDs, the logging categories, the `atlasRepo` property; the
+crates in `Cargo.toml` and `atlas_framework_*` in Rust (and a `ui:` below
+`"2.0.0"` in `app!`); the framework pin to `tag = "v2.0.0"` (or `--rev <sha>`,
+for an app whose CI wants revs; `--no-pin` leaves it); C includes
+`atlas/app.h` and `atlas_app_*`, `atlas_backend_new`; CMake's check for
+`.../qml/Atlas/Ui/qmldir`; `Requires:` and `BuildRequires:` of the four
+packages (to `>= 2.0.0`; the spec's `%changelog` is left); `atlas-preview`,
+`atlas-lint:` comments, `app-checks.yml@v1.x.y` and `framework-ref`; the
+package names in scripts and CI; the variables `ATLAS_SOFTWARE_RENDERING`,
+`ATLAS_REDUCED_MOTION`, `ATLAS_LOG`, `ATLAS_KF6_INCLUDEDIR` and the like; font
+family strings; and it renames `atlas-<x>.notifyrc` to `telamon-<x>.notifyrc`
+(`git mv`). It leaves `CHANGELOG*`, `Cargo.lock`, binary files and the
+app's own names (`AtlasOS`, `atlasos-<app>`, its app ID and desktop file, a
+type of its own such as `AtlasObjects`), and lists what still says "atlas". A
+second run changes nothing. Then, by hand:
+
+1. `cargo update -p telamon-framework-ui ...` (it drops the old crates from
+   `Cargo.lock`), build with `--locked`, run the tests and `lint-app.sh`.
+2. An `app-checks.yml` pinned to a commit moves to the commit of `v2.0.0`
+   (the script reports it); `framework-ref: v2.0.0`.
+3. The settings file, the shared switch, crash state and notification choices
+   come over by themselves (above). Anything the app reads from `~/.config` by
+   a literal `atlas-...rc` name itself needs the same treatment.
+4. Nothing the app does with the journal by the old identifier
+   (`journalctl -t atlas-updater`, `ATLAS_TARGET=`) finds the new entries.
+5. The app's own names (its app ID, desktop file, display name) are not part
+   of this move: they change when the app is renamed.
+
+### Also in 2.0.0
+
+- Change: Telamon.Ui is lighter in every app, with no change to its API or
   look (every golden is the same at zero tolerance). Apps need no change.
   - The plugin exports only what Qt looks up (`qt_plugin_instance`,
     `qt_plugin_query_metadata_v2`) and the type registration: 52 symbols

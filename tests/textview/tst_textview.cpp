@@ -1,7 +1,7 @@
-// AtlasTextView (ui/text): the read-only view over the buffer. Software scene
+// TelamonTextView (ui/text): the read-only view over the buffer. Software scene
 // graph on the offscreen platform; the item is created in C++, the way Notepad
 // uses it.
-#include "atlastextview.h"
+#include "telamontextview.h"
 
 #include <QAccessible>
 #include <QClipboard>
@@ -17,7 +17,7 @@
 #include <new>
 #include <thread>
 
-using AtlasTextDetail::setTaskHookForTests;
+using TelamonTextDetail::setTaskHookForTests;
 
 namespace {
 
@@ -29,12 +29,12 @@ void failOnF(const char *data, qsizetype)
 
 struct Fixture {
     QQuickWindow win;
-    AtlasTextView *view = nullptr;
+    TelamonTextView *view = nullptr;
 
     explicit Fixture(QSize size = QSize(400, 200))
     {
         win.resize(size);
-        view = new AtlasTextView(win.contentItem());
+        view = new TelamonTextView(win.contentItem());
         view->setSize(QSizeF(size));
         win.show();
         QTest::qWaitForWindowExposed(&win);
@@ -53,7 +53,7 @@ QString lines(int n)
 }
 
 // A point inside the character at `position`, in window (item) coordinates.
-QPointF pointAt(AtlasTextView *v, qsizetype position)
+QPointF pointAt(TelamonTextView *v, qsizetype position)
 {
     const QRectF r = v->rectangleAt(position);
     return QPointF(r.left() + 1, r.center().y());
@@ -101,7 +101,7 @@ private slots:
 void TestTextView::emptyView()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     f.settle();
     QCOMPARE(v->length(), qsizetype(0));
     QCOMPARE(v->lineCount(), qsizetype(1));
@@ -127,7 +127,7 @@ void TestTextView::emptyView()
 void TestTextView::layoutOnlyVisible()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(lines(5000));
     f.settle();
     const qreal rh = v->rowHeight();
@@ -160,7 +160,7 @@ void TestTextView::layoutOnlyVisible()
 void TestTextView::wrapRows()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     QString longLine(1200, u'x');
     for (int i = 6; i < 1200; i += 7)
         longLine[i] = u' ';
@@ -192,7 +192,7 @@ void TestTextView::wrapRows()
 void TestTextView::selectionAndCopy()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(QString::fromUtf8("hello world\r\nsecond \xF0\x9F\x98\x80 line"));
     QSignalSpy sel(v, SIGNAL(selectionChanged()));
     v->select(0, 5);
@@ -238,7 +238,7 @@ void TestTextView::selectionAndCopy()
 void TestTextView::mouseHitTesting()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(QString::fromUtf8("hello world\nsecond \xF0\x9F\x98\x80 line\n\nlast"));
     f.settle();
     // positionAt inverts rectangleAt for every position of every line.
@@ -274,7 +274,7 @@ void TestTextView::mouseHitTesting()
 void TestTextView::mouseSelection()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(QStringLiteral("hello world and more\nsecond line"));
     f.settle();
     QTest::mouseClick(&f.win, Qt::LeftButton, {}, pointAt(v, 3).toPoint());
@@ -320,7 +320,7 @@ void TestTextView::mouseSelection()
 void TestTextView::followMode()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setFollow(true);
     v->setText(lines(100));
     f.settle();
@@ -346,7 +346,7 @@ void TestTextView::followMode()
     QCOMPARE(v->contentY(), y);
     // appendText signals the change and is refused while loading.
     QList<std::array<qsizetype, 3>> spy;
-    connect(v, &AtlasTextView::contentsChange, this, [&](qsizetype p, qsizetype r, qsizetype a) { spy.append({p, r, a}); });
+    connect(v, &TelamonTextView::contentsChange, this, [&](qsizetype p, qsizetype r, qsizetype a) { spy.append({p, r, a}); });
     const qsizetype len = v->length();
     v->appendText(QStringLiteral("tail"));
     QCOMPARE(spy.size(), qsizetype(1));
@@ -362,7 +362,7 @@ void TestTextView::followMode()
 void TestTextView::maximumLines()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setMaximumLines(20);
     v->setFollow(true);
     for (int i = 0; i < 100; ++i)
@@ -381,10 +381,10 @@ void TestTextView::maximumLines()
 void TestTextView::loadChunks()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     QSignalSpy loaded(v, SIGNAL(loaded()));
     QList<std::array<qsizetype, 3>> contents;
-    connect(v, &AtlasTextView::contentsChange, this, [&](qsizetype p, qsizetype r, qsizetype a) { contents.append({p, r, a}); });
+    connect(v, &TelamonTextView::contentsChange, this, [&](qsizetype p, qsizetype r, qsizetype a) { contents.append({p, r, a}); });
     v->setText(QStringLiteral("old text"));
     v->beginLoad();
     QVERIFY(v->loading());
@@ -429,7 +429,7 @@ void TestTextView::loadChunks()
 void TestTextView::loadFailure()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     setTaskHookForTests(failOnF);
     v->beginLoad();
     v->appendBytes(QByteArray(100000, 'a'));
@@ -451,7 +451,7 @@ void TestTextView::loadFailure()
 void TestTextView::hugeLine()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     const qsizetype n = 5000000;
     v->setText(QString(n, u'0') + QStringLiteral("\nnext"));
     f.settle();
@@ -490,9 +490,9 @@ void TestTextView::hugeLine()
 void TestTextView::snapshotWhileEditing()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(lines(2000));
-    const AtlasTextSnapshot snap = v->snapshot();
+    const TelamonTextSnapshot snap = v->snapshot();
     const QString frozen = snap.text();
     std::atomic<bool> stop{false};
     std::atomic<int> bad{0};
@@ -518,7 +518,7 @@ void TestTextView::snapshotWhileEditing()
 void TestTextView::decorationsAndPaint()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setTextColor(Qt::black);
     f.win.setColor(Qt::white);
     v->setText(QStringLiteral("find the needle in the needle stack\nsecond line here"));
@@ -534,10 +534,10 @@ void TestTextView::decorationsAndPaint()
     };
     QVERIFY2(dark(plain) > 20, "the text is painted");
     // A decoration layer changes the picture; clearing it restores it.
-    v->setDecorations(QStringLiteral("find"), {{9, 15}, {23, 29}}, AtlasText::DecorationStyle::CurrentMatch);
+    v->setDecorations(QStringLiteral("find"), {{9, 15}, {23, 29}}, TelamonText::DecorationStyle::CurrentMatch);
     f.settle();
     QVERIFY(f.win.grabWindow() != plain);
-    v->setDecorations(QStringLiteral("spell"), {{0, 4}}, AtlasText::DecorationStyle::Spelling);
+    v->setDecorations(QStringLiteral("spell"), {{0, 4}}, TelamonText::DecorationStyle::Spelling);
     f.settle();
     QVERIFY(!f.win.grabWindow().isNull());
     v->clearDecorations(QStringLiteral("find"));
@@ -549,7 +549,7 @@ void TestTextView::decorationsAndPaint()
     v->select(0, 20);
     f.settle();
     QVERIFY(f.win.grabWindow() != plain);
-    v->setDecorations(QStringLiteral("far"), {{-5, 99999}, {7, 7}}, AtlasText::DecorationStyle::Error);
+    v->setDecorations(QStringLiteral("far"), {{-5, 99999}, {7, 7}}, TelamonText::DecorationStyle::Error);
     f.settle();
     QVERIFY(!f.win.grabWindow().isNull());
     // Decorations survive a load into a shorter text without crashing.
@@ -559,11 +559,11 @@ void TestTextView::decorationsAndPaint()
 }
 
 namespace {
-class WordHighlighter : public AtlasTextHighlighterInterface
+class WordHighlighter : public TelamonTextHighlighterInterface
 {
 public:
     int initialState() const override { return 0; }
-    int highlightLine(int startState, const QString &line, QList<AtlasText::FormatRun> *runs) const override
+    int highlightLine(int startState, const QString &line, QList<TelamonText::FormatRun> *runs) const override
     {
         // State 1 = inside a /* */ comment.
         int state = startState;
@@ -571,7 +571,7 @@ public:
             state = 1;
         if (line.contains(QStringLiteral("*/")))
             state = 0;
-        AtlasText::FormatRun r;
+        TelamonText::FormatRun r;
         r.start = 0;
         r.length = line.size();
         r.format.foreground = (startState == 1 || state == 1) ? QColor(Qt::darkGreen) : QColor(Qt::blue);
@@ -586,7 +586,7 @@ public:
 void TestTextView::lineNumbersAndHighlighter()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(QStringLiteral("a /* open\nstill comment\nclose */ b\ncode"));
     f.settle();
     const QRectF noGutter = v->rectangleAt(0);
@@ -624,7 +624,7 @@ void TestTextView::lineNumbersAndHighlighter()
 void TestTextView::keyboardNavigation()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(QStringLiteral("one two\r\nthree\n\nfour five"));
     v->forceActiveFocus();
     f.settle();
@@ -673,7 +673,7 @@ void TestTextView::keyboardNavigation()
 void TestTextView::accessible()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(QString::fromUtf8("hello world\nsecond \xF0\x9F\x98\x80 line"));
     f.settle();
     QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(v);
@@ -732,14 +732,14 @@ void TestTextView::accessible()
 
 void TestTextView::accessibleName()
 {
-    qmlRegisterType<AtlasTextView>("TestTv", 1, 0, "AtlasTextView");
+    qmlRegisterType<TelamonTextView>("TestTv", 1, 0, "TelamonTextView");
     Fixture f;
     QQmlEngine engine;
     QQmlComponent comp(&engine);
-    comp.setData("import QtQuick\nimport TestTv\nAtlasTextView { Accessible.name: \"Build log\"; Accessible.description: \"Output of the build\" }\n", QUrl());
+    comp.setData("import QtQuick\nimport TestTv\nTelamonTextView { Accessible.name: \"Build log\"; Accessible.description: \"Output of the build\" }\n", QUrl());
     QObject *o = comp.create();
     QVERIFY2(o, qPrintable(comp.errorString()));
-    auto *v = qobject_cast<AtlasTextView *>(o);
+    auto *v = qobject_cast<TelamonTextView *>(o);
     QVERIFY(v);
     v->setParentItem(f.win.contentItem());
     QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(v);
@@ -764,7 +764,7 @@ void TestTextView::accessibleName()
 
 void TestTextView::rowIndexDropAndGrow()
 {
-    using AtlasTextViewDetail::RowIndex;
+    using TelamonTextViewDetail::RowIndex;
     RowIndex r;
     std::vector<int> ref;
     auto check = [&] {
@@ -808,7 +808,7 @@ void TestTextView::rowIndexDropAndGrow()
 void TestTextView::resizeKeepsAnchor()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setWrap(true);
     QString text;
     for (int i = 0; i < 100; ++i)
@@ -845,7 +845,7 @@ void TestTextView::resizeKeepsAnchor()
 void TestTextView::maximumLinesWrapKeepsPosition()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setWrap(true);
     QString text;
     for (int i = 0; i < 100; ++i)
@@ -870,7 +870,7 @@ void TestTextView::maximumLinesWrapKeepsPosition()
 void TestTextView::maximumLinesAfterLoad()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setMaximumLines(10);
     v->beginLoad();
     v->appendBytes(lines(100).toUtf8());
@@ -886,7 +886,7 @@ void TestTextView::maximumLinesAfterLoad()
 void TestTextView::ungrabStopsAutoscroll()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(lines(400));
     f.settle();
     QTest::mousePress(&f.win, Qt::LeftButton, {}, pointAt(v, 1).toPoint());
@@ -927,7 +927,7 @@ void TestTextView::ungrabStopsAutoscroll()
 void TestTextView::gutterClipsText()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setShowLineNumbers(true);
     QString text;
     for (int i = 0; i < 5; ++i)
@@ -947,7 +947,7 @@ void TestTextView::gutterClipsText()
 void TestTextView::hasSelectionAndBounds()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(lines(10));
     QVERIFY(!v->property("hasSelection").toBool());
     QSignalSpy spy(v, SIGNAL(selectionChanged()));
@@ -967,7 +967,7 @@ void TestTextView::hasSelectionAndBounds()
 void TestTextView::surrogateKeys()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(QString::fromUtf8("\xF0\x9F\x98\x80\xF0\x9F\x98\x80 \xF0\x9F\x98\x80"));
     v->forceActiveFocus();
     v->setCursorPosition(v->length());
@@ -986,7 +986,7 @@ void TestTextView::surrogateKeys()
 void TestTextView::tabsCountInContentWidth()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setTabWidth(8);
     v->setText(QStringLiteral("\t\t\tx"));
     f.settle();
@@ -996,7 +996,7 @@ void TestTextView::tabsCountInContentWidth()
 void TestTextView::longLineWindows()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     const qsizetype n = 3 * 1024 * 1024;
     QString text(n, QLatin1Char('x'));
     text.replace(2 * 1024 * 1024, 5, QStringLiteral("hello"));
@@ -1019,7 +1019,7 @@ void TestTextView::longLineWindows()
 void TestTextView::maximumLinesShiftsDecorations()
 {
     Fixture f;
-    AtlasTextView *v = f.view;
+    TelamonTextView *v = f.view;
     v->setText(lines(30));
     v->setDecorationPairs(QStringLiteral("a"), {0, 3}, 0);
     v->setDecorationPairs(QStringLiteral("b"), {v->positionOfLine(25), v->positionOfLine(25) + 4}, 0);

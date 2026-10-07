@@ -1,33 +1,37 @@
-# atlas-framework
+# telamon-framework
 
-The shared base every Atlas app builds on, so they look and behave the same:
+The shared base every Telamon app builds on, so they look and behave the same:
 
-- **Atlas.Ui** (`ui/`): the QML module of Atlas controls: buttons with 4 px
+- **Telamon.Ui** (`ui/`): the QML module of Telamon controls: buttons with 4 px
   corners, grouped sections, fields and pickers, lists and tables, sidebars
   and navigation, dialogs, charts, a frameless window with its own header
   bar that follows the shared transparency switch, and about 4,000 Material
   Symbols icons.
-- **atlas-symbols-fonts** (`ui/symbols/`): the Material Symbols fonts.
-- **Atlas Symbols** (`ui/gallery/`): browse the icons and copy the QML.
+- **telamon-symbols-fonts** (`ui/symbols/`): the Material Symbols fonts.
+- **Telamon Symbols** (`ui/gallery/`): browse the icons and copy the QML.
 - **The Rust crates** (`crates/`): app startup and single instance, settings,
-  journal logging, crash reports, AtlasOS state, polkit checks and Flatpak.
-  `atlas-framework-core` and `-ui` for every app, `-system` and `-flatpak`
+  journal logging, crash reports, Telamon OS state, polkit checks and Flatpak.
+  `telamon-framework-core` and `-ui` for every app, `-system` and `-flatpak`
   only for the apps that need them.
-- **The app template** (`template/`): start a new Atlas app from it.
+- **The app template** (`template/`): start a new Telamon app from it.
 
-It is installed once on AtlasOS (the atlas-ui, atlas-symbols-fonts and
-atlas-symbols packages) and every app uses that copy:
+It is installed once on Telamon OS (the telamon-ui, telamon-symbols-fonts and
+telamon-symbols packages) and every app uses that copy:
 
 ```qml
-import Atlas.Ui
+import Telamon.Ui
 
 PrimaryButton { text: qsTr("Share"); symbol: Symbols.Share }
 ```
 
+Until 2.0.0 this was atlas-framework (Atlas.Ui, `atlas-ui`, the Atlas crates). An app moves with
+[`tools/migrate-app-to-telamon.sh`](tools/migrate-app-to-telamon.sh); the old and new
+packages install side by side meanwhile (see [CHANGELOG.md](CHANGELOG.md)).
+
 The API reference is on <https://telamon.eterneon.net/framework>; its source,
 [docs/reference/](docs/reference/), is the one place the API is described.
-Read [docs/DESIGN.md](docs/DESIGN.md) first: the design rules for Atlas apps,
-how apps use Atlas.Ui, and the compatibility rules for changing it.
+Read [docs/DESIGN.md](docs/DESIGN.md) first: the design rules for Telamon apps,
+how apps use Telamon.Ui, and the compatibility rules for changing it.
 
 ## Build
 
@@ -37,7 +41,7 @@ Fedora 44, in a container (the host has no Qt development packages):
 dnf install cmake ninja-build gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel \
   kf6-kirigami-devel kf6-kwindowsystem-devel kf6-kconfig-devel kf6-qqc2-desktop-style
 cmake -S . -B build -G Ninja && cmake --build build
-build/atlas-symbols
+build/telamon-symbols
 ```
 
 The Rust crates (also needs kf6-kdbusaddons-devel, kf6-kwindowsystem-devel,

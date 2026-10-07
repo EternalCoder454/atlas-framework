@@ -1,10 +1,10 @@
-// State-contract test for Atlas.Ui: every ui/gallery/demos/*Demo.qml is loaded
+// State-contract test for Telamon.Ui: every ui/gallery/demos/*Demo.qml is loaded
 // and checked against the "States" rules of docs/DESIGN.md. See
 // tests/README.md and tst_state.qml. This file holds the helpers QML lacks:
 // grabbing a rectangle of the window and comparing two pictures.
 //
-// Environment (set by visual/run-variant.sh through ctest): ATLAS_DEMO_DIR,
-// ATLAS_DEMO_FILTER (see demolist.h), and ATLAS_STATE_SHARD="i/n" to run only
+// Environment (set by visual/run-variant.sh through ctest): TELAMON_DEMO_DIR,
+// TELAMON_DEMO_FILTER (see demolist.h), and TELAMON_STATE_SHARD="i/n" to run only
 // every n-th demo starting at i (ctest runs the shards in parallel).
 #include "../demolist.h"
 
@@ -35,11 +35,11 @@ class States : public DemoList
 {
     Q_OBJECT
 public:
-    // The demos of this shard (ATLAS_STATE_SHARD="i/n"), or all of them.
+    // The demos of this shard (TELAMON_STATE_SHARD="i/n"), or all of them.
     Q_INVOKABLE QStringList shardDemos() const
     {
         const QStringList all = demos();
-        const QStringList parts = qEnvironmentVariable("ATLAS_STATE_SHARD").split(QLatin1Char('/'));
+        const QStringList parts = qEnvironmentVariable("TELAMON_STATE_SHARD").split(QLatin1Char('/'));
         bool okIndex = false;
         bool okCount = false;
         const int index = parts.value(0).toInt(&okIndex);
@@ -94,11 +94,11 @@ public:
     // One line on stderr (console.log is filtered by the test runner).
     Q_INVOKABLE void log(const QString &line) const { fprintf(stderr, "%s\n", qPrintable(line)); }
 
-    // Writes a picture to ATLAS_OUT_DIR/<name>.png for a failure report.
+    // Writes a picture to TELAMON_OUT_DIR/<name>.png for a failure report.
     // Returns the path, or "" when it could not be written.
     Q_INVOKABLE QString save(const QImage &image, const QString &name) const
     {
-        const QString base = qEnvironmentVariable("ATLAS_OUT_DIR", QStringLiteral("state-out"));
+        const QString base = qEnvironmentVariable("TELAMON_OUT_DIR", QStringLiteral("state-out"));
         QString safe = name;
         safe.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9_.-]")), QStringLiteral("_"));
         const QString path = QDir(base).filePath(safe + QStringLiteral(".png"));
@@ -158,6 +158,6 @@ private:
     States m_states;
 };
 
-QUICK_TEST_MAIN_WITH_SETUP(atlas_state, Setup)
+QUICK_TEST_MAIN_WITH_SETUP(telamon_state, Setup)
 
 #include "main.moc"

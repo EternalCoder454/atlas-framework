@@ -1,0 +1,7 @@
+# Telamon crash reporting endpoint (default; copy to /etc/telamon/crash-reporting.toml
+# to override). Crash reports are opt-in per user and are only sent when the
+# user presses Send. They go to the Telamon OS relay, which posts each one as a
+# public issue in github.com/EternalCoder454/AtlasOS. An empty dsn in
+# /etc/telamon/crash-reporting.toml turns sending off:
+#   dsn = ""
+dsn = "https://atlasos@telamon.eterneon.net/crash/1"

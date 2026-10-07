@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasForm and AtlasFormEntry (docs/api-1.5.0.md, item 25): when an error
+// TelamonForm and TelamonFormEntry (docs/api-1.5.0.md, item 25): when an error
 // shows, required for each kind of control, acceptableInput, the focus on the
 // first invalid entry, the label, the form's validity, Return, and the
 // accessible name, description and announcement.
@@ -17,7 +17,7 @@ TestCase {
 
     Component {
         id: formComp
-        AtlasForm {
+        TelamonForm {
             id: form
             width: 500
             property alias eName: eName
@@ -29,19 +29,19 @@ TestCase {
             property alias eKind: eKind
             property alias cKind: cKind
             Section {
-                AtlasFormEntry {
+                TelamonFormEntry {
                     id: eName
                     label: "Name"
                     help: "Your full name"
                     required: true
-                    AtlasTextField {
+                    TelamonTextField {
                         id: fName
                     }
                 }
-                AtlasFormEntry {
+                TelamonFormEntry {
                     id: ePort
                     label: "Port"
-                    AtlasTextField {
+                    TelamonTextField {
                         id: fPort
                         validator: IntValidator {
                             bottom: 1
@@ -49,19 +49,19 @@ TestCase {
                         }
                     }
                 }
-                AtlasFormEntry {
+                TelamonFormEntry {
                     id: eBox
                     label: "Agree"
                     required: true
-                    AtlasCheckBox {
+                    TelamonCheckBox {
                         id: cBox
                     }
                 }
-                AtlasFormEntry {
+                TelamonFormEntry {
                     id: eKind
                     label: "Kind"
                     required: true
-                    AtlasComboBox {
+                    TelamonComboBox {
                         id: cKind
                         model: ["a", "b"]
                         currentIndex: -1
@@ -73,48 +73,48 @@ TestCase {
 
     Component {
         id: otherComp
-        AtlasTextField {
+        TelamonTextField {
         }
     }
 
     // One required entry round a control, outside any form.
     Component {
         id: pathComp
-        AtlasFormEntry {
+        TelamonFormEntry {
             required: true
-            AtlasFolderField {
+            TelamonFolderField {
             }
         }
     }
     Component {
         id: shortcutComp
-        AtlasFormEntry {
+        TelamonFormEntry {
             required: true
-            AtlasShortcutField {
+            TelamonShortcutField {
             }
         }
     }
     Component {
         id: switchComp
-        AtlasFormEntry {
+        TelamonFormEntry {
             required: true
-            AtlasSwitch {
+            TelamonSwitch {
             }
         }
     }
     Component {
         id: colorComp
-        AtlasFormEntry {
+        TelamonFormEntry {
             required: true
-            AtlasColorField {
+            TelamonColorField {
             }
         }
     }
     Component {
         id: areaComp
-        AtlasFormEntry {
+        TelamonFormEntry {
             required: true
-            AtlasTextArea {
+            TelamonTextArea {
             }
         }
     }
@@ -241,7 +241,7 @@ TestCase {
 
     function test_clicking_the_label_focuses_the_control() {
         const f = make();
-        const label = find(f.eName, i => i.objectName === "atlasFormEntryLabel");
+        const label = find(f.eName, i => i.objectName === "telamonFormEntryLabel");
         verify(label);
         verify(!f.fName.activeFocus);
         mouseClick(label);

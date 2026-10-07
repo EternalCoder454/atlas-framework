@@ -1,22 +1,22 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasToolbar: orientation, Scroll overflow, focusOnClick, and actions that
+// TelamonToolbar: orientation, Scroll overflow, focusOnClick, and actions that
 // hold a menu or a popover in the overflow menu.
 Item {
     id: root
     width: 500
     height: 500
 
-    AtlasAction { id: a1; text: "One"; symbol: Symbols.Add }
-    AtlasAction { id: a2; text: "Two"; symbol: Symbols.Add }
-    AtlasAction { id: a3; text: "Three"; symbol: Symbols.Add }
-    AtlasAction { id: a4; text: "Four"; symbol: Symbols.Add }
-    AtlasAction { id: a5; text: "Five"; symbol: Symbols.Add }
-    AtlasAction { id: a6; text: "Six"; symbol: Symbols.Add }
-    AtlasAction {
+    TelamonAction { id: a1; text: "One"; symbol: Symbols.Add }
+    TelamonAction { id: a2; text: "Two"; symbol: Symbols.Add }
+    TelamonAction { id: a3; text: "Three"; symbol: Symbols.Add }
+    TelamonAction { id: a4; text: "Four"; symbol: Symbols.Add }
+    TelamonAction { id: a5; text: "Five"; symbol: Symbols.Add }
+    TelamonAction { id: a6; text: "Six"; symbol: Symbols.Add }
+    TelamonAction {
         id: withMenu
         text: "Sub"
         symbol: Symbols.Add
@@ -26,11 +26,11 @@ Item {
             }
         }
     }
-    AtlasAction {
+    TelamonAction {
         id: withPopover
         text: "Pop"
         symbol: Symbols.Add
-        popover: AtlasPopover {
+        popover: TelamonPopover {
             QQC2.Label {
                 text: "Details"
             }
@@ -38,7 +38,7 @@ Item {
     }
     Component {
         id: barComp
-        AtlasToolbar {
+        TelamonToolbar {
             x: 10
             y: 10
             actions: [a1, a2, a3, a4, a5, a6]
@@ -46,7 +46,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasToolbar"
+        name: "TelamonToolbar"
         when: windowShown
 
         function buttons(item, out) {
@@ -90,7 +90,7 @@ Item {
 
         function test_scroll_steps_one_button() {
             const bar = createTemporaryObject(barComp, root, {
-                overflow: AtlasToolbar.Scroll,
+                overflow: TelamonToolbar.Scroll,
                 width: 160
             });
             verify(bar.scrolls);
@@ -108,7 +108,7 @@ Item {
 
         function test_scroll_follows_focus() {
             const bar = createTemporaryObject(barComp, root, {
-                overflow: AtlasToolbar.Scroll,
+                overflow: TelamonToolbar.Scroll,
                 width: 160
             });
             const b = shown(bar);
@@ -120,7 +120,7 @@ Item {
 
         function test_scroll_that_fits_does_not_scroll() {
             const bar = createTemporaryObject(barComp, root, {
-                overflow: AtlasToolbar.Scroll,
+                overflow: TelamonToolbar.Scroll,
                 width: 400
             });
             verify(!bar.scrolls);
@@ -236,7 +236,7 @@ Item {
         }
 
         function test_overflow_rows_follow_the_action() {
-            const act = Qt.createQmlObject('import Atlas.Ui; AtlasAction { text: "First" }', root);
+            const act = Qt.createQmlObject('import Telamon.Ui; TelamonAction { text: "First" }', root);
             const bar = createTemporaryObject(barComp, root, {
                 actions: [a1, a2, act, withMenu],
                 width: 70
@@ -261,7 +261,7 @@ Item {
         function test_wheel_resets_on_direction_change_and_pause() {
             const bar = createTemporaryObject(barComp, root, {
                 actions: [a1, a2, a3, a4, a5, a6],
-                overflow: AtlasToolbar.Scroll,
+                overflow: TelamonToolbar.Scroll,
                 width: 100
             });
             verify(bar._scrolling);
@@ -282,7 +282,7 @@ Item {
         function test_wheel_inverted_flips_the_direction() {
             const bar = createTemporaryObject(barComp, root, {
                 actions: [a1, a2, a3, a4, a5, a6],
-                overflow: AtlasToolbar.Scroll,
+                overflow: TelamonToolbar.Scroll,
                 width: 100
             });
             bar._wheelBy(60, true);
@@ -295,7 +295,7 @@ Item {
         function test_wheel_event_scrolls_one_button() {
             const bar = createTemporaryObject(barComp, root, {
                 actions: [a1, a2, a3, a4, a5, a6],
-                overflow: AtlasToolbar.Scroll,
+                overflow: TelamonToolbar.Scroll,
                 width: 100
             });
             verify(bar._scrolling);
@@ -308,7 +308,7 @@ Item {
         }
 
         function test_overflow_row_follows_a_menu_that_appears() {
-            const act = Qt.createQmlObject('import Atlas.Ui; AtlasAction { text: "Late" }', root);
+            const act = Qt.createQmlObject('import Telamon.Ui; TelamonAction { text: "Late" }', root);
             const bar = createTemporaryObject(barComp, root, {
                 actions: [a1, a2, act],
                 width: 70
@@ -322,7 +322,7 @@ Item {
             };
             verify(rowOf("Late"));
             verify(!rowOf("Late").subMenu);
-            act.menu = Qt.createQmlObject('import Atlas.Ui; ContextMenu { ContextMenuItem { text: "In" } }', root);
+            act.menu = Qt.createQmlObject('import Telamon.Ui; ContextMenu { ContextMenuItem { text: "In" } }', root);
             let sub = null;
             tryVerify(() => (sub = rowOf("Late")) && sub.subMenu);
             act.menu = null;

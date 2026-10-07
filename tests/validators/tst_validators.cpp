@@ -1,6 +1,6 @@
-// The Atlas validators (ui/atlasvalidators.cpp, compiled into the test):
+// The Telamon validators (ui/telamonvalidators.cpp, compiled into the test):
 // acceptable, intermediate and invalid input of each, hostile input included.
-#include "atlasvalidators.h"
+#include "telamonvalidators.h"
 
 #include <QDir>
 #include <QLocale>
@@ -49,12 +49,12 @@ private Q_SLOTS:
     {
         QFETCH(QString, text);
         QFETCH(S, state);
-        AtlasUrlValidator v;
+        TelamonUrlValidator v;
         QCOMPARE(check(v, text), state);
     }
     void urlBareHostFixup()
     {
-        AtlasUrlValidator v;
+        TelamonUrlValidator v;
         QString s = QStringLiteral("example.com");
         v.fixup(s);
         QCOMPARE(s, QStringLiteral("https://example.com"));
@@ -65,7 +65,7 @@ private Q_SLOTS:
     }
     void urlFixupLeavesWhatIsNotABareHost()
     {
-        AtlasUrlValidator v;
+        TelamonUrlValidator v;
         v.setSchemes({QStringLiteral("https")});
         QString s = QStringLiteral("http://x");
         v.fixup(s);
@@ -82,7 +82,7 @@ private Q_SLOTS:
     }
     void urlSchemes()
     {
-        AtlasUrlValidator v;
+        TelamonUrlValidator v;
         v.setSchemes({QStringLiteral("HTTPS")});
         QCOMPARE(check(v, "https://a.com"), QValidator::Acceptable);
         QCOMPARE(check(v, "http://a.com"), QValidator::Invalid);
@@ -129,13 +129,13 @@ private Q_SLOTS:
     {
         QFETCH(QString, text);
         QFETCH(S, state);
-        AtlasEmailValidator v;
+        TelamonEmailValidator v;
         QCOMPARE(check(v, text), state);
     }
 
     void path()
     {
-        AtlasPathValidator v;
+        TelamonPathValidator v;
         QCOMPARE(check(v, ""), QValidator::Intermediate);
         QCOMPARE(check(v, "/usr/lib"), QValidator::Acceptable);
         QCOMPARE(check(v, "~"), QValidator::Acceptable);
@@ -156,7 +156,7 @@ private Q_SLOTS:
         QFile f(dir.filePath("file.txt"));
         QVERIFY(f.open(QIODevice::WriteOnly));
         f.close();
-        AtlasPathValidator v;
+        TelamonPathValidator v;
         v.setMustExist(true);
         QCOMPARE(check(v, dir.path()), QValidator::Acceptable);
         QCOMPARE(check(v, dir.filePath("file.txt")), QValidator::Acceptable);
@@ -172,7 +172,7 @@ private Q_SLOTS:
 
     void number()
     {
-        AtlasNumberValidator v;
+        TelamonNumberValidator v;
         QCOMPARE(check(v, ""), QValidator::Intermediate);
         QCOMPARE(check(v, "42"), QValidator::Acceptable);
         QCOMPARE(check(v, "-"), QValidator::Intermediate);
@@ -201,7 +201,7 @@ private Q_SLOTS:
     }
     void numberLocale()
     {
-        AtlasNumberValidator v;
+        TelamonNumberValidator v;
         v.setLocale(QLocale(QLocale::German, QLocale::Germany));
         v.setDecimals(2);
         QCOMPARE(check(v, "1,5"), QValidator::Acceptable);
@@ -211,7 +211,7 @@ private Q_SLOTS:
     }
     void numberFixup()
     {
-        AtlasNumberValidator v;
+        TelamonNumberValidator v;
         v.setLocale(QLocale(QLocale::English, QLocale::UnitedStates));
         v.setBottom(0);
         v.setTop(100);
@@ -229,7 +229,7 @@ private Q_SLOTS:
     }
     void numberSignals()
     {
-        AtlasNumberValidator v;
+        TelamonNumberValidator v;
         QSignalSpy changed(&v, &QValidator::changed);
         v.setLocaleName("de_DE");
         QCOMPARE(changed.size(), 1);

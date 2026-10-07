@@ -1,5 +1,5 @@
 #!/bin/bash
-# Measures the app template running on the built Atlas.Ui, headless, and
+# Measures the app template running on the built Telamon.Ui, headless, and
 # compares the numbers with perf/budget.json.
 #
 #   perf/measure.sh [framework-build-dir]     (default ./build; run in the dev container)
@@ -11,7 +11,7 @@
 #                     and a table updated once a second, as a monitor app would)
 #
 # Writes perf/out.json (or $PERF_OUT) and exits 1 when any figure is over budget.
-# Atlas.Ui has to be installed where Qt looks (the template's CMake reads it
+# Telamon.Ui has to be installed where Qt looks (the template's CMake reads it
 # from there); as root in a container the script always installs the build it
 # measures into /usr, so an older copy there is never measured by mistake.
 # Anywhere else the installed qmldir must be the build's own, or it exits 2.
@@ -124,29 +124,29 @@ for key in startup_ms rss_kb pss_kb idle_cpu_percent; do
         exit 2
     fi
 done
-work=$(mktemp -d "${TMPDIR:-/tmp}/atlas-perf.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/telamon-perf.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 
-# Atlas.Ui where the template's CMake looks for it: always the build being
+# Telamon.Ui where the template's CMake looks for it: always the build being
 # measured, never whatever copy was installed before.
 qml_dir=$(qmake6 -query QT_INSTALL_QML)
-if [ "$(id -u)" -eq 0 ] && { [ -e /run/.containerenv ] || [ -e /.dockerenv ] || [ "${ATLAS_PERF_INSTALL:-}" = 1 ]; }; then
+if [ "$(id -u)" -eq 0 ] && { [ -e /run/.containerenv ] || [ -e /.dockerenv ] || [ "${TELAMON_PERF_INSTALL:-}" = 1 ]; }; then
     # Only into a container's /usr, never over a host system's.
     cmake --install "$build" --prefix /usr >/dev/null
-elif [ ! -f "$qml_dir/Atlas/Ui/qmldir" ]; then
-    echo "measure: Atlas.Ui is not installed in $qml_dir; run as root in the dev container (or install it yourself)" >&2
+elif [ ! -f "$qml_dir/Telamon/Ui/qmldir" ]; then
+    echo "measure: Telamon.Ui is not installed in $qml_dir; run as root in the dev container (or install it yourself)" >&2
     exit 2
-elif ! cmp -s "$build/Atlas/Ui/qmldir" "$qml_dir/Atlas/Ui/qmldir" ||
-    ! cmp -s "$build/Atlas/Ui/libatlasui.so" "$qml_dir/Atlas/Ui/libatlasui.so"; then
-    echo "measure: the Atlas.Ui in $qml_dir is not the one built in $build; install the build, or run as root in the dev container" >&2
+elif ! cmp -s "$build/Telamon/Ui/qmldir" "$qml_dir/Telamon/Ui/qmldir" ||
+    ! cmp -s "$build/Telamon/Ui/libtelamonui.so" "$qml_dir/Telamon/Ui/libtelamonui.so"; then
+    echo "measure: the Telamon.Ui in $qml_dir is not the one built in $build; install the build, or run as root in the dev container" >&2
     exit 2
 fi
 
-# The template, in Release. ATLAS_PERF_TEMPLATE_BUILD fixes the CMake tree's
+# The template, in Release. TELAMON_PERF_TEMPLATE_BUILD fixes the CMake tree's
 # path (CI uses a fixed one, built fresh each run, with only its cargo/
 # subdirectory kept between runs: Corrosion builds the crate there, whatever
 # CARGO_TARGET_DIR says); by default the tree is temporary.
-tbuild=${ATLAS_PERF_TEMPLATE_BUILD:-$work/template}
+tbuild=${TELAMON_PERF_TEMPLATE_BUILD:-$work/template}
 export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$tbuild/target}
 cmake -S "$root/template" -B "$tbuild" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
 cmake --build "$tbuild" >"$work/build.log" 2>&1 || {
@@ -154,7 +154,7 @@ cmake --build "$tbuild" >"$work/build.log" 2>&1 || {
     echo "measure: the template did not build" >&2
     exit 1
 }
-bin=$tbuild/atlas-app-template
+bin=$tbuild/telamon-app-template
 [ -x "$bin" ] || {
     echo "measure: $bin was not built" >&2
     exit 1

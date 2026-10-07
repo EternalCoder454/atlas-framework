@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
 // The state contract (docs/DESIGN.md, "States"), checked on every
 // ui/gallery/demos/*Demo.qml found at run time. Per demo:
@@ -26,12 +26,12 @@ Rectangle {
     // when disabled, "c" no visible change on keyboard focus, "all" skip.
     readonly property var allowed: ({
             // The root is a window: Tab and `enabled` do not reach through it.
-            "AtlasWindow": {
+            "TelamonWindow": {
                 all: "window root"
             },
             // Its empty-model instance takes Tab focus but has no row to
             // draw the ring on ("No Results" looks the same either way).
-            "AtlasSearchResults": {
+            "TelamonSearchResults": {
                 c: "an empty list shows no focus"
             }
         })

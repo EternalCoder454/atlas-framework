@@ -1,8 +1,8 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasTimePicker: the arrow step apart from the minute grid, and a minimum.
+// TelamonTimePicker: the arrow step apart from the minute grid, and a minimum.
 TestCase {
     id: tc
     name: "TimeStep"
@@ -13,7 +13,7 @@ TestCase {
 
     Component {
         id: timeComp
-        AtlasTimePicker {
+        TelamonTimePicker {
             locale: Qt.locale("en_US")
             use24Hour: true
         }

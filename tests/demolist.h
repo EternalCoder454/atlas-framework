@@ -1,6 +1,6 @@
 // Finds the gallery demos (ui/gallery/demos/*Demo.qml) at run time, for the
 // Qt Quick tests that run over all of them (visual/, a11y/). Reads
-// ATLAS_DEMO_DIR (required) and ATLAS_DEMO_FILTER (regular expression on the
+// TELAMON_DEMO_DIR (required) and TELAMON_DEMO_FILTER (regular expression on the
 // demo name without "Demo").
 #pragma once
 
@@ -17,8 +17,8 @@ public:
     // The demo names, sorted, minus the "Demo" suffix.
     Q_INVOKABLE QStringList demos() const
     {
-        const QDir dir(qEnvironmentVariable("ATLAS_DEMO_DIR"));
-        const QString pattern = qEnvironmentVariable("ATLAS_DEMO_FILTER");
+        const QDir dir(qEnvironmentVariable("TELAMON_DEMO_DIR"));
+        const QString pattern = qEnvironmentVariable("TELAMON_DEMO_FILTER");
         const QRegularExpression filter(pattern.isEmpty() ? QStringLiteral(".*") : pattern);
         QStringList names;
         const QStringList files = dir.entryList({QStringLiteral("*Demo.qml")}, QDir::Files, QDir::Name);
@@ -33,13 +33,13 @@ public:
 
     Q_INVOKABLE QUrl demoUrl(const QString &name) const
     {
-        return QUrl::fromLocalFile(QDir(qEnvironmentVariable("ATLAS_DEMO_DIR")).filePath(name + QStringLiteral("Demo.qml")));
+        return QUrl::fromLocalFile(QDir(qEnvironmentVariable("TELAMON_DEMO_DIR")).filePath(name + QStringLiteral("Demo.qml")));
     }
 
-    // True when the demo's root element is a window (AtlasWindowDemo).
+    // True when the demo's root element is a window (TelamonWindowDemo).
     Q_INVOKABLE bool rootIsWindow(const QString &name) const
     {
-        QFile file(QDir(qEnvironmentVariable("ATLAS_DEMO_DIR")).filePath(name + QStringLiteral("Demo.qml")));
+        QFile file(QDir(qEnvironmentVariable("TELAMON_DEMO_DIR")).filePath(name + QStringLiteral("Demo.qml")));
         if (!file.open(QIODevice::ReadOnly)) {
             return false;
         }

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 // MenuButton: a second click on the button closes the menu it opened, and
 // Escape and a press elsewhere still close it. The menu's state is read from

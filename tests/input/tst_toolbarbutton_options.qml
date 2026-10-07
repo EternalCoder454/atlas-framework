@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 // ToolbarButton: round, tipSide, toolTipText, focusOnClick, and actions that
 // open a menu or a popover instead of triggering.
@@ -10,13 +10,13 @@ Item {
     width: 400
     height: 200
 
-    AtlasAction {
+    TelamonAction {
         id: plain
         text: "Bold"
         property int count: 0
         onTriggered: count++
     }
-    AtlasAction {
+    TelamonAction {
         id: withMenu
         text: "More"
         property int count: 0
@@ -27,12 +27,12 @@ Item {
             }
         }
     }
-    AtlasAction {
+    TelamonAction {
         id: withPopover
         text: "Info"
         property int count: 0
         onTriggered: count++
-        popover: AtlasPopover {
+        popover: TelamonPopover {
             QQC2.Label {
                 text: "Details"
             }

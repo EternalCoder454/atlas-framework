@@ -44,7 +44,7 @@ FocusScope {
     signal clicked
     signal switchToggled(bool checked)
 
-    readonly property bool atlasRow: true
+    readonly property bool telamonRow: true
     // The row itself has keyboard focus, not an item inside it (activeFocus is
     // also true while a trailing control has it).
     readonly property bool _ownFocus: Window.window !== null && Window.window.activeFocusItem === root
@@ -56,21 +56,21 @@ FocusScope {
     readonly property bool isFirst: {
         var v = root.parent ? root.parent.visibleChildren : [];
         for (var i = 0; i < v.length; ++i) {
-            if (v[i].atlasRow === true) {
+            if (v[i].telamonRow === true) {
                 return v[i] === root;
             }
         }
         return true;
     }
 
-    // AtlasStyle.Normal or AtlasStyle.Compact; Compact shrinks the height and
-    // the vertical padding to about 75%. Follows the app-wide AtlasStyle.density
+    // TelamonStyle.Normal or TelamonStyle.Compact; Compact shrinks the height and
+    // the vertical padding to about 75%. Follows the app-wide TelamonStyle.density
     // unless set here.
-    property int density: AtlasStyle.density
-    readonly property real _k: density === AtlasStyle.Compact ? 0.75 : 1
+    property int density: TelamonStyle.density
+    readonly property real _k: density === TelamonStyle.Compact ? 0.75 : 1
 
     Layout.fillWidth: true
-    implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 2.5 * _k), rowLayout.implicitHeight + Math.round(AtlasStyle.spacingLarge * 1.6 * _k))
+    implicitHeight: Math.max(Math.round(Kirigami.Units.gridUnit * 2.5 * _k), rowLayout.implicitHeight + Math.round(TelamonStyle.spacingLarge * 1.6 * _k))
     activeFocusOnTab: root.clickable
     opacity: !root.enabled || (!root.clickable && root.chevron) ? 0.5 : 1
 
@@ -138,7 +138,7 @@ FocusScope {
             return;
         }
         var p = root.mapToItem(f.contentItem, 0, 0);
-        var m = AtlasStyle.spacingSmall;
+        var m = TelamonStyle.spacingSmall;
         if (p.y < f.contentY) {
             f.contentY = Math.max(0, p.y - m);
         } else if (p.y + root.height > f.contentY + f.height) {
@@ -165,20 +165,20 @@ FocusScope {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: AtlasStyle.spacingLarge + (root._hasLeading ? leadingRow.width + AtlasStyle.spacingLarge : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + AtlasStyle.spacingLarge : 0))
+        anchors.leftMargin: TelamonStyle.spacingLarge + (root._hasLeading ? leadingRow.width + TelamonStyle.spacingLarge : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + TelamonStyle.spacingLarge : 0))
         height: 1
-        color: AtlasStyle.alpha(Kirigami.Theme.textColor, 0.1)
+        color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.1)
     }
 
     Rectangle {
         anchors.fill: parent
         anchors.margins: 3
         radius: 7
-        color: AtlasStyle.alpha(Kirigami.Theme.textColor, tap.pressed ? 0.1 : 0.05)
+        color: TelamonStyle.alpha(Kirigami.Theme.textColor, tap.pressed ? 0.1 : 0.05)
         opacity: root._canActivate && hover.hovered ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
-                duration: AtlasStyle.durationShort
+                duration: TelamonStyle.durationShort
             }
         }
     }
@@ -188,7 +188,7 @@ FocusScope {
         radius: 7
         color: "transparent"
         border.width: 2
-        border.color: AtlasStyle.alpha(AtlasStyle.focus, 0.85)
+        border.color: TelamonStyle.alpha(TelamonStyle.focus, 0.85)
         visible: root._ownFocus && root.clickable && !root.byMouse
     }
 
@@ -212,14 +212,14 @@ FocusScope {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: AtlasStyle.spacingLarge
-        anchors.rightMargin: AtlasStyle.spacingLarge
-        spacing: AtlasStyle.spacingLarge
+        anchors.leftMargin: TelamonStyle.spacingLarge
+        anchors.rightMargin: TelamonStyle.spacingLarge
+        spacing: TelamonStyle.spacingLarge
 
         Row {
             id: leadingRow
             visible: root._hasLeading
-            spacing: AtlasStyle.spacingSmall
+            spacing: TelamonStyle.spacingSmall
             Layout.alignment: Qt.AlignVCenter
         }
         Kirigami.Icon {
@@ -233,7 +233,7 @@ FocusScope {
             id: contentRow
             visible: root._hasContent
             Layout.fillWidth: true
-            spacing: AtlasStyle.spacingSmall
+            spacing: TelamonStyle.spacingSmall
         }
         ColumnLayout {
             visible: !root._hasContent
@@ -252,8 +252,8 @@ FocusScope {
                 visible: root.subtitle.length > 0
                 text: root.subtitle
                 wrapMode: Text.Wrap
-                font.family: AtlasStyle.fontFamily
-                font.pointSize: AtlasStyle.fontSizeCaption
+                font.family: TelamonStyle.fontFamily
+                font.pointSize: TelamonStyle.fontSizeCaption
                 opacity: 0.65
                 textFormat: Text.PlainText
                 Accessible.ignored: true
@@ -271,10 +271,10 @@ FocusScope {
         }
         Row {
             id: trailingRow
-            spacing: AtlasStyle.spacingSmall
+            spacing: TelamonStyle.spacingSmall
             Layout.alignment: Qt.AlignVCenter
         }
-        AtlasSpinner {
+        TelamonSpinner {
             visible: root.busy
             running: root.busy
             animated: root.animated
@@ -285,11 +285,11 @@ FocusScope {
             visible: root.checkmark
             source: "checkmark"
             isMask: true
-            color: AtlasStyle.accent
+            color: TelamonStyle.accent
             Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
             Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
         }
-        AtlasSwitch {
+        TelamonSwitch {
             visible: root.showSwitch
             checked: root.switchChecked
             Accessible.name: root.title
@@ -313,7 +313,7 @@ FocusScope {
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             Behavior on rotation {
                 NumberAnimation {
-                    duration: AtlasStyle.durationShort
+                    duration: TelamonStyle.durationShort
                 }
             }
         }

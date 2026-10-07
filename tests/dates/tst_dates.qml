@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 TestCase {
     name: "Dates"
@@ -14,21 +14,21 @@ TestCase {
 
     Component {
         id: calendarComp
-        AtlasCalendar {
+        TelamonCalendar {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
         }
     }
     Component {
         id: pickerComp
-        AtlasDatePicker {
+        TelamonDatePicker {
             locale: Qt.locale("en_US")
             today: new Date(2026, 2, 12)
         }
     }
     Component {
         id: timeComp
-        AtlasTimePicker {
+        TelamonTimePicker {
             locale: Qt.locale("en_US")
         }
     }

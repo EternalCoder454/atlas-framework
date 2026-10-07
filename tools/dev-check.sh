@@ -7,28 +7,28 @@
 # while the first holds the build directory.
 #
 #   tools/dev-check.sh                   everything
-#   tools/dev-check.sh AtlasFoo Bar      the visual, a11y and i18n tests only
+#   tools/dev-check.sh TelamonFoo Bar      the visual, a11y and i18n tests only
 #                                        for these demos (the rest still runs)
-#   tools/dev-check.sh --translations    first rewrite ui/translations/atlas-ui.ts
+#   tools/dev-check.sh --translations    first rewrite ui/translations/telamon-ui.ts
 #
-# ATLAS_DEV_BUILD_DIR is the build directory on the host, an absolute path (default: one per
-# checkout under ~/.cache/atlas-framework-dev, so worktrees don't share one).
-# ATLAS_DEV_JOBS caps the build and test jobs (default: every CPU), for several runs at once.
-# ATLAS_UPDATE_GOLDENS=1 rewrites the goldens that fail (look at each changed PNG before committing).
-# ATLAS_DEV_IMAGE is the container (default localhost/atlas-framework-dev:44,
+# TELAMON_DEV_BUILD_DIR is the build directory on the host, an absolute path (default: one per
+# checkout under ~/.cache/telamon-framework-dev, so worktrees don't share one).
+# TELAMON_DEV_JOBS caps the build and test jobs (default: every CPU), for several runs at once.
+# TELAMON_UPDATE_GOLDENS=1 rewrites the goldens that fail (look at each changed PNG before committing).
+# TELAMON_DEV_IMAGE is the container (default localhost/telamon-framework-dev:44,
 # built from packaging/Containerfile.dev).
 set -euo pipefail
 
-jobs=${ATLAS_DEV_JOBS:-}
+jobs=${TELAMON_DEV_JOBS:-}
 if [ -n "$jobs" ] && ! [[ $jobs =~ ^[1-9][0-9]*$ ]]; then
-    echo "dev-check: ATLAS_DEV_JOBS must be a positive number: $jobs" >&2
+    echo "dev-check: TELAMON_DEV_JOBS must be a positive number: $jobs" >&2
     exit 1
 fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 key=$(printf '%s' "$root" | cksum | cut -d' ' -f1)
-build=${ATLAS_DEV_BUILD_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/atlas-framework-dev/$(basename "$root" | tr -c 'A-Za-z0-9_.\n-' '_')-$key}
-image=${ATLAS_DEV_IMAGE:-localhost/atlas-framework-dev:44}
+build=${TELAMON_DEV_BUILD_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/telamon-framework-dev/$(basename "$root" | tr -c 'A-Za-z0-9_.\n-' '_')-$key}
+image=${TELAMON_DEV_IMAGE:-localhost/telamon-framework-dev:44}
 # podman reads "-v src:dst:opts" by splitting on ":" and ",": a path holding
 # either could add mount options.
 for p in "$root" "$build"; do
@@ -43,7 +43,7 @@ done
 case $build in
 /*) ;;
 *)
-    echo "dev-check: ATLAS_DEV_BUILD_DIR must be an absolute path: $build" >&2
+    echo "dev-check: TELAMON_DEV_BUILD_DIR must be an absolute path: $build" >&2
     exit 2
     ;;
 esac
@@ -84,7 +84,7 @@ mkdir -p "$build"
 # each other's build and test output. Held until this script exits.
 exec 9>"$build/.dev-check.lock"
 if ! flock -n 9; then
-    echo "dev-check: another dev-check is using $build; wait for it, or set ATLAS_DEV_BUILD_DIR for a separate build" >&2
+    echo "dev-check: another dev-check is using $build; wait for it, or set TELAMON_DEV_BUILD_DIR for a separate build" >&2
     exit 2
 fi
 # In a git worktree, .git is a file naming the main repository's git
@@ -99,20 +99,20 @@ fi
 # rewritten.
 mode=ro
 [ "$translations" = 1 ] && mode=rw
-[ -n "${ATLAS_UPDATE_GOLDENS:-}" ] && mode=rw
+[ -n "${TELAMON_UPDATE_GOLDENS:-}" ] && mode=rw
 # --init reaps ninja and ctest children and forwards Ctrl-C; --name makes a
-# stray container easy to find (podman ps --filter name=atlas-dev-check).
+# stray container easy to find (podman ps --filter name=telamon-dev-check).
 rc=0
-podman run --rm --init --name "atlas-dev-check-$key-$$" --security-opt label=disable \
+podman run --rm --init --name "telamon-dev-check-$key-$$" --security-opt label=disable \
     -v "$root:/src:$mode" -v "$build:/b" "${gitmount[@]}" -w /src \
-    -e PYTHONDONTWRITEBYTECODE=1 -e ATLAS_DEMO_FILTER="$filter" -e TRANSLATIONS="$translations" \
-    -e JOBS="$jobs" -e CMAKE_BUILD_PARALLEL_LEVEL="$jobs" -e ATLAS_UPDATE_GOLDENS="${ATLAS_UPDATE_GOLDENS:-}" \
+    -e PYTHONDONTWRITEBYTECODE=1 -e TELAMON_DEMO_FILTER="$filter" -e TRANSLATIONS="$translations" \
+    -e JOBS="$jobs" -e CMAKE_BUILD_PARALLEL_LEVEL="$jobs" -e TELAMON_UPDATE_GOLDENS="${TELAMON_UPDATE_GOLDENS:-}" \
     "$image" bash -euo pipefail -c '
 step() { printf "\n== %s\n" "$1"; }
-[ -f /b/build/build.ninja ] || cmake -S /src -B /b/build -G Ninja -DATLAS_UI_TESTS=ON >/dev/null
+[ -f /b/build/build.ninja ] || cmake -S /src -B /b/build -G Ninja -DTELAMON_UI_TESTS=ON >/dev/null
 if [ "$TRANSLATIONS" = 1 ]; then
     step translations
-    cmake --build /b/build --target atlas-ui_update_translations | { grep -E "Found|Updating" || true; }
+    cmake --build /b/build --target telamon-ui_update_translations | { grep -E "Found|Updating" || true; }
 fi
 step build
 cmake --build /b/build >/b/build.log 2>&1 || {
@@ -139,7 +139,7 @@ else
 fi
 step tests
 rm -rf /b/build/visual-out
-[ -z "$ATLAS_DEMO_FILTER" ] || echo "demos: $ATLAS_DEMO_FILTER"
+[ -z "$TELAMON_DEMO_FILTER" ] || echo "demos: $TELAMON_DEMO_FILTER"
 ctest --test-dir /b/build -j "${JOBS:-$(nproc)}" --output-on-failure >/b/ctest.log 2>&1 || { grep -E "FAIL!|Failed|tests passed" /b/ctest.log; exit 1; }
 grep "tests passed" /b/ctest.log
 step api

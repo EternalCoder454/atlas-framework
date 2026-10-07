@@ -1,6 +1,6 @@
 name: Dev container
 description: >
-  Builds packaging/Containerfile.dev as atlas-framework-dev:ci (layers cached in
+  Builds packaging/Containerfile.dev as telamon-framework-dev:ci (layers cached in
   the GitHub Actions cache), for the jobs that build and test in it.
 inputs:
   write-cache:
@@ -20,7 +20,7 @@ runs:
         context: packaging
         file: packaging/Containerfile.dev
         load: true
-        tags: atlas-framework-dev:ci
+        tags: telamon-framework-dev:ci
         cache-from: type=gha
         # ignore-error: a failed export (quota, an outage) must not fail the build.
         cache-to: ${{ inputs.write-cache == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && 'type=gha,mode=max,ignore-error=true' || '' }}

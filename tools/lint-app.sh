@@ -14,31 +14,31 @@
 #             DelayButton and Switch, and Kirigami.ActionToolBar. A bare
 #             `Button {` counts when the file imports QtQuick.Controls
 #             unqualified, unless the app has its own Button.qml beside it.
-#   warnings  default controls that Atlas.Ui now has an equivalent for:
+#   warnings  default controls that Telamon.Ui now has an equivalent for:
 #             TextField, TextArea, ComboBox, CheckBox, RadioButton, Slider,
 #             SpinBox, ToolTip, BusyIndicator; Kirigami.PasswordField and a
-#             TextField or AtlasTextField with a Password `echoMode`
-#             (AtlasPasswordField); an AtlasPasswordField that sets
+#             TextField or TelamonTextField with a Password `echoMode`
+#             (TelamonPasswordField); a TelamonPasswordField that sets
 #             `echoMode` or `inputMethodHints`; Kirigami.PlaceholderMessage
-#             (AtlasEmptyState); Kirigami.Heading (AtlasLabel with a
+#             (TelamonEmptyState); Kirigami.Heading (TelamonLabel with a
 #             textStyle); a ToolTip (`ToolTip {` or `ToolTip.text:`) from
-#             QtQuick.Controls (AtlasToolTip); a hand-made tinted banner, a
+#             QtQuick.Controls (TelamonToolTip); a hand-made tinted banner, a
 #             Rectangle whose colour is Qt.alpha or Qt.tint of a Kirigami
 #             negative, neutral or positive colour with a Label inside
 #             (InfoBanner); and every name in tools/deprecated.txt
-#             (`Name<TAB>since<TAB>replacement`; ATLAS_LINT_DEPRECATED names
+#             (`Name<TAB>since<TAB>replacement`; TELAMON_LINT_DEPRECATED names
 #             another list).
-#             AtlasPortal.notify(...) with `markup: true` whose body is not a
-#             literal and does not go through AtlasPortal.escape().
-#             Raw values where Atlas.Ui has a token: a colour string ("#rgb",
+#             TelamonPortal.notify(...) with `markup: true` whose body is not a
+#             literal and does not go through TelamonPortal.escape().
+#             Raw values where Telamon.Ui has a token: a colour string ("#rgb",
 #             "#rrggbb", "#aarrggbb", a named colour such as "red" in a
 #             `...color:` binding) or Qt.rgba/hsla/hsva with literal numbers
-#             (AtlasStyle.<colour>); a literal `duration:` in an animation
-#             (AtlasStyle.duration, durationShort, durationLong); a literal
-#             `radius:` other than 0 (AtlasStyle.radiusSmall, radius,
+#             (TelamonStyle.<colour>); a literal `duration:` in an animation
+#             (TelamonStyle.duration, durationShort, durationLong); a literal
+#             `radius:` other than 0 (TelamonStyle.radiusSmall, radius,
 #             radiusLarge, radiusPill). Warnings never change the exit code.
-# A finding is silenced by `// atlas-lint: allow <reason>` on its line or the
-# line before; `// atlas-lint: allow-raw` does the same for the raw-value rules.
+# A finding is silenced by `// telamon-lint: allow <reason>` on its line or the
+# line before; `// telamon-lint: allow-raw` does the same for the raw-value rules.
 set -uo pipefail
 
 allow_empty=0
@@ -53,8 +53,8 @@ if [ "$#" -eq 0 ]; then
 fi
 
 read -r -d '' program <<'AWK'
-# `atlas-lint: allow <reason>`; `allow-raw` is another marker, for the raw-value rules only.
-function plainAllow(s) { return match(s, /atlas-lint: allow/) > 0 && substr(s, RSTART + RLENGTH, 4) != "-raw" }
+# `telamon-lint: allow <reason>`; `allow-raw` is another marker, for the raw-value rules only.
+function plainAllow(s) { return match(s, /telamon-lint: allow/) > 0 && substr(s, RSTART + RLENGTH, 4) != "-raw" }
 function allowed(n) { return plainAllow(lines[n]) || (n > 1 && plainAllow(lines[n-1])) }
 function report(n, level, what, why) {
     if (allowed(n)) return
@@ -155,10 +155,10 @@ function ctxFor(n) {
     }
     return cbudget > 0 ? cst : "0"
 }
-# Raw colours, animation durations and corner radii that have a token in AtlasStyle.
+# Raw colours, animation durations and corner radii that have a token in TelamonStyle.
 function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
     if (incomment[n] || length(s) > 4000) return
-    if (index(lines[n], "atlas-lint: allow-raw") > 0 || (n > 1 && index(lines[n-1], "atlas-lint: allow-raw") > 0)) return
+    if (index(lines[n], "telamon-lint: allow-raw") > 0 || (n > 1 && index(lines[n-1], "telamon-lint: allow-raw") > 0)) return
     c = s
     sub(/[ \t]\/\/.*$/, "", c)
     # Colour strings: "#rgb", "#argb", "#rrggbb", "#aarrggbb". Not in text (qsTr, text:).
@@ -169,7 +169,7 @@ function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
             tok = substr(rest, RSTART, RLENGTH)
             rest = substr(rest, RSTART + RLENGTH)
             if (w == 3 || w == 4 || w == 6 || w == 8)
-                report(n, "warning", "raw colour " tok, ": use an AtlasStyle colour (AtlasStyle.accent, text, textMuted, surface, error, success, warning...); `// atlas-lint: allow-raw` if it must stay")
+                report(n, "warning", "raw colour " tok, ": use a TelamonStyle colour (TelamonStyle.accent, text, textMuted, surface, error, success, warning...); `// telamon-lint: allow-raw` if it must stay")
         }
     }
     # Named colours in a colour binding.
@@ -180,11 +180,11 @@ function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
             w = tolower(substr(rest, RSTART + 1, RLENGTH - 2))
             rest = substr(rest, RSTART + RLENGTH)
             if (!(w in NAMED)) continue
-            hint = "an AtlasStyle colour (AtlasStyle.text, textMuted, surface, accent...)"
-            if (w == "red") hint = "AtlasStyle.error"
-            else if (w == "green") hint = "AtlasStyle.success"
-            else if (w == "orange" || w == "yellow") hint = "AtlasStyle.warning"
-            report(n, "warning", "raw colour \"" w "\"", ": use " hint "; `// atlas-lint: allow-raw` if it must stay")
+            hint = "a TelamonStyle colour (TelamonStyle.text, textMuted, surface, accent...)"
+            if (w == "red") hint = "TelamonStyle.error"
+            else if (w == "green") hint = "TelamonStyle.success"
+            else if (w == "orange" || w == "yellow") hint = "TelamonStyle.warning"
+            report(n, "warning", "raw colour \"" w "\"", ": use " hint "; `// telamon-lint: allow-raw` if it must stay")
         }
     }
     # Qt.rgba, Qt.hsla, Qt.hsva with nothing but numbers.
@@ -193,7 +193,7 @@ function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
         tok = substr(rest, RSTART, RLENGTH)
         rest = substr(rest, RSTART + RLENGTH)
         sub(/[ \t]*\(.*$/, "", tok)
-        report(n, "warning", tok " with literal numbers", ": use an AtlasStyle colour, or Qt.alpha(AtlasStyle.<colour>, <alpha>) for a tint; `// atlas-lint: allow-raw` if it must stay")
+        report(n, "warning", tok " with literal numbers", ": use a TelamonStyle colour, or Qt.alpha(TelamonStyle.<colour>, <alpha>) for a tint; `// telamon-lint: allow-raw` if it must stay")
     }
     # Literal durations of animations: the item the line is in must be one.
     off = 0; rest = c
@@ -207,7 +207,7 @@ function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
         st = scanStack(ctxFor(n), pre)
         if (topOf(st) !~ /(Animation|Animator)$/) continue
         hint = (v + 0 <= 100) ? "durationShort (100 ms)" : ((v + 0 <= 150) ? "duration (150 ms)" : "durationLong (250 ms)")
-        report(n, "warning", "literal animation duration " v, ": use AtlasStyle." hint " (it is 0 when the user turned motion off); `// atlas-lint: allow-raw` if it must stay")
+        report(n, "warning", "literal animation duration " v, ": use TelamonStyle." hint " (it is 0 when the user turned motion off); `// telamon-lint: allow-raw` if it must stay")
     }
     # Literal radii other than 0.
     if (match(c, /(^|[^A-Za-z0-9_.])radius[ \t]*:[ \t]*[0-9.]+[ \t]*(;|\}|$)/)) {
@@ -215,7 +215,7 @@ function rawChecks(n, s,   c, rest, tok, w, v, hint, st, pre, off) {
         v = tok; sub(/^[^r]*radius[ \t]*:[ \t]*/, "", v); sub(/[^0-9.].*$/, "", v)
         if (v + 0 != 0) {
             hint = (v + 0 >= 100) ? "radiusPill" : ((v + 0 <= 4) ? "radiusSmall (4)" : ((v + 0 <= 6) ? "radius (6)" : "radiusLarge (8)"))
-            report(n, "warning", "literal radius " v, ": use AtlasStyle." hint "; `// atlas-lint: allow-raw` if it must stay")
+            report(n, "warning", "literal radius " v, ": use TelamonStyle." hint "; `// telamon-lint: allow-raw` if it must stay")
         }
     }
 }
@@ -287,19 +287,19 @@ END {
             hit = 0
             for (a in qq) if (uses(s, a, name)) hit = 1
             if (!hit && unq && !(name in isLocal) && uses(s, "", name)) hit = 1
-            if (hit) report(nr, "error", "default " name " (design rule 6)", ": use PrimaryButton, SecondaryButton, TextButton, ToolbarButton or AtlasSwitch from Atlas.Ui")
+            if (hit) report(nr, "error", "default " name " (design rule 6)", ": use PrimaryButton, SecondaryButton, TextButton, ToolbarButton or TelamonSwitch from Telamon.Ui")
         }
         hit = 0
         for (a in kq) if (uses(s, a, "ActionToolBar")) hit = 1
         if (!hit && kunq && !("ActionToolBar" in isLocal) && uses(s, "", "ActionToolBar")) hit = 1
-        if (hit) report(nr, "error", "Kirigami.ActionToolBar (design rule 6)", ": build the bar from Atlas.Ui buttons")
+        if (hit) report(nr, "error", "Kirigami.ActionToolBar (design rule 6)", ": build the bar from Telamon.Ui buttons")
         hit = 0
         for (a in kq) if (uses(s, a, "PasswordField")) hit = 1
         if (!hit && kunq && !("PasswordField" in isLocal) && uses(s, "", "PasswordField")) hit = 1
-        if (hit) report(nr, "warning", "default Kirigami.PasswordField", ": use AtlasPasswordField from Atlas.Ui")
+        if (hit) report(nr, "warning", "default Kirigami.PasswordField", ": use TelamonPasswordField from Telamon.Ui")
         split("PlaceholderMessage Heading", KN, " ")
-        KM["PlaceholderMessage"] = "use AtlasEmptyState from Atlas.Ui"
-        KM["Heading"] = "use AtlasLabel from Atlas.Ui with textStyle Title or Heading"
+        KM["PlaceholderMessage"] = "use TelamonEmptyState from Telamon.Ui"
+        KM["Heading"] = "use TelamonLabel from Telamon.Ui with textStyle Title or Heading"
         for (i in KN) {
             name = KN[i]
             hit = 0
@@ -307,13 +307,13 @@ END {
             if (!hit && kunq && !(name in isLocal) && uses(s, "", name)) hit = 1
             if (hit) report(nr, "warning", "Kirigami." name, ": " KM[name])
         }
-        if (s ~ /(^|[^A-Za-z0-9_.])Rectangle[ \t]*\{/ && setsOwn(nr, "(^|[^A-Za-z0-9_.])color[ \t]*:.*Qt\\.(alpha|tint).*Theme\\.(negative|neutral|positive)") && blockHas(nr, "(^|[ \t])([A-Za-z0-9_]+\\.)?(Atlas)?Label[ \t]*\\{"))
-            report(nr, "warning", "hand-made tinted banner", ": use InfoBanner from Atlas.Ui")
+        if (s ~ /(^|[^A-Za-z0-9_.])Rectangle[ \t]*\{/ && setsOwn(nr, "(^|[^A-Za-z0-9_.])color[ \t]*:.*Qt\\.(alpha|tint).*Theme\\.(negative|neutral|positive)") && blockHas(nr, "(^|[ \t])([A-Za-z0-9_]+\\.)?(Telamon)?Label[ \t]*\\{"))
+            report(nr, "warning", "hand-made tinted banner", ": use InfoBanner from Telamon.Ui")
         tt = 0
         for (a in qq) if (s ~ ("(^|[^A-Za-z0-9_.])" a "\\.ToolTip\\.(text|visible|delay|timeout)[ \t]*:")) tt = 1
         if (!tt && unq && !("ToolTip" in isLocal) && s ~ /(^|[^A-Za-z0-9_.])ToolTip\.(text|visible|delay|timeout)[ \t]*:/) tt = 1
         # One finding per tooltip: its text, visible and delay lines run together.
-        if (tt && lastTT != nr - 1) report(nr, "warning", "default ToolTip attached property", ": use AtlasToolTip from Atlas.Ui")
+        if (tt && lastTT != nr - 1) report(nr, "warning", "default ToolTip attached property", ": use TelamonToolTip from Telamon.Ui")
         if (tt) lastTT = nr
         for (i = 1; i <= dn; i++)
             if (s ~ ("(^|[^A-Za-z0-9_])" dre[i] "[ \t]*[{:]") || s ~ ("\\." dre[i] "([^A-Za-z0-9_]|$)"))
@@ -323,13 +323,13 @@ END {
             hit = 0
             for (a in qq) if (uses(s, a, name)) hit = 1
             if (!hit && unq && !(name in isLocal) && uses(s, "", name)) hit = 1
-            if (hit && name == "TextField" && setsOwn(nr, PASSWORD)) report(nr, "warning", "default TextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
-            else if (hit && name == "ToolTip") report(nr, "warning", "default ToolTip", ": use AtlasToolTip from Atlas.Ui")
-            else if (hit) report(nr, "warning", "default " name, ": check whether Atlas.Ui has an equivalent")
+            if (hit && name == "TextField" && setsOwn(nr, PASSWORD)) report(nr, "warning", "default TextField with echoMode Password", ": use TelamonPasswordField from Telamon.Ui")
+            else if (hit && name == "ToolTip") report(nr, "warning", "default ToolTip", ": use TelamonToolTip from Telamon.Ui")
+            else if (hit) report(nr, "warning", "default " name, ": check whether Telamon.Ui has an equivalent")
         }
-        if (s ~ /(^|[^A-Za-z0-9_])AtlasTextField[ \t]*\{/ && setsOwn(nr, PASSWORD)) report(nr, "warning", "AtlasTextField with echoMode Password", ": use AtlasPasswordField from Atlas.Ui")
-        if (s ~ /(^|[^A-Za-z0-9_])AtlasPasswordField[ \t]*\{/ && setsOwn(nr, MASKING)) report(nr, "warning", "AtlasPasswordField sets echoMode or inputMethodHints", ": it sets both itself; yours can show the password or let the keyboard remember it")
-        if (s ~ /(^|[^A-Za-z0-9_])AtlasPortal\.notify[ \t]*\(/) {
+        if (s ~ /(^|[^A-Za-z0-9_])TelamonTextField[ \t]*\{/ && setsOwn(nr, PASSWORD)) report(nr, "warning", "TelamonTextField with echoMode Password", ": use TelamonPasswordField from Telamon.Ui")
+        if (s ~ /(^|[^A-Za-z0-9_])TelamonPasswordField[ \t]*\{/ && setsOwn(nr, MASKING)) report(nr, "warning", "TelamonPasswordField sets echoMode or inputMethodHints", ": it sets both itself; yours can show the password or let the keyboard remember it")
+        if (s ~ /(^|[^A-Za-z0-9_])TelamonPortal\.notify[ \t]*\(/) {
             # The whole call (up to 12 lines, until its parentheses close).
             call = ""; depth = 0
             for (i = nr; i <= NR && i < nr + 12; i++) {
@@ -338,12 +338,12 @@ END {
                 depth += gsub(/\(/, "(", l) - gsub(/\)/, ")", l)
                 if (depth <= 0) break
             }
-            if (call ~ /markup[ \t]*:[ \t]*true/ && call !~ /AtlasPortal\.escape[ \t]*\(/) {
+            if (call ~ /markup[ \t]*:[ \t]*true/ && call !~ /TelamonPortal\.escape[ \t]*\(/) {
                 t = call
-                sub(/^.*AtlasPortal\.notify[ \t]*\(/, "", t)
+                sub(/^.*TelamonPortal\.notify[ \t]*\(/, "", t)
                 gsub(/"[^"]*"/, "S", t); gsub(/qsTr[ \t]*\([ \t]*S[ \t]*\)/, "S", t)
                 if (t !~ /^[ \t]*S[ \t]*,[ \t]*S[ \t]*[,)]/)
-                    report(nr, "warning", "AtlasPortal.notify with markup: true and a body that is not escaped", ": pass the body through AtlasPortal.escape(), or drop markup (the body is plain text by default)")
+                    report(nr, "warning", "TelamonPortal.notify with markup: true and a body that is not escaped", ": pass the body through TelamonPortal.escape(), or drop markup (the body is plain text by default)")
             }
         }
     }
@@ -351,7 +351,7 @@ END {
 }
 AWK
 
-deprecated_file=${ATLAS_LINT_DEPRECATED:-$(dirname "$0")/deprecated.txt}
+deprecated_file=${TELAMON_LINT_DEPRECATED:-$(dirname "$0")/deprecated.txt}
 deprecated=""
 [ -r "$deprecated_file" ] && deprecated=$(cat "$deprecated_file")
 status=0
@@ -368,7 +368,12 @@ for app in "$@"; do
         dir=$(dirname "$file")
         locals=$(find "$dir" -maxdepth 1 -name '*.qml' -printf '%f\n' | sed 's/\.qml$//')
         # Control characters in a name could forge CI log commands (::error::).
-        out=$(LINT_FILE=${file//[[:cntrl:]]/?} LINT_LOCALS=$locals LINT_DEPRECATED=$deprecated awk "$program" "$file")
+        # An app that has not moved to Telamon.Ui yet still says AtlasButton and
+        # `// atlas-lint:`: read those as the names they became in 2.0.0, so the
+        # rules (and the apps job in CI, and the app-checks.yml an app calls
+        # at @main) keep checking it. Line numbers do not change.
+        out=$(LINT_FILE=${file//[[:cntrl:]]/?} LINT_LOCALS=$locals LINT_DEPRECATED=$deprecated awk "$program" \
+            <(sed -E 's/(^|[^A-Za-z0-9_])Atlas([A-Z])/\1Telamon\2/g; s/atlas-lint:/telamon-lint:/g' "$file"))
         rc=$?
         if [ -n "$out" ]; then
             echo "$out"

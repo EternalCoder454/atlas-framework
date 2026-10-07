@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 Item {
     id: root
@@ -10,15 +10,15 @@ Item {
 
     Component {
         id: listComp
-        AtlasListView {
+        TelamonListView {
             anchors.fill: parent
-            selectionMode: AtlasListView.MultiSelection
+            selectionMode: TelamonListView.MultiSelection
             model: ["Apple", "Banana", "Berry", "Cherry", "Date", "Elder", "Fig"]
         }
     }
     Component {
         id: bigComp
-        AtlasListView {
+        TelamonListView {
             anchors.fill: parent
             model: 10000
         }
@@ -29,7 +29,7 @@ Item {
     SignalSpy { id: moveSpy; signalName: "moveRequested" }
 
     TestCase {
-        name: "AtlasListView"
+        name: "TelamonListView"
         when: windowShown
 
         function make(props) {
@@ -67,12 +67,12 @@ Item {
             verify(!l.isSelected(0));
         }
         function test_ctrl_a_single_selects_nothing_more() {
-            const l = make({selectionMode: AtlasListView.SingleSelection});
+            const l = make({selectionMode: TelamonListView.SingleSelection});
             keyClick(Qt.Key_A, Qt.ControlModifier);
             compare(l.selectedIndexes.length, 0);
         }
         function test_no_selection() {
-            const l = make({selectionMode: AtlasListView.NoSelection});
+            const l = make({selectionMode: TelamonListView.NoSelection});
             keyClick(Qt.Key_Down);
             compare(l.currentIndex, 1);
             compare(l.selectedIndexes.length, 0);
@@ -150,7 +150,7 @@ Item {
             compare(l.selectedIndexes, []);
         }
         function test_big_list_select_all() {
-            const l = createTemporaryObject(bigComp, root, {selectionMode: AtlasListView.MultiSelection});
+            const l = createTemporaryObject(bigComp, root, {selectionMode: TelamonListView.MultiSelection});
             l.forceActiveFocus();
             const t0 = Date.now();
             keyClick(Qt.Key_A, Qt.ControlModifier);
@@ -161,9 +161,9 @@ Item {
         }
 
         function test_enum_values() {
-            compare(AtlasListView.SingleSelection, 0);
-            compare(AtlasListView.MultiSelection, 1);
-            compare(AtlasListView.NoSelection, 2);
+            compare(TelamonListView.SingleSelection, 0);
+            compare(TelamonListView.MultiSelection, 1);
+            compare(TelamonListView.NoSelection, 2);
         }
         function test_select_api() {
             const l = make();
@@ -174,12 +174,12 @@ Item {
             compare(l.selectedRows.length, 7);
             l.clearSelection();
             compare(l.selectedRows, []);
-            const s = make({selectionMode: AtlasListView.SingleSelection});
+            const s = make({selectionMode: TelamonListView.SingleSelection});
             s.selectRows([99, 4, 2]);
             compare(s.selectedRows, [4]);
             s.selectAll();
             compare(s.selectedRows, [4]);
-            const n = make({selectionMode: AtlasListView.NoSelection});
+            const n = make({selectionMode: TelamonListView.NoSelection});
             n.selectRows([1]);
             compare(n.selectedRows, []);
         }
@@ -226,7 +226,7 @@ Item {
 
     Component {
         id: sidebarComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 300
             SidebarItem { Layout.fillWidth: true; text: "One"; selected: true }
@@ -236,7 +236,7 @@ Item {
     }
     Component {
         id: groupSidebarComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 300
             property alias one: itemOne
@@ -253,7 +253,7 @@ Item {
     }
     Component {
         id: tallSidebarComp
-        AtlasSidebar {
+        TelamonSidebar {
             width: 240
             height: 120
             property bool rtl: false
@@ -271,7 +271,7 @@ Item {
             width: 100
             height: 40
             property alias ring: focusRing
-            AtlasFocusRing { id: focusRing }
+            TelamonFocusRing { id: focusRing }
         }
     }
 
@@ -281,7 +281,7 @@ Item {
 
         function findHighlight(item) {
             for (const c of item.children) {
-                if (c instanceof Rectangle && c.z === -1 && Qt.colorEqual(c.color, AtlasStyle.selection)) {
+                if (c instanceof Rectangle && c.z === -1 && Qt.colorEqual(c.color, TelamonStyle.selection)) {
                     return c;
                 }
                 const f = findHighlight(c);
@@ -292,7 +292,7 @@ Item {
             return null;
         }
         function test_sidebar_selection_slides() {
-            if (AtlasStyle.reducedMotion) {
+            if (TelamonStyle.reducedMotion) {
                 skip("reduced motion");
             }
             const sb = createTemporaryObject(sidebarComp, root);
@@ -316,7 +316,7 @@ Item {
             tryVerify(() => Math.abs(hl.y - leaves[2].mapToItem(hl.parent, 0, 0).y) < 1, 3000);
         }
         function test_focus_ring_scale_animates() {
-            if (AtlasStyle.reducedMotion) {
+            if (TelamonStyle.reducedMotion) {
                 skip("reduced motion");
             }
             const r = createTemporaryObject(ringComp, root);
@@ -335,7 +335,7 @@ Item {
 
         function findHighlight(item) {
             for (const c of item.children) {
-                if (c instanceof Rectangle && c.z === -1 && Qt.colorEqual(c.color, AtlasStyle.selection)) {
+                if (c instanceof Rectangle && c.z === -1 && Qt.colorEqual(c.color, TelamonStyle.selection)) {
                     return c;
                 }
                 const f = findHighlight(c);

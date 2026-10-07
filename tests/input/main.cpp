@@ -1,4 +1,4 @@
-// Behaviour tests for input handling: ToolbarButton's keys, AtlasProgressBar's
+// Behaviour tests for input handling: ToolbarButton's keys, TelamonProgressBar's
 // layout and the accessibility press action. See tests/README.md.
 #include <QAccessible>
 #include <QAccessibleActionInterface>
@@ -36,6 +36,6 @@ public Q_SLOTS:
     }
 };
 
-QUICK_TEST_MAIN_WITH_SETUP(atlas_input, Setup)
+QUICK_TEST_MAIN_WITH_SETUP(telamon_input, Setup)
 
 #include "main.moc"

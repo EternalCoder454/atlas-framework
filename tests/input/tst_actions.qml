@@ -1,8 +1,8 @@
 import QtQuick
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
-// AtlasActionCollection: lookup, user shortcuts (kept in AtlasSettings,
+// TelamonActionCollection: lookup, user shortcuts (kept in TelamonSettings,
 // validated), the command palette, the shortcuts dialog and the app menu
 // reading it. Settings go to the private XDG_CONFIG_HOME of the test run.
 Item {
@@ -12,54 +12,54 @@ Item {
 
     Component {
         id: plainComp
-        AtlasActionCollection {
-            AtlasAction { objectName: "save"; text: "&Save"; shortcut: "Ctrl+S"; section: "File" }
-            AtlasAction { objectName: "open"; text: "Open"; shortcut: "Ctrl+O"; section: "File"; category: "Documents" }
-            AtlasAction { objectName: "copy"; text: "Copy"; shortcut: "Ctrl+C"; section: "Edit" }
+        TelamonActionCollection {
+            TelamonAction { objectName: "save"; text: "&Save"; shortcut: "Ctrl+S"; section: "File" }
+            TelamonAction { objectName: "open"; text: "Open"; shortcut: "Ctrl+O"; section: "File"; category: "Documents" }
+            TelamonAction { objectName: "copy"; text: "Copy"; shortcut: "Ctrl+C"; section: "Edit" }
         }
     }
     Component {
         id: storedComp
-        AtlasActionCollection {
+        TelamonActionCollection {
             property alias store: store
-            settings: AtlasSettings {
+            settings: TelamonSettings {
                 id: store
                 group: "ActionsTest"
-                fileName: "atlas-actions-testrc"
+                fileName: "telamon-actions-testrc"
             }
-            AtlasAction { objectName: "save"; text: "Save"; shortcut: "Ctrl+S" }
-            AtlasAction { objectName: "open"; text: "Open"; shortcut: "Ctrl+O" }
-            AtlasAction { text: "Nameless"; shortcut: "Ctrl+N" }
+            TelamonAction { objectName: "save"; text: "Save"; shortcut: "Ctrl+S" }
+            TelamonAction { objectName: "open"; text: "Open"; shortcut: "Ctrl+O" }
+            TelamonAction { text: "Nameless"; shortcut: "Ctrl+N" }
         }
     }
     Component {
         id: delComp
-        AtlasActionCollection {
-            AtlasAction { objectName: "del"; text: "Delete"; shortcut: "Delete" }
+        TelamonActionCollection {
+            TelamonAction { objectName: "del"; text: "Delete"; shortcut: "Delete" }
         }
     }
     Component {
         id: sharedComp
-        AtlasActionCollection {
-            AtlasAction { objectName: "one"; text: "One"; shortcut: "Ctrl+Alt+K" }
-            AtlasAction { objectName: "two"; text: "Two"; shortcut: "Ctrl+Alt+K" }
+        TelamonActionCollection {
+            TelamonAction { objectName: "one"; text: "One"; shortcut: "Ctrl+Alt+K" }
+            TelamonAction { objectName: "two"; text: "Two"; shortcut: "Ctrl+Alt+K" }
         }
     }
     property string declaredKey: "Ctrl+Alt+Y"
     Component {
         id: boundComp
-        AtlasActionCollection {
-            AtlasAction { objectName: "bound"; text: "Bound"; shortcut: root.declaredKey }
-            AtlasAction { objectName: "std"; text: "Standard"; shortcut: StandardKey.Save }
+        TelamonActionCollection {
+            TelamonAction { objectName: "bound"; text: "Bound"; shortcut: root.declaredKey }
+            TelamonAction { objectName: "std"; text: "Standard"; shortcut: StandardKey.Save }
         }
     }
     Component {
         id: editComp
-        AtlasActionCollection {
+        TelamonActionCollection {
             shortcutsEditable: true
-            AtlasAction { objectName: "save"; text: "Save"; shortcut: "Ctrl+S"; section: "File" }
-            AtlasAction { objectName: "open"; text: "Open"; shortcut: "Ctrl+O"; section: "File" }
-            AtlasAction { objectName: "copy"; text: "Copy"; shortcut: "Ctrl+C"; section: "Edit" }
+            TelamonAction { objectName: "save"; text: "Save"; shortcut: "Ctrl+S"; section: "File" }
+            TelamonAction { objectName: "open"; text: "Open"; shortcut: "Ctrl+O"; section: "File" }
+            TelamonAction { objectName: "copy"; text: "Copy"; shortcut: "Ctrl+C"; section: "Edit" }
         }
     }
     Component {
@@ -70,28 +70,28 @@ Item {
     }
     Component {
         id: otherComp
-        AtlasSettings {
+        TelamonSettings {
             group: "ActionsTest"
-            fileName: "atlas-actions-testrc"
+            fileName: "telamon-actions-testrc"
         }
     }
     Component {
         id: paletteComp
-        AtlasCommandPalette {}
+        TelamonCommandPalette {}
     }
     Component {
         id: dialogComp
-        AtlasShortcutsDialog {}
+        TelamonShortcutsDialog {}
     }
     Component {
         id: menuComp
-        AtlasAppMenu {
+        TelamonAppMenu {
             _forceButton: true
         }
     }
 
     TestCase {
-        name: "AtlasActionCollection"
+        name: "TelamonActionCollection"
         when: windowShown
 
         function test_category_defaults_to_section() {
@@ -108,20 +108,20 @@ Item {
         }
 
         function test_registered_once() {
-            const before = AtlasShortcuts.actions.length;
+            const before = TelamonShortcuts.actions.length;
             const c = createTemporaryObject(plainComp, root);
-            compare(AtlasShortcuts.actions.length, before + 3);
-            compare(AtlasShortcuts.actions.indexOf(c.action("save")) >= 0, true);
+            compare(TelamonShortcuts.actions.length, before + 3);
+            compare(TelamonShortcuts.actions.indexOf(c.action("save")) >= 0, true);
         }
 
         function test_set_shortcut_replaces_and_resets() {
             const c = createTemporaryObject(plainComp, root);
             const save = c.action("save");
             verify(c.setShortcut("save", "Ctrl+Shift+S"));
-            compare(AtlasShortcuts.portable(save.shortcut), "Ctrl+Shift+S");
+            compare(TelamonShortcuts.portable(save.shortcut), "Ctrl+Shift+S");
             compare(c.hasCustomShortcut("save"), true);
             c.resetShortcuts();
-            compare(AtlasShortcuts.portable(save.shortcut), "Ctrl+S");
+            compare(TelamonShortcuts.portable(save.shortcut), "Ctrl+S");
             compare(c.hasCustomShortcut("save"), false);
         }
 
@@ -131,7 +131,7 @@ Item {
             compare(c.setShortcut("save", "x".repeat(500)), false);
             compare(c.setShortcut("save", "Ctrl+A, Ctrl+B, Ctrl+C, Ctrl+D, Ctrl+E"), false);
             compare(c.setShortcut("nothing", "Ctrl+Y"), false);
-            compare(AtlasShortcuts.portable(c.action("save").shortcut), "Ctrl+S");
+            compare(TelamonShortcuts.portable(c.action("save").shortcut), "Ctrl+S");
         }
 
         function test_keeps_and_reads_settings() {
@@ -142,7 +142,7 @@ Item {
             compare(c.store.value("shortcuts/open", ""), "Ctrl+Alt+O");
             ignoreWarning(/has no objectName/);
             const again = createTemporaryObject(storedComp, root);
-            compare(AtlasShortcuts.portable(again.action("open").shortcut), "Ctrl+Alt+O");
+            compare(TelamonShortcuts.portable(again.action("open").shortcut), "Ctrl+Alt+O");
             again.resetShortcuts();
             compare(again.store.contains("shortcuts/open"), false);
             c.resetShortcuts();
@@ -156,8 +156,8 @@ Item {
             c.store.flush();
             ignoreWarning(/has no objectName/);
             const again = createTemporaryObject(storedComp, root);
-            compare(AtlasShortcuts.portable(again.action("save").shortcut), "Ctrl+S");
-            compare(AtlasShortcuts.portable(again.action("open").shortcut), "Ctrl+O");
+            compare(TelamonShortcuts.portable(again.action("save").shortcut), "Ctrl+S");
+            compare(TelamonShortcuts.portable(again.action("open").shortcut), "Ctrl+O");
             compare(again.hasCustomShortcut("save"), false);
             compare(again.hasCustomShortcut("open"), false);
             c.store.remove("shortcuts/save");
@@ -172,7 +172,7 @@ Item {
             compare(p._rows[0].subtitle.length > 0, true);
             verify(c.setShortcut("copy", "Ctrl+Shift+C"));
             const copy = p._rows.filter(r => r.title === "Copy")[0];
-            compare(copy.shortcut, AtlasShortcuts.readable("Ctrl+Shift+C"));
+            compare(copy.shortcut, TelamonShortcuts.readable("Ctrl+Shift+C"));
         }
 
         function test_palette_own_list_wins() {
@@ -222,26 +222,26 @@ Item {
             const m = createTemporaryObject(menuComp, root, { collection: c });
             verify(c.setShortcut("save", "Ctrl+Alt+S"));
             const save = c.action("save");
-            compare(AtlasShortcuts.portable(save.shortcut), "Ctrl+Alt+S");
+            compare(TelamonShortcuts.portable(save.shortcut), "Ctrl+Alt+S");
             // The menu item runs the same action, so it reads the new shortcut.
             const file = m._menu.menuAt(0);
             compare(file.title, "File");
-            compare(AtlasShortcuts.portable(file.itemAt(0).action.shortcut), "Ctrl+Alt+S");
+            compare(TelamonShortcuts.portable(file.itemAt(0).action.shortcut), "Ctrl+Alt+S");
         }
 
         function test_reset_restores_declared_binding() {
             const c = createTemporaryObject(boundComp, root);
             const bound = c.action("bound");
             verify(c.setShortcut("bound", "Ctrl+Alt+B"));
-            compare(AtlasShortcuts.portable(bound.shortcut), "Ctrl+Alt+B");
+            compare(TelamonShortcuts.portable(bound.shortcut), "Ctrl+Alt+B");
             verify(c.resetShortcut("bound"));
             root.declaredKey = "Ctrl+Alt+Z";
-            compare(AtlasShortcuts.portable(bound.shortcut), "Ctrl+Alt+Z");
+            compare(TelamonShortcuts.portable(bound.shortcut), "Ctrl+Alt+Z");
             root.declaredKey = "Ctrl+Alt+Y";
             const std = c.action("std");
             verify(c.setShortcut("std", "Ctrl+Alt+W"));
             verify(c.resetShortcuts());
-            compare(AtlasShortcuts.portable(std.shortcut), AtlasShortcuts.portable(StandardKey.Save));
+            compare(TelamonShortcuts.portable(std.shortcut), TelamonShortcuts.portable(StandardKey.Save));
         }
 
         function test_set_shortcut_to_declared_removes_override() {
@@ -286,7 +286,7 @@ Item {
             ignoreWarning(/is used by/);
             const again = createTemporaryObject(storedComp, root);
             compare(again.hasCustomShortcut("save"), false);
-            compare(AtlasShortcuts.portable(again.action("save").shortcut), "Ctrl+S");
+            compare(TelamonShortcuts.portable(again.action("save").shortcut), "Ctrl+S");
             c.store.remove("shortcuts/save");
             c.store.flush();
         }
@@ -309,7 +309,7 @@ Item {
             other.flush();
             tryVerify(() => spy.count > 0);
             tryVerify(() => c.hasCustomShortcut("open"));
-            compare(AtlasShortcuts.portable(c.action("open").shortcut), "Ctrl+Alt+P");
+            compare(TelamonShortcuts.portable(c.action("open").shortcut), "Ctrl+Alt+P");
             other.remove("shortcuts/open");
             other.flush();
         }
@@ -365,12 +365,12 @@ Item {
             // Accept a new shortcut.
             record(d, "Save", Qt.Key_P, Qt.ControlModifier | Qt.AltModifier);
             tryCompare(c, "_overrides", { "save": "Ctrl+Alt+P" });
-            compare(AtlasShortcuts.portable(c.action("save").shortcut), "Ctrl+Alt+P");
+            compare(TelamonShortcuts.portable(c.action("save").shortcut), "Ctrl+Alt+P");
             // Refuse one another action has, in words.
             record(d, "Copy", Qt.Key_O, Qt.ControlModifier);
             tryVerify(() => shown(d, "Already used by"));
             compare(c.hasCustomShortcut("copy"), false);
-            compare(AtlasShortcuts.portable(c.action("copy").shortcut), "Ctrl+C");
+            compare(TelamonShortcuts.portable(c.action("copy").shortcut), "Ctrl+C");
             const copyField = inRow(rowFor(d, "Copy"), it => it.recording !== undefined && it.conflictText !== undefined);
             tryCompare(copyField, "recording", true);
             keyClick(Qt.Key_Q, Qt.ControlModifier | Qt.AltModifier);
@@ -381,7 +381,7 @@ Item {
             // Reset all.
             mouseClick(inRow(d.contentItem, it => it.text === "Reset all" && it.clicked !== undefined));
             tryCompare(c, "_overrides", {});
-            compare(AtlasShortcuts.portable(c.action("copy").shortcut), "Ctrl+C");
+            compare(TelamonShortcuts.portable(c.action("copy").shortcut), "Ctrl+C");
         }
 
         function test_dialog_held_escape_does_not_close() {
@@ -423,10 +423,10 @@ Item {
         }
 
         function test_dialog_list_keeps_scroll_position() {
-            let src = "import QtQuick\nimport Atlas.Ui\nAtlasActionCollection {\n shortcutsEditable: true\n";
+            let src = "import QtQuick\nimport Telamon.Ui\nTelamonActionCollection {\n shortcutsEditable: true\n";
             const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             for (let i = 0; i < 26; ++i) {
-                src += ` AtlasAction { objectName: "a${i}"; text: "Act ${letters[i]}"; shortcut: "Ctrl+Alt+${letters[i]}" }\n`;
+                src += ` TelamonAction { objectName: "a${i}"; text: "Act ${letters[i]}"; shortcut: "Ctrl+Alt+${letters[i]}" }\n`;
             }
             src += "}";
             const c = Qt.createQmlObject(src, root);
@@ -459,9 +459,9 @@ Item {
         }
 
         function test_dialog_scrolls_a_focused_row_into_view() {
-            let src = "import QtQuick\nimport Atlas.Ui\nAtlasActionCollection {\n shortcutsEditable: true\n";
+            let src = "import QtQuick\nimport Telamon.Ui\nTelamonActionCollection {\n shortcutsEditable: true\n";
             for (let i = 0; i < 26; ++i) {
-                src += ` AtlasAction { objectName: "f${i}"; text: "Row ${i}"; shortcut: "Ctrl+Shift+Alt+${"ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i]}" }\n`;
+                src += ` TelamonAction { objectName: "f${i}"; text: "Row ${i}"; shortcut: "Ctrl+Shift+Alt+${"ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i]}" }\n`;
             }
             src += "}";
             const c = Qt.createQmlObject(src, root);
@@ -499,7 +499,7 @@ Item {
             verify(c.setShortcut("del", "Ctrl+Alt+D"));
             verify(c.setShortcut("del", "Delete"));
             compare(c.hasCustomShortcut("del"), false);
-            compare(AtlasShortcuts.portable(c.action("del").shortcut), AtlasShortcuts.portable("Delete"));
+            compare(TelamonShortcuts.portable(c.action("del").shortcut), TelamonShortcuts.portable("Delete"));
         }
 
         function test_swapped_stored_shortcuts_both_load() {
@@ -511,8 +511,8 @@ Item {
             c.store.flush();
             ignoreWarning(/has no objectName/);
             const again = createTemporaryObject(storedComp, root);
-            compare(AtlasShortcuts.portable(again.action("save").shortcut), "Ctrl+O");
-            compare(AtlasShortcuts.portable(again.action("open").shortcut), "Ctrl+S");
+            compare(TelamonShortcuts.portable(again.action("save").shortcut), "Ctrl+O");
+            compare(TelamonShortcuts.portable(again.action("open").shortcut), "Ctrl+S");
             c.store.remove("shortcuts/save");
             c.store.remove("shortcuts/open");
             c.store.flush();

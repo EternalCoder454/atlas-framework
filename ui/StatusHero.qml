@@ -16,7 +16,7 @@ ColumnLayout {
     property bool busy: false
     // 0..1 draws a progress ring; negative means none.
     property real progress: -1
-    property color tint: AtlasStyle.accent
+    property color tint: TelamonStyle.accent
     // The badge's diameter in grid units, and its ring's stroke width.
     property real badgeUnits: 5
     property real ringWidth: 4
@@ -36,7 +36,7 @@ ColumnLayout {
     default property alias actions: actionRow.data
 
     Layout.fillWidth: true
-    spacing: AtlasStyle.spacingLarge
+    spacing: TelamonStyle.spacingLarge
 
     // The headline is the page's state. Say it when it changes, so a screen
     // reader hears the new state without a banner repeating it.
@@ -57,7 +57,7 @@ ColumnLayout {
             anchors.fill: parent
             visible: root.showTintCircle
             radius: width / 2
-            color: AtlasStyle.alpha(root.tint, 0.14)
+            color: TelamonStyle.alpha(root.tint, 0.14)
         }
         Kirigami.Icon {
             anchors.centerIn: parent
@@ -80,7 +80,7 @@ ColumnLayout {
             anchors.bottom: parent.bottom
             anchors.rightMargin: Math.round(badge.size * 0.04)
             anchors.bottomMargin: Math.round(badge.size * 0.04)
-            color: AtlasStyle.accent
+            color: TelamonStyle.accent
             border.width: ringWidth
             border.color: Kirigami.Theme.backgroundColor
             Kirigami.Icon {
@@ -113,17 +113,17 @@ ColumnLayout {
                 }
             }
             RotationAnimator on rotation {
-                running: root.visible && root.busy && root.progress < 0 && AtlasStyle.duration > 0 && !AtlasStyle.softwareRendering
+                running: root.visible && root.busy && root.progress < 0 && TelamonStyle.duration > 0 && !TelamonStyle.softwareRendering
                 from: 0
                 to: 360
                 loops: Animation.Infinite
-                duration: AtlasStyle.durationLong * 3
+                duration: TelamonStyle.durationLong * 3
             }
             // Software rendering: 30 degree steps at about 12 frames a second.
             Timer {
                 interval: 80
                 repeat: true
-                running: root.visible && root.busy && root.progress < 0 && AtlasStyle.duration > 0 && AtlasStyle.softwareRendering
+                running: root.visible && root.busy && root.progress < 0 && TelamonStyle.duration > 0 && TelamonStyle.softwareRendering
                 onTriggered: ring.rotation = (ring.rotation + 30) % 360
             }
         }
@@ -151,7 +151,7 @@ ColumnLayout {
         id: bar
         visible: root.showBar
         Layout.alignment: Qt.AlignHCenter
-        Layout.topMargin: AtlasStyle.spacingSmall
+        Layout.topMargin: TelamonStyle.spacingSmall
         Layout.preferredWidth: Math.min(root.width, Kirigami.Units.gridUnit * 18)
         implicitHeight: 6
         clip: true
@@ -162,40 +162,40 @@ ColumnLayout {
 
         Rectangle {
             anchors.fill: parent
-            radius: AtlasStyle.radiusPill
-            color: AtlasStyle.alpha(root.tint, 0.18)
+            radius: TelamonStyle.radiusPill
+            color: TelamonStyle.alpha(root.tint, 0.18)
         }
         Rectangle {
             id: fill
             readonly property bool known: root.progress >= 0
             property real slide: 0
             height: parent.height
-            radius: AtlasStyle.radiusPill
+            radius: TelamonStyle.radiusPill
             color: root.tint
             width: known ? Math.max(height, parent.width * Math.min(1, root.progress)) : parent.width * 0.3
             x: known ? 0 : slide
             Behavior on width {
                 enabled: fill.known
                 NumberAnimation {
-                    duration: AtlasStyle.duration
+                    duration: TelamonStyle.duration
                     easing.type: Easing.OutCubic
                 }
             }
             NumberAnimation on slide {
-                running: bar.visible && !fill.known && AtlasStyle.duration > 0 && !AtlasStyle.softwareRendering
+                running: bar.visible && !fill.known && TelamonStyle.duration > 0 && !TelamonStyle.softwareRendering
                 from: -bar.width * 0.3
                 to: bar.width
                 loops: Animation.Infinite
-                duration: AtlasStyle.durationLong * 3
+                duration: TelamonStyle.durationLong * 3
                 easing.type: Easing.InOutQuad
             }
             // Software rendering: 20 frames a second at most, no easing.
             Timer {
                 interval: 50
                 repeat: true
-                running: bar.visible && !fill.known && AtlasStyle.duration > 0 && AtlasStyle.softwareRendering
+                running: bar.visible && !fill.known && TelamonStyle.duration > 0 && TelamonStyle.softwareRendering
                 onTriggered: {
-                    const next = fill.slide + bar.width * 1.3 * interval / (AtlasStyle.durationLong * 3);
+                    const next = fill.slide + bar.width * 1.3 * interval / (TelamonStyle.durationLong * 3);
                     fill.slide = next > bar.width ? -bar.width * 0.3 : next;
                 }
             }
@@ -205,8 +205,8 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: root.showBar && root.barText.length > 0
         horizontalAlignment: Text.AlignHCenter
-        font.family: AtlasStyle.fontFamily
-        font.pointSize: AtlasStyle.fontSizeCaption
+        font.family: TelamonStyle.fontFamily
+        font.pointSize: TelamonStyle.fontSizeCaption
         opacity: 0.7
         text: root.barText
         textFormat: Text.PlainText
@@ -215,9 +215,9 @@ ColumnLayout {
     GridLayout {
         id: actionRow
         Layout.alignment: Qt.AlignHCenter
-        Layout.topMargin: AtlasStyle.spacingSmall
-        columnSpacing: AtlasStyle.spacingLarge
-        rowSpacing: AtlasStyle.spacingSmall
+        Layout.topMargin: TelamonStyle.spacingSmall
+        columnSpacing: TelamonStyle.spacingLarge
+        rowSpacing: TelamonStyle.spacingSmall
         columns: root.sideBySide ? 100 : 1
     }
     readonly property real wideWidth: {
@@ -229,7 +229,7 @@ ColumnLayout {
                 n++;
             }
         }
-        return w + Math.max(0, n - 1) * AtlasStyle.spacingLarge;
+        return w + Math.max(0, n - 1) * TelamonStyle.spacingLarge;
     }
     readonly property bool sideBySide: wideWidth <= root.width
 }

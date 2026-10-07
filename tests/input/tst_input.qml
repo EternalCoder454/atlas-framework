@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import QtTest
-import Atlas.Ui
+import Telamon.Ui
 
 Item {
     id: root
@@ -26,14 +26,14 @@ Item {
     }
     Component {
         id: barComp
-        AtlasProgressBar {
+        TelamonProgressBar {
             width: 200
         }
     }
 
     Component {
         id: dialogLabelsComp
-        AtlasDialog {
+        TelamonDialog {
             id: labelsDialog
             property int rejectedCount: 0
             title: "Info"
@@ -44,17 +44,17 @@ Item {
                     onClicked: labelsDialog.reject()
                 }
             ]
-            AtlasLabel {
+            TelamonLabel {
                 text: "Nothing to edit here"
             }
         }
     }
     Component {
         id: dialogFieldComp
-        AtlasDialog {
+        TelamonDialog {
             property alias field: edit
             title: "Name"
-            AtlasTextField {
+            TelamonTextField {
                 id: edit
                 Layout.fillWidth: true
             }
@@ -121,7 +121,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasDialogFocus"
+        name: "TelamonDialogFocus"
         when: windowShown
 
         function test_labels_only_body_keeps_return_from_closing() {
@@ -150,7 +150,7 @@ Item {
     }
 
     TestCase {
-        name: "AtlasProgressBar"
+        name: "TelamonProgressBar"
         when: windowShown
 
         function test_track_fills_height_without_text() {
@@ -184,18 +184,18 @@ Item {
     }
 
     Component {
-        id: atlasButtonComp
-        AtlasButton {
+        id: telamonButtonComp
+        TelamonButton {
             text: "Sync"
         }
     }
 
     TestCase {
-        name: "AtlasButtonBusy"
+        name: "TelamonButtonBusy"
         when: windowShown
 
         function test_accessible_press_is_ignored_while_busy() {
-            const b = createTemporaryObject(atlasButtonComp, root);
+            const b = createTemporaryObject(telamonButtonComp, root);
             let n = 0;
             b.clicked.connect(() => n++);
             verify(a11y.press(b), "the button offers a press action");
@@ -216,7 +216,7 @@ Item {
 
         // The shimmer is a gradient band over a flat fill: it must show as
         // different pixels along the fill. (run-variant.sh sets
-        // ATLAS_SOFTWARE_RENDERING=0: with the flag on, the shimmer is hidden
+        // TELAMON_SOFTWARE_RENDERING=0: with the flag on, the shimmer is hidden
         // on purpose.)
         function distinctAlongFill(item) {
             const img = grabImage(item);
@@ -271,7 +271,7 @@ Item {
     }
     Component {
         id: tipComp
-        AtlasToolTip {}
+        TelamonToolTip {}
     }
     Component {
         id: statusItemComp
@@ -291,7 +291,7 @@ Item {
     }
     Component {
         id: toolbarComp
-        AtlasToolbar {
+        TelamonToolbar {
             width: 300
         }
     }
@@ -301,12 +301,12 @@ Item {
     }
     Component {
         id: tallDialogComp
-        AtlasDialog {
+        TelamonDialog {
             property alias last: lastField
             title: "Tall"
-            AtlasTextField { Layout.fillWidth: true }
+            TelamonTextField { Layout.fillWidth: true }
             Item { Layout.preferredHeight: 600 }
-            AtlasTextField { id: lastField; Layout.fillWidth: true }
+            TelamonTextField { id: lastField; Layout.fillWidth: true }
         }
     }
     Component {
@@ -492,8 +492,8 @@ Item {
             verify(c.width >= 0, "ConfirmDialog width " + c.width);
             const d = createTemporaryObject(tallDialogComp, root);
             d.parent = holder;
-            verify(d.width >= 0, "AtlasDialog width " + d.width);
-            verify(d.height >= 0, "AtlasDialog height " + d.height);
+            verify(d.width >= 0, "TelamonDialog width " + d.width);
+            verify(d.height >= 0, "TelamonDialog height " + d.height);
         }
 
         function test_confirm_dialog_exposes_its_text() {
@@ -571,7 +571,7 @@ Item {
             width: 400
             height: 200
             property alias stack: navStack
-            AtlasNavigationStack {
+            TelamonNavigationStack {
                 id: navStack
                 anchors.fill: parent
                 initialItem: Item {
@@ -588,7 +588,7 @@ Item {
             width: 500
             height: 40
             property alias crumb: bc
-            AtlasBreadcrumb {
+            TelamonBreadcrumb {
                 id: bc
                 width: 500
                 segments: [{ title: "Home" }, { title: "Documents" }, { title: "Projects" }]
@@ -665,7 +665,7 @@ Item {
             height: 80
             property alias field: tf
             property alias search: sf
-            AtlasTextField { id: tf; width: 300 }
+            TelamonTextField { id: tf; width: 300 }
             SearchField { id: sf; y: 40; width: 300 }
         }
     }

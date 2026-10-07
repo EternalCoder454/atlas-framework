@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import Atlas.Ui
+import Telamon.Ui
 
 // Visual-test scene for SectionRow: fixed content, no timers or randomness. `animate`
 // is switched off by tests/visual before the picture is taken.
@@ -31,12 +31,12 @@ Item {
             title: "Trailing"
             subtitle: "A button and a spin box"
             SecondaryButton { text: "Open" }
-            AtlasSpinBox { value: 3 }
+            TelamonSpinBox { value: 3 }
         }
         SectionRow {
             title: "Leading"
             leading: [
-                Rectangle { width: 28; height: 28; radius: 14; color: AtlasStyle.accent } // atlas-lint: allow-raw circular avatar sample
+                Rectangle { width: 28; height: 28; radius: 14; color: TelamonStyle.accent } // telamon-lint: allow-raw circular avatar sample
             ]
         }
         SectionRow {
@@ -49,7 +49,7 @@ Item {
         }
         SectionRow {
             content: [
-                AtlasSlider { Layout.fillWidth: true; value: 0.4 }
+                TelamonSlider { Layout.fillWidth: true; value: 0.4 }
             ]
         }
         SectionRow { title: "Disabled"; chevron: true; enabled: false }
