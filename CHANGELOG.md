@@ -6,6 +6,17 @@ Apps pin a release tag (`tag = "vX.Y.Z"` on the crates) and require the same
 Atlas.Ui (`Requires: atlas-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once they use
 something it added. The packaging spec's `%changelog` repeats the package side.
 
+## 1.6.1 (unreleased)
+
+- Fix: the switch to the GPU on HiDPI screens (1.6.0) never happened. It read
+  `QQuickWindow::graphicsApi()`, which keeps reporting the RHI API (OpenGL)
+  after an app asks for the software renderer, since that choice is the
+  "software" scene graph backend; and it ran once, at the framework's own
+  start-up check, before the app had asked. It now reads and clears the
+  backend, on every engine that loads the module. Checked on a 4K screen at
+  1.7x: Notepad and Files draw on the GPU, and `ATLAS_SOFTWARE_RENDERING=1`
+  keeps the CPU.
+
 ## 1.6.0
 
 - Change: an app that asks for Qt Quick's software renderer (most Atlas apps

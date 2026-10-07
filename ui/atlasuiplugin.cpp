@@ -31,18 +31,20 @@ Q_LOGGING_CATEGORY(lcRenderer, "atlas.ui.renderer", QtInfoMsg)
 // on a 4K screen at 1.7x. Qt reports such a screen with the integer ceiling
 // of its scale (2 for 1.7; only a window knows 1.7), so the rule is: with any
 // screen above 1, an app that asked for the CPU draws on the GPU instead.
-// Runs once, as the first engine loads the module: before any window, so
-// before Qt Quick's render loop reads the graphics API. An explicit choice
-// wins: QT_QUICK_BACKEND (then the app never asked for Software here), and
-// ATLAS_SOFTWARE_RENDERING=1 keeps the CPU.
+// Runs as each engine loads the module, before that engine makes a window, so
+// before Qt Quick's render loop reads the graphics API. Not only for the first
+// engine: the framework's start-up version check loads the module in an
+// engine of its own before the app has asked for the software renderer, so
+// the first look found nothing to change (1.6.0 never switched an app). Once
+// switched, the backend is no longer "software" and later engines change
+// nothing. setGraphicsApi(Software) picks the "software" scene graph backend;
+// graphicsApi() keeps reporting the RHI API (OpenGL), so the backend is what
+// is read, and cleared. An explicit choice wins: QT_QUICK_BACKEND (then the
+// app never asked for Software here), and ATLAS_SOFTWARE_RENDERING=1 keeps
+// the CPU.
 void pickRenderer()
 {
-    static bool done = false;
-    if (done) {
-        return;
-    }
-    done = true;
-    if (QQuickWindow::graphicsApi() != QSGRendererInterface::Software) {
+    if (QQuickWindow::sceneGraphBackend() != QLatin1String("software")) {
         return;
     }
     if (qEnvironmentVariable("ATLAS_SOFTWARE_RENDERING") == QLatin1String("1")) {
@@ -59,6 +61,7 @@ void pickRenderer()
     if (highest <= 1) {
         return;
     }
+    QQuickWindow::setSceneGraphBackend(QString());
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
     qCInfo(lcRenderer) << "drawing on the GPU: a screen is scaled" << highest
                        << "and the CPU renderer leaves stale edge pixels at fractional scales"
