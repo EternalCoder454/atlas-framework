@@ -60,6 +60,15 @@ info banner.
 - Fix: `TelamonSpinner` at 16 px was a short arc whose ends looked cut off. The
   arc is a third of the ring and the ring is drawn half a pixel inside the
   item's bounds, so nothing is clipped at any size or scale.
+- Fix: the same class of bug elsewhere. `TelamonTextField.clearable` draws the
+  filled cancel Symbol of `SearchField` in place of the theme's `edit-clear`;
+  the disclosure chevron of `SidebarItem` and the fold chevron of `Section` are
+  Symbols in a slot as wide as their ink, as in `SectionRow`;
+  `TelamonStyle.success` and `warning` (2.4:1 and 2.9:1 on a Light surface) are
+  `#14602F` / `#74DE9C` and `#7A3B00` / `#FFBB63`, 4.5:1 or more as text and on
+  their own fill, and `TelamonBadge`, `InfoBanner`, `LiveChart`,
+  `TelamonAppCard`, `TelamonDetailGrid`, `TelamonRating` and `TelamonStat` use
+  them.
 
 ## 2.0.4
 

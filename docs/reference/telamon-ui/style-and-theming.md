@@ -38,7 +38,7 @@ Colours follow the system colour scheme, light or dark. The neutrals are tinted 
 | `selection`, `selectionInactive` | A selected row or item (a quiet accent tint); the same when the view has no focus. |
 | `text`, `textMuted`, `textDisabled` | Body text; secondary text and units (65% of text); disabled text (55%, still readable). |
 | `separator`, `controlBorder` | Decorative hairlines and card borders; control edges (stronger). |
-| `success`, `warning` | The scheme's positive and neutral text colours. |
+| `success`, `warning` | The positive and neutral colours, tuned per scheme to 4.5:1 or more as text and on their own faint fill (the scheme's own under high contrast). |
 | `error`, `errorFill` | The negative colour, tuned per scheme to 4.5:1 or more as text (the scheme's own under high contrast); the faint fill of an invalid field or a destructive button. |
 | `sakura` | The end of the violet to sakura gradient. Only for the edge glow, an active progress shimmer and "update ready". See [Motion](motion.md). |
 | `floatingBackground` | Menus, popovers, notifications and the launcher: tinted over the blur (85%), solid without it. |

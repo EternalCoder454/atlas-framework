@@ -32,7 +32,7 @@ Item {
 
     signal closed
 
-    readonly property color tint: type === "error" ? TelamonStyle.error : type === "warning" ? Kirigami.Theme.neutralTextColor : TelamonStyle.accent
+    readonly property color tint: type === "error" ? TelamonStyle.error : type === "warning" ? TelamonStyle.warning : TelamonStyle.accent
     readonly property string iconName: type === "error" ? "dialog-error" : type === "warning" ? "dialog-warning" : "dialog-information"
     // What is drawn: a Material Symbol in the banner's own tint, so the icon
     // comes from the palette (a theme's "dialog-information" is a saturated

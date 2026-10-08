@@ -236,7 +236,7 @@ T.AbstractButton {
                         icon: Symbols.Star
                         filled: true
                         size: Kirigami.Units.iconSizes.small
-                        color: Kirigami.Theme.neutralTextColor
+                        color: TelamonStyle.warning
                     }
                 }
                 Text {

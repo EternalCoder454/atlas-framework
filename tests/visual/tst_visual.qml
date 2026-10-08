@@ -85,6 +85,19 @@ Rectangle {
             }
         }
 
+        // success and warning are text, icons and fills: 4.5:1 on every
+        // surface and on their own faint fill (so 3:1 as an icon or a fill).
+        function test_success_and_warning_are_readable() {
+            const surfaces = [TelamonStyle.base, TelamonStyle.surface, TelamonStyle.surfaceRaised, TelamonStyle.control, TelamonStyle.codeSurface];
+            for (const [name, c] of [["success", TelamonStyle.success], ["warning", TelamonStyle.warning]]) {
+                for (const bg of surfaces) {
+                    verify(ratio(c, bg) >= 4.5, name + " on " + bg + ": " + ratio(c, bg).toFixed(2));
+                    const filled = over(Qt.rgba(c.r, c.g, c.b, 0.14), bg);
+                    verify(ratio(c, filled) >= 4.5, name + " on its fill over " + bg + ": " + ratio(c, filled).toFixed(2));
+                }
+            }
+        }
+
         // The focus ring is a UI component's edge (3:1) on the surfaces it is
         // drawn on, and the accent (or the accent nudged to reach 3:1).
         function test_focus_ring_has_contrast_and_follows_the_accent() {

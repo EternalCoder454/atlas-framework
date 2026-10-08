@@ -47,7 +47,11 @@ import Telamon.Ui
 //   outline                 the 1 px edge of a floating surface (menu, dialog):
 //                           stronger than `separator`, so it still parts a
 //                           menu from the sidebar behind it in Dark
-//   success, warning        the scheme's positive and neutral text
+//   success, warning        the positive and neutral colours, per scheme:
+//                           #14602F / #74DE9C and #7A3B00 / #FFBB63 (Light /
+//                           Dark), each 4.5:1 or more as text on the surfaces
+//                           and on their own faint fill, so also 3:1 as an
+//                           icon or a fill (the scheme's own under high contrast)
 //   error                   the negative colour, per scheme: #AB1E2C in Light,
 //                           #FF959E in Dark, each 4.5:1 or more as text on the
 //                           surfaces and on `errorFill` (the scheme's own
@@ -177,8 +181,10 @@ QtObject {
     readonly property color separator: alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.4 : 0.08)
     readonly property color controlBorder: alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.8 : 0.22)
     readonly property color outline: alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.8 : (_dark ? 0.3 : 0.16))
-    readonly property color success: _theme.Kirigami.Theme.positiveTextColor
-    readonly property color warning: _theme.Kirigami.Theme.neutralTextColor
+    // Like `error`: the scheme's own positive (Breeze's #27AE60, 2.4:1 on a
+    // Light surface) and neutral (#F67400, 2.9:1) are too faint as text.
+    readonly property color success: highContrast ? _theme.Kirigami.Theme.positiveTextColor : (_dark ? "#74DE9C" : "#14602F")
+    readonly property color warning: highContrast ? _theme.Kirigami.Theme.neutralTextColor : (_dark ? "#FFBB63" : "#7A3B00")
     // The scheme's own negative colour (Breeze's rgb(218,68,83)) is 2.5:1 on a
     // Dark surface and 3.2:1 on a Light control: too faint for text.
     readonly property color error: highContrast ? _theme.Kirigami.Theme.negativeTextColor : (_dark ? "#FF959E" : "#AB1E2C")

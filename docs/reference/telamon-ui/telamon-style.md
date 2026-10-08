@@ -73,7 +73,7 @@ Rectangle {
 | `spacingXLarge` | `real` (read-only) | — | 16. |
 | `spacingXSmall` | `real` (read-only) | — | 2. |
 | `spacingXXLarge` | `real` (read-only) | — | 24. |
-| `success` | `color` (read-only) | — | The colour scheme's positive text colour. |
+| `success` | `color` (read-only) | — | The positive colour: `#14602F` Light, `#74DE9C` Dark (the scheme's own under high contrast), 4.5:1 or more as text on the surfaces and on its own faint fill. Before 2.0.6 it was the scheme's positive text colour (2.4:1 on a Light surface). |
 | `surface` | `color` (read-only) | — | A card over the page (a `Section`'s card, step 1). |
 | `surfaceAlt` | `color` (read-only) | — | The alternate row colour of the colour scheme. |
 | `surfaceRaised` | `color` (read-only) | — | Menus, popovers, dialogs and tooltips (step 2). |
@@ -81,7 +81,7 @@ Rectangle {
 | `textDisabled` | `color` (read-only) | — | Disabled text, still readable: 55% of `text`. |
 | `textMuted` | `color` (read-only) | — | Secondary information ("Step 2 of 2"), captions and units: 65% of `text`. |
 | `textScale` | `real` (read-only) | — | Passes `Appearance.textScale` through. |
-| `warning` | `color` (read-only) | — | The colour scheme's neutral text colour. |
+| `warning` | `color` (read-only) | — | The neutral colour: `#7A3B00` Light, `#FFBB63` Dark (the scheme's own under high contrast), 4.5:1 or more as text on the surfaces and on its own faint fill. Before 2.0.6 it was the scheme's neutral text colour (2.9:1 on a Light surface). |
 
 Spacing steps are 2, 4, 8, 12, 16 and 24 pixels.
 

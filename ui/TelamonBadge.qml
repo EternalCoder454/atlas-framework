@@ -33,9 +33,9 @@ Rectangle {
         case "accent":
             return TelamonStyle.accent;
         case "success":
-            return Kirigami.Theme.positiveTextColor;
+            return TelamonStyle.success;
         case "warning":
-            return Kirigami.Theme.neutralTextColor;
+            return TelamonStyle.warning;
         case "error":
             return Kirigami.Theme.negativeTextColor;
         default:
