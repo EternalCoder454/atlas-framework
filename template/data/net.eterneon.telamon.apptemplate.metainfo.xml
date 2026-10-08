@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>net.eterneon.telamon.apptemplate</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Telamon App</name>
+  <summary>Telamon app template</summary>
+  <description>
+    <p>The starting point for a new Telamon app: one window, a Rust backend and the Telamon look. Replace this text, the name, the summary and the links with your app's.</p>
+  </description>
+  <launchable type="desktop-id">net.eterneon.telamon.apptemplate.desktop</launchable>
+  <!-- Telamon Store shows the name, summary and licence, and links the homepage. -->
+  <url type="homepage">https://github.com/EternalCoder454/atlas-framework</url>
+  <developer id="net.eterneon">
+    <name>Eterneon</name>
+  </developer>
+  <provides>
+    <binary>telamon-app-template</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-10-08"/>
+  </releases>
+</component>

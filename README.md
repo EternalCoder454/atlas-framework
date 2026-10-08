@@ -14,6 +14,9 @@ The shared base every Telamon app builds on, so they look and behave the same:
   `telamon-framework-core` and `-ui` for every app, `-system` and `-flatpak`
   only for the apps that need them.
 - **The app template** (`template/`): start a new Telamon app from it.
+- **Native app bundles** (`tools/make-bundle.sh`, `.github/workflows/bundle.yml`):
+  package an app that is not part of the OS image for Telamon Store, from its
+  GitHub release, without Flatpak: [docs/BUNDLES.md](docs/BUNDLES.md).
 
 It is installed once on Telamon OS (the telamon-ui, telamon-symbols-fonts and
 telamon-symbols packages) and every app uses that copy:

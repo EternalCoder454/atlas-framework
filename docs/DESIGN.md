@@ -45,7 +45,7 @@ crates/telamon-framework-core/    every app: AppInfo, settings, logging, os-rele
 crates/telamon-framework-ui/      every GUI app: startup (C++ and Rust), app!
 crates/telamon-framework-system/  system apps: crash reports, Telamon OS state, polkit
 crates/telamon-framework-flatpak/ Flatpak through libflatpak: the Updater, Telamon Store
-template/                     minimal Telamon app (Kirigami window, Rust backend, the crates)
+template/                     minimal Telamon app (Kirigami window, Rust backend, the crates); ships bundle-ready
 packaging/telamon-framework.spec  the packages below
 packaging/build-rpm.sh        builds them inside fedora:44: build-rpm.sh <out dir>
 packaging/telamon-framework.conf  dnf's protected list
@@ -54,7 +54,7 @@ tools/                        API dump and check, app lint and name check, updat
 api/                          the recorded Telamon.Ui API (telamon-ui.api, symbols.txt)
 perf/                         the template's startup, memory and idle CPU against budget.json
 CHANGELOG.md                  what each release brings to apps
-.github/workflows/            ci.yml, app-checks.yml (for apps), release.yml
+.github/workflows/            ci.yml, app-checks.yml and bundle.yml (for apps), release.yml
 ```
 
 ## Design rules for Telamon apps
@@ -474,7 +474,11 @@ push and pull request:
   hide an app's file fails here first.
 
 Apps run `lint-app.sh` and `check-app-names.sh` themselves through the
-reusable `app-checks.yml` (`tools/README.md` shows the five lines).
+reusable `app-checks.yml` (`tools/README.md` shows the five lines). An app
+that is not in the OS image ships through Telamon Store as a **native
+bundle**, made by `tools/make-bundle.sh` and the reusable `bundle.yml`: the
+format, the install layout, the data convention and the three steps that
+connect an app are in [BUNDLES.md](BUNDLES.md).
 `// telamon-lint: allow <reason>` on or above a line silences a finding.
 
 ## Releases

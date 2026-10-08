@@ -390,6 +390,23 @@ jobs:
           tools/lint-app.sh --strict ui/gallery template
           tools/check-app-names.sh template
 
+  bundles:
+    # tools/make-bundle.sh and tools/bundle.py (docs/BUNDLES.md): a fake app
+    # through the whole flow, and every kind of bad bundle refused. The runner
+    # has cmake, python3, zstd and shellcheck.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: shellcheck
+        run: shellcheck tools/make-bundle.sh tools/test-make-bundle.sh
+
+      - name: Test the bundle tools
+        run: tools/test-make-bundle.sh
+
   publish-docs:
     # main, and v* tags that point at main's tip: rebuilds the docs-published
     # branch (the pages, their images and index.json) that the site fetches.
