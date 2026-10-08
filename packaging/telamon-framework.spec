@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.6
+Version:        2.0.7
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -203,6 +203,13 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.7-1
+- Fix: an InfoBanner's close button (and FindBar's, TabBar's, and the shortcut
+  field's clear button) draws a Material Symbol, not a chevron where the icon
+  theme lacks "window-close". A TelamonCodeView with
+  wrap: false no longer starts scrolled by 2 pixels (its first character was
+  clipped when the line was wider than the view).
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.6-1
 - Fix: ten things the Telamon Gates screenshots showed at 150%. A code view's
   horizontal bar no longer covers its last line (it is a TelamonScrollBar and

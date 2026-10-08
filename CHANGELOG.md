@@ -9,6 +9,26 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.7
+
+Two regressions of 2.0.6, found by the Telamon Gates screenshots at 150% scale.
+No API change. Apps get this by moving to `tag = "v2.0.7"`; goldens that show an
+`InfoBanner` with `closable: true` may change.
+
+- Fix: an `InfoBanner` with `closable: true` drew a chevron where the cross
+  belongs (the theme icon `window-close` is missing in some icon themes). The
+  button draws the Material Symbol `Symbols.Close`, which needs no icon theme.
+  The other symbols 2.0.6 added were checked and are the right ones. The same
+  for the `FindBar` and `TabBar` close buttons (`Symbols.Close`) and the
+  `TelamonShortcutField` clear button (`Symbols.Cancel`, as in `SearchField`);
+  their goldens change by the icon.
+- Fix: a `TelamonCodeView` with `wrap: false` and a line wider than the view
+  started scrolled by about 2 pixels, so its first character was clipped while
+  the scroll bar was at the start (short lines were fine). The text going in
+  moved the caret while the view had no width yet, and the caret-follow code
+  scrolled to it. The view now follows the caret only while it has focus and a
+  width.
+
 ## 2.0.6
 
 Visual and accessibility fixes found by the Telamon Gates screenshots at 150%

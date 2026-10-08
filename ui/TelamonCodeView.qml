@@ -153,6 +153,13 @@ Item {
                 }
                 // Keyboard selection and caret moves keep the caret in view.
                 onCursorRectangleChanged: {
+                    // Only the keyboard's or the mouse's moves: the caret that
+                    // the text going in sets (with the view still no wider than
+                    // 0) must not scroll the view, or its first character is
+                    // left clipped by the 2 pixels of the caret's margin.
+                    if (!activeFocus || flick.width <= 0) {
+                        return;
+                    }
                     const r = cursorRectangle;
                     const shown = flick.height - control._barRoom;
                     if (r.y < flick.contentY) {

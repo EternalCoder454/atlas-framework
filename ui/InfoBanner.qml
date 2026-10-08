@@ -204,9 +204,11 @@ Item {
                         shown: closeButton.visualFocus
                     }
                 }
-                contentItem: TelamonIcon {
-                    source: "window-close"
-                    isMask: true
+                // A Material Symbol, like the icon at the other end: a theme's
+                // "window-close" is missing in some, and drawn as a chevron.
+                contentItem: Symbol {
+                    icon: Symbols.Close
+                    size: Kirigami.Units.iconSizes.small
                     color: Kirigami.Theme.textColor
                     opacity: 0.7
                 }
