@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.2
+Version:        2.0.3
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -203,6 +203,13 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.3-1
+- Fix: the keyboard in ContextMenu. Up and Down skip separators, disabled and
+  hidden rows and wrap at the ends, Home and End jump, Right opens a submenu
+  and Left closes it (the other way round in a right-to-left layout), and a
+  row that holds the keyboard (an icon row, a custom delegate) no longer keeps
+  the arrow keys from the menu. No API change.
+
 * Wed Oct 07 2026 Telamon <atlas@eterneon.net> - 2.0.2-1
 - Fix: crash reports left out crashes that are not the host's. Core dumps of
   programs in containers (podman, toolbox, distrobox, docker, nspawn) and of
