@@ -64,7 +64,7 @@ The badge is not a Tab stop and a screen reader reads its text after the row's t
 | `busy` | `bool` | `false` | Shows a spinner in place of the value and chevron; the row stays enabled but does not activate. |
 | `byMouse` | `bool` | `false` | True after a click, so the focus ring shows for keyboard focus only. |
 | `checkmark` | `bool` | `false` | Shows an accent check mark; on a `radio` row it is the checked state. |
-| `chevron` | `bool` | `false` | Shows a chevron at the trailing end and, unless `clickable` is set, makes the row clickable. |
+| `chevron` | `bool` | `false` | Shows a chevron at the trailing end and, unless `clickable` is set, makes the row clickable. The chevron is a Symbol and its tip ends where a `value` ends, at the row's padding. |
 | `clickable` | `bool` | `chevron` | Whether the row takes focus, shows hover and focus feedback and emits `clicked()`. |
 | `content` | `list<Item>` (read-only) | — | Items that replace the title and subtitle column (a slider that spans the row); give them `Layout.fillWidth`. |
 | `density` | `int` | `TelamonStyle.density` | `TelamonStyle.Normal` or `TelamonStyle.Compact`; Compact shrinks the height and vertical padding to about 75%. |
@@ -78,6 +78,7 @@ The badge is not a Tab stop and a screen reader reads its text after the row's t
 | `showSwitch` | `bool` | `false` | Shows a `TelamonSwitch` at the trailing end. |
 | `subtitle` | `string` | `""` | A second, smaller line under the title. |
 | `switchChecked` | `bool` | `false` | The state the switch shows. Bind it to the real setting: after `switchToggled` the switch goes back to this value. |
+| `switchEnabled` | `bool` | `true` | `false` dims the switch and takes its input, while the title and subtitle keep their colours (`enabled: false` dims the whole row). Since 2.0.6. |
 | `title` | `string` | `""` | The main text. |
 | `trailing` | `list<Item>` (read-only) | — | The default property: items at the trailing end (a button, a combo box). They keep their own focus and Tab order after the row's. |
 | `value` | `string` | `""` | Text at the trailing end, dimmed and elided; hidden while `busy`. |

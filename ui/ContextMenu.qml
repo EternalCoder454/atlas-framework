@@ -25,7 +25,9 @@ import org.kde.kirigami as Kirigami
 T.Menu {
     id: control
 
-    implicitWidth: Math.max(Kirigami.Units.gridUnit * 11, contentItem.implicitWidth + leftPadding + rightPadding)
+    // As wide as its widest row, between 7 and 24 grid units: a one-row menu
+    // is not a wide empty card, and a long label elides instead.
+    implicitWidth: Math.min(Kirigami.Units.gridUnit * 24, Math.max(Kirigami.Units.gridUnit * 7, contentItem.implicitWidth + leftPadding + rightPadding))
     // The window's height less the margins bounds the menu; it scrolls past that.
     readonly property real _maxHeight: list.windowHeight - topMargin - bottomMargin
     implicitHeight: Math.min(contentItem.implicitHeight + topPadding + bottomPadding, Math.max(_maxHeight, 0))
@@ -172,13 +174,14 @@ T.Menu {
 
     background: Item {
         // Soft shadow: faint outlines, no shader, so it also draws with the software renderer.
+        // Black over a dark window barely shows, so Dark's is stronger.
         Rectangle {
             anchors.fill: parent
             anchors.margins: -1
             anchors.topMargin: 0
             anchors.bottomMargin: -3
             radius: TelamonStyle.radius + 1
-            color: TelamonStyle.alpha("black", 0.04)
+            color: TelamonStyle.alpha("black", Appearance.darkMode ? 0.16 : 0.04)
         }
         Rectangle {
             anchors.fill: parent
@@ -186,15 +189,16 @@ T.Menu {
             anchors.topMargin: -1
             anchors.bottomMargin: -5
             radius: TelamonStyle.radius + 2
-            color: TelamonStyle.alpha("black", 0.025)
+            color: TelamonStyle.alpha("black", Appearance.darkMode ? 0.1 : 0.025)
         }
         Rectangle {
             anchors.fill: parent
             radius: TelamonStyle.radius
             // floatingBackground is tinted translucent over the blurred window, solid without it.
             color: TelamonStyle.floatingBackground
+            // A real edge: the menu is a shade lighter than the sidebar it opens over.
             border.width: 1
-            border.color: TelamonStyle.separator
+            border.color: TelamonStyle.outline
         }
     }
 

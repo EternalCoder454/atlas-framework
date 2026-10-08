@@ -95,8 +95,8 @@ its controls gets them for free.
    `cornerBadgeIcon: "checkmark"`. Telamon Updater's Updates page is the model.
 5. **The Telamon look, on the Plasma theme.** Calm and precise, Light and Dark
    equally. Violet is the accent (`TelamonStyle.accent`: #6858E2 in Light,
-   #8A7AF4 in Dark) for buttons and selection; magenta-violet (`TelamonStyle.focus`:
-   #A62A8C in Light, #E28BE0 in Dark, each 3:1 or more against the window)
+   #8A7AF4 in Dark) for buttons and selection; the same accent (`TelamonStyle.focus`,
+   kept 3:1 or more against the window and controls)
    is for focus rings and decoration. When the user has chosen an accent in
    Plasma, that accent wins, as in other KDE apps. Fonts are IBM Plex Sans
    (the application font's family; its size stays the user's) and JetBrains

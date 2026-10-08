@@ -16,10 +16,15 @@ T.TextField {
     // A TextField is no Control, so it has no `mirrored` of its own.
     readonly property bool rtl: LayoutMirroring.enabled
 
+    // The magnifier and the clear symbol share one inset from their edge of the
+    // field, and the text keeps a gap from each.
+    readonly property real _inset: TelamonStyle.spacingLarge
+    readonly property real _glyph: Kirigami.Units.iconSizes.small
+
     implicitWidth: Kirigami.Units.gridUnit * 14
     implicitHeight: Math.max(TelamonStyle.controlHeight, Math.ceil(contentHeight) + TelamonStyle.spacing)
-    leftPadding: (rtl ? clearButton.width : icon.width) + TelamonStyle.spacingLarge
-    rightPadding: (rtl ? icon.width : clearButton.width) + TelamonStyle.spacingLarge
+    leftPadding: _inset + _glyph + TelamonStyle.spacing
+    rightPadding: leftPadding
     verticalAlignment: TextInput.AlignVCenter
     placeholderText: qsTr("Search")
     placeholderTextColor: TelamonStyle.textMuted
@@ -97,22 +102,23 @@ T.TextField {
         Accessible.ignored: true
     }
 
-    Kirigami.Icon {
+    Symbol {
         id: icon
-        x: control.rtl ? control.width - width - TelamonStyle.spacingLarge : TelamonStyle.spacingLarge
+        x: control.rtl ? control.width - width - control._inset : control._inset
         anchors.verticalCenter: parent.verticalCenter
-        width: Kirigami.Units.iconSizes.small
-        height: width
-        source: "search"
-        isMask: true
+        icon: Symbols.Search
+        size: control._glyph
         color: TelamonStyle.textMuted
     }
 
     T.AbstractButton {
         id: clearButton
-        x: control.rtl ? TelamonStyle.spacingSmall : control.width - width - TelamonStyle.spacingSmall
+        // The symbol, not the button, sits at the inset: the button reaches
+        // a few pixels past it, so it is easy to hit.
+        readonly property real reach: TelamonStyle.spacingSmall
+        x: control.rtl ? control._inset - reach : control.width - width - control._inset + reach
         anchors.verticalCenter: parent.verticalCenter
-        width: Kirigami.Units.iconSizes.small + TelamonStyle.spacingSmall * 2
+        width: control._glyph + reach * 2
         height: width
         visible: control.text.length > 0 && !control.readOnly
         focusPolicy: Qt.NoFocus
@@ -127,11 +133,14 @@ T.TextField {
             radius: width / 2
             color: TelamonStyle.alpha(Kirigami.Theme.textColor, clearButton.down ? 0.15 : clearButton.hovered ? 0.08 : 0)
         }
-        contentItem: Kirigami.Icon {
-            source: "edit-clear"
-            isMask: true
-            color: Kirigami.Theme.textColor
-            opacity: 0.6
+        contentItem: Item {
+            Symbol {
+                anchors.centerIn: parent
+                icon: Symbols.Cancel
+                filled: true
+                size: control._glyph
+                color: TelamonStyle.textMuted
+            }
         }
     }
 }

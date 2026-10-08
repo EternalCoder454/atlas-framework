@@ -261,6 +261,7 @@ SectionRow.property radio: bool
 SectionRow.property showSwitch: bool
 SectionRow.property subtitle: QString
 SectionRow.property switchChecked: bool
+SectionRow.property switchEnabled: bool
 SectionRow.property telamonRow: bool [readonly]
 SectionRow.property title: QString
 SectionRow.property trailing: QQmlListProperty<QObject> [readonly]
@@ -1189,6 +1190,7 @@ TelamonStyle.property fontWeightWindowTitle: int [readonly]
 TelamonStyle.property highContrast: bool [readonly]
 TelamonStyle.property hover: QColor [readonly]
 TelamonStyle.property monoFamily: QString [readonly]
+TelamonStyle.property outline: QColor [readonly]
 TelamonStyle.property pressed: QColor [readonly]
 TelamonStyle.property radius: double [readonly]
 TelamonStyle.property radiusLarge: double [readonly]
@@ -1350,6 +1352,7 @@ TelamonTransparencySwitch.property radio: bool
 TelamonTransparencySwitch.property showSwitch: bool
 TelamonTransparencySwitch.property subtitle: QString
 TelamonTransparencySwitch.property switchChecked: bool
+TelamonTransparencySwitch.property switchEnabled: bool
 TelamonTransparencySwitch.property telamonRow: bool [readonly]
 TelamonTransparencySwitch.property title: QString
 TelamonTransparencySwitch.property trailing: QQmlListProperty<QObject> [readonly]

@@ -39,10 +39,10 @@ Rectangle {
 | `duration` | `int` (read-only) | — | The everyday animation duration: 150 ms, or 0 under reduced motion. |
 | `durationLong` | `int` (read-only) | — | The long animation duration: 250 ms, or 0 under reduced motion. |
 | `durationShort` | `int` (read-only) | — | The short animation duration: 100 ms, or 0 under reduced motion. |
-| `error` | `color` (read-only) | — | The colour scheme's negative text colour. |
-| `errorFill` | `color` (read-only) | — | The faint fill of an invalid field. |
+| `error` | `color` (read-only) | — | The negative colour, as text and as a border: `#AB1E2C` in Light, `#FF959E` in Dark, each 4.5:1 or more on the surfaces and on `errorFill` (the scheme's own negative colour under high contrast). Before 2.0.6 it was the scheme's negative text colour, which is 2.5:1 on a Dark surface. |
+| `errorFill` | `color` (read-only) | — | The faint fill of an invalid field or a destructive button: `error` at 6% (Light) or 8% (Dark). |
 | `floatingBackground` | `color` (read-only) | — | Menus, popovers, notifications and the launcher: `surfaceRaised` at 85% over the blur, solid without it. |
-| `focus` | `color` (read-only) | — | The keyboard focus ring: magenta-violet (`#A62A8C` Light, `#E28BE0` Dark); the user's Plasma accent wins. |
+| `focus` | `color` (read-only) | — | The keyboard focus ring: the `accent`, so it never clashes with a selection or a checked control beside it. It keeps 3:1 against `base`, `control` and `surfaceRaised`: the Telamon violet does in both schemes, and a Plasma accent that does not is mixed toward the text colour until it does. Before 2.0.6 it was magenta-violet. |
 | `fontFamily` | `string` (read-only) | — | The application font's family: IBM Plex Sans when installed, else the system font. |
 | `fontSizeBody` | `real` (read-only) | — | The body size in points: the application font's size. |
 | `fontSizeCaption` | `real` (read-only) | — | Footers and hints: 0.92 of body. |
@@ -54,6 +54,7 @@ Rectangle {
 | `highContrast` | `bool` (read-only) | — | Passes `Appearance.highContrast` through: Qt's contrast preference or the desktop portal's `contrast`. |
 | `hover` | `color` (read-only) | — | A grey overlay for hover, never the accent, so hover never looks like selection. |
 | `monoFamily` | `string` (read-only) | — | The fixed-width family: JetBrains Mono when installed, else the system fixed font. Set `font.family: TelamonStyle.monoFamily` on code. |
+| `outline` | `color` (read-only) | — | The 1 px edge of a floating surface (a menu), stronger than `separator` so that a menu still parts from the sidebar behind it in Dark. Since 2.0.6. |
 | `pressed` | `color` (read-only) | — | A grey overlay for a pressed control. |
 | `radius` | `real` (read-only) | — | 6: menus, cards, popovers, tooltips and code views. |
 | `radiusLarge` | `real` (read-only) | — | 8: dialogs, the command palette, drop zones and the segmented control's track. |

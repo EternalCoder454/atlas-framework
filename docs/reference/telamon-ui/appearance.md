@@ -30,7 +30,7 @@ The read-only system preferences each have a change signal, so a binding on them
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `accentFromSystem` | `bool` (read-only) | — | `true` when the user chose an accent colour in Plasma (`AccentColor` in kdeglobals `[General]`). Then that accent is used; otherwise the Telamon violet (and the magenta-violet focus ring) is. Constant. Since 1.4.0. |
+| `accentFromSystem` | `bool` (read-only) | — | `true` when the user chose an accent colour in Plasma (`AccentColor` in kdeglobals `[General]`). Then that accent is used; otherwise the Telamon violet (and its focus ring) is. Constant. Since 1.4.0. |
 | `blurAvailable` | `bool` (read-only) | `false` until read | Whether the compositor offers blur. Updated by `refresh()`. |
 | `colorScheme` | `int` (read-only) (Appearance.ColorScheme) | `Appearance.UnknownScheme` | The system colour scheme, from `QStyleHints`. |
 | `darkMode` | `bool` (read-only) | `false` | `true` when `colorScheme` is dark. When it is unknown, whether the palette's window colour is dark. |

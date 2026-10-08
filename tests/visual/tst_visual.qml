@@ -52,6 +52,65 @@ Rectangle {
             compare(stage.LayoutMirroring.enabled, v === "rtl", "the stage is mirrored");
         }
 
+        // WCAG contrast of two opaque colours.
+        function lum(c) {
+            const lin = v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+        }
+        function ratio(a, b) {
+            const x = lum(a);
+            const y = lum(b);
+            return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+        }
+        // `fg` over the opaque `bg`.
+        function over(fg, bg) {
+            return Qt.rgba(fg.r * fg.a + bg.r * (1 - fg.a), fg.g * fg.a + bg.g * (1 - fg.a), fg.b * fg.a + bg.b * (1 - fg.a), 1);
+        }
+
+        // The error colour is text on every surface and on its own faint fill
+        // (a destructive button, an invalid field): 4.5:1, in every variant.
+        function test_error_is_readable_text() {
+            const surfaces = {
+                base: TelamonStyle.base,
+                surface: TelamonStyle.surface,
+                surfaceRaised: TelamonStyle.surfaceRaised,
+                control: TelamonStyle.control,
+                codeSurface: TelamonStyle.codeSurface
+            };
+            for (const name in surfaces) {
+                const bg = surfaces[name];
+                verify(ratio(TelamonStyle.error, bg) >= 4.5, "error on " + name + ": " + ratio(TelamonStyle.error, bg).toFixed(2));
+                const filled = over(TelamonStyle.errorFill, bg);
+                verify(ratio(TelamonStyle.error, filled) >= 4.5, "error on errorFill over " + name + ": " + ratio(TelamonStyle.error, filled).toFixed(2));
+            }
+        }
+
+        // The focus ring is a UI component's edge (3:1) on the surfaces it is
+        // drawn on, and the accent (or the accent nudged to reach 3:1).
+        function test_focus_ring_has_contrast_and_follows_the_accent() {
+            for (const bg of [TelamonStyle.base, TelamonStyle.surface, TelamonStyle.surfaceRaised, TelamonStyle.control]) {
+                verify(ratio(TelamonStyle.focus, bg) >= 3, "focus on " + bg + ": " + ratio(TelamonStyle.focus, bg).toFixed(2));
+            }
+            if (Qt.colorEqual(TelamonStyle.focus, TelamonStyle.accent)) {
+                return;
+            }
+            // Nudged: still the accent's hue family, not a second brand colour.
+            const hueGap = Math.abs(TelamonStyle.focus.hsvHue - TelamonStyle.accent.hsvHue);
+            verify(Math.min(hueGap, 1 - hueGap) < 0.1 || TelamonStyle.focus.hsvSaturation < 0.15, "focus " + TelamonStyle.focus + " is no tint of the accent " + TelamonStyle.accent);
+        }
+
+        function test_default_focus_is_the_accent() {
+            const v = Goldens.variant();
+            if (v === "light" || v === "dark" || v === "rtl" || v === "compact" || v === "text200" || v === "opaque") {
+                verify(Qt.colorEqual(TelamonStyle.focus, TelamonStyle.accent), "focus " + TelamonStyle.focus + ", accent " + TelamonStyle.accent);
+            }
+        }
+
+        // A menu parts from what is behind it: its outline is stronger than a hairline.
+        function test_outline_is_stronger_than_the_separator() {
+            verify(TelamonStyle.outline.a > TelamonStyle.separator.a, "outline " + TelamonStyle.outline.a + ", separator " + TelamonStyle.separator.a);
+        }
+
         function test_demo_data() {
             return Goldens.demos().map(n => ({
                         tag: n

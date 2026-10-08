@@ -138,6 +138,9 @@ T.AbstractButton {
             // Unmirrored, Qt's natural alignment (by the label's first strong
             // character) applies, so a right-to-left label keeps its side.
             horizontalAlignment: control.mirrored ? Text.AlignLeft : undefined
+            // As much room after the title as before the icon, when no badge,
+            // value or chevron follows it (those carry the margin themselves).
+            Layout.rightMargin: control.badge.length > 0 || control.value.length > 0 || control.disclosure ? 0 : TelamonStyle.spacingLarge
             text: control.text
             font.family: TelamonStyle.fontFamily
             font.pointSize: TelamonStyle.fontSizeBody

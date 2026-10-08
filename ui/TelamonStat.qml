@@ -40,7 +40,7 @@ ColumnLayout {
     readonly property bool _hasTrend: !isNaN(trend) && trend !== 0
     readonly property color _trendColor: {
         const good = (trend > 0) !== invertTrend;
-        return good ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor;
+        return good ? Kirigami.Theme.positiveTextColor : TelamonStyle.error;
     }
 
     spacing: TelamonStyle.spacingSmall

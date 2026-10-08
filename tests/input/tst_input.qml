@@ -351,7 +351,8 @@ Item {
                 m.addItem(last);
             }
             verify(last.implicitWidth > 400);
-            tryVerify(() => m.implicitWidth >= last.implicitWidth, 1000, "the menu is as wide as its widest row");
+            // The menu itself is capped (gridUnit * 24); what it measures is not.
+            tryVerify(() => m.contentItem.implicitWidth >= last.implicitWidth, 1000, "the menu measures its widest row");
         }
 
         // The width follows rows taken out. (The crash a width binding once
@@ -365,11 +366,11 @@ Item {
             m.addItem(wide);
             m.addItem(createTemporaryObject(menuItemComp, root, { text: "A" }));
             m.addItem(createTemporaryObject(menuItemComp, root, { text: "B" }));
-            tryVerify(() => m.implicitWidth >= wide.implicitWidth, 1000);
+            tryVerify(() => m.contentItem.implicitWidth >= wide.implicitWidth, 1000);
             const taken = m.takeItem(0);
             compare(taken, wide);
             compare(m.count, 2);
-            tryVerify(() => m.implicitWidth < wide.implicitWidth, 1000, "the width follows the rows left");
+            tryVerify(() => m.contentItem.implicitWidth < wide.implicitWidth, 1000, "the width follows the rows left");
             while (m.count > 0)
                 m.takeItem(0);
             tryCompare(m.contentItem, "implicitWidth", 0, 1000);

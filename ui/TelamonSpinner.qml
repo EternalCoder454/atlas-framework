@@ -21,6 +21,13 @@ T.BusyIndicator {
         id: internals
         readonly property bool turning: control.animated && control.running && control.visible && TelamonStyle.duration > 1
         readonly property real stroke: Math.max(2, Math.round(control.availableWidth / 9))
+        // The ring's radius leaves half a pixel at the edge: the stroke's
+        // outside would otherwise touch the item's bounds exactly, and a
+        // texture a pixel short (a fractional scale) cuts it off flat.
+        readonly property real radius: Math.max(1, (control.availableWidth - stroke) / 2 - 0.5)
+        // A third of the ring: a quarter of it is 10 px of 2 px line at 16 px,
+        // too short to read as an arc.
+        readonly property real sweep: 120
     }
 
     implicitWidth: Kirigami.Units.iconSizes.medium
@@ -44,7 +51,7 @@ T.BusyIndicator {
             // frame, on the render thread, with nothing to re-tessellate.
             layer.enabled: true
             layer.smooth: true
-            // The shape is a ring track and a quarter arc on it.
+            // The shape is a ring track and an arc on it.
             ShapePath {
                 fillColor: "transparent"
                 strokeColor: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.12)
@@ -52,7 +59,7 @@ T.BusyIndicator {
                 PathAngleArc {
                     centerX: arc.width / 2
                     centerY: arc.height / 2
-                    radiusX: (arc.width - internals.stroke) / 2
+                    radiusX: internals.radius
                     radiusY: radiusX
                     startAngle: 0
                     sweepAngle: 360
@@ -66,10 +73,10 @@ T.BusyIndicator {
                 PathAngleArc {
                     centerX: arc.width / 2
                     centerY: arc.height / 2
-                    radiusX: (arc.width - internals.stroke) / 2
+                    radiusX: internals.radius
                     radiusY: radiusX
                     startAngle: -90
-                    sweepAngle: 100
+                    sweepAngle: internals.sweep
                 }
             }
             RotationAnimator on rotation {

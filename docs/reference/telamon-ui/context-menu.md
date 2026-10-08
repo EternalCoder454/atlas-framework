@@ -6,7 +6,7 @@ section: Menus, dialogs and popups
 
 ContextMenu is the menu for right clicks and "more" buttons. Fill it with [ContextMenuItem](context-menu-item.md) and [ContextMenuSeparator](context-menu-separator.md), and open it with `popup()` at the pointer, or `popup(item, x, y)` from the keyboard. Rows can be checkable, radio choices or open a submenu.
 
-ContextMenu is a Qt Quick Templates `Menu` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-menu.html)); its inherited properties, signals and methods (`popup()`, `close()`, `addItem()`) work as usual. A menu taller than the window (less its margins) is cut to fit and scrolls; the arrow keys keep the current row in view.
+ContextMenu is a Qt Quick Templates `Menu` ([Qt documentation](https://doc.qt.io/qt-6/qml-qtquick-controls-menu.html)); its inherited properties, signals and methods (`popup()`, `close()`, `addItem()`) work as usual. A menu taller than the window (less its margins) is cut to fit and scrolls; the arrow keys keep the current row in view. It is as wide as its widest row, at least 7 and at most 24 grid units (a longer label elides); before 2.0.6 it was never narrower than 11. It has a 1 px `TelamonStyle.outline` edge and, in Dark, a stronger soft shadow, so it parts from a sidebar behind it.
 
 ## Example
 
