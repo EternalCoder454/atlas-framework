@@ -11,7 +11,8 @@
 //!   github.com/EternalCoder454/AtlasOS. An empty dsn in `/etc` turns
 //!   sending off: [`send`] then fails with "no endpoint configured".
 //! - Sources: Rust panics ([`install`], [`record_fatal`]), systemd-coredump
-//!   entries of the user's own processes ([`collect_coredumps`]) and update
+//!   entries of the user's own processes on the host, not those of containers
+//!   or of programs outside the OS ([`collect_coredumps`]) and update
 //!   and rollback events from the helper ([`collect_events`]).
 //! - Reports wait in `$XDG_STATE_HOME/telamon/crash-reports/pending/` for the
 //!   user's decision ([`pending`], [`discard`]); sent ones move to `sent/`
@@ -2165,55 +2166,242 @@ fn trusted_coredump(entry: &Value, uid: &str) -> bool {
         && field(entry, "COREDUMP_UID").as_deref() == Some(uid)
 }
 
+/// Where a crashed process lived, read from the fields systemd-coredump
+/// records about it. Only the host's own crashes (and Flatpak apps) are the
+/// owner's to report: development containers share the kernel, so the host's
+/// systemd-coredump records every crash in them, test binaries and Plasma
+/// processes run inside a podman test image included.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Origin {
+    /// A program of the OS, running on the host.
+    Host,
+    /// A Flatpak app, by its app ID.
+    Flatpak(String),
+    /// In a container or machine (podman, toolbox, distrobox, docker, nspawn,
+    /// LXC, Kubernetes): not the host's crash.
+    Container,
+    /// A program that is not part of the OS (`/work`, `/tmp`, a build tree
+    /// or anything else outside [`SYSTEM_PREFIXES`]) and not a Flatpak app.
+    Foreign,
+}
+
+impl Origin {
+    /// Whether a crash of this origin is left out of the reports.
+    fn ignored(&self) -> bool {
+        matches!(self, Origin::Container | Origin::Foreign)
+    }
+}
+
+/// Whether one cgroup path component (or unit name) holds a container or a
+/// machine. Container managers name their scopes after the runtime
+/// (`libpod-<id>.scope` for podman, toolbox and distrobox, `docker-<id>.scope`,
+/// `crio-<id>.scope`, `machine-<name>.scope` for systemd-nspawn and libvirt),
+/// and `docker/<id>`, `lxc.payload.<name>` and `kubepods*` are theirs when the
+/// runtime uses cgroupfs.
+fn is_container_cgroup(component: &str) -> bool {
+    // podman's own supervisor runs on the host, in a scope of this name
+    if component.starts_with("libpod-conmon-") {
+        return false;
+    }
+    const PREFIXES: &[&str] = &[
+        "libpod-",
+        "libpod_",
+        "docker-",
+        "crio-",
+        "cri-containerd-",
+        "machine-",
+        "lxc.payload.",
+        "lxc.monitor.",
+        "kubepods",
+    ];
+    const NAMES: &[&str] = &["docker", "lxc", "machine.slice", "libpod_parent"];
+    PREFIXES.iter().any(|p| component.starts_with(p)) || NAMES.contains(&component)
+}
+
+/// The app ID of a Flatpak scope (`app-flatpak-<id>-<n>.scope`, or the
+/// `flatpak-<id>-<n>.scope` older Flatpaks used); `None` for any other name
+/// or an ID that is not a valid reverse-DNS name.
+fn flatpak_scope_app(component: &str) -> Option<String> {
+    let body = component.strip_suffix(".scope")?;
+    let body = body
+        .strip_prefix("app-flatpak-")
+        .or_else(|| body.strip_prefix("flatpak-"))?;
+    // systemd escapes a dash in a name as \x2d
+    let (id, n) = body.rsplit_once('-')?;
+    let id = id.replace("\\x2d", "-");
+    let valid = n.chars().all(|c| c.is_ascii_digit())
+        && !n.is_empty()
+        && (3..=255).contains(&id.len())
+        && id.contains('.')
+        && id.split('.').all(|p| {
+            !p.is_empty()
+                && p.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        });
+    valid.then_some(id)
+}
+
+/// Where the crashed process of a coredump entry lived. `exe` is its
+/// validated `COREDUMP_EXE` (empty when missing or odd).
+///
+/// In order: a container's cgroup (`COREDUMP_CGROUP`, else the unit fields)
+/// or, without one, a hostname that differs from the host's while the process
+/// sits in another PID namespace (`COREDUMP_CONTAINER_CMDLINE` is set) means
+/// a container; a Flatpak scope means that Flatpak app; a program outside the
+/// OS's own directories is foreign. Without these fields (older systemd) an
+/// entry counts as the host's, so a real crash is never lost to a missing
+/// field.
+fn coredump_origin(entry: &Value, exe: &str) -> Origin {
+    let mut flatpak = None;
+    for key in ["COREDUMP_CGROUP", "COREDUMP_USER_UNIT", "COREDUMP_UNIT"] {
+        let Some(v) = field(entry, key) else { continue };
+        for component in v.split('/').filter(|c| !c.is_empty()) {
+            if is_container_cgroup(component) {
+                return Origin::Container;
+            }
+            if flatpak.is_none() {
+                flatpak = flatpak_scope_app(component);
+            }
+        }
+    }
+    if flatpak.is_none()
+        && field(entry, "COREDUMP_CONTAINER_CMDLINE").is_some()
+        && matches!(
+            (field(entry, "_HOSTNAME"), field(entry, "COREDUMP_HOSTNAME")),
+            (Some(host), Some(theirs)) if !host.eq_ignore_ascii_case(&theirs)
+        )
+    {
+        return Origin::Container;
+    }
+    if let Some(id) = flatpak {
+        return Origin::Flatpak(id);
+    }
+    if !exe.is_empty() && !SYSTEM_PREFIXES.iter().any(|p| exe.starts_with(p)) {
+        return Origin::Foreign;
+    }
+    Origin::Host
+}
+
+/// What a trusted coredump entry says, before it becomes a report.
+struct Coredump {
+    ts: u64,
+    exe: String,
+    comm: String,
+    signal: String,
+    origin: Origin,
+}
+
+impl Coredump {
+    /// `None` for an entry systemd-coredump did not write for `uid` (see
+    /// [`trusted_coredump`]) or one without a timestamp.
+    fn parse(entry: &Value, uid: &str) -> Option<Coredump> {
+        if !trusted_coredump(entry, uid) {
+            return None;
+        }
+        let ts: u64 = field(entry, "COREDUMP_TIMESTAMP")?.parse().ok()?;
+        let exe = field(entry, "COREDUMP_EXE")
+            .filter(|e| valid_exe(e))
+            .unwrap_or_default();
+        let comm = clean(
+            &field(entry, "COREDUMP_COMM").unwrap_or_default(),
+            64,
+            false,
+        );
+        let signal = field(entry, "COREDUMP_SIGNAL_NAME")
+            .map(|s| clean(&s, 64, false))
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "unknown signal".into());
+        let origin = coredump_origin(entry, &exe);
+        Some(Coredump {
+            ts,
+            exe,
+            comm,
+            signal,
+            origin,
+        })
+    }
+
+    fn time(&self) -> String {
+        history::rfc3339_from_unix(self.ts / 1_000_000)
+    }
+
+    /// The program as a host crash names it: its path as [`redact_exe`]
+    /// shows it, else the command name.
+    fn host_name(&self, scrubber: &Scrubber) -> String {
+        let name = if self.exe.is_empty() {
+            self.comm.clone()
+        } else {
+            redact_exe(&self.exe, scrubber)
+        };
+        scrubber.scrub(&name)
+    }
+
+    fn host_message(&self, scrubber: &Scrubber) -> String {
+        format!(
+            "{} crashed with {}",
+            scrubber.scrub(&self.comm),
+            self.signal
+        )
+    }
+}
+
 /// One coredump journal entry (`journalctl -o json`) as a report plus its
 /// timestamp in microseconds. Entries not written by systemd-coredump for
 /// `uid` are dropped (COREDUMP_* fields can be forged by any local user; the
-/// `_`-prefixed ones are added by journald and cannot). Reads only COREDUMP_EXE, COMM, SIGNAL_NAME,
-/// TIMESTAMP, PACKAGE_NAME/VERSION and MESSAGE (and only frame lines of it).
+/// `_`-prefixed ones are added by journald and cannot), and so are crashes
+/// that are not the host's (see [`Origin`]). Reads only COREDUMP_EXE, COMM,
+/// SIGNAL_NAME, TIMESTAMP, PACKAGE_NAME/VERSION and MESSAGE (and only frame
+/// lines of it), and for the origin the cgroup, unit and host name fields,
+/// of which nothing is copied.
 fn coredump_report(
     entry: &Value,
     scrubber: &Scrubber,
     uid: &str,
     rpm_version: impl Fn(&str) -> Option<String>,
 ) -> Option<(u64, Report)> {
-    if !trusted_coredump(entry, uid) {
+    let dump = Coredump::parse(entry, uid)?;
+    if dump.origin.ignored() {
         return None;
     }
-    let ts: u64 = field(entry, "COREDUMP_TIMESTAMP")?.parse().ok()?;
-    let exe = field(entry, "COREDUMP_EXE")
-        .filter(|e| valid_exe(e))
-        .unwrap_or_default();
-    let comm = clean(
-        &field(entry, "COREDUMP_COMM").unwrap_or_default(),
-        64,
-        false,
-    );
-    let signal = field(entry, "COREDUMP_SIGNAL_NAME")
-        .map(|s| clean(&s, 64, false))
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "unknown signal".into());
-    let name = if exe.is_empty() {
-        comm.clone()
-    } else {
-        redact_exe(&exe, scrubber)
+    let (name, version) = match &dump.origin {
+        // the host's rpm database knows nothing of a sandbox
+        Origin::Flatpak(id) => (
+            id.clone(),
+            field(entry, "COREDUMP_PACKAGE_VERSION")
+                .map(|v| clean(&v, 128, false))
+                .filter(|v| !v.is_empty()),
+        ),
+        _ => (
+            dump.host_name(scrubber),
+            match (
+                field(entry, "COREDUMP_PACKAGE_NAME"),
+                field(entry, "COREDUMP_PACKAGE_VERSION"),
+            ) {
+                (_, Some(v)) => Some(clean(&v, 128, false)).filter(|v| !v.is_empty()),
+                _ if !dump.exe.is_empty() => rpm_version(&dump.exe),
+                _ => None,
+            },
+        ),
     };
-    let version = match (
-        field(entry, "COREDUMP_PACKAGE_NAME"),
-        field(entry, "COREDUMP_PACKAGE_VERSION"),
-    ) {
-        (_, Some(v)) => Some(clean(&v, 128, false)).filter(|v| !v.is_empty()),
-        _ if !exe.is_empty() => rpm_version(&exe),
-        _ => None,
-    };
-    let time = history::rfc3339_from_unix(ts / 1_000_000);
+    let time = dump.time();
     let crash = Crash {
         report_type: "coredump",
-        app_name: &scrubber.scrub(&name),
+        app_name: &name,
         app_version: version.as_deref(),
-        message: &format!("{} crashed with {signal}", scrubber.scrub(&comm)),
+        message: &dump.host_message(scrubber),
         stacktrace: &clean(&field(entry, "MESSAGE").unwrap_or_default(), 8192, true),
     };
-    Some((ts, build_report(&crash, scrubber, Some(&time)).ok()?))
+    let mut report = build_report(&crash, scrubber, Some(&time)).ok()?;
+    if let Origin::Flatpak(id) = &dump.origin {
+        // The app ID labels the report. Scrubbing a whole long ID takes it for
+        // an access token, so each part is scrubbed on its own.
+        report.app_name = id
+            .split('.')
+            .map(|part| scrubber.scrub(part))
+            .collect::<Vec<_>>()
+            .join(".");
+    }
+    Some((dump.ts, report))
 }
 
 /// Where installed programs live: a crashed program's path under one of
@@ -2355,17 +2543,23 @@ fn journal_with(program: &Path, args: &[String], limit: Duration) -> Vec<Value> 
 }
 
 /// The journal fields we read; `--output-fields` keeps the rest (command
-/// line, environment, working directory, ...) out of this process.
-const JOURNAL_FIELDS: &str = "MESSAGE,COREDUMP_EXE,COREDUMP_COMM,COREDUMP_SIGNAL_NAME,COREDUMP_TIMESTAMP,COREDUMP_PACKAGE_NAME,COREDUMP_PACKAGE_VERSION,COREDUMP_UID,_UID,_COMM,_SYSTEMD_UNIT";
+/// line, environment, working directory, ...) out of this process. The last
+/// six only tell a crash on the host from one in a container (see [`Origin`]);
+/// whether `COREDUMP_CONTAINER_CMDLINE` is set matters, never its value.
+const JOURNAL_FIELDS: &str = "MESSAGE,COREDUMP_EXE,COREDUMP_COMM,COREDUMP_SIGNAL_NAME,COREDUMP_TIMESTAMP,COREDUMP_PACKAGE_NAME,COREDUMP_PACKAGE_VERSION,COREDUMP_UID,_UID,_COMM,_SYSTEMD_UNIT,COREDUMP_CGROUP,COREDUMP_USER_UNIT,COREDUMP_UNIT,COREDUMP_CONTAINER_CMDLINE,COREDUMP_HOSTNAME,_HOSTNAME";
 
-/// journalctl arguments for coredump entries after `since_micros`.
-fn journal_args(since_micros: u64, uid: Option<&str>) -> Vec<String> {
+/// journalctl arguments for coredump entries after `since_micros` (and, when
+/// given, before `until_micros`).
+fn journal_args(since_micros: u64, until_micros: Option<u64>, uid: Option<&str>) -> Vec<String> {
     let mut a: Vec<String> = ["--no-pager", "--all", "-o", "json", "-n", "500"]
         .iter()
         .map(|s| s.to_string())
         .collect();
     a.push(format!("--output-fields={JOURNAL_FIELDS}"));
     a.push(format!("--since=@{}", since_micros / 1_000_000));
+    if let Some(until) = until_micros {
+        a.push(format!("--until=@{}", until / 1_000_000));
+    }
     a.push(format!("MESSAGE_ID={COREDUMP_MESSAGE_ID}"));
     // trusted field (journald sets it; comm is truncated to 15 chars)
     a.push("_COMM=systemd-coredum".into());
@@ -2379,6 +2573,17 @@ fn journal_args(since_micros: u64, uid: Option<&str>) -> Vec<String> {
         None => a.insert(0, "--user".into()),
     }
     a
+}
+
+/// The user's coredump entries in the journal after `since_micros` (and
+/// before `until_micros`): the user journal, else the system journal filtered
+/// to our UID (readable for members of `wheel`/`systemd-journal`).
+fn coredump_entries(since_micros: u64, until_micros: Option<u64>) -> Vec<Value> {
+    let entries = journal(&journal_args(since_micros, until_micros, None));
+    if !entries.is_empty() {
+        return entries;
+    }
+    journal(&journal_args(since_micros, until_micros, Some(&own_uid())))
 }
 
 /// The package owning `exe`; `Err` (`TimedOut`) when rpm took longer than
@@ -2441,12 +2646,15 @@ impl<F: Fn(&str) -> io::Result<Option<String>>> RpmLookup<F> {
 /// Blocks: it runs `journalctl` (up to twice, 10 s each at most) and
 /// `rpm -qf` for programs without a package field (5 s at most; after one
 /// timeout, as when an update holds the rpmdb lock, no more this call), so
-/// up to about 25 s. Call it from a worker thread, never the GUI thread.
+/// up to about 25 s (once, after an update that raised the origin rules, up
+/// to 12 more journal lookups for the pending reports). Call it from a worker
+/// thread, never the GUI thread.
 pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     if !Settings::load().enabled {
         return Vec::new();
     }
     prune_sent();
+    purge_ignored_pending();
     let Some(marker) = last_seen_path("coredump-last") else {
         return Vec::new();
     };
@@ -2454,10 +2662,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
         reset_markers(); // first run: only crashes from now on
         return Vec::new();
     };
-    let mut entries = journal(&journal_args(since, None));
-    if entries.is_empty() {
-        entries = journal(&journal_args(since, Some(&own_uid())));
-    }
+    let entries = coredump_entries(since, None);
     let scrubber = Scrubber::from_env();
     let uid = own_uid();
     let rpm = RpmLookup::new(rpm_version);
@@ -2469,6 +2674,12 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
             continue;
         };
         if ts <= since {
+            continue;
+        }
+        // not the host's crash (a container, a build tree): never a report,
+        // and the marker moves past it
+        if Coredump::parse(e, &uid).is_some_and(|d| d.origin.ignored()) {
+            newest = newest.max(ts);
             continue;
         }
         let Some((_, report)) = coredump_report(e, &scrubber, &uid, |x| rpm.version(x)) else {
@@ -2545,6 +2756,153 @@ fn discard_written(reports: &[Report]) {
             let _ = fs::remove_file(p);
         }
     }
+}
+
+/// The version of [`coredump_origin`]'s rules the pending queue was last
+/// cleaned with (`coredump-rules` in the state directory). Raise it when the
+/// rules start leaving out more, and the next collection cleans again.
+const ORIGIN_RULES: &str = "1";
+
+/// Once per [`ORIGIN_RULES`] version: deletes the pending coredump reports
+/// that the current rules would not have queued (an older version queued
+/// every crash it found, container ones included). The marker is written when
+/// the journal could be asked, so a failed `journalctl` is tried again.
+fn purge_ignored_pending() {
+    let (Some(dir), Some(marker)) = (reports_dir(), last_seen_path("coredump-rules")) else {
+        return;
+    };
+    if fs::read_to_string(&marker).is_ok_and(|t| t.trim() == ORIGIN_RULES) {
+        return;
+    }
+    let done = purge_ignored_in(
+        &dir.join("pending"),
+        &Scrubber::from_env(),
+        &own_uid(),
+        |since, until| coredump_entries(since, Some(until)),
+    );
+    if done.is_some() {
+        let _ = write_private(&marker, ORIGIN_RULES.as_bytes(), true);
+    }
+}
+
+/// Deletes the coredump reports in `pending` whose crash the rules ignore and
+/// returns how many. A report keeps no cgroup, so each is matched to its
+/// journal entry (`lookup(since, until)` in microseconds) by its time, program
+/// and message; one made from a program outside the OS is known by its name
+/// alone (`<path>/...`, `<home>/...`). `None` when reports were left
+/// undecided because the journal had nothing for them.
+fn purge_ignored_in(
+    pending: &Path,
+    scrubber: &Scrubber,
+    uid: &str,
+    lookup: impl Fn(u64, u64) -> Vec<Value>,
+) -> Option<usize> {
+    let remove = |r: &Report| {
+        if let Some(p) = &r.path {
+            let _ = fs::remove_file(p);
+        }
+    };
+    let mut removed = 0;
+    let mut undecided = Vec::new();
+    for r in read_reports(pending)
+        .into_iter()
+        .filter(|r| r.report_type == "coredump")
+    {
+        if r.app_name.starts_with("<path>/") || r.app_name.starts_with("<home>/") {
+            remove(&r);
+            removed += 1;
+        } else {
+            undecided.push(r);
+        }
+    }
+    if undecided.is_empty() {
+        return Some(removed);
+    }
+    let mut seconds: Vec<u64> = undecided
+        .iter()
+        .filter_map(|r| unix_from_rfc3339(&r.time))
+        .collect();
+    seconds.sort_unstable();
+    seconds.dedup();
+    let mut ignored = std::collections::HashSet::new();
+    let mut kept = std::collections::HashSet::new();
+    let mut found = false;
+    let mut i = 0;
+    let mut groups = 0;
+    while i < seconds.len() && groups < MAX_PURGE_LOOKUPS {
+        // One journal call for crashes that are close together, never for a
+        // span longer than [`PURGE_SPAN`]. The journal files an entry when
+        // the core has been written and its trace made, which takes a while
+        // for a big program: the window reaches [`PURGE_LATE`] seconds past
+        // the crash.
+        let (first, mut last) = (seconds[i], seconds[i]);
+        while i + 1 < seconds.len()
+            && seconds[i + 1] - last <= 5
+            && seconds[i + 1] - first <= PURGE_SPAN
+        {
+            i += 1;
+            last = seconds[i];
+        }
+        i += 1;
+        groups += 1;
+        let entries = lookup(
+            first.saturating_sub(1) * 1_000_000,
+            (last + PURGE_LATE) * 1_000_000,
+        );
+        found |= !entries.is_empty();
+        for d in entries.iter().filter_map(|e| Coredump::parse(e, uid)) {
+            let key = (
+                d.time(),
+                d.host_name(scrubber),
+                scrubber.scrub_message(&cap_message(&d.host_message(scrubber))),
+            );
+            if d.origin.ignored() {
+                ignored.insert(key);
+            } else {
+                kept.insert(key);
+            }
+        }
+    }
+    for r in &undecided {
+        let key = (r.time.clone(), r.app_name.clone(), r.message.clone());
+        // a host crash of the same program in the same second stays
+        if ignored.contains(&key) && !kept.contains(&key) {
+            remove(r);
+            removed += 1;
+        }
+    }
+    found.then_some(removed)
+}
+
+/// The most seconds one purge lookup spans, how long after a crash its entry
+/// may be filed, and how many lookups one purge makes.
+const PURGE_SPAN: u64 = 60;
+const PURGE_LATE: u64 = 120;
+const MAX_PURGE_LOOKUPS: usize = 12;
+
+/// Unix seconds of a `YYYY-MM-DDTHH:MM:SSZ` time (what [`now_rfc3339`] and
+/// the coredump reports use); `None` for any other shape.
+fn unix_from_rfc3339(t: &str) -> Option<u64> {
+    let b = t.as_bytes();
+    if b.len() != 20
+        || (b[4], b[7], b[10], b[13], b[16], b[19]) != (b'-', b'-', b'T', b':', b':', b'Z')
+    {
+        return None;
+    }
+    let n = |r: std::ops::Range<usize>| t.get(r)?.parse::<i64>().ok();
+    let (y, m, d) = (n(0..4)?, n(5..7)?, n(8..10)?);
+    let (h, mi, sec) = (n(11..13)?, n(14..16)?, n(17..19)?);
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) || h > 23 || mi > 59 || sec > 60 {
+        return None;
+    }
+    // days from civil
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * ((m + 9) % 12) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    u64::try_from(days * 86_400 + h * 3600 + mi * 60 + sec).ok()
 }
 
 // --------------------------------------------------------------- events
@@ -4063,21 +4421,31 @@ mod tests {
 
     #[test]
     fn journal_arguments_limit_fields_and_start_at_the_marker() {
-        let a = journal_args(5_000_000, Some("1000"));
+        let a = journal_args(5_000_000, None, Some("1000"));
         assert!(a.contains(&"--all".to_string()));
         assert!(
             a.iter()
                 .any(|x| x.starts_with("--output-fields=MESSAGE,COREDUMP_EXE"))
         );
-        assert!(
-            !a.iter()
-                .any(|x| x.contains("CMDLINE") || x.contains("ENVIRON"))
-        );
+        // the command line (it can hold anything) and the environment are not
+        // read; the container command line only for whether it is set
+        let fields = a
+            .iter()
+            .find_map(|x| x.strip_prefix("--output-fields="))
+            .unwrap()
+            .split(',')
+            .collect::<Vec<_>>();
+        for f in ["COREDUMP_CMDLINE", "COREDUMP_ENVIRON", "COREDUMP_CWD"] {
+            assert!(!fields.contains(&f), "{f}");
+        }
+        assert!(fields.contains(&"COREDUMP_CGROUP"));
         assert!(a.contains(&"--since=@5".to_string()));
+        assert!(!a.iter().any(|x| x.starts_with("--until")));
+        assert!(journal_args(5_000_000, Some(9_000_000), None).contains(&"--until=@9".to_string()));
         assert!(a.contains(&"COREDUMP_UID=1000".to_string()));
         assert!(a.contains(&"_UID=1000".to_string()));
         assert!(a.contains(&"_COMM=systemd-coredum".to_string()));
-        assert_eq!(journal_args(0, None)[0], "--user");
+        assert_eq!(journal_args(0, None, None)[0], "--user");
     }
 
     #[test]
@@ -5171,20 +5539,440 @@ mod tests {
         ] {
             assert_eq!(redact_exe(exe, &s), want, "{exe}");
         }
+        // such a program is no longer reported at all (see Origin::Foreign);
+        // the names above still label the old reports in the queue
         let mut e = real_entry();
         e["COREDUMP_EXE"] = json!("/mnt/clients/acme/bin/billing");
         e["COREDUMP_COMM"] = json!("billing");
-        let (_, r) = coredump_report(&e, &sc(), "1000", |_| None).unwrap();
-        assert_eq!(r.app_name, "<path>/billing");
-        let all = format!("{}{}", serde_json::to_string(&r).unwrap(), r.payload());
-        assert!(!all.contains("acme") && !all.contains("clients"), "{all}");
-        // rpm is still asked with the real path
+        assert!(coredump_report(&e, &sc(), "1000", |_| None).is_none());
+        // rpm is asked with the real path of a program of the OS
+        e["COREDUMP_EXE"] = json!("/usr/libexec/billing");
         let asked = std::cell::RefCell::new(String::new());
         coredump_report(&e, &sc(), "1000", |x| {
             *asked.borrow_mut() = x.to_string();
             None
         });
-        assert_eq!(*asked.borrow(), "/mnt/clients/acme/bin/billing");
+        assert_eq!(*asked.borrow(), "/usr/libexec/billing");
+    }
+
+    // Entries shaped like the ones systemd-coredump wrote on the owner's PC
+    // (cgroups and field names as `journalctl -o json` printed them).
+
+    const HOST: &str = "telamonos";
+    const PODMAN_ID: &str = "72bfc6a1528d919c002f92f9aedec8ac8b7e545f6d61588efa6ceebb5f35c8a4";
+
+    fn dump(exe: &str, comm: &str, cgroup: &str, hostname: &str, in_pidns: bool) -> Value {
+        let mut e = json!({
+            "_COMM": "systemd-coredum",
+            "_UID": "1000",
+            "_HOSTNAME": HOST,
+            "_SYSTEMD_UNIT": "systemd-coredump@14-45057-137975_201220-0.service",
+            "COREDUMP_UID": "1000",
+            "COREDUMP_TIMESTAMP": "1790000000000000",
+            "COREDUMP_EXE": exe,
+            "COREDUMP_COMM": comm,
+            "COREDUMP_SIGNAL_NAME": "SIGABRT",
+            "COREDUMP_CGROUP": cgroup,
+            "COREDUMP_UNIT": "user@1000.service",
+            "COREDUMP_HOSTNAME": hostname,
+            "MESSAGE": "Process 1 (x) dumped core."
+        });
+        if in_pidns {
+            e["COREDUMP_CONTAINER_CMDLINE"] = json!("sleep 3000");
+        }
+        e
+    }
+
+    fn origin_of(e: &Value) -> Origin {
+        Coredump::parse(e, "1000").unwrap().origin
+    }
+
+    fn kept(e: &Value) -> bool {
+        coredump_report(e, &sc(), "1000", |_| None).is_some()
+    }
+
+    #[test]
+    fn crashes_on_the_host_are_reported() {
+        for (exe, comm, cgroup) in [
+            (
+                "/usr/bin/plasmashell",
+                "plasmashell",
+                "/user.slice/user-1000.slice/user@1000.service/session.slice/plasma-plasmashell.service",
+            ),
+            (
+                "/usr/bin/telamon-settings",
+                "telamon-settings",
+                "/user.slice/user-1000.slice/user@1000.service/app.slice/app-net.eterneon.telamon.settings-4242.scope",
+            ),
+            (
+                "/usr/libexec/xdg-desktop-portal-kde",
+                "xdg-desktop-por",
+                "/user.slice/user-1000.slice/user@1000.service/session.slice/plasma-xdg-desktop-portal-kde.service",
+            ),
+            // Podman running on the host is not a container itself.
+            (
+                "/usr/bin/podman",
+                "podman",
+                "/user.slice/user-1000.slice/user@1000.service/app.slice/podman-4242.scope",
+            ),
+            (
+                "/usr/bin/foo",
+                "foo",
+                "/user.slice/user-1000.slice/session-3.scope",
+            ),
+            ("/usr/bin/foo", "foo", ""),
+        ] {
+            let e = dump(exe, comm, cgroup, HOST, false);
+            assert_eq!(origin_of(&e), Origin::Host, "{cgroup}");
+            assert!(kept(&e), "{cgroup}");
+        }
+        // An entry without the fields (older systemd) counts as the host's.
+        let mut e = real_entry();
+        e["_HOSTNAME"] = json!(HOST);
+        assert_eq!(origin_of(&e), Origin::Host);
+        assert!(kept(&e));
+        // Likewise one whose program is unknown.
+        let mut e = dump("", "mystery", "", HOST, false);
+        e.as_object_mut().unwrap().remove("COREDUMP_EXE");
+        assert!(kept(&e));
+    }
+
+    #[test]
+    fn crashes_in_containers_are_ignored() {
+        let user = "/user.slice/user-1000.slice/user@1000.service";
+        let cases = [
+            // podman, as the development agents run it (owner's PC): its own
+            // host name, a PID namespace of its own
+            (
+                format!("{user}/user.slice/libpod-{PODMAN_ID}.scope/container"),
+                "72bfc6a1528d",
+                true,
+            ),
+            // toolbox and distrobox share the host name and the PID
+            // namespace, but still run in a libpod scope
+            (
+                format!("{user}/user.slice/libpod-{PODMAN_ID}.scope/container"),
+                HOST,
+                false,
+            ),
+            // rootful podman
+            (
+                format!("/machine.slice/libpod-{PODMAN_ID}.scope/container"),
+                HOST,
+                false,
+            ),
+            // docker, with systemd and with cgroupfs
+            (
+                format!("/system.slice/docker-{PODMAN_ID}.scope"),
+                "d1e2",
+                true,
+            ),
+            (format!("/docker/{PODMAN_ID}"), "d1e2", true),
+            // CRI-O and Kubernetes
+            (
+                format!("/kubepods.slice/kubepods-burstable.slice/crio-{PODMAN_ID}.scope"),
+                "pod",
+                true,
+            ),
+            (
+                format!("/kubepods/besteffort/pod1/{PODMAN_ID}"),
+                "pod",
+                true,
+            ),
+            // systemd-nspawn and libvirt machines, LXC
+            (
+                "/machine.slice/machine-fedora.scope/payload".into(),
+                "fedora",
+                true,
+            ),
+            ("/lxc.payload.web/init.scope".into(), "web", true),
+            // a container runtime that left no cgroup behind: only the
+            // other host name and the other PID namespace tell
+            (String::new(), "6db81a563ec2", true),
+        ];
+        for (cgroup, hostname, pidns) in cases {
+            for exe in [
+                "/usr/libexec/xdg-desktop-portal-kde",
+                "/usr/bin/ksecretd",
+                "/work/target/debug/deps/telamon_explorer-ca3e",
+            ] {
+                let e = dump(exe, "x", &cgroup, hostname, pidns);
+                assert_eq!(
+                    origin_of(&e),
+                    Origin::Container,
+                    "{cgroup} {hostname} {exe}"
+                );
+                assert!(!kept(&e), "{cgroup} {exe}");
+            }
+        }
+        // the unit fields say it too when the cgroup field is missing
+        let mut e = dump("/usr/bin/plasmashell", "plasmashell", "", HOST, false);
+        e["COREDUMP_USER_UNIT"] = json!(format!("libpod-{PODMAN_ID}.scope"));
+        assert_eq!(origin_of(&e), Origin::Container);
+        // podman's supervisor runs on the host
+        let e = dump(
+            "/usr/bin/conmon",
+            "conmon",
+            &format!(
+                "/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-conmon-{PODMAN_ID}.scope"
+            ),
+            HOST,
+            false,
+        );
+        assert!(kept(&e));
+        // a program whose own name merely looks like one is not a container
+        let e = dump(
+            "/usr/bin/docker-compose",
+            "docker-compose",
+            "/user.slice/user-1000.slice/user@1000.service/app.slice/app-konsole-1.scope",
+            HOST,
+            false,
+        );
+        assert!(kept(&e));
+    }
+
+    #[test]
+    fn a_flatpak_crash_is_labelled_as_that_app() {
+        let e = dump(
+            "/app/extra/claude-desktop/claude-desktop",
+            "claude-desktop",
+            "/user.slice/user-1000.slice/user@1000.service/app.slice/app-flatpak-io.github.musmandev092.ClaudeDesktop-2553939532.scope",
+            HOST,
+            true,
+        );
+        assert_eq!(
+            origin_of(&e),
+            Origin::Flatpak("io.github.musmandev092.ClaudeDesktop".into())
+        );
+        let (_, r) = coredump_report(&e, &sc(), "1000", |x| panic!("rpm asked about {x}")).unwrap();
+        assert_eq!(r.app_name, "io.github.musmandev092.ClaudeDesktop");
+        assert_eq!(r.message, "claude-desktop crashed with SIGABRT");
+        assert_eq!(
+            r.payload()["tags"]["app"],
+            "io.github.musmandev092.ClaudeDesktop"
+        );
+        assert_eq!(r.category, "other");
+        assert!(r.app_version.is_none());
+        // a program of the runtime inside the sandbox is labelled the same
+        let mut e = e;
+        e["COREDUMP_EXE"] = json!("/usr/bin/bwrap");
+        assert!(matches!(origin_of(&e), Origin::Flatpak(_)));
+        // a sandbox inside a container is the container's
+        e["COREDUMP_CGROUP"] = json!(format!(
+            "/user.slice/libpod-{PODMAN_ID}.scope/container/app-flatpak-org.example.App-1.scope"
+        ));
+        assert_eq!(origin_of(&e), Origin::Container);
+
+        for (scope, want) in [
+            (
+                "app-flatpak-org.kde.okular-123.scope",
+                Some("org.kde.okular"),
+            ),
+            ("flatpak-org.kde.okular-123.scope", Some("org.kde.okular")),
+            (
+                "app-flatpak-org.foo.Bar\\x2dBaz-9.scope",
+                Some("org.foo.Bar-Baz"),
+            ),
+            ("app-flatpak-org.foo.Bar-notanumber.scope", None),
+            ("app-flatpak-org.foo.Bar.scope", None),
+            ("app-flatpak-nodots-5.scope", None),
+            ("app-flatpak-org..Bar-5.scope", None),
+            ("app-flatpak-org.foo/../x-5.scope", None),
+            ("app-flatpak-org.foo.Bar-5.service", None),
+            ("app-org.kde.okular-5.scope", None),
+        ] {
+            assert_eq!(flatpak_scope_app(scope).as_deref(), want, "{scope}");
+        }
+    }
+
+    #[test]
+    fn programs_outside_the_os_are_ignored_unless_they_are_flatpak_apps() {
+        let user = "/user.slice/user-1000.slice/user@1000.service/app.slice/app-x-1.scope";
+        for exe in [
+            "/work/cmake/ids/pageconfig_test",
+            "/tmp/kw",
+            "/var/tmp/x",
+            "/build/glow/telamon-updater-glow",
+            "/var/home/zach/Documents/Projects/x/target/debug/x",
+            "/home/zach/.local/bin/tool",
+            "/home/linuxbrew/.linuxbrew/bin/node",
+            "/tmp/.mount_AppIm/usr/bin/app",
+            "/mnt/clients/acme/bin/billing",
+            "/usrlocal/x",
+        ] {
+            let e = dump(exe, "x", user, HOST, false);
+            assert_eq!(origin_of(&e), Origin::Foreign, "{exe}");
+            assert!(!kept(&e), "{exe}");
+        }
+        for exe in [
+            "/usr/bin/x",
+            "/usr/libexec/x",
+            "/usr/local/bin/x",
+            "/bin/x",
+            "/sbin/x",
+            "/lib64/ld-linux-x86-64.so.2",
+            "/opt/vendor/bin/x",
+            "/app/bin/x",
+            "/var/lib/flatpak/app/org.foo.Bar/current/active/files/bin/x",
+        ] {
+            let e = dump(exe, "x", user, HOST, false);
+            assert!(kept(&e), "{exe}");
+        }
+        // a test binary run by the user in a Flatpak sandbox, where /tmp is
+        // the sandbox's, is that app's
+        let e = dump(
+            "/tmp/helper",
+            "helper",
+            "/user.slice/user-1000.slice/user@1000.service/app.slice/app-flatpak-org.foo.Bar-9.scope",
+            HOST,
+            true,
+        );
+        assert!(kept(&e));
+    }
+
+    #[test]
+    fn a_forged_cgroup_cannot_make_a_dump_trusted() {
+        // an entry that systemd-coredump did not write is dropped first,
+        // whatever cgroup it claims
+        let mut e = dump("/usr/bin/x", "x", "/user.slice/x.service", HOST, false);
+        e["_COMM"] = json!("evil");
+        assert!(Coredump::parse(&e, "1000").is_none());
+    }
+
+    #[test]
+    fn unix_time_round_trips_with_rfc3339() {
+        for secs in [
+            0,
+            86_399,
+            951_782_400,
+            1_790_000_000,
+            1_791_432_413,
+            4_102_444_799,
+        ] {
+            assert_eq!(
+                unix_from_rfc3339(&history::rfc3339_from_unix(secs)),
+                Some(secs)
+            );
+        }
+        for bad in [
+            "",
+            "2026-10-07",
+            "2026-13-01T00:00:00Z",
+            "2026-10-07 10:00:00Z",
+            "x026-10-07T10:00:00Z",
+            "2026-10-07T10:00:00+00:00",
+        ] {
+            assert_eq!(unix_from_rfc3339(bad), None, "{bad}");
+        }
+    }
+
+    fn queue_dump(pending: &Path, e: &Value) -> Report {
+        let d = Coredump::parse(e, "1000").unwrap();
+        // as the version that queued every crash made it
+        let crash = Crash {
+            report_type: "coredump",
+            app_name: &d.host_name(&sc()),
+            app_version: None,
+            message: &d.host_message(&sc()),
+            stacktrace: "",
+        };
+        let mut r = build_report(&crash, &sc(), Some(&d.time())).unwrap();
+        r.path = Some(write_report(pending, &r).unwrap());
+        r
+    }
+
+    #[test]
+    fn pending_reports_of_container_crashes_are_dropped_once_found_in_the_journal() {
+        let d = tempfile::tempdir().unwrap();
+        let pending = d.path().join("pending");
+        let podman = format!(
+            "/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-{PODMAN_ID}.scope/container"
+        );
+        let at = |e: &mut Value, micros: u64| e["COREDUMP_TIMESTAMP"] = json!(micros.to_string());
+        let mut in_container = dump(
+            "/usr/libexec/xdg-desktop-portal-kde",
+            "xdg-desktop-por",
+            &podman,
+            "72bfc6a1528d",
+            true,
+        );
+        at(&mut in_container, 1_790_000_000_000_000);
+        let mut on_host = dump(
+            "/usr/bin/telamon-settings",
+            "telamon-settings",
+            "/user.slice/x.service",
+            HOST,
+            false,
+        );
+        at(&mut on_host, 1_790_000_100_000_000);
+        let mut flatpak = dump(
+            "/app/bin/claude-desktop",
+            "claude-desktop",
+            "/user.slice/user@1000.service/app.slice/app-flatpak-io.github.musmandev092.ClaudeDesktop-1.scope",
+            HOST,
+            true,
+        );
+        at(&mut flatpak, 1_790_000_200_000_000);
+        let mut build_tree = dump("/work/x/target/debug/x", "x", &podman, "72bfc6a1528d", true);
+        at(&mut build_tree, 1_790_000_300_000_000);
+        let entries = [
+            in_container.clone(),
+            on_host.clone(),
+            flatpak.clone(),
+            build_tree.clone(),
+        ];
+
+        let a = queue_dump(&pending, &in_container);
+        let b = queue_dump(&pending, &on_host);
+        let c = queue_dump(&pending, &build_tree);
+        // an old report of a program in a home directory: no journal needed
+        let mut old = report("");
+        old.report_type = "coredump".into();
+        old.app_name = "<home>/proj".into();
+        old.time = "2026-09-01T00:00:00Z".into();
+        old.path = Some(write_report(&pending, &old).unwrap());
+        // a panic is never touched
+        let mut panic = report("");
+        panic.time = "2026-09-21T14:13:21Z".into();
+        panic.path = Some(write_report(&pending, &panic).unwrap());
+        // the flatpak crash was queued by the old code under its program path
+        let f = queue_dump(&pending, &flatpak);
+
+        // the journal knows nothing: only the name-based rule applies
+        let none = purge_ignored_in(&pending, &sc(), "1000", |_, _| Vec::new());
+        assert_eq!(none, None);
+        assert!(old.path.as_ref().is_some_and(|p| !p.exists()));
+        assert!(a.path.as_ref().unwrap().exists(), "needs the journal");
+        assert!(
+            !c.path.as_ref().unwrap().exists(),
+            "a program outside the OS"
+        );
+
+        let calls = std::cell::RefCell::new(Vec::new());
+        let journal = |since: u64, until: u64| -> Vec<Value> {
+            calls.borrow_mut().push((since, until));
+            entries
+                .iter()
+                .filter(|e| {
+                    let t: u64 = e["COREDUMP_TIMESTAMP"].as_str().unwrap().parse().unwrap();
+                    t >= since && t < until
+                })
+                .cloned()
+                .collect()
+        };
+        let done = purge_ignored_in(&pending, &sc(), "1000", journal);
+        assert_eq!(done, Some(1), "the container report");
+        assert!(!a.path.as_ref().unwrap().exists());
+        assert!(b.path.as_ref().unwrap().exists(), "host crash stays");
+        assert!(f.path.as_ref().unwrap().exists(), "flatpak crash stays");
+        assert!(panic.path.as_ref().unwrap().exists());
+        // crashes minutes apart are asked for separately, never a whole day;
+        // one lookup reaches past the crash for the entry filed late
+        assert!(
+            calls.borrow().len() >= 2 && calls.borrow().iter().all(|(s, u)| u - s < 200_000_000)
+        );
+        // and a second pass finds nothing to do
+        assert_eq!(purge_ignored_in(&pending, &sc(), "1000", journal), Some(0));
     }
 
     #[test]
