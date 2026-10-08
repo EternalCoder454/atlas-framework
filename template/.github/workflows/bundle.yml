@@ -1,0 +1,19 @@
+name: Telamon bundle
+# Builds the app as a Telamon native bundle and attaches it to the GitHub
+# release of a v* tag, where Telamon Store finds it. The tag's version must be
+# the CMake project() VERSION. See docs/BUNDLES.md in telamon-framework.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bundle:
+    permissions:
+      contents: write
+    # Replace <FRAMEWORK_SHA> (twice) with the full 40-character commit sha of
+    # the telamon-framework release the app builds against, and vX.Y.Z with its tag.
+    uses: EternalCoder454/atlas-framework/.github/workflows/bundle.yml@<FRAMEWORK_SHA> # vX.Y.Z
+    with:
+      framework-ref: <FRAMEWORK_SHA>

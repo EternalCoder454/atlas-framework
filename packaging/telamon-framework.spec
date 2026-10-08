@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.3
+Version:        2.0.4
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -203,6 +203,14 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.4-1
+- Native app bundles: tools/make-bundle.sh and tools/bundle.py pack a built
+  app as a per-user bundle (<id>-<version>-x86_64.tar.zst and
+  telamon-bundle.json) for Telamon Store; a reusable GitHub workflow
+  (bundle.yml) builds and attaches it to a release; the app template ships
+  with the caller workflow, metainfo and an icon. Nothing in the packages
+  changes.
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.3-1
 - Fix: the keyboard in ContextMenu. Up and Down skip separators, disabled and
   hidden rows and wrap at the ends, Home and End jump, Right opens a submenu

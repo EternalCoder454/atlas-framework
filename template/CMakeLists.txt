@@ -81,3 +81,10 @@ install(FILES data/net.eterneon.telamon.apptemplate.desktop
 # where the short name is "telamon-" and the last part of the app ID.
 install(FILES data/telamon-apptemplate.notifyrc
         DESTINATION ${CMAKE_INSTALL_DATADIR}/knotifications6)
+# What Telamon Store shows (the name, summary and licence come from the
+# metainfo) and the icon the desktop file names; a native bundle
+# (tools/make-bundle.sh) carries both.
+install(FILES data/net.eterneon.telamon.apptemplate.metainfo.xml
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+install(FILES data/net.eterneon.telamon.apptemplate.svg
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
