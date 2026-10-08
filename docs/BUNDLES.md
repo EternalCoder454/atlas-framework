@@ -197,9 +197,9 @@ What it does:
    binary that learns its install paths at build time (`CMAKE_INSTALL_FULL_DATADIR`
    compiled in) then holds the stage path, which step 4 finds; built for `/usr` it
    would hold `/usr/share/...` and fail only on a user's computer. It fails if
-   the app's CMake forces its own prefix (as Gates' does only
-   `if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)`, which an explicit prefix
-   skips).
+   the app's CMake forces its own prefix. An app may set `/usr` only as a
+   default (`if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)`, as Telamon Gates
+   and Telamon Notepad do), which an explicit prefix skips.
 3. Remaps the source, build and cargo directories (`--remap-path-prefix`,
    `-ffile-prefix-map`) so panic messages and `__FILE__` do not carry them.
 4. Checks that **no file in the tree contains the stage path or the build directory**.

@@ -469,6 +469,9 @@ push and pull request:
 - **Performance** (`perf/measure.sh`): the template's startup time, RSS, PSS
   and idle CPU against `perf/budget.json`, with the numbers in the run's
   summary.
+- **Bundle tools** (`tools/test-make-bundle.sh`): `make-bundle.sh` and
+  `bundle.py` on a fake app, a byte-identical second build, and every kind of
+  bad bundle refused ([BUNDLES.md](BUNDLES.md)).
 - **The apps** (`tools/apps.txt`): each is cloned and checked with
   `lint-app.sh` and `check-app-names.sh`, so a new Telamon.Ui type that would
   hide an app's file fails here first.
