@@ -74,7 +74,7 @@ T.AbstractButton {
                 font.weight: Font.DemiBold
                 color: control.current ? TelamonStyle.accentText : TelamonStyle.textMuted
             }
-            Kirigami.Icon {
+            TelamonIcon {
                 anchors.centerIn: parent
                 visible: control.done && !control.current
                 width: Math.round(dot.size * 0.7)

@@ -59,7 +59,7 @@ ColumnLayout {
             radius: width / 2
             color: TelamonStyle.alpha(root.tint, 0.14)
         }
-        Kirigami.Icon {
+        TelamonIcon {
             anchors.centerIn: parent
             width: Math.round(badge.size * (root.showTintCircle ? 0.5 : 0.9))
             height: width
@@ -83,7 +83,7 @@ ColumnLayout {
             color: TelamonStyle.accent
             border.width: ringWidth
             border.color: Kirigami.Theme.backgroundColor
-            Kirigami.Icon {
+            TelamonIcon {
                 anchors.centerIn: parent
                 width: Math.round(corner.width * 0.6)
                 height: width

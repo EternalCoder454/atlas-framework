@@ -77,7 +77,7 @@ T.MenuItem {
             Layout.preferredWidth: control.icon.width
             Layout.preferredHeight: control.icon.height
             // Rows with and without icons line up.
-            Kirigami.Icon {
+            TelamonIcon {
                 anchors.fill: parent
                 visible: control.showsCheck || (!control._showsDot && control.symbol === 0 && source.toString().length > 0)
                 source: control.showsCheck ? "checkmark" : control.icon.name.length > 0 ? control.icon.name : control.icon.source
@@ -123,7 +123,7 @@ T.MenuItem {
             color: control.enabled ? TelamonStyle.textMuted : TelamonStyle.textDisabled
             textFormat: Text.PlainText
         }
-        Kirigami.Icon {
+        TelamonIcon {
             visible: control.subMenu !== null
             Layout.preferredWidth: Kirigami.Units.iconSizes.small
             Layout.preferredHeight: Layout.preferredWidth

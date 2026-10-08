@@ -117,7 +117,7 @@ Item {
             anchors.rightMargin: TelamonStyle.spacingSmall + 2
             spacing: TelamonStyle.spacingLarge
 
-            Kirigami.Icon {
+            TelamonIcon {
                 Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                 Layout.preferredHeight: Layout.preferredWidth
                 Layout.alignment: Qt.AlignVCenter
@@ -199,7 +199,7 @@ Item {
                         shown: closeButton.visualFocus
                     }
                 }
-                contentItem: Kirigami.Icon {
+                contentItem: TelamonIcon {
                     source: "window-close"
                     isMask: true
                     color: Kirigami.Theme.textColor

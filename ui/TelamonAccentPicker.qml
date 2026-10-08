@@ -178,7 +178,7 @@ T.Control {
                     radius: width / 2
                     shown: control.visualFocus && swatch.selected
                 }
-                Kirigami.Icon {
+                TelamonIcon {
                     anchors.centerIn: parent
                     width: Math.round(swatch.size * 0.55)
                     height: width

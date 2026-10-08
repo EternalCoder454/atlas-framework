@@ -224,6 +224,7 @@ Every type has a page. The groups below are the sidebar sections.
 ### Icons
 
 - [Symbol](symbol.md): One Material Symbols icon.
+- [TelamonIcon](telamon-icon.md): A theme icon that stays under dialogs and menus.
 - [Symbols](symbols.md): The singleton of every symbol's name.
 
 ### Services

@@ -603,7 +603,7 @@ FocusScope {
                         textFormat: Text.PlainText
                         Layout.maximumWidth: head.width - root.cellPadding * 2 - Kirigami.Units.iconSizes.small
                     }
-                    Kirigami.Icon {
+                    TelamonIcon {
                         visible: head.sorted
                         Layout.preferredWidth: Kirigami.Units.iconSizes.small
                         Layout.preferredHeight: Kirigami.Units.iconSizes.small
@@ -805,7 +805,7 @@ FocusScope {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Kirigami.Units.iconSizes.small
                 height: width
-                sourceComponent: Kirigami.Icon {
+                sourceComponent: TelamonIcon {
                     source: root.mirrored ? "arrow-left" : "arrow-right"
                     isMask: true
                     color: Kirigami.Theme.textColor
@@ -916,7 +916,7 @@ FocusScope {
         anchors.rightMargin: root.cellPadding
         spacing: Kirigami.Units.smallSpacing
 
-        Kirigami.Icon {
+        TelamonIcon {
             Layout.preferredWidth: Kirigami.Units.iconSizes.small
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             source: iconRow.cell.column.iconRole ? (iconRow.cell.rowModel[iconRow.cell.column.iconRole] || "application-x-executable") : ""

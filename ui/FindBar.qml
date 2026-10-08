@@ -190,7 +190,7 @@ Item {
             textFormat: Text.PlainText
             Accessible.ignored: true
         }
-        Kirigami.Icon {
+        TelamonIcon {
             id: fieldIcon
             visible: field.icon.length > 0
             x: field.rtl ? field.width - width - TelamonStyle.spacingLarge : TelamonStyle.spacingLarge

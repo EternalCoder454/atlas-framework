@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.4
+Version:        2.0.5
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -203,6 +203,11 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.5-1
+- Added TelamonIcon (a Kirigami.Icon that is a layer on the software renderer).
+- Fix: icons drawn over dialogs, popups and menus with the software renderer;
+  Telamon.Ui's controls use TelamonIcon for all their icons.
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.4-1
 - Native app bundles: tools/make-bundle.sh and tools/bundle.py pack a built
   app as a per-user bundle (<id>-<version>-x86_64.tar.zst and

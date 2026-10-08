@@ -463,7 +463,7 @@ T.Control {
                 anchors.verticalCenter: parent.verticalCenter
                 width: row.iconName.length > 0 || row.symbolValue !== 0 ? Kirigami.Units.iconSizes.smallMedium : 0
                 height: width
-                Kirigami.Icon {
+                TelamonIcon {
                     anchors.fill: parent
                     visible: row.iconName.length > 0
                     source: row.iconName
