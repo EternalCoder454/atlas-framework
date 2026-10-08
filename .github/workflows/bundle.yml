@@ -12,9 +12,9 @@ on:
   workflow_call:
     inputs:
       framework-ref:
-        description: Full 40-character commit sha of telamon-framework (a branch or tag also works, a short sha cannot be fetched); its tools pack the bundle and its sources are built as the telamon-ui the app compiles against
+        description: Full 40-character commit sha of telamon-framework (a branch, a tag or a short sha is refused); its tools pack the bundle and its sources are built as the telamon-ui the app compiles against
         type: string
-        default: main
+        required: true
       app-dir:
         description: The app's CMake source directory, such as apps/telamon-gates (default - the only apps/*/CMakeLists.txt, else the repository root)
         type: string
@@ -55,7 +55,7 @@ jobs:
             fi
           done
           if ! [[ $FRAMEWORK_REF =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::warning::framework-ref is '$FRAMEWORK_REF', not a full commit sha: the bundle is built against whatever that names today"
+            echo "::error::framework-ref must be the full 40-character commit sha of a telamon-framework release (it is '$FRAMEWORK_REF'): a branch or tag names something that moves"; exit 1
           fi
 
       - name: Check out the app
@@ -71,6 +71,9 @@ jobs:
           git init -q "$dir"
           git -C "$dir" fetch -q --depth 1 -- https://github.com/EternalCoder454/atlas-framework "$FRAMEWORK_REF"
           git -C "$dir" checkout -q FETCH_HEAD
+          if [ "$(git -C "$dir" rev-parse HEAD)" != "$FRAMEWORK_REF" ]; then
+            echo "::error::fetched $(git -C "$dir" rev-parse HEAD), not $FRAMEWORK_REF"; exit 1
+          fi
           if [ ! -x "$dir/tools/make-bundle.sh" ]; then
             echo "::error::framework-ref has no tools/make-bundle.sh: use a commit from 2.0.3 on"; exit 1
           fi
@@ -88,7 +91,7 @@ jobs:
       # branch (workflow_dispatch) to seed one every tag can read.
       - name: Restore the telamon-ui RPMs
         id: cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /telamon-framework-rpms
           key: telamon-framework-rpms-f44-${{ steps.framework.outputs.sha }}-${{ steps.framework.outputs.month }}
@@ -100,6 +103,16 @@ jobs:
         run: |
           "$FRAMEWORK_DIR/packaging/build-rpm.sh" /telamon-framework-rpms
           cd /telamon-framework-rpms && sha256sum -- *.rpm > SHA256SUMS
+
+      # Saved here, before any of the app's code runs (the spec's macros and
+      # the app's CMake can run commands): a cache entry holds only what the
+      # framework's own build made.
+      - name: Save the telamon-ui RPMs
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /telamon-framework-rpms
+          key: ${{ steps.cache.outputs.cache-primary-key }}
 
       - name: Check the cached RPMs
         if: steps.cache.outputs.cache-hit == 'true'
@@ -187,26 +200,52 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           # GitHub sometimes answers 5xx to a release create or an upload: try again.
-          # The release is made here when the tag has none; one that exists
-          # (made by hand or by another workflow) just gets the assets.
-          flags=(--verify-tag --title "$TAG" --generate-notes)
-          [[ $TAG == *-* ]] && flags+=(--prerelease)
-          found=0
-          for attempt in 1 2 3 4 5; do
-            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              found=1; break
-            fi
-            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" "${flags[@]}" || true
-            sleep $((attempt * 5))
-          done
-          if [ "$found" != 1 ] && ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          # A release made here is a draft until both files are on it, so Store
+          # never sees a release without its bundle; one that exists (made by
+          # hand, or a draft a failed run left) just gets the assets.
+          repo=(--repo "$GITHUB_REPOSITORY")
+          created=0
+          if ! gh release view "$TAG" "${repo[@]}" >/dev/null 2>&1; then
+            flags=(--verify-tag --title "$TAG" --generate-notes --draft)
+            [[ $TAG == *-* ]] && flags+=(--prerelease)
+            for attempt in 1 2 3 4 5; do
+              if gh release create "$TAG" "${repo[@]}" "${flags[@]}"; then
+                created=1; break
+              fi
+              # A failed create may still have made it (a 5xx after the fact), or
+              # another run did: then the release is not ours to remove.
+              if gh release view "$TAG" "${repo[@]}" >/dev/null 2>&1; then
+                break
+              fi
+              sleep $((attempt * 5))
+            done
+          fi
+          if ! gh release view "$TAG" "${repo[@]}" >/dev/null 2>&1; then
             echo "::error::could not create the release $TAG"; exit 1
           fi
+          draft=$(gh release view "$TAG" "${repo[@]}" --json isDraft --jq .isDraft)
+          uploaded=0
           for attempt in 1 2 3 4 5; do
-            if gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber bundle-out/*; then
-              echo "Attached to $TAG:"; ls -l bundle-out
-              exit 0
+            if gh release upload "$TAG" "${repo[@]}" --clobber bundle-out/*; then
+              uploaded=1; break
             fi
             sleep $((attempt * 5))
           done
-          echo "::error::could not upload the bundle to $TAG"; exit 1
+          if [ "$uploaded" != 1 ]; then
+            # Only the draft this run made is removed.
+            if [ "$created" = 1 ]; then
+              gh release delete "$TAG" "${repo[@]}" --yes || echo "::warning::could not delete the draft release $TAG"
+            fi
+            echo "::error::could not upload the bundle to $TAG"; exit 1
+          fi
+          if [ "$created" = 1 ] || [ "$draft" = true ]; then
+            published=0
+            for attempt in 1 2 3 4 5; do
+              if gh release edit "$TAG" "${repo[@]}" --draft=false; then
+                published=1; break
+              fi
+              sleep $((attempt * 5))
+            done
+            [ "$published" = 1 ] || { echo "::error::the bundle is on the draft release $TAG, but publishing it failed: publish it by hand"; exit 1; }
+          fi
+          echo "Attached to $TAG:"; ls -l bundle-out

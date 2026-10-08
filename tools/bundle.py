@@ -35,14 +35,85 @@ FILE_KEYS = ["path", "size", "sha256", "executable"]
 LINK_KEYS = ["path", "target"]
 ARCHIVE_KEYS = ["name", "sha256", "size"]
 
-ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
-VERSION_RE = re.compile(r"[0-9]+(\.[0-9]+)+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?")
-OSVER_RE = re.compile(r"[0-9]+")
+ID_RE = re.compile(r"[A-Za-z0-9._-]+")
+NUM = r"(?:0|[1-9][0-9]{0,8})"
+# up to 6 numbers of at most 9 digits, no leading zeros; a prerelease of dot-separated [0-9A-Za-z-] (the Store's rule)
+VERSION_RE = re.compile(rf"{NUM}(?:\.{NUM}){{1,5}}(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?")
+MIN_UI_RE = re.compile(rf"{NUM}(?:\.{NUM}){{0,5}}")
+OSVER_RE = re.compile(r"[0-9]{1,4}")
 SHA_RE = re.compile(r"[0-9a-f]{64}")
+BARE_RE = re.compile(r"[A-Za-z0-9._+-]{1,100}")
 
-MAX_ENTRIES = 50000
-MAX_TOTAL = 2 * 1024 ** 3
-SMALL = 1024 * 1024  # files read whole: desktop, service, metainfo, manifest
+# The Store's caps (telamon-store-core, native/manifest.rs and desktop.rs).
+MAX_FILES = 20000                 # files, and links, each
+MAX_ENTRIES = 2 * MAX_FILES       # every entry of the archive, directories too
+MAX_FILE = 512 * 1024 ** 2
+MAX_TOTAL = 1024 ** 3             # unpacked
+MAX_ARCHIVE = 256 * 1024 ** 2
+MAX_ICONS = 64
+MAX_EXPORTS = 200                 # exported files in all
+MAX_EXPORT = 1024 * 1024          # one exported file
+MAX_KEYFILE = 64 * 1024           # a .desktop or .service file
+MAX_KEYFILE_LINES = 1000
+MAX_PATH = 1024                   # bytes, a whole path
+SMALL = MAX_EXPORT                # files read whole: desktop, service, metainfo, manifest
+
+
+def valid_version(v):
+    return len(v) <= 64 and VERSION_RE.fullmatch(v) is not None
+
+
+def valid_min_ui(v):
+    return len(v) <= 64 and MIN_UI_RE.fullmatch(v) is not None
+
+
+def valid_app_id(i):
+    """The Store's rule, and at least three dot-separated parts."""
+    parts = i.split(".")
+    return (len(i.encode("utf-8")) <= 128 and ID_RE.fullmatch(i) is not None and len(parts) >= 3
+            and all(p and not p.startswith("-") for p in parts))
+
+
+def hidden(c):
+    """The Store's `hidden` characters (control, invisible, bidi, filler), plus any
+    other format, control or line/paragraph separator."""
+    o = ord(c)
+    return (unicodedata.category(c)[0] == "C" or unicodedata.category(c) in ("Zl", "Zp") or o in (
+        0xAD, 0x34F, 0x61C, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x200B, 0x200E, 0x200F, 0x3164, 0xFEFF, 0xFFA0)
+        or 0x180B <= o <= 0x180F or 0x2028 <= o <= 0x202E or 0x2060 <= o <= 0x206F
+        or 0xFE00 <= o <= 0xFE0F or 0xFFF9 <= o <= 0xFFFB or 0x1BCA0 <= o <= 0x1BCA3
+        or 0x1D173 <= o <= 0x1D17A or 0xE0000 <= o <= 0xE007F or 0xE0100 <= o <= 0xE01EF)
+
+
+_BAD_TLDS = {"local", "localhost", "localdomain", "lan", "home", "internal", "intranet", "private", "corp",
+             "arpa", "test", "example", "invalid", "onion", "alt"}
+
+
+def https_url(s):
+    """The Store's normalised https address (launch.rs `https_url`), or None."""
+    if len(s) > 4096 or not all(0x21 <= ord(c) <= 0x7e for c in s) or any(c in '\\"<>`{}|^' for c in s):
+        return None
+    if s[:8].lower() != "https://":
+        return None
+    rest = s[8:]
+    cut = min([i for i in (rest.find(c) for c in "/?#") if i >= 0], default=len(rest))
+    authority, tail = rest[:cut], rest[cut:]
+    host = authority
+    if ":" in authority:
+        host, port = authority.split(":", 1)
+        if port != "443":
+            return None
+    path = re.split(r"[?#]", tail, maxsplit=1)[0]
+    if any(seg in (".", "..") for seg in path.lower().replace("%2e", ".").split("/")):
+        return None
+    host = host.lower()
+    labels = host.split(".")
+    if not (len(host) <= 253 and len(labels) >= 2
+            and all(1 <= len(lb) <= 63 and re.fullmatch(r"[a-z0-9-]+", lb) and not lb.startswith("-") and not lb.endswith("-")
+                    for lb in labels)
+            and re.fullmatch(r"[a-z]+", labels[-1]) and labels[-1] not in _BAD_TLDS):
+        return None
+    return f"https://{host}{tail}"
 
 
 class BundleError(Exception):
@@ -77,18 +148,38 @@ def path_problem(p):
         return "empty or absolute path"
     if "\\" in p:
         return "backslash in path"
+    try:
+        raw = p.encode("utf-8")
+    except UnicodeEncodeError:
+        return "path is not valid UTF-8"
+    if len(raw) > MAX_PATH:
+        return f"path longer than {MAX_PATH} bytes"
     for c in p.split("/"):
         if c in ("", ".", ".."):
             return "path has an empty, '.' or '..' component (no './' prefix, no '..')"
-        if len(c.encode("utf-8", "surrogateescape")) > 255:
+        if len(c.encode("utf-8")) > 255:
             return "path component longer than 255 bytes"
-        if any(unicodedata.category(ch)[0] == "C" or unicodedata.category(ch) in ("Zl", "Zp") for ch in c):
+        if any(hidden(ch) for ch in c):
             return "control, format (bidi, zero-width) or other hidden character in path"
-        try:
-            c.encode("utf-8")
-        except UnicodeEncodeError:
-            return "path is not valid UTF-8"
     return None
+
+
+def link_target_ok(path, target):
+    """The Store's lexical rule for a link target: relative, plain names and `..`, no
+    empty or `.` part, no hidden character, never above the root."""
+    if not target or len(target.encode("utf-8", "replace")) > 1024 or target.startswith("/") or any(hidden(c) for c in target):
+        return False
+    depth = path.count("/")
+    for part in target.split("/"):
+        if part in ("", "."):
+            return False
+        if part == "..":
+            depth -= 1
+            if depth < 0:
+                return False
+        else:
+            depth += 1
+    return True
 
 
 def resolve_link(path, target, by_path=None):
@@ -145,7 +236,11 @@ def validate(entries, archive):
         by_path[e.path] = e
         total += e.size
     if total > MAX_TOTAL:
-        errs.append(f"{total} bytes of files: more than {MAX_TOTAL}")
+        errs.append(f"{total} bytes of files: more than {MAX_TOTAL} (1 GiB unpacked)")
+    nfiles = sum(1 for e in by_path.values() if e.kind == "file")
+    nlinks = sum(1 for e in by_path.values() if e.kind == "link")
+    if nfiles > MAX_FILES or nlinks > MAX_FILES:
+        errs.append(f"{nfiles} files and {nlinks} links: at most {MAX_FILES} of each")
 
     for e in by_path.values():
         top = e.path.split("/", 1)[0]
@@ -171,6 +266,8 @@ def validate(entries, archive):
             if archive and e.mode & 0o7777 != 0o755:
                 errs.append(f"{e.path}: directory mode {e.mode & 0o7777:04o}, expected 0755")
         elif e.kind == "file":
+            if e.size > MAX_FILE:
+                errs.append(f"{e.path}: {e.size} bytes, more than {MAX_FILE} (512 MiB)")
             if archive and e.mode & 0o7777 not in (0o755, 0o644):
                 errs.append(f"{e.path}: mode {e.mode & 0o7777:04o}, expected 0755 or 0644")
             if e.path.startswith("bin/") and not e.mode & 0o111:
@@ -178,9 +275,12 @@ def validate(entries, archive):
             if e.path.startswith("bin/") and e.path.count("/") > 1:
                 errs.append(f"{e.path}: bin/ holds no subdirectories")
         elif e.kind == "link":
-            dest = resolve_link(e.path, e.target, by_path)
+            dest = resolve_link(e.path, e.target, by_path) if link_target_ok(e.path, e.target) else None
+            if archive and e.mode & 0o7777 != 0o777:
+                errs.append(f"{e.path}: symlink mode {e.mode & 0o7777:04o}, expected 0777")
             if dest is None:
-                errs.append(f"{e.path}: symlink to {e.target!r}, which is not a relative path inside the tree")
+                errs.append(f"{e.path}: symlink to {e.target!r}, which is not a relative path inside the tree "
+                            "(plain names and '..', no empty or '.' part, no hidden character)")
             elif dest not in by_path and not any(x.startswith(dest + "/") for x in by_path):
                 errs.append(f"{e.path}: symlink to {e.target!r}, which is not in the archive")
             if e.path.startswith("bin/") and e.path.count("/") > 1:
@@ -204,65 +304,111 @@ def validate(entries, archive):
 # share/ and bin/ stays in the app's own prefix.
 EXPORT_DIRS = ("share/applications", "share/icons", "share/metainfo", "share/dbus-1", "share/knotifications6")
 ICON_RE = re.compile(r"share/icons/hicolor/(?:scalable|[0-9]+x[0-9]+)/apps/([^/]+)")
-NOTIFYRC_RE = re.compile(r"share/knotifications6/telamon-[A-Za-z0-9._-]+\.notifyrc")
 
 
 def in_export_zone(path):
     return any(path == d or path.startswith(d + "/") for d in EXPORT_DIRS)
 
 
-def parse_ini_group(text, group):
-    """Keys of one [group] of a .desktop or D-Bus .service file (a later duplicate wins, as in GLib)."""
-    cur, out = None, {}
-    for raw in text.splitlines():
-        line = raw.strip()
+def notifyrc_ok(path, app_id):
+    """share/knotifications6/telamon-<last part of the app id>[-_<suffix>].notifyrc"""
+    last = app_id.rsplit(".", 1)[-1]
+    return re.fullmatch(rf"share/knotifications6/telamon-{re.escape(last)}(?:[-_][A-Za-z0-9._+-]*)?\.notifyrc", path) is not None
+
+
+def _glib_space(c):
+    return c in " \t\n\x0b\x0c\r"
+
+
+def parse_keyfile(data, what):
+    """A .desktop or D-Bus .service file, read as strictly as the Store reads it
+    (GLib's key-file rules plus its limits). Returns [(group, [(key, value)])] in
+    order of first appearance (a repeated group merges). Raises BundleError."""
+    if len(data) > MAX_KEYFILE:
+        raise BundleError(f"{what}: larger than {MAX_KEYFILE // 1024} KiB")
+    if b"\0" in data:
+        raise BundleError(f"{what}: contains a NUL byte")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise BundleError(f"{what}: not UTF-8 text") from None
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    if len(lines) > MAX_KEYFILE_LINES:
+        raise BundleError(f"{what}: more than {MAX_KEYFILE_LINES} lines")
+    groups, cur, nkeys = [], None, 0
+    for n, line in enumerate(lines, 1):
+        if line.endswith("\r"):
+            line = line[:-1]
+        line = line.lstrip(" \t\n\x0b\x0c\r")
         if not line or line.startswith("#"):
             continue
-        if line.startswith("[") and line.endswith("]"):
-            cur = line[1:-1]
+        if line.startswith("["):
+            end = line.find("]", 1)
+            if end < 0 or line[end + 1:].strip(" \t"):
+                raise BundleError(f"{what}: line {n} is not a group, a key or a comment")
+            name = line[1:end]
+            if not name or any(c in "[]" or unicodedata.category(c) == "Cc" for c in name):
+                raise BundleError(f"{what}: line {n}: a group name is not valid")
+            cur = next((g for g in groups if g[0] == name), None)
+            if cur is None:
+                if len(groups) >= 32:
+                    raise BundleError(f"{what}: more than 32 groups")
+                cur = (name, [])
+                groups.append(cur)
             continue
-        if cur == group and "=" in line:
-            k, v = line.split("=", 1)
-            out[k.strip()] = v.strip()
-    return out
+        if "=" not in line:
+            raise BundleError(f"{what}: line {n} is not a group, a key or a comment")
+        if cur is None:
+            raise BundleError(f"{what}: line {n}: a key before the first group")
+        key, value = line.split("=", 1)
+        key = key.rstrip(" \t\n\x0b\x0c\r")
+        base, _, loc = key.partition("[")
+        if not base or base.startswith(" ") or any(c in "=[]" or unicodedata.category(c) == "Cc" for c in base) or \
+                (loc and (not loc.endswith("]") or not loc[:-1] or any(c in "[]" or unicodedata.category(c) == "Cc" for c in loc[:-1]))):
+            raise BundleError(f"{what}: line {n}: a key name is not valid")
+        value = value.lstrip(" \t\n\x0b\x0c\r")
+        if len(value.encode("utf-8")) > 8192:
+            raise BundleError(f"{what}: line {n}: a value is longer than 8192 bytes")
+        nkeys += 1
+        if nkeys > 400:
+            raise BundleError(f"{what}: more than 400 keys")
+        cur[1].append((key, value.rstrip(" \t\r")))
+    return groups
 
 
-def first_group(text):
-    for raw in text.splitlines():
-        line = raw.strip()
-        if line and not line.startswith("#"):
-            return line[1:-1] if line.startswith("[") and line.endswith("]") else None
-    return None
+def group_get(groups, group, key):
+    """The last value of `key` in `group`, as GLib reads it."""
+    val = None
+    for name, items in groups:
+        if name == group:
+            for k, v in items:
+                if k == key:
+                    val = v
+    return val
 
 
-def exec_values(text):
-    """Every Exec= of a .desktop file, the [Desktop Action ...] groups' too: [(group, value)].
-    The key is trimmed, as GLib's key-file parser does."""
-    cur, out = None, []
-    for raw in text.splitlines():
-        line = raw.strip()
-        if line.startswith("[") and line.endswith("]"):
-            cur = line[1:-1]
-        elif cur is not None and "=" in line and not line.startswith("#"):
-            key, value = line.split("=", 1)
-            if key.strip() == "Exec":
-                out.append((cur, value.strip()))
-    return out
+def parse_ini_group(text, group):
+    """Keys of one group (a later duplicate wins), for text parse_keyfile accepted."""
+    return {k: v for name, items in parse_keyfile(text.encode("utf-8"), "file") if name == group for k, v in items}
 
 
 def exec_name(value):
     """The bare program name an Exec= line starts with, or raise ValueError:
-    no path, no quotes, no `env`."""
+    no path, no quotes, no `env`, [A-Za-z0-9._+-] at most 100, not starting with a dot."""
     if value[:1] in ("'", '"'):
         raise ValueError(f"Exec={value!r} starts with a quote: start it with the bare program name")
-    words = value.split()
-    if not words:
+    cut = min([i for i in (value.find(" "), value.find("\t")) if i >= 0], default=len(value))
+    first = value[:cut]
+    if not first:
         raise ValueError("Exec= is empty")
-    first = words[0]
     if "/" in first:
         raise ValueError(f"Exec starts with {first!r}: use the bare binary name (the Store fills in the path)")
     if first == "env":
         raise ValueError("Exec starts with `env`: start it with the app's own program (the Store sets no environment)")
+    if not BARE_RE.fullmatch(first) or first.startswith("."):
+        raise ValueError(f"Exec starts with {first!r}: a program name is [A-Za-z0-9._+-], at most 100, not starting with a dot")
     return first
 
 
@@ -277,6 +423,28 @@ def check_exec(by_path, where, value):
     return None
 
 
+def exec_errors(groups, where, by_path):
+    """Problems with every Exec= of a parsed .desktop file (and the localised launcher keys)."""
+    errs = []
+    execs = []
+    for name, items in groups:
+        for k, v in items:
+            if k.startswith(("Exec[", "TryExec[", "Path[")):
+                errs.append(f"{where} [{name}]: {k} is a localised launcher key, which the Store does not copy")
+            elif k == "Exec":
+                execs.append((name, v))
+    names = [g for g, _ in execs]
+    if "Desktop Entry" not in names:
+        errs.append(f"{where}: no Exec= in [Desktop Entry]")
+    for g in sorted({g for g in names if names.count(g) > 1}):
+        errs.append(f"{where} [{g}]: Exec= twice")
+    for g, v in execs:
+        bad = check_exec(by_path, f"{where} [{g}]", v)
+        if bad:
+            errs.append(bad)
+    return errs
+
+
 def check_semantics(by_path, read):
     """The rules for what the Store copies out: .desktop, icons, metainfo, D-Bus
     services and notification files. `read(path)` returns bytes.
@@ -289,27 +457,31 @@ def check_semantics(by_path, read):
                            f"{', '.join(apps) or 'none'} (leave a legacy file out with --exclude)"])
     dpath = apps[0]
     app_id = posixpath.basename(dpath)[: -len(".desktop")]
-    if not ID_RE.fullmatch(app_id) or "." not in app_id:
-        errs.append(f"{dpath}: the app id {app_id!r} must be reverse-DNS: letters, digits, '.', '_' and '-', with a dot")
+    if not valid_app_id(app_id):
+        errs.append(f"{dpath}: the app id {app_id!r} must be reverse-DNS with at least three parts: letters, digits, '.', '_' and '-', "
+                    "no empty part, no part starting with '-', at most 128 bytes")
+
+    exported = 0
+    icons = 0
+
+    def too_big(p, limit):
+        return by_path[p].size > limit
 
     if by_path[dpath].kind != "file":
         errs.append(f"{dpath}: must be a regular file")
+    elif too_big(dpath, MAX_KEYFILE):
+        errs.append(f"{dpath}: larger than {MAX_KEYFILE // 1024} KiB")
     else:
-        text = read(dpath).decode("utf-8", "replace")
-        if first_group(text) != "Desktop Entry":
-            errs.append(f"{dpath}: the first group must be [Desktop Entry]")
-        if parse_ini_group(text, "Desktop Entry").get("Type") != "Application":
-            errs.append(f"{dpath}: Type must be Application")
-        values = exec_values(text)
-        groups = [g for g, _ in values]
-        if "Desktop Entry" not in groups:
-            errs.append(f"{dpath}: no Exec= in [Desktop Entry]")
-        for g in sorted({g for g in groups if groups.count(g) > 1}):
-            errs.append(f"{dpath} [{g}]: Exec= twice")
-        for group, value in values:
-            bad = check_exec(by_path, f"{dpath} [{group}]", value)
-            if bad:
-                errs.append(bad)
+        try:
+            groups = parse_keyfile(read(dpath), dpath)
+        except BundleError as exc:
+            errs.extend(exc.problems)
+        else:
+            if not groups or groups[0][0] != "Desktop Entry":
+                errs.append(f"{dpath}: the first group must be [Desktop Entry]")
+            if group_get(groups, "Desktop Entry", "Type") != "Application":
+                errs.append(f"{dpath}: Type must be Application")
+            errs.extend(exec_errors(groups, dpath, by_path))
 
     for p, e in sorted(by_path.items()):
         if not in_export_zone(p) or (e.kind == "dir" and p in EXPORT_DIRS):
@@ -317,6 +489,10 @@ def check_semantics(by_path, read):
         if e.kind == "link":
             errs.append(f"{p}: the Store copies this directory's files out: a symlink here is not allowed (a regular file)")
             continue
+        if e.kind == "file":
+            exported += 1
+            if e.size > MAX_EXPORT:
+                errs.append(f"{p}: larger than {MAX_EXPORT // 1024 // 1024} MiB, too large to copy out")
         if p.startswith("share/applications"):
             if e.kind == "dir" and p != "share/applications":
                 errs.append(f"{p}: share/applications holds no directories")
@@ -329,6 +505,7 @@ def check_semantics(by_path, read):
                     (name[:-4] == app_id or name.startswith((app_id + "-", app_id + "_")))):
                 errs.append(f"{p}: icons are only share/icons/hicolor/<WxH or scalable>/apps/<file>, a .png or .svg named "
                             f"{app_id}.<ext> or starting {app_id}- or {app_id}_ (a bundle cannot shadow theme icons)")
+            icons += 1
         elif p.startswith("share/metainfo"):
             if e.kind == "dir" or posixpath.basename(p) not in (f"{app_id}.metainfo.xml", f"{app_id}.appdata.xml") \
                     or posixpath.dirname(p) != "share/metainfo":
@@ -341,27 +518,39 @@ def check_semantics(by_path, read):
             if posixpath.dirname(p) != "share/dbus-1/services" or not p.endswith(".service"):
                 errs.append(f"{p}: share/dbus-1 holds only services/<name>.service")
                 continue
-            text = read(p).decode("utf-8", "replace")
-            svc = parse_ini_group(text, "D-BUS Service")
-            name = svc.get("Name", "")
-            if first_group(text) != "D-BUS Service":
+            if too_big(p, MAX_KEYFILE):
+                errs.append(f"{p}: larger than {MAX_KEYFILE // 1024} KiB")
+                continue
+            try:
+                groups = parse_keyfile(read(p), p)
+            except BundleError as exc:
+                errs.extend(exc.problems)
+                continue
+            name = group_get(groups, "D-BUS Service", "Name") or ""
+            if not groups or groups[0][0] != "D-BUS Service":
                 errs.append(f"{p}: the first group must be [D-BUS Service]")
             elif not (name == app_id or name.startswith(app_id + ".")) or posixpath.basename(p) != name + ".service":
                 errs.append(f"{p}: Name={name!r} must be {app_id} or {app_id}.<more>, and the file named <Name>.service")
-            if "Exec" not in svc:
+            execv = group_get(groups, "D-BUS Service", "Exec")
+            if execv is None:
                 errs.append(f"{p}: no Exec=")
             else:
-                bad = check_exec(by_path, p, svc["Exec"])
+                bad = check_exec(by_path, p, execv)
                 if bad:
                     errs.append(bad)
         elif p.startswith("share/knotifications6"):
-            if e.kind == "dir" or not NOTIFYRC_RE.fullmatch(p):
-                errs.append(f"{p}: share/knotifications6 holds only telamon-<name>.notifyrc")
+            if e.kind == "dir" or not notifyrc_ok(p, app_id):
+                errs.append(f"{p}: share/knotifications6 holds only telamon-{app_id.rsplit('.', 1)[-1]}.notifyrc "
+                            "(or with a - or _ suffix before .notifyrc)")
+    if icons > MAX_ICONS:
+        errs.append(f"{icons} icons: at most {MAX_ICONS}")
+    if exported > MAX_EXPORTS:
+        errs.append(f"{exported} files the Store copies out: at most {MAX_EXPORTS}")
 
     # A link may not lead to a file the Store exports.
     for p, e in by_path.items():
         if e.kind == "link":
-            dest = resolve_link(p, e.target, by_path)
+            dest = resolve_link(p, e.target, by_path) if link_target_ok(p, e.target) else None
             if dest is not None and in_export_zone(dest):
                 errs.append(f"{p}: symlink to {e.target!r}, a file the Store copies out")
 
@@ -428,16 +617,18 @@ def resolve_version(app_dir, wanted):
     cm = cmake_version(app_dir)
     if wanted:
         wanted = wanted[1:] if wanted.startswith("v") else wanted
-        if not VERSION_RE.fullmatch(wanted):
+        if not valid_version(wanted):
             raise BundleError(f"version {wanted!r}: dotted numbers with an optional -prerelease (0.2.0, 1.0.0-beta.1)")
         core = wanted.split("-", 1)[0]
-        if cm is not None and core != cm:
+        if cm is None:
+            raise BundleError(f"no project(... VERSION x.y.z) in {app_dir}/CMakeLists.txt: the version {wanted} cannot be checked against it; add a VERSION")
+        if core != cm:
             raise BundleError(f"version {wanted} does not match project(... VERSION {cm}) in {app_dir}/CMakeLists.txt: "
                               "set the CMake version to the release's before tagging")
         return wanted
     if cm is None:
-        raise BundleError(f"no project(... VERSION x.y.z) in {app_dir}/CMakeLists.txt: pass --version")
-    if not VERSION_RE.fullmatch(cm):
+        raise BundleError(f"no project(... VERSION x.y.z) in {app_dir}/CMakeLists.txt: add a VERSION")
+    if not valid_version(cm):
         raise BundleError(f"project VERSION {cm} needs at least major.minor")
     return cm
 
@@ -564,11 +755,18 @@ def cmd_pack(a):
                  "license": "a metainfo <project_license>", "min_telamon_ui": "`BuildRequires: telamon-ui >= X` in the spec, or telamon-ui installed",
                  "min_os_version": "VERSION_ID in /etc/os-release"}
         raise BundleError([f"no {k}: needs {hints.get(k, '--' + k.replace('_', '-'))}" for k in missing])
-    for key, rx, what in (("id", ID_RE, "id"), ("version", VERSION_RE, "version"), ("min_os_version", OSVER_RE, "os version")):
-        if not rx.fullmatch(meta[key]):
-            raise BundleError(f"{what} {meta[key]!r} is not valid")
-    if not re.fullmatch(r"[0-9]+(\.[0-9]+)*", meta["min_telamon_ui"]):
-        raise BundleError(f"min_telamon_ui {meta['min_telamon_ui']!r} is not a dotted number")
+    if not valid_app_id(meta["id"]):
+        raise BundleError(f"id {meta['id']!r} is not valid")
+    if not valid_version(meta["version"]):
+        raise BundleError(f"version {meta['version']!r} is not valid")
+    if not OSVER_RE.fullmatch(meta["min_os_version"]):
+        raise BundleError(f"os version {meta['min_os_version']!r} is not valid")
+    if not valid_min_ui(meta["min_telamon_ui"]):
+        raise BundleError(f"min_telamon_ui {meta['min_telamon_ui']!r} is not a dotted number (up to 6 numbers of at most 9 digits)")
+    if https_url(meta["homepage"]) != meta["homepage"]:
+        raise BundleError(f"homepage {meta['homepage']!r} is not the plain https address the Store accepts "
+                          f"(https only, no port, lowercase public host with a letters-only TLD, no . or .. path part, "
+                          f"none of \\ \" < > ` {{ }} | ^); it would be {https_url(meta['homepage'])!r}")
 
     inner = build_manifest(meta, entries)
     inner_bytes = dump(inner).encode("utf-8")
@@ -647,7 +845,7 @@ def read_archive(path):
                     if total + ti.size > MAX_TOTAL:
                         raise BundleError("the archive is larger than the limits (entries or bytes)")
                     h = hashlib.sha256()
-                    keep = ti.size <= SMALL and (name == MANIFEST or name.endswith((".desktop", ".service", ".metainfo.xml")))
+                    keep = ti.size <= SMALL and (name == MANIFEST or name.endswith((".desktop", ".service", ".metainfo.xml", ".appdata.xml")))
                     buf = bytearray()
                     f = tf.extractfile(ti)
                     for chunk in iter(lambda: f.read(1 << 20), b""):
@@ -699,22 +897,22 @@ def check_manifest_shape(m, with_archive):
     if m["schema"] != SCHEMA or isinstance(m["schema"], bool):
         errs.append(f"schema is {m['schema']!r}, this tool reads {SCHEMA}")
     for k in ("id", "name", "version", "summary", "homepage", "license", "arch", "min_telamon_ui", "min_os_version"):
-        if not isinstance(m[k], str) or not m[k]:
+        if not isinstance(m[k], str) or (not m[k] and k != "homepage"):
             errs.append(f"{k} must be a non-empty string")
     if errs:
         return errs
-    if not ID_RE.fullmatch(m["id"]) or "." not in m["id"]:
-        errs.append(f"id {m['id']!r} is not reverse-DNS")
-    if not VERSION_RE.fullmatch(m["version"]):
-        errs.append(f"version {m['version']!r} is not dotted numbers with an optional -prerelease")
+    if not valid_app_id(m["id"]):
+        errs.append(f"id {m['id']!r} is not reverse-DNS with three parts or more")
+    if not valid_version(m["version"]):
+        errs.append(f"version {m['version']!r} is not up to 6 numbers (at most 9 digits, no leading zero) with an optional -prerelease, 64 characters at most")
     if m["arch"] != ARCH:
         errs.append(f"arch is {m['arch']!r}, expected {ARCH}")
-    if not re.fullmatch(r"[0-9]+(\.[0-9]+)*", m["min_telamon_ui"]):
+    if not valid_min_ui(m["min_telamon_ui"]):
         errs.append(f"min_telamon_ui {m['min_telamon_ui']!r} is not a dotted number")
     if not OSVER_RE.fullmatch(m["min_os_version"]):
         errs.append(f"min_os_version {m['min_os_version']!r} is not a number")
-    if not re.fullmatch(r"https://[^\s\x00-\x1f\x7f]+", m["homepage"]):
-        errs.append("homepage must be a plain https:// URL")
+    if m["homepage"] and https_url(m["homepage"]) != m["homepage"]:
+        errs.append("homepage must be a plain https address as the Store normalises it (no port, lowercase public host)")
     if not isinstance(m["files"], list) or not isinstance(m["links"], list):
         errs.append("files and links must be arrays")
         return errs
@@ -765,6 +963,8 @@ def verify(archive_path, manifest_path, epoch=None):
         raise BundleError(f"cannot read {archive_path}")
     if os.path.basename(archive_path) != ar["name"]:
         errs.append(f"the archive file is {os.path.basename(archive_path)}, the manifest names {ar['name']}")
+    if not 0 < os.path.getsize(archive_path) <= MAX_ARCHIVE:
+        errs.append(f"the archive is {os.path.getsize(archive_path)} bytes: at most {MAX_ARCHIVE} (256 MiB)")
     if os.path.getsize(archive_path) != ar["size"]:
         errs.append(f"archive size {os.path.getsize(archive_path)}, the manifest says {ar['size']}")
     if sha256_file(archive_path) != ar["sha256"]:

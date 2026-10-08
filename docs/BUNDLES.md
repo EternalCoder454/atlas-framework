@@ -32,8 +32,16 @@ Entries are UTF-8 relative paths (no leading `./` (a reader tolerates it; the to
 no backslash, and no control, hidden, zero-width or bidi characters), and only directories, regular files and
 relative symlinks that stay inside the tree: no hard links, devices or fifos. Every entry
 is owned by 0:0, with mode 0755 (directories, executables) or 0644 (files), and
-the modification time of the commit (`SOURCE_DATE_EPOCH`). Entries are sorted
-by path, and every directory has its own entry before its content.
+the modification time of the commit (`SOURCE_DATE_EPOCH`); symlinks are mode 0777. Entries
+are sorted by path (compared without the trailing `/` that a directory's name is written
+with in the tar header), and every directory has its own entry before its content. A tar
+header too small for a long or non-ASCII name is followed by a PAX `x` extended header
+that carries it; a reader must read both.
+
+Limits, the Store's: 20,000 files and 20,000 links, 40,000 entries in all, 512 MiB for
+one file, 1 GiB unpacked, a 256 MiB archive, a path of 1,024 bytes (255 in a name), and for
+what is copied out: at most 64 icons and 200 files in all, a `.desktop` or `.service` file
+of 64 KiB and 1,000 lines at most (400 keys, 32 groups), any other copied file 1 MiB.
 
 ```text
 bin/                                   executables; the binary links Qt, KF6 and telamon-ui from the OS
@@ -93,11 +101,11 @@ trailing newline; `files` and `links` are sorted by path.
 | Key | Meaning |
 |---|---|
 | `schema` | `1`. A reader that does not know the number refuses the bundle. |
-| `id` | Reverse-DNS app ID: `[A-Za-z0-9._-]+`, starts with a letter or digit, has a dot. It is the `.desktop` file's basename and the directory name in the install layout. |
-| `name`, `summary`, `license`, `homepage` | From the metainfo (`<name>`, `<summary>`, `<project_license>`, `<url type="homepage">`); without a metainfo the tool falls back to the `.desktop` file's `Name` and `Comment` and the spec's `License:` and `URL:`, and fails if one is still missing. `homepage` is an `https://` URL. |
-| `version` | Dotted numbers with an optional prerelease: `0.2.0`, `1.0.0-beta.1`. The release tag without its `v`. It must agree with the numbers of `project(... VERSION)` in the app's CMake. |
+| `id` | Reverse-DNS app ID: `[A-Za-z0-9._-]`, **at least three** dot-separated parts, none empty, none starting with `-`, at most 128 bytes (`net.eterneon.telamon.gates`). It is the `.desktop` file's basename and the directory name in the install layout. |
+| `name`, `summary`, `license`, `homepage` | From the metainfo (`<name>`, `<summary>`, `<project_license>`, `<url type="homepage">`); without a metainfo the tool falls back to the `.desktop` file's `Name` and `Comment` and the spec's `License:` and `URL:`, and fails if one is still missing. `homepage` is the plain https address **as the Store normalises it**, or empty for a reader (this tool requires one): `https://` only, no port, a lowercase public DNS name of two labels or more with a letters-only TLD (not `.local`, `.lan`, `.internal`, `.test`, `.example`, `.localhost`, ...), printable ASCII without `\ " < > ` { } | ^`, and no `.` or `..` path segment (also as `%2e`). `https://GitHub.com/x` is refused: write `https://github.com/x`. |
+| `version` | Up to 6 numbers of at most 9 digits with no leading zero (at least two with this tool), then an optional `-prerelease` of dot-separated parts of `[0-9A-Za-z-]`, 64 characters in all: `0.2.0`, `1.0.0-beta.1`. The release tag without its `v`; no `v`, no `+build`. It must agree with the numbers of `project(... VERSION)` in the app's CMake, which must have one. |
 | `arch` | `x86_64`, the only one. |
-| `min_telamon_ui` | The oldest `telamon-ui` that runs the app: the highest `BuildRequires: telamon-ui >= X` of the app's spec (else `Requires:`), else the version of `telamon-ui` installed in the build container. QML is compiled against the types Telamon.Ui had when the app was built, so a reader refuses an OS with an older one. |
+| `min_telamon_ui` | Up to 6 numbers as in `version`, no prerelease. The oldest `telamon-ui` that runs the app: the highest `BuildRequires: telamon-ui >= X` of the app's spec (else `Requires:`), else the version of `telamon-ui` installed in the build container. QML is compiled against the types Telamon.Ui had when the app was built, so a reader refuses an OS with an older one. |
 | `min_os_version` | `VERSION_ID` of the build container's `/etc/os-release` (Fedora 44: `44`). |
 | `files` | Every regular file in the archive except `telamon-bundle.json`: `path`, `size`, `sha256` (lowercase hex) and `executable` (any execute bit). |
 | `links` | The symlinks: `path` and the relative `target`. `[]` when there are none. |
@@ -119,7 +127,7 @@ stays in the prefix: the rest of `share/` (for example `share/<app-id>/`) and `b
 | `share/icons/` | `share/icons/hicolor/<W>x<H or scalable>/apps/<file>`, where `<file>` is a `.png` or `.svg` named `<app-id>.<ext>` or starting with `<app-id>-` or `<app-id>_` | Any other file under `share/icons/` is an error, so a bundle cannot shadow a theme icon. |
 | `share/metainfo/` | `<app-id>.metainfo.xml` (or `<app-id>.appdata.xml`) only | UTF-8 XML, no DOCTYPE; its `<id>` is the app ID. |
 | `share/dbus-1/services/` | `<Name>.service`, where `[D-BUS Service] Name=` is `<app-id>` or `<app-id>.<more>` and the file is named `<Name>.service` | The Store keeps only `Name` and `Exec`; `Exec` starts with a bare `bin/` program as above. Nothing else under `share/dbus-1/`. |
-| `share/knotifications6/` | `telamon-<name>.notifyrc` only | The template installs one. |
+| `share/knotifications6/` | `telamon-<last part of the app ID>.notifyrc` only, or with a `-` or `_` and a suffix before `.notifyrc` (`telamon-gates-alerts.notifyrc`) | The template installs one. |
 
 Everything copied out is a regular file: a symlink in one of those directories is an
 error, and so is a symlink anywhere that leads to one of them. Symlinks
@@ -158,7 +166,10 @@ Telamon.Ui comes from the OS, so most apps need none) finds them **relative to i
 executable**: `dirname(realpath(/proc/self/exe))/../share/<app-id>/...`, and
 falls back to `/usr/share/<app-id>/...` when that directory is not there (an
 RPM-installed app at `/usr/bin` finds `/usr/share/<app-id>` the first way
-already). Never a path fixed at build time: the build checks that the install
+already). Resolve the directory **once, at startup**: an update replaces the files
+under a running app (the old version's directory is removed once the new one is
+current), so a path found later, or a file opened lazily, may be gone. Never a
+path fixed at build time: the build checks that the install
 prefix is in no file (see below).
 
 Rust:
@@ -256,13 +267,16 @@ fake app and every kind of bad bundle it must refuse; `tools/dev-check.sh` and C
 3. runs `tools/make-bundle.sh` (with `--version` set to the tag, so a tag that
    disagrees with CMake fails) and checks that the tag is `v` + the manifest's `version`;
 4. uploads the two files as the workflow artifact `telamon-bundle`, always; and
-5. in a second job, for a `v*` tag, attaches them to that tag's release: it creates the release with
-   generated notes when it does not exist (GitHub sometimes answers 5xx, so it
-   tries again a few times), otherwise `gh release upload --clobber`.
+5. in a second job, for a `v*` tag, attaches them to that tag's release: when there is
+   none it creates a **draft** with generated notes, uploads both files, and only then
+   publishes it (`gh release edit --draft=false`), so Store never sees a release
+   without its bundle; a draft it made is deleted if the upload fails. An existing release just
+   gets the files (`gh release upload --clobber`). GitHub sometimes answers 5xx, so each
+   call is tried again a few times.
 
 | Input | |
 |---|---|
-| `framework-ref` | The full 40-character sha of the telamon-framework commit (the same convention as `app-checks.yml`), used for the tools and for the `telamon-ui` RPMs. Default `main`; pin a sha. |
+| `framework-ref` | **Required**: the full 40-character sha of the telamon-framework commit, used for the tools and for the `telamon-ui` RPMs. A branch, a tag or a short sha fails the run, because they name something that moves (or cannot be fetched). |
 | `app-dir` | As `--app-dir`. |
 | `spec` | As `--spec`; also the spec `dnf builddep` installs. |
 | `attach` | `true` (default): attach to the release of a `v*` tag. |
@@ -345,7 +359,7 @@ then `zstd -dc <archive> | tar -x -C /tmp/some-empty-dir` and run
   entries above: paths cannot leave the prefix (no `..`, no absolute path, no
   `./`), nothing is written through a symlink (every symlink is relative and
   stays inside the tree, also through the links on its way, no entry sits below one), no hard links or device
-  files, and the archive is capped (50,000 entries, 2 GiB of files).
+  files, and the archive is capped (the limits under "The archive").
 - **Later**: GitHub artifact attestations (Sigstore provenance for the workflow's
   run, which Store can check against the pinned repository) and a
   minisign signature with a key pinned in the catalog. Neither is in schema 1;

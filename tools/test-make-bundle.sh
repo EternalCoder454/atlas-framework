@@ -11,7 +11,7 @@ set -uo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 make_bundle=$here/make-bundle.sh
 bundle_py=$here/bundle.py
-for tool in cmake python3 zstd tar sha256sum; do
+for tool in cmake python3 zstd tar sha256sum cmp; do
     command -v "$tool" >/dev/null || { echo "test-make-bundle: $tool is not installed" >&2; exit 2; }
 done
 
@@ -68,7 +68,7 @@ if(FAKE_FILE)
 endif()
 if(FAKE STREQUAL "good-extras")
     install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/dbus-1/services/net.example.fake.Service.service\" \"[D-BUS Service]\\nName=net.example.fake.Service\\nExec=fake-app --gapplication-service\\n\")")
-    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/knotifications6/telamon-fake.notifyrc\" \"[Global]\\nName=Fake\\n\")")
+    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/knotifications6/telamon-fake-alerts.notifyrc\" \"[Global]\\nName=Fake\\n\")")
     install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps/net.example.fake-small.png\" \"png\")")
     install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps/net.example.fake_dark.svg\" \"svg\")")
 endif()
@@ -265,6 +265,8 @@ expect_fail "an icon with another extension" "icons are only share/icons/hicolor
 expect_fail "another file in share/metainfo" "share/metainfo holds only" --cmake-arg -DFAKE_FILE=share/metainfo/other.metainfo.xml
 expect_fail "another file in share/applications" "share/applications must hold exactly one file" \
     --cmake-arg -DFAKE_FILE=share/applications/mimeinfo.cache
+expect_fail "a notification file named after another app" "share/knotifications6 holds only telamon-fake" \
+    --cmake-arg -DFAKE_FILE=share/knotifications6/telamon-other.notifyrc
 expect_fail "a notification file not named telamon-<name>.notifyrc" "share/knotifications6 holds only" \
     --cmake-arg -DFAKE_FILE=share/knotifications6/fake.notifyrc
 expect_fail "a D-Bus service of another name" "must be net.example.fake or" --cmake-arg -DFAKE_FILE=share/dbus-1/services/org.other.service \
@@ -391,13 +393,84 @@ tamper owner "expected 0:0"
 tamper reorder "not sorted by path"
 tamper linkdots "not a relative path inside the tree"
 tamper mtime "different modification times"
-# fields are matched whole: a trailing newline is not a version
-check "a version, os version or hash with a trailing newline is not valid" python3 -I -c "
-import sys; sys.path.insert(0, '$here'); import bundle
-assert not bundle.VERSION_RE.fullmatch('1.0.0\\n') and not bundle.OSVER_RE.fullmatch('44\\n') and not bundle.ID_RE.fullmatch('a.b\\n')
-assert bundle.VERSION_RE.fullmatch('1.0.0-beta.1') and bundle.VERSION_RE.fullmatch('0.1.0')
-assert bundle.exec_values('[Desktop Entry]\\nExec = /usr/bin/evil\\n') == [('Desktop Entry', '/usr/bin/evil')]
-"
+# The Store's reader rules, as units (the Store's own tests cover its side)
+cat >"$scratch/units.py" <<'EOF'
+import sys
+sys.path.insert(0, sys.argv[1])
+import bundle as b
+E = b.Entry
+
+def raises(fn, *args):
+    try:
+        fn(*args)
+    except b.BundleError:
+        return True
+    return False
+
+# whole-field matches
+assert not b.valid_version("1.0.0\n") and not b.OSVER_RE.fullmatch("44\n") and not b.ID_RE.fullmatch("a.b.c\n")
+# versions: up to 6 numbers of 9 digits, no leading zeros, a prerelease of [0-9A-Za-z-] parts, 64 characters
+for ok in ("0.1.0", "1.0.0-beta.1", "1.2.3.4.5.6", "999999999.0", "1.0-a-b.c-d"):
+    assert b.valid_version(ok), ok
+for bad in ("1", "01.0", "1.2.3.4.5.6.7", "1234567890.0", "1.0.0-", "1.0.0-a..b", "1.0.0-a_b", "v1.0.0", "1.0.0+x", "1." + "0." * 31 + "0-" + "a" * 20):
+    assert not b.valid_version(bad), bad
+assert b.valid_min_ui("2") and b.valid_min_ui("2.0.2") and not b.valid_min_ui("2.0.2-x") and not b.valid_min_ui("")
+# app ids: three parts, no empty part, none starting with '-', 128 bytes
+for ok in ("net.example.fake", "net.eterneon.telamon.gates", "a.b.c-d_e"):
+    assert b.valid_app_id(ok), ok
+for bad in ("a.b", "gates", "a..b.c", ".a.b.c", "a.b.c.", "a.-b.c", "a.b.c/d", "a.b.c d", "a." + "b" * 130 + ".c"):
+    assert not b.valid_app_id(bad), bad
+# the home page, as the Store normalises it
+for url in ("https://github.com/EternalCoder454/atlas-framework", "https://example.net/fake", "https://a.b.org/p?q=1#f"):
+    assert b.https_url(url) == url, url
+for url in ("http://github.com/x", "https://github.com:8443/x", "https://localhost/x", "https://a.local/", "https://x.test/", "https://x.example/",
+            "https://1.2.3.4/", "https://x.c0m/", "https://single/", "https://x.com/a/../b", "https://x.com/%2e%2E/b", 'https://x.com/a"b',
+            "https://x.com/a b", "https://x.com/a\\b", "https://x.com/<", "https://x.com/{", "https://-a.com/", "https://x.com/\u00e9"):
+    assert b.https_url(url) != url, url
+assert b.https_url("https://GitHub.com:443/x") == "https://github.com/x"   # the Store's own form differs: a bundle must write it normalised
+# link targets
+for ok in ("telamon-x", "../bin/x", "a/b"):
+    assert b.link_target_ok("share/n/l", ok), ok
+for bad in ("", "a//b", "./x", "a/./b", "a/", "/etc/passwd", "../../../x", "a\u200bb", "a\u3164b", "a\nb", "x" * 1100):
+    assert not b.link_target_ok("share/n/l", bad), repr(bad)
+# hidden characters in names
+for ch in ("\u200b", "\u3164", "\uffa0", "\u115f", "\u1160", "\u17b4", "\u180c", "\u034f", "\ufe0f", "\u2060", "\u2066", "\U000e0001", "\u202e", "\ufeff", "\x07"):
+    assert b.path_problem("share/a" + ch + "b"), repr(ch)
+assert b.path_problem("share/" + "a/" * 600 + "x") and b.path_problem("share/" + "x" * 256)
+assert b.path_problem("share/ok-name_1.txt") is None
+# desktop files are read like the Store reads them
+good = b"[Desktop Entry]\nType=Application\nName=F\nName[de]=G\nExec=fake-app %U\n"
+by = {"bin/fake-app": E("bin/fake-app", "file", 0o755)}
+assert not b.exec_errors(b.parse_keyfile(good, "d"), "d", by)
+for bad in (good + b"Exec[de]=fake-app\n", good + b"TryExec[de]=x\n", good + b"Path[de]=x\n", good + b"just a line\n", b"Exec=x\n[Desktop Entry]\n",
+            good + b"[Desktop Action a]\nExec=.hidden\n", good + b"[Desktop Action a]\nExec=" + b"x" * 101 + b"\n",
+            good + b"[Desktop Action a]\nExec=a$b\n", good + b"[Bad\n", b"\xff\xfe", good + b"a\x00b\n", good + b"x=1\n" * 1001, b"[Desktop Entry]\n" + b"k=v\n" * 401):
+    try:
+        errs = b.exec_errors(b.parse_keyfile(bad, "d"), "d", by)
+    except b.BundleError:
+        continue
+    assert errs, bad[:60]
+assert raises(b.parse_keyfile, b"x" * 70000, "d")
+# the Store's caps
+many = [E("bin", "dir", 0o755)] + [E(f"bin/l{i}", "link", 0o777, target="x") for i in range(20001)]
+assert raises(b.validate, many, False)
+assert raises(b.validate, [E("bin", "dir", 0o755), E("bin/big", "file", 0o755, size=513 * 1024 ** 2)], False)
+assert raises(b.validate, [E("bin", "dir", 0o755), E("bin/a", "file", 0o755, size=500 * 1024 ** 2), E("bin/b", "file", 0o755, size=500 * 1024 ** 2),
+                           E("bin/c", "file", 0o755, size=100 * 1024 ** 2)], False)
+# notification names come from the app id
+assert b.notifyrc_ok("share/knotifications6/telamon-gates.notifyrc", "net.eterneon.telamon.gates")
+assert b.notifyrc_ok("share/knotifications6/telamon-gates-alerts.notifyrc", "net.eterneon.telamon.gates")
+assert b.notifyrc_ok("share/knotifications6/telamon-gates_x.notifyrc", "net.eterneon.telamon.gates")
+for bad in ("telamon-other.notifyrc", "telamon-gatesx.notifyrc", "gates.notifyrc", "telamon-gates.txt", "telamon-gates-.x/y.notifyrc"):
+    assert not b.notifyrc_ok("share/knotifications6/" + bad, "net.eterneon.telamon.gates"), bad
+print("units ok")
+EOF
+check "the Store's reader rules hold as units (versions, ids, home page, links, names, key files, caps, notification names)" \
+    python3 -I "$scratch/units.py" "$here"
+mkdir "$scratch/nover"
+printf 'cmake_minimum_required(VERSION 3.24)\nproject(nover LANGUAGES NONE)\n' >"$scratch/nover/CMakeLists.txt"
+if python3 -I "$bundle_py" version --app-dir "$scratch/nover" --version 1.0.0 >/dev/null 2>&1; then
+    bad "--version with a CMake project() that has no VERSION was accepted"; else ok "--version fails when project() has no VERSION"; fi
 # a manifest that does not match its archive
 cp -r "$out1" "$scratch/badmanifest"
 sed -i 's/"size": 1[0-9]*,/"size": 1,/' "$scratch/badmanifest/telamon-bundle.json"
