@@ -284,9 +284,9 @@ T.Control {
                 radius: width / 2
                 color: TelamonStyle.alpha(Kirigami.Theme.textColor, clearButton.down ? 0.15 : clearButton.hovered ? 0.08 : 0)
             }
-            contentItem: TelamonIcon {
-                source: "edit-clear"
-                isMask: true
+            contentItem: Symbol {
+                icon: Symbols.Cancel
+                size: Kirigami.Units.iconSizes.small
                 color: TelamonStyle.textMuted
             }
         }

@@ -92,6 +92,31 @@ Item {
         }
     }
     Component {
+        id: findBarComp
+        FindBar {
+            width: 680
+            opened: true
+        }
+    }
+    Component {
+        id: tabBarComp
+        TabBar {
+            width: 300
+            model: ListModel {
+                ListElement { title: "One"; modified: false; toolTip: "" }
+                ListElement { title: "Two"; modified: false; toolTip: "" }
+            }
+            currentIndex: 0
+        }
+    }
+    Component {
+        id: shortcutFieldComp
+        TelamonShortcutField {
+            width: 300
+            sequence: "Ctrl+S"
+        }
+    }
+    Component {
         id: sqlCodeComp
         TelamonCodeView {
             width: 1000
@@ -310,6 +335,27 @@ Item {
             compare(flick.originX, 0);
             // The first glyph sits at the left edge of the viewport.
             compare(edit.mapToItem(flick, 0, 0).x, 0);
+        }
+
+        // 2.0.7: the same for the other close and clear buttons: Symbols, never
+        // a theme icon that may be missing.
+        function test_find_bar_close_is_a_cross() {
+            const b = createTemporaryObject(findBarComp, root);
+            verify(b);
+            tryVerify(() => find(b, i => i.codepoint === Symbols.Close));
+            verify(!find(b, i => i.source === "window-close"), "no theme icon");
+        }
+        function test_tab_bar_close_is_a_cross() {
+            const b = createTemporaryObject(tabBarComp, root);
+            verify(b);
+            tryVerify(() => find(b, i => i.codepoint === Symbols.Close));
+            verify(!find(b, i => i.source === "window-close"), "no theme icon");
+        }
+        function test_shortcut_field_clear_is_a_symbol() {
+            const f = createTemporaryObject(shortcutFieldComp, root);
+            verify(f);
+            tryVerify(() => find(f, i => i.codepoint === Symbols.Cancel));
+            verify(!find(f, i => i.source === "edit-clear"), "no theme icon");
         }
     }
 }

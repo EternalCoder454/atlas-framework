@@ -204,8 +204,9 @@ fi
 
 %changelog
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.7-1
-- Fix: an InfoBanner's close button draws a cross (a Material Symbol), not a
-  chevron where the icon theme lacks "window-close". A TelamonCodeView with
+- Fix: an InfoBanner's close button (and FindBar's, TabBar's, and the shortcut
+  field's clear button) draws a Material Symbol, not a chevron where the icon
+  theme lacks "window-close". A TelamonCodeView with
   wrap: false no longer starts scrolled by 2 pixels (its first character was
   clipped when the line was wider than the view).
 

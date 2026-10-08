@@ -326,7 +326,7 @@ Item {
                     }
                 }
                 ToolbarButton {
-                    icon.name: "window-close"
+                    symbol: Symbols.Close
                     text: qsTr("Close")
                     //: Name of the Escape key, as shown in a tooltip
                     shortcutText: qsTr("Esc")
