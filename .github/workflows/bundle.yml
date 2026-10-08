@@ -135,6 +135,13 @@ jobs:
             args+=(--version "${REF_NAME#v}")
           fi
           "$FRAMEWORK_DIR/tools/make-bundle.sh" "${args[@]}"
+          # The release tag is v<version>, with the manifest's version.
+          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == v* ]]; then
+            got=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' bundle-out/telamon-bundle.json)
+            if [ "v$got" != "$REF_NAME" ]; then
+              echo "::error::the tag is $REF_NAME but the bundle's version is $got: tag v$got"; exit 1
+            fi
+          fi
           {
             echo '### Telamon bundle'
             echo '```'
@@ -164,6 +171,15 @@ jobs:
         with:
           name: telamon-bundle
           path: bundle-out
+
+      - name: The tag is v + the bundle's version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          got=$(jq -r .version bundle-out/telamon-bundle.json)
+          if [ "v$got" != "$TAG" ]; then
+            echo "::error::the tag is $TAG but the bundle's version is $got: tag v$got"; exit 1
+          fi
 
       - name: Attach the bundle to the release
         env:

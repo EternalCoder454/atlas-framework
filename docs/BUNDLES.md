@@ -28,8 +28,8 @@ checks the archive it downloads against `archive.sha256`.
 
 ## The archive
 
-Entries are relative paths (no leading `./`, no absolute path, no `..`,
-no control characters or backslashes), and only directories, regular files and
+Entries are UTF-8 relative paths (no leading `./` (a reader tolerates it; the tool never writes it), no absolute path, no `.` or `..` or empty component,
+no backslash, and no control, hidden, zero-width or bidi characters), and only directories, regular files and
 relative symlinks that stay inside the tree: no hard links, devices or fifos. Every entry
 is owned by 0:0, with mode 0755 (directories, executables) or 0644 (files), and
 the modification time of the commit (`SOURCE_DATE_EPOCH`). Entries are sorted
@@ -37,23 +37,24 @@ by path, and every directory has its own entry before its content.
 
 ```text
 bin/                                   executables; the binary links Qt, KF6 and telamon-ui from the OS
-share/applications/<app-id>.desktop   exactly one .desktop file; Exec= starts with the bare binary name
-share/icons/hicolor/...               optional
+share/applications/<app-id>.desktop   exactly one file; Exec= starts with the bare binary name
+share/icons/hicolor/<size>/apps/...   optional
 share/metainfo/<app-id>.metainfo.xml  recommended: the manifest's name, summary, license and homepage come from it
 share/dbus-1/services/*.service       optional; Exec= starts with the bare binary name
+share/knotifications6/telamon-*.notifyrc  optional
 share/<app-id>/                       the app's data, optional (see "Data")
 telamon-bundle.json                   the inner manifest, at the archive's root
 ```
 
 Nothing else is at the top: there is no `lib/`, `etc/` or `libexec/`. The tool
 refuses to make a bundle with a file outside `bin/` and `share/`, and a reader
-must refuse to unpack one. Anything under `share/` other than the three
-integration directories above stays in the app's own prefix, where the data
-convention finds it.
+must refuse to unpack one. Anything under `share/` other than the five
+directories above stays in the app's own prefix, where the data convention finds it.
 
-The `.desktop` file's `Exec=` (every one: the `[Desktop Entry]` group and the
-`[Desktop Action ...]` groups) starts with the name of a file in `bin/`, never
-a path: `Exec=telamon-gates %U`. The `.service` files the same.
+What the Store copies out of the tree, and the rules it enforces, are below
+("What the Store copies out of a bundle"); `tools/bundle.py` enforces the same
+rules when it makes a bundle, so a bundle that passes `make-bundle.sh` is
+accepted by the Store.
 
 ## The manifest
 
@@ -105,6 +106,26 @@ trailing newline; `files` and `links` are sorted by path.
 The inner manifest in the archive is the outer one without `archive`, byte for
 byte.
 
+## What the Store copies out of a bundle
+
+The Store unpacks the whole bundle into the app's prefix and copies only the
+files below into the user's data directory (`~/.local/share`). Everything else
+stays in the prefix: the rest of `share/` (for example `share/<app-id>/`) and `bin/`.
+`tools/bundle.py` fails the build with the file and the rule when one is broken.
+
+| Under | Allowed | Notes |
+|---|---|---|
+| `share/applications/` | exactly one file, `<app-id>.desktop` | `Type=Application`, the first group is `[Desktop Entry]`. Every `Exec=` (the `[Desktop Action ...]` groups too) starts with a **bare program name**: no path, no quotes, no `env`; that program is a regular file directly in `bin/` with `"executable": true` in the manifest. The Store drops `TryExec=` and `Path=` and any `X-Telamon-Native-*` key (it writes its own). |
+| `share/icons/` | `share/icons/hicolor/<W>x<H or scalable>/apps/<file>`, where `<file>` is a `.png` or `.svg` named `<app-id>.<ext>` or starting with `<app-id>-` or `<app-id>_` | Any other file under `share/icons/` is an error, so a bundle cannot shadow a theme icon. |
+| `share/metainfo/` | `<app-id>.metainfo.xml` (or `<app-id>.appdata.xml`) only | UTF-8 XML, no DOCTYPE; its `<id>` is the app ID. |
+| `share/dbus-1/services/` | `<Name>.service`, where `[D-BUS Service] Name=` is `<app-id>` or `<app-id>.<more>` and the file is named `<Name>.service` | The Store keeps only `Name` and `Exec`; `Exec` starts with a bare `bin/` program as above. Nothing else under `share/dbus-1/`. |
+| `share/knotifications6/` | `telamon-<name>.notifyrc` only | The template installs one. |
+
+Everything copied out is a regular file: a symlink in one of those directories is an
+error, and so is a symlink anywhere that leads to one of them. Symlinks
+elsewhere are allowed only as relative links that resolve inside the tree,
+also through the links on their way (`bin/atlas-notepad -> telamon-notepad`).
+
 ## Install layout (Telamon Store)
 
 For one user, under `~/.local/share/telamon-apps/`:
@@ -114,16 +135,17 @@ For one user, under `~/.local/share/telamon-apps/`:
 ~/.local/share/telamon-apps/<id>/current           symlink to <version>
 ```
 
-Store then copies, from the version's directory into the user's data
+Store then copies the files named above, from the version's directory into the user's data
 directory, so Plasma, the launcher and D-Bus find the app:
 
 - `share/applications/<id>.desktop` to `~/.local/share/applications/`, with the
   first word of every `Exec=` rewritten to the absolute path
-  `~/.local/share/telamon-apps/<id>/current/bin/<name>` and `TryExec=` dropped;
+  `~/.local/share/telamon-apps/<id>/current/bin/<name>`, `TryExec=` and `Path=` dropped;
 - `share/icons/` to `~/.local/share/icons/`;
 - `share/metainfo/` to `~/.local/share/metainfo/`;
 - `share/dbus-1/services/*.service` to `~/.local/share/dbus-1/services/`, the
-  `Exec=` rewritten the same way.
+  `Exec=` rewritten the same way;
+- `share/knotifications6/*.notifyrc` to `~/.local/share/knotifications6/`.
 
 An update unpacks the new version beside the old one, switches `current`, and
 removes the old version; a removal deletes `<id>/` and the copied files. Store
@@ -232,7 +254,7 @@ fake app and every kind of bad bundle it must refuse; `tools/dev-check.sh` and C
    installs `telamon-ui`, so the app is built against that Telamon.Ui;
 2. runs `dnf builddep` on the app's spec;
 3. runs `tools/make-bundle.sh` (with `--version` set to the tag, so a tag that
-   disagrees with CMake fails);
+   disagrees with CMake fails) and checks that the tag is `v` + the manifest's `version`;
 4. uploads the two files as the workflow artifact `telamon-bundle`, always; and
 5. in a second job, for a `v*` tag, attaches them to that tag's release: it creates the release with
    generated notes when it does not exist (GitHub sometimes answers 5xx, so it

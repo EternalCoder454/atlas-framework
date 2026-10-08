@@ -44,16 +44,39 @@ cmake_minimum_required(VERSION 3.24)
 project(fake-app VERSION 1.2.3 LANGUAGES NONE)
 include(GNUInstallDirs)
 set(FAKE "" CACHE STRING "which defect to build in")
+set(FAKE_FILE "" CACHE STRING "a file to add, relative to the prefix")
+set(FAKE_CONTENT "x" CACHE STRING "its content")
+set(FAKE_EXEC "" CACHE STRING "Exec= of the .desktop file, in place of fake-app")
 
 install(PROGRAMS data/fake-app DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES data/net.example.fake.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
 install(FILES data/net.example.fake.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 install(DIRECTORY share-data/ DESTINATION ${CMAKE_INSTALL_DATADIR}/net.example.fake)
-if(FAKE STREQUAL "bad-exec")
+if(FAKE_EXEC)
+    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/applications/net.example.fake.desktop\" \"[Desktop Entry]\\nType=Application\\nName=Fake\\nExec=${FAKE_EXEC}\\n\")")
+elseif(FAKE STREQUAL "bad-exec")
     install(FILES data/bad-exec.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
             RENAME net.example.fake.desktop)
 else()
     install(FILES data/net.example.fake.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+endif()
+if(FAKE STREQUAL "quote-exec")
+    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/applications/net.example.fake.desktop\" \"[Desktop Entry]\\nType=Application\\nName=Fake\\nExec=\\\"fake-app\\\"\\n\")")
+endif()
+if(FAKE_FILE)
+    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/${FAKE_FILE}\" \"${FAKE_CONTENT}\")")
+endif()
+if(FAKE STREQUAL "good-extras")
+    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/dbus-1/services/net.example.fake.Service.service\" \"[D-BUS Service]\\nName=net.example.fake.Service\\nExec=fake-app --gapplication-service\\n\")")
+    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/knotifications6/telamon-fake.notifyrc\" \"[Global]\\nName=Fake\\n\")")
+    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps/net.example.fake-small.png\" \"png\")")
+    install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps/net.example.fake_dark.svg\" \"svg\")")
+endif()
+if(FAKE STREQUAL "export-link")
+    install(CODE "file(CREATE_LINK ../net.example.fake/hello.txt \"${CMAKE_INSTALL_PREFIX}/share/metainfo/net.example.fake.appdata.xml\" SYMBOLIC)")
+endif()
+if(FAKE STREQUAL "link-to-export")
+    install(CODE "file(CREATE_LINK ../applications/net.example.fake.desktop \"${CMAKE_INSTALL_PREFIX}/share/net.example.fake/d\" SYMBOLIC)")
 endif()
 if(FAKE STREQUAL "two-desktops")
     install(FILES data/net.example.fake.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
@@ -222,7 +245,7 @@ expect_fail "a version that is not a version" "version .* dotted numbers" --vers
 
 # --------------------------------------------------------- tampered installs
 expect_fail "a .desktop Exec naming a missing binary" "bin/fake-missing is not an executable file in the bundle" --cmake-arg -DFAKE=bad-exec
-expect_fail "two .desktop files" "exactly one .desktop file is required, found 2" --cmake-arg -DFAKE=two-desktops
+expect_fail "two .desktop files" "share/applications must hold exactly one file.*found 2" --cmake-arg -DFAKE=two-desktops
 expect_fail "the stage path inside a binary" "not relocatable" --cmake-arg -DFAKE=stage-leak
 expect_fail "a symlink pointing outside the tree" "not a relative path inside the tree" --cmake-arg -DFAKE=link-out
 expect_fail "an absolute symlink" "not a relative path inside the tree" --cmake-arg -DFAKE=link-abs
@@ -231,6 +254,38 @@ expect_fail "an app that forces its install prefix" "sets CMAKE_INSTALL_PREFIX" 
 expect_fail "an --exclude that matches nothing" "matches nothing" --exclude share/nothing.desktop
 expect_fail "a non-empty --stage" "is not empty" --stage "$scratch/out1"
 expect_fail "a missing app dir" "does not exist" --app-dir apps/nope
+
+# What the Store copies out: icons, metainfo, D-Bus, notifications, Exec
+expect_fail "an icon of another app (shadowing the theme)" "icons are only share/icons/hicolor" \
+    --cmake-arg -DFAKE_FILE=share/icons/hicolor/48x48/apps/other.png
+expect_fail "a file under share/icons outside hicolor/<size>/apps" "icons are only share/icons/hicolor" \
+    --cmake-arg -DFAKE_FILE=share/icons/hicolor/index.theme
+expect_fail "an icon with another extension" "icons are only share/icons/hicolor" \
+    --cmake-arg -DFAKE_FILE=share/icons/hicolor/48x48/apps/net.example.fake.xpm
+expect_fail "another file in share/metainfo" "share/metainfo holds only" --cmake-arg -DFAKE_FILE=share/metainfo/other.metainfo.xml
+expect_fail "another file in share/applications" "share/applications must hold exactly one file" \
+    --cmake-arg -DFAKE_FILE=share/applications/mimeinfo.cache
+expect_fail "a notification file not named telamon-<name>.notifyrc" "share/knotifications6 holds only" \
+    --cmake-arg -DFAKE_FILE=share/knotifications6/fake.notifyrc
+expect_fail "a D-Bus service of another name" "must be net.example.fake or" --cmake-arg -DFAKE_FILE=share/dbus-1/services/org.other.service \
+    --cmake-arg '-DFAKE_CONTENT=[D-BUS Service]\nName=org.other\nExec=fake-app\n'
+expect_fail "a D-Bus service whose Exec is a path" "use the bare binary name" --cmake-arg -DFAKE_FILE=share/dbus-1/services/net.example.fake.service \
+    --cmake-arg '-DFAKE_CONTENT=[D-BUS Service]\nName=net.example.fake\nExec=/usr/bin/fake-app\n'
+expect_fail "another file in share/dbus-1" "share/dbus-1 holds only" --cmake-arg -DFAKE_FILE=share/dbus-1/system.d/x.conf
+expect_fail "an Exec with a path" "use the bare binary name" --cmake-arg '-DFAKE_EXEC=/usr/bin/fake-app'
+expect_fail "an Exec that starts with env" "starts with .env." --cmake-arg '-DFAKE_EXEC=env X=1 fake-app'
+expect_fail "an Exec that starts with a quote" "starts with a quote" --cmake-arg -DFAKE=quote-exec
+expect_fail "an Exec naming a symlink in bin/ (not a regular file)" "is not an executable file" --cmake-arg -DFAKE=link-ok --cmake-arg '-DFAKE_EXEC=fake'
+expect_fail "a symlink among the exported files" "not allowed \(a regular file\)" --cmake-arg -DFAKE=export-link
+expect_fail "a symlink to an exported file" "a file the Store copies out" --cmake-arg -DFAKE=link-to-export
+expect_fail "a hidden (zero-width) character in a name" "hidden character" \
+    --cmake-arg "-DFAKE_FILE=share/net.example.fake/a$(printf '\xe2\x80\x8b')b"
+expect_fail "a bidi control in a name" "hidden character" \
+    --cmake-arg "-DFAKE_FILE=share/net.example.fake/a$(printf '\xe2\x80\xae')b"
+if run_make "$scratch/out-extras" --min-os-version 44 --cmake-arg -DFAKE=good-extras &&
+    python3 -I "$bundle_py" verify "$scratch/out-extras"/*.tar.zst "$scratch/out-extras/telamon-bundle.json" >/dev/null; then
+    ok "a D-Bus service, a notifyrc and icons named after the app are accepted"
+else bad "good extras are accepted" "$(tail -n 8 "$scratch/log")"; fi
 
 # the accepted variants of those
 if run_make "$scratch/out-link" --min-os-version 44 --cmake-arg -DFAKE=link-ok &&

@@ -22,6 +22,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import unicodedata
 import xml.etree.ElementTree as ET
 
 SCHEMA = 1
@@ -81,8 +82,8 @@ def path_problem(p):
             return "path has an empty, '.' or '..' component (no './' prefix, no '..')"
         if len(c.encode("utf-8", "surrogateescape")) > 255:
             return "path component longer than 255 bytes"
-        if any(ord(ch) < 32 or ord(ch) == 127 for ch in c):
-            return "control character in path"
+        if any(unicodedata.category(ch)[0] == "C" or unicodedata.category(ch) in ("Zl", "Zp") for ch in c):
+            return "control, format (bidi, zero-width) or other hidden character in path"
         try:
             c.encode("utf-8")
         except UnicodeEncodeError:
@@ -198,8 +199,20 @@ def validate(entries, archive):
 
 # ------------------------------------------------------- semantic (file contents)
 
+# What Telamon Store copies out of a bundle (docs/BUNDLES.md, "What the Store
+# copies out of a bundle"): only these, only as regular files. The rest of
+# share/ and bin/ stays in the app's own prefix.
+EXPORT_DIRS = ("share/applications", "share/icons", "share/metainfo", "share/dbus-1", "share/knotifications6")
+ICON_RE = re.compile(r"share/icons/hicolor/(?:scalable|[0-9]+x[0-9]+)/apps/([^/]+)")
+NOTIFYRC_RE = re.compile(r"share/knotifications6/telamon-[A-Za-z0-9._-]+\.notifyrc")
+
+
+def in_export_zone(path):
+    return any(path == d or path.startswith(d + "/") for d in EXPORT_DIRS)
+
+
 def parse_ini_group(text, group):
-    """Keys of one [group] of a .desktop or D-Bus .service file."""
+    """Keys of one [group] of a .desktop or D-Bus .service file (a later duplicate wins, as in GLib)."""
     cur, out = None, {}
     for raw in text.splitlines():
         line = raw.strip()
@@ -210,8 +223,16 @@ def parse_ini_group(text, group):
             continue
         if cur == group and "=" in line:
             k, v = line.split("=", 1)
-            out.setdefault(k.strip(), v.strip())
+            out[k.strip()] = v.strip()
     return out
+
+
+def first_group(text):
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line and not line.startswith("#"):
+            return line[1:-1] if line.startswith("[") and line.endswith("]") else None
+    return None
 
 
 def exec_values(text):
@@ -230,91 +251,128 @@ def exec_values(text):
 
 
 def exec_name(value):
-    """The bare binary name an Exec= line starts with, or raise ValueError."""
-    try:
-        words = shlex.split(value)
-    except ValueError as exc:
-        raise ValueError(f"Exec={value!r} cannot be split: {exc}") from None
+    """The bare program name an Exec= line starts with, or raise ValueError:
+    no path, no quotes, no `env`."""
+    if value[:1] in ("'", '"'):
+        raise ValueError(f"Exec={value!r} starts with a quote: start it with the bare program name")
+    words = value.split()
     if not words:
         raise ValueError("Exec= is empty")
     first = words[0]
     if "/" in first:
         raise ValueError(f"Exec starts with {first!r}: use the bare binary name (the Store fills in the path)")
+    if first == "env":
+        raise ValueError("Exec starts with `env`: start it with the app's own program (the Store sets no environment)")
     return first
 
 
-def resolves_to_executable(by_path, path):
-    """`path` is, or links (inside the tree) to, a regular file with an execute bit."""
-    seen = 0
-    while path in by_path and seen < 8:
-        e = by_path[path]
-        if e.kind == "file":
-            return bool(e.mode & 0o111)
-        if e.kind != "link":
-            return False
-        path = resolve_link(e.path, e.target, by_path)
-        seen += 1
-    return False
+def check_exec(by_path, where, value):
+    try:
+        name = exec_name(value)
+    except ValueError as exc:
+        return f"{where}: {exc}"
+    e = by_path.get(f"bin/{name}")
+    if e is None or e.kind != "file" or not e.mode & 0o111:
+        return f"{where}: Exec={name!r}, but bin/{name} is not an executable file in the bundle (a regular file directly in bin/)"
+    return None
 
 
 def check_semantics(by_path, read):
-    """The .desktop, metainfo and D-Bus service rules. `read(path)` returns bytes.
+    """The rules for what the Store copies out: .desktop, icons, metainfo, D-Bus
+    services and notification files. `read(path)` returns bytes.
     Returns (app id, metainfo dict)."""
     errs = []
-    desktops = sorted(p for p, e in by_path.items() if e.kind in ("file", "link") and p.endswith(".desktop"))
-    if len(desktops) != 1:
-        raise BundleError([f"exactly one .desktop file is required, found {len(desktops)}: {', '.join(desktops) or 'none'}"
-                           + " (leave a legacy one out with --exclude)"])
-    dpath = desktops[0]
+    apps = sorted(p for p, e in by_path.items() if p.startswith("share/applications/") or
+                  (p == "share/applications" and e.kind != "dir"))
+    if len(apps) != 1 or not apps[0].endswith(".desktop") or apps[0].count("/") != 2:
+        raise BundleError([f"share/applications must hold exactly one file, <app id>.desktop: found {len(apps)}: "
+                           f"{', '.join(apps) or 'none'} (leave a legacy file out with --exclude)"])
+    dpath = apps[0]
     app_id = posixpath.basename(dpath)[: -len(".desktop")]
-    if dpath != f"share/applications/{app_id}.desktop":
-        errs.append(f"{dpath}: must be share/applications/<app id>.desktop")
     if not ID_RE.fullmatch(app_id) or "." not in app_id:
         errs.append(f"{dpath}: the app id {app_id!r} must be reverse-DNS: letters, digits, '.', '_' and '-', with a dot")
 
     if by_path[dpath].kind != "file":
         errs.append(f"{dpath}: must be a regular file")
     else:
-        values = exec_values(read(dpath).decode("utf-8", "replace"))
+        text = read(dpath).decode("utf-8", "replace")
+        if first_group(text) != "Desktop Entry":
+            errs.append(f"{dpath}: the first group must be [Desktop Entry]")
+        if parse_ini_group(text, "Desktop Entry").get("Type") != "Application":
+            errs.append(f"{dpath}: Type must be Application")
+        values = exec_values(text)
         groups = [g for g, _ in values]
         if "Desktop Entry" not in groups:
             errs.append(f"{dpath}: no Exec= in [Desktop Entry]")
         for g in sorted({g for g in groups if groups.count(g) > 1}):
             errs.append(f"{dpath} [{g}]: Exec= twice")
         for group, value in values:
-            try:
-                name = exec_name(value)
-            except ValueError as exc:
-                errs.append(f"{dpath} [{group}]: {exc}")
-            else:
-                if not resolves_to_executable(by_path, f"bin/{name}"):
-                    errs.append(f"{dpath} [{group}]: Exec={name!r}, but bin/{name} is not an executable file in the bundle")
+            bad = check_exec(by_path, f"{dpath} [{group}]", value)
+            if bad:
+                errs.append(bad)
 
-    services = sorted(p for p in by_path if p.startswith("share/dbus-1/services/") and p.endswith(".service")
-                      and by_path[p].kind == "file")
-    for sp in services:
-        values = exec_values(read(sp).decode("utf-8", "replace"))
-        if len(values) != 1 or values[0][0] != "D-BUS Service":
-            errs.append(f"{sp}: exactly one Exec= in [D-BUS Service] is required")
+    for p, e in sorted(by_path.items()):
+        if not in_export_zone(p) or (e.kind == "dir" and p in EXPORT_DIRS):
             continue
-        try:
-            name = exec_name(values[0][1])
-        except ValueError as exc:
-            errs.append(f"{sp}: {exc}")
-        else:
-            if not resolves_to_executable(by_path, f"bin/{name}"):
-                errs.append(f"{sp}: Exec={name!r}, but bin/{name} is not an executable file in the bundle")
+        if e.kind == "link":
+            errs.append(f"{p}: the Store copies this directory's files out: a symlink here is not allowed (a regular file)")
+            continue
+        if p.startswith("share/applications"):
+            if e.kind == "dir" and p != "share/applications":
+                errs.append(f"{p}: share/applications holds no directories")
+        elif p.startswith("share/icons"):
+            if e.kind != "file":
+                continue
+            m = ICON_RE.fullmatch(p)
+            name = m.group(1) if m else ""
+            if not (m and name.endswith((".png", ".svg")) and
+                    (name[:-4] == app_id or name.startswith((app_id + "-", app_id + "_")))):
+                errs.append(f"{p}: icons are only share/icons/hicolor/<WxH or scalable>/apps/<file>, a .png or .svg named "
+                            f"{app_id}.<ext> or starting {app_id}- or {app_id}_ (a bundle cannot shadow theme icons)")
+        elif p.startswith("share/metainfo"):
+            if e.kind == "dir" or posixpath.basename(p) not in (f"{app_id}.metainfo.xml", f"{app_id}.appdata.xml") \
+                    or posixpath.dirname(p) != "share/metainfo":
+                errs.append(f"{p}: share/metainfo holds only {app_id}.metainfo.xml (or {app_id}.appdata.xml)")
+        elif p.startswith("share/dbus-1"):
+            if e.kind == "dir":
+                if p not in ("share/dbus-1", "share/dbus-1/services"):
+                    errs.append(f"{p}: share/dbus-1 holds only services/")
+                continue
+            if posixpath.dirname(p) != "share/dbus-1/services" or not p.endswith(".service"):
+                errs.append(f"{p}: share/dbus-1 holds only services/<name>.service")
+                continue
+            text = read(p).decode("utf-8", "replace")
+            svc = parse_ini_group(text, "D-BUS Service")
+            name = svc.get("Name", "")
+            if first_group(text) != "D-BUS Service":
+                errs.append(f"{p}: the first group must be [D-BUS Service]")
+            elif not (name == app_id or name.startswith(app_id + ".")) or posixpath.basename(p) != name + ".service":
+                errs.append(f"{p}: Name={name!r} must be {app_id} or {app_id}.<more>, and the file named <Name>.service")
+            if "Exec" not in svc:
+                errs.append(f"{p}: no Exec=")
+            else:
+                bad = check_exec(by_path, p, svc["Exec"])
+                if bad:
+                    errs.append(bad)
+        elif p.startswith("share/knotifications6"):
+            if e.kind == "dir" or not NOTIFYRC_RE.fullmatch(p):
+                errs.append(f"{p}: share/knotifications6 holds only telamon-<name>.notifyrc")
+
+    # A link may not lead to a file the Store exports.
+    for p, e in by_path.items():
+        if e.kind == "link":
+            dest = resolve_link(p, e.target, by_path)
+            if dest is not None and in_export_zone(dest):
+                errs.append(f"{p}: symlink to {e.target!r}, a file the Store copies out")
 
     meta = {}
-    mpath = f"share/metainfo/{app_id}.metainfo.xml"
-    others = [p for p in by_path if p.startswith("share/metainfo/") and by_path[p].kind == "file" and p != mpath]
-    if others:
-        errs.append(f"{others[0]}: the metainfo file must be named <app id>.metainfo.xml ({mpath})")
-    if mpath in by_path and by_path[mpath].kind == "file":
+    mpaths = [f"share/metainfo/{app_id}.metainfo.xml", f"share/metainfo/{app_id}.appdata.xml"]
+    found = [m for m in mpaths if m in by_path and by_path[m].kind == "file"]
+    if found:
         try:
-            meta = parse_metainfo(read(mpath), app_id)
+            meta = parse_metainfo(read(found[0]), app_id)
         except BundleError as exc:
-            errs.extend(f"{mpath}: {m}" for m in exc.problems)
+            errs.extend(f"{found[0]}: {m}" for m in exc.problems)
     if errs:
         raise BundleError(errs)
     return app_id, meta
@@ -655,8 +713,8 @@ def check_manifest_shape(m, with_archive):
         errs.append(f"min_telamon_ui {m['min_telamon_ui']!r} is not a dotted number")
     if not OSVER_RE.fullmatch(m["min_os_version"]):
         errs.append(f"min_os_version {m['min_os_version']!r} is not a number")
-    if not m["homepage"].startswith("https://"):
-        errs.append("homepage must be an https:// URL")
+    if not re.fullmatch(r"https://[^\s\x00-\x1f\x7f]+", m["homepage"]):
+        errs.append("homepage must be a plain https:// URL")
     if not isinstance(m["files"], list) or not isinstance(m["links"], list):
         errs.append("files and links must be arrays")
         return errs
