@@ -204,9 +204,24 @@ fi
 
 %changelog
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.5-1
-- Fix: icons drawn over dialogs, popups and menus with the software renderer.
-  New TelamonIcon (a Kirigami.Icon that is a layer on the software renderer);
-  Telamon.Ui's controls use it for all their icons.
+- Added TelamonIcon (a Kirigami.Icon that is a layer on the software renderer).
+- Fix: icons drawn over dialogs, popups and menus with the software renderer;
+  Telamon.Ui's controls use TelamonIcon for all their icons.
+
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.4-1
+- Native app bundles: tools/make-bundle.sh and tools/bundle.py pack a built
+  app as a per-user bundle (<id>-<version>-x86_64.tar.zst and
+  telamon-bundle.json) for Telamon Store; a reusable GitHub workflow
+  (bundle.yml) builds and attaches it to a release; the app template ships
+  with the caller workflow, metainfo and an icon. Nothing in the packages
+  changes.
+
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.3-1
+- Fix: the keyboard in ContextMenu. Up and Down skip separators, disabled and
+  hidden rows and wrap at the ends, Home and End jump, Right opens a submenu
+  and Left closes it (the other way round in a right-to-left layout), and a
+  row that holds the keyboard (an icon row, a custom delegate) no longer keeps
+  the arrow keys from the menu. No API change.
 
 * Wed Oct 07 2026 Telamon <atlas@eterneon.net> - 2.0.2-1
 - Fix: crash reports left out crashes that are not the host's. Core dumps of

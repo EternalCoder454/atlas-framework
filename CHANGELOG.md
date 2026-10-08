@@ -11,16 +11,52 @@ package side.
 
 ## 2.0.5
 
+- Added: `TelamonIcon`, a `Kirigami.Icon` that is a layer on Quick's software
+  renderer only (the plain icon on OpenGL and the others). A new type, so the
+  API grew; it is a patch release on purpose.
 - Fix: icons drawn over dialogs, popups and menus with the software renderer
   (Telamon apps' default). `Kirigami.Icon` draws as a render node there, and
   when a repaint touched part of an icon (a text cursor blinking, a list
   update) the whole icon was painted again over whatever sat in front of it.
-  New `TelamonIcon` is a `Kirigami.Icon` that is a layer on the software
-  renderer only, and Telamon.Ui's own controls (buttons, sidebar items, list
-  rows, fields, menus, banners and the others) use it for all their icons.
-  Apps use `TelamonIcon` instead of `Kirigami.Icon` for icons that can end up
-  under a dialog or menu. Test: tests/input/tst_icon_over_popup.qml. Apps get
-  this by moving to `tag = "v2.0.5"` and requiring `telamon-ui >= 2.0.5`.
+  Telamon.Ui's own controls (buttons, sidebar items, list rows, fields, menus,
+  banners and the others) use `TelamonIcon` for all their icons now. Apps use
+  `TelamonIcon` instead of `Kirigami.Icon` for icons that can end up under a
+  dialog or menu. Test: tests/input/tst_icon_over_popup.qml. Apps get this by
+  moving to `tag = "v2.0.5"` and requiring `telamon-ui >= 2.0.5`.
+
+## 2.0.4
+
+- New: native app bundles. A Telamon app that is not part of the OS image can
+  ship as a bundle (`<id>-<version>-x86_64.tar.zst` plus `telamon-bundle.json`)
+  that Telamon Store installs for one user from the app's GitHub release, with
+  no Flatpak. `tools/make-bundle.sh` builds and packs an app in the fedora:44
+  build container (`tools/bundle.py` writes and verifies the archive: a
+  reproducible tar, sha256 of every file, relocatability checked); the
+  reusable workflow `.github/workflows/bundle.yml` runs it on a `v*` tag and
+  attaches both files to the release. The format, the install layout, the
+  data convention (an app finds its files next to its executable) and the
+  three steps that connect an app are in `docs/BUNDLES.md`. The app template
+  now carries the caller workflow, a metainfo file and an icon. No API
+  change; apps need nothing from this release unless they ship as bundles
+  (the tools come from `framework-ref`, so a pin to any commit from 2.0.4 on
+  is enough).
+
+## 2.0.3
+
+- Fix: the keyboard in `ContextMenu`. The menu's list took the arrow keys for
+  itself (`keyNavigationEnabled`), so Up and Down stopped on separators (the
+  highlight seemed lost, Enter did nothing there) and on hidden rows, and a row
+  that held the keyboard, such as an icon row, kept the keys from the menu.
+  Now Up and Down move over the rows that can be chosen only (not separators,
+  disabled or hidden rows) and wrap at the ends; Home and End jump to the first
+  and last of them; Enter and Space choose; Escape closes (one submenu at a
+  time); Right opens a submenu and Left closes it, mirrored in a right-to-left
+  layout (Qt's own keys ignored it). A custom row gets the keys first and
+  lets the ones it does not use go on with `event.accepted = false`. An app
+  that worked around it with `contentItem.keyNavigationEnabled = false` (Telamon
+  Files) can drop that line; keeping it does no harm. No API change; the keys
+  are on the ContextMenu reference page. Apps get this by moving to
+  `tag = "v2.0.3"` and requiring `telamon-ui >= 2.0.3`.
 
 ## 2.0.2
 

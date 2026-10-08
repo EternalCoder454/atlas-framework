@@ -1,5 +1,5 @@
 [Global]
-IconName=applications-system
+IconName=net.eterneon.telamon.apptemplate
 Name=Telamon App
 Comment=Telamon app template
 DesktopEntry=net.eterneon.telamon.apptemplate

@@ -1,7 +1,7 @@
 #!/bin/bash
 # The local check, run from the host in the dev container, as fast as it
 # goes: an incremental build, qmllint, every test in parallel, the API check,
-# the gallery lint and the docs check. Stops at the first step that fails.
+# the gallery lint, the docs check and the bundle tools' test. Stops at the first step that fails.
 # It does not run the Rust crates: use the `cargo test` line in CLAUDE.md for
 # those. A second run in the same checkout waits for no one: it fails at once
 # while the first holds the build directory.
@@ -154,6 +154,9 @@ tail -n 1 /b/lint.log
 step docs
 python3 tools/test_docs.py 2>&1 | tail -n 3
 python3 tools/docs.py check
+step bundles
+tools/test-make-bundle.sh >/b/bundles.log 2>&1 || { grep -E "^FAIL|^     [|]" /b/bundles.log || tail -n 30 /b/bundles.log; exit 1; }
+tail -n 1 /b/bundles.log
 if [ -n "$lintbad" ]; then
     echo "$lintbad" >&2
     exit 1

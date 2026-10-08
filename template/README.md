@@ -14,6 +14,8 @@ Telamon.Ui gives it the look and an About page. It builds on its own.
    - QML module URI `net.eterneon.telamon.apptemplate` (CMakeLists.txt, main.cpp)
    - app ID and desktop file `net.eterneon.telamon.apptemplate` (main.cpp,
      src/lib.rs, data/), and the name and repository in `src/lib.rs`'s `app!`
+   - `data/net.eterneon.telamon.apptemplate.metainfo.xml` and `.svg` (file names, the
+     `<id>`, name, summary, licence and homepage in the metainfo; replace the icon with the app's own)
    - `data/telamon-apptemplate.notifyrc`: named `telamon-` and the last part of
      the app ID, and its `DesktopEntry=` is the app ID and its `IconName=` is the same as
      `Icon=` in the desktop file (an icon the app ships or the theme has)
@@ -30,6 +32,35 @@ Telamon.Ui gives it the look and an About page. It builds on its own.
    `>= 1.4.0` (or whatever `ui:` in `src/lib.rs` says; keep the two the same).
 6. Add properties and invokables to `src/backend.rs`, pages to `qml/` and to the
    `QML_FILES` list in `CMakeLists.txt`.
+
+## Ship it as a Telamon native app
+
+An app that is not part of the OS image reaches users through Telamon Store as a
+native bundle, installed for one user from the app's GitHub release, without
+Flatpak. The template is ready for it: `.github/workflows/bundle.yml`, the
+metainfo file and the icon in `data/`, and a `CMakeLists.txt` that installs
+them. The app needs an RPM spec (`packaging/<app>.spec`, step 5 above) whose
+`BuildRequires:` the workflow installs, and its `project()` VERSION in
+`CMakeLists.txt` is the release's version. The format and the rules are in
+[telamon-framework's docs/BUNDLES.md](https://github.com/EternalCoder454/atlas-framework/blob/main/docs/BUNDLES.md);
+the three steps for you, the owner:
+
+1. Put the framework's release in `.github/workflows/bundle.yml` (the full
+   40-character commit sha of the telamon-framework tag, in both places).
+2. Tag a release: set the version in `CMakeLists.txt`, commit, then
+   `git tag vX.Y.Z && git push --tags`. The workflow builds the bundle and
+   attaches `<app id>-<version>-x86_64.tar.zst` and `telamon-bundle.json` to
+   the release.
+3. Add one entry, `{ "id": "<app id>", "repo": "EternalCoder454/<repo>", "channel": "releases" }`,
+   to `catalog/native-apps.json` in `EternalCoder454/atlasos-store` by pull
+   request. Store lists the app from then on.
+
+An app that needs files at run time finds them next to its executable
+(`../share/<app id>/`, falling back to `/usr/share/<app id>/` when installed from
+an RPM); the template needs none, because its QML is compiled into the binary
+and Telamon.Ui comes from the OS. Try a bundle before releasing with
+`tools/make-bundle.sh` from the framework (in the `fedora:44` build container) and
+`telamon-store --install-bundle <file>`.
 
 ## Build (Fedora 44)
 

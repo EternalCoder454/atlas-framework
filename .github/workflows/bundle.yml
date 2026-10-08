@@ -1,0 +1,251 @@
+name: Telamon native app bundle
+
+# Reusable: builds a Telamon app against the framework's Telamon.Ui in
+# fedora:44, packs it as a native bundle (docs/BUNDLES.md: the
+# <id>-<version>-x86_64.tar.zst and its telamon-bundle.json) and, for a v* tag,
+# attaches both files to that tag's GitHub release, where Telamon Store finds
+# them. The app's repository calls it from a tag; docs/BUNDLES.md ("Connecting
+# an app") has the caller's file. The caller must grant `contents: write` to
+# the job that calls this workflow. No secrets are used: the release is made
+# with the run's own GITHUB_TOKEN.
+on:
+  workflow_call:
+    inputs:
+      framework-ref:
+        description: Full 40-character commit sha of telamon-framework (a branch, a tag or a short sha is refused); its tools pack the bundle and its sources are built as the telamon-ui the app compiles against
+        type: string
+        required: true
+      app-dir:
+        description: The app's CMake source directory, such as apps/telamon-gates (default - the only apps/*/CMakeLists.txt, else the repository root)
+        type: string
+        default: ''
+      spec:
+        description: The app's RPM spec, whose BuildRequires are installed and whose `telamon-ui >=` becomes min_telamon_ui (default - the only packaging/*.spec)
+        type: string
+        default: ''
+      attach:
+        description: Attach the bundle to the GitHub release of a v* tag (the bundle is always uploaded as a workflow artifact)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container: registry.fedoraproject.org/fedora:44
+    # Read-only: the app's build runs no code with a write token.
+    permissions:
+      contents: read
+    env:
+      FRAMEWORK_REF: ${{ inputs.framework-ref }}
+      APP_DIR: ${{ inputs.app-dir }}
+      SPEC: ${{ inputs.spec }}
+    steps:
+      - name: Tools for checkout, cache and the bundle
+        run: dnf -y install git-core tar zstd gawk diffutils gh cmake ninja-build python3 gcc-c++ dnf5-plugins
+
+      - name: Check the inputs
+        run: |
+          for pair in "app-dir:$APP_DIR" "spec:$SPEC"; do
+            if ! [[ ${pair#*:} =~ ^[A-Za-z0-9._/-]*$ ]] || [[ /${pair#*:}/ == *"/../"* ]] || [[ ${pair#*:} == /* ]]; then
+              echo "::error::${pair%%:*} must be a path inside the repository: letters, digits, . _ - and /"; exit 1
+            fi
+          done
+          if ! [[ $FRAMEWORK_REF =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::framework-ref must be the full 40-character commit sha of a telamon-framework release (it is '$FRAMEWORK_REF'): a branch or tag names something that moves"; exit 1
+          fi
+
+      - name: Check out the app
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Fetch the framework
+        id: framework
+        run: |
+          # Outside the workspace. The same fetch as app-checks.yml.
+          dir="$RUNNER_TEMP/telamon-framework"
+          git init -q "$dir"
+          git -C "$dir" fetch -q --depth 1 -- https://github.com/EternalCoder454/atlas-framework "$FRAMEWORK_REF"
+          git -C "$dir" checkout -q FETCH_HEAD
+          if [ "$(git -C "$dir" rev-parse HEAD)" != "$FRAMEWORK_REF" ]; then
+            echo "::error::fetched $(git -C "$dir" rev-parse HEAD), not $FRAMEWORK_REF"; exit 1
+          fi
+          if [ ! -x "$dir/tools/make-bundle.sh" ]; then
+            echo "::error::framework-ref has no tools/make-bundle.sh: use a commit from 2.0.4 on"; exit 1
+          fi
+          {
+            echo "dir=$dir"
+            echo "sha=$(git -C "$dir" rev-parse HEAD)"
+            echo "month=$(date -u +%Y-%m)"
+          } >> "$GITHUB_OUTPUT"
+
+      # The telamon-ui the app is built against is built from the framework
+      # commit, as the Store's CI does it, and cached: by commit and month (a
+      # month later it is rebuilt on fresh Fedora packages), outside the
+      # checkout, which actions/checkout would empty. A cache written by a tag
+      # run is read only by that tag: run the caller by hand on the default
+      # branch (workflow_dispatch) to seed one every tag can read.
+      - name: Restore the telamon-ui RPMs
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /telamon-framework-rpms
+          key: telamon-framework-rpms-f44-${{ steps.framework.outputs.sha }}-${{ steps.framework.outputs.month }}
+
+      - name: Build the telamon-ui RPMs
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          FRAMEWORK_DIR: ${{ steps.framework.outputs.dir }}
+        run: |
+          "$FRAMEWORK_DIR/packaging/build-rpm.sh" /telamon-framework-rpms
+          cd /telamon-framework-rpms && sha256sum -- *.rpm > SHA256SUMS
+
+      # Saved here, before any of the app's code runs (the spec's macros and
+      # the app's CMake can run commands): a cache entry holds only what the
+      # framework's own build made.
+      - name: Save the telamon-ui RPMs
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /telamon-framework-rpms
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Check the cached RPMs
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          cd /telamon-framework-rpms
+          sha256sum --strict -c SHA256SUMS
+          # Nothing unlisted is installed either.
+          diff <(ls -1 -- *.rpm) <(awk '{print $2}' SHA256SUMS | sort)
+
+      - name: Install telamon-ui and the app's build dependencies
+        run: |
+          dnf -y install /telamon-framework-rpms/telamon-ui-[0-9]*.rpm /telamon-framework-rpms/telamon-symbols-fonts-[0-9]*.rpm
+          shopt -s nullglob
+          specs=(packaging/*.spec)
+          [ -z "$SPEC" ] || specs=("$SPEC")
+          if [ ${#specs[@]} -ne 1 ]; then
+            echo "::error::cannot tell which spec lists the build dependencies (${#specs[@]} packaging/*.spec): set the spec input"; exit 1
+          fi
+          dnf -y builddep "${specs[0]}"
+          rpm -q telamon-ui
+
+      - name: Build and pack the bundle
+        env:
+          FRAMEWORK_DIR: ${{ steps.framework.outputs.dir }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          args=(--out bundle-out)
+          [ -z "$APP_DIR" ] || args+=(--app-dir "$APP_DIR")
+          [ -z "$SPEC" ] || args+=(--spec "$SPEC")
+          # A v* tag is the version: it must agree with CMake's project VERSION.
+          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == v* ]]; then
+            args+=(--version "${REF_NAME#v}")
+          fi
+          "$FRAMEWORK_DIR/tools/make-bundle.sh" "${args[@]}"
+          # The release tag is v<version>, with the manifest's version.
+          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == v* ]]; then
+            got=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' bundle-out/telamon-bundle.json)
+            if [ "v$got" != "$REF_NAME" ]; then
+              echo "::error::the tag is $REF_NAME but the bundle's version is $got: tag v$got"; exit 1
+            fi
+          fi
+          {
+            echo '### Telamon bundle'
+            echo '```'
+            (cd bundle-out && sha256sum -- *)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: telamon-bundle
+          path: bundle-out/*
+          if-no-files-found: error
+          retention-days: 14
+
+  attach:
+    # The only job that can write: it runs nothing but gh, on the two files the
+    # build job uploaded. A caller must grant `contents: write`.
+    needs: bundle
+    if: ${{ inputs.attach && github.ref_type == 'tag' && startsWith(github.ref_name, 'v') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: telamon-bundle
+          path: bundle-out
+
+      - name: The tag is v + the bundle's version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          got=$(jq -r .version bundle-out/telamon-bundle.json)
+          if [ "v$got" != "$TAG" ]; then
+            echo "::error::the tag is $TAG but the bundle's version is $got: tag v$got"; exit 1
+          fi
+
+      - name: Attach the bundle to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # GitHub sometimes answers 5xx to a release create or an upload: try again.
+          # A release made here is a draft until both files are on it, so Store
+          # never sees a release without its bundle; one that exists (made by
+          # hand, or a draft a failed run left) just gets the assets.
+          repo=(--repo "$GITHUB_REPOSITORY")
+          created=0
+          if ! gh release view "$TAG" "${repo[@]}" >/dev/null 2>&1; then
+            flags=(--verify-tag --title "$TAG" --generate-notes --draft)
+            [[ $TAG == *-* ]] && flags+=(--prerelease)
+            for attempt in 1 2 3 4 5; do
+              if gh release create "$TAG" "${repo[@]}" "${flags[@]}"; then
+                created=1; break
+              fi
+              # A failed create may still have made it (a 5xx after the fact), or
+              # another run did: then the release is not ours to remove.
+              if gh release view "$TAG" "${repo[@]}" >/dev/null 2>&1; then
+                break
+              fi
+              sleep $((attempt * 5))
+            done
+          fi
+          if ! gh release view "$TAG" "${repo[@]}" >/dev/null 2>&1; then
+            echo "::error::could not create the release $TAG"; exit 1
+          fi
+          draft=$(gh release view "$TAG" "${repo[@]}" --json isDraft --jq .isDraft)
+          uploaded=0
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$TAG" "${repo[@]}" --clobber bundle-out/*; then
+              uploaded=1; break
+            fi
+            sleep $((attempt * 5))
+          done
+          if [ "$uploaded" != 1 ]; then
+            # Only the draft this run made is removed.
+            if [ "$created" = 1 ]; then
+              gh release delete "$TAG" "${repo[@]}" --yes || echo "::warning::could not delete the draft release $TAG"
+            fi
+            echo "::error::could not upload the bundle to $TAG"; exit 1
+          fi
+          if [ "$created" = 1 ] || [ "$draft" = true ]; then
+            published=0
+            for attempt in 1 2 3 4 5; do
+              if gh release edit "$TAG" "${repo[@]}" --draft=false; then
+                published=1; break
+              fi
+              sleep $((attempt * 5))
+            done
+            [ "$published" = 1 ] || { echo "::error::the bundle is on the draft release $TAG, but publishing it failed: publish it by hand"; exit 1; }
+          fi
+          echo "Attached to $TAG:"; ls -l bundle-out
