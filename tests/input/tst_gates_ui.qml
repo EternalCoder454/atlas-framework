@@ -81,6 +81,25 @@ Item {
         }
     }
     Component {
+        id: closableBannerComp
+        InfoBanner {
+            width: 400
+            type: "info"
+            closable: true
+            shown: true
+            text: "x"
+            animated: false
+        }
+    }
+    Component {
+        id: sqlCodeComp
+        TelamonCodeView {
+            width: 1000
+            wrap: false
+            text: "SELECT table_name, pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) AS size FROM information_schema.tables WHERE table_schema = 'public' ORDER BY pg_total_relation_size(quote_ident(table_name)) DESC;"
+        }
+    }
+    Component {
         id: bannerComp
         InfoBanner {
             width: 400
@@ -260,6 +279,37 @@ Item {
             verify(mark, "an info symbol");
             verify(Qt.colorEqual(mark.color, TelamonStyle.accent), "icon colour " + mark.color);
             verify(!find(b, i => i.source === "dialog-information"), "no theme icon");
+        }
+
+        // 2.0.7: the close button draws a cross (a Close symbol), not a theme
+        // icon that falls back to a chevron where the theme lacks it.
+        function test_info_banner_close_is_a_cross() {
+            const b = createTemporaryObject(closableBannerComp, root);
+            verify(b);
+            const btn = find(b, i => i.Accessible.name === b.closeName && i.visible);
+            verify(btn, "the close button");
+            const mark = find(btn, i => i.codepoint !== undefined);
+            verify(mark, "a Symbol inside the close button");
+            compare(mark.codepoint, Symbols.Close);
+            verify(!find(btn, i => i.source !== undefined && i.source !== ""), "no theme icon in it");
+            verify(mark.width > 0 && mark.visible);
+        }
+
+        // 2.0.7: a line too long for the view starts at the same inset as a
+        // short one: the view is not scrolled at the start.
+        function test_code_view_long_line_starts_unscrolled() {
+            const v = createTemporaryObject(sqlCodeComp, root);
+            verify(v);
+            tryVerify(() => v.implicitHeight > 0);
+            const flick = find(v, i => i.contentWidth !== undefined && i.contentY !== undefined);
+            const edit = find(v, i => i.readOnly === true && i.cursorRectangle !== undefined);
+            verify(flick && edit);
+            verify(flick.contentWidth > flick.width, "the line is wider than the view");
+            wait(100);
+            compare(flick.contentX, 0);
+            compare(flick.originX, 0);
+            // The first glyph sits at the left edge of the viewport.
+            compare(edit.mapToItem(flick, 0, 0).x, 0);
         }
     }
 }
