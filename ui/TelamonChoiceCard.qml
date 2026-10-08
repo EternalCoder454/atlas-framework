@@ -170,7 +170,7 @@ T.AbstractButton {
                         duration: TelamonStyle.durationShort
                     }
                 }
-                Kirigami.Icon {
+                TelamonIcon {
                     anchors.centerIn: parent
                     width: Math.round(circle.width * 0.75)
                     height: width

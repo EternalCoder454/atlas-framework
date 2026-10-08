@@ -336,7 +336,7 @@ T.AbstractButton {
                     color: control._iconColor
                 }
             }
-            Kirigami.Icon {
+            TelamonIcon {
                 visible: control.symbol === 0 && control.display !== T.AbstractButton.TextOnly && (control.icon.name.length > 0 || control.icon.source.toString().length > 0)
                 source: control.icon.name.length > 0 ? control.icon.name : control.icon.source
                 isMask: true

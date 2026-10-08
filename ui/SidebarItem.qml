@@ -100,7 +100,7 @@ T.AbstractButton {
             Layout.preferredWidth: side
             Layout.preferredHeight: side
 
-            Kirigami.Icon {
+            TelamonIcon {
                 anchors.fill: parent
                 visible: control.symbol === 0
                 source: control.icon.name
@@ -121,7 +121,7 @@ T.AbstractButton {
                 }
             }
 
-            Kirigami.Icon {
+            TelamonIcon {
                 visible: control.compact && control.badge.length > 0
                 width: Kirigami.Units.iconSizes.small * 0.75
                 height: width
@@ -149,7 +149,7 @@ T.AbstractButton {
             elide: Text.ElideRight
             color: Kirigami.Theme.textColor
         }
-        Kirigami.Icon {
+        TelamonIcon {
             visible: !control.compact && control.badge.length > 0
             Layout.rightMargin: control.value.length > 0 || control.disclosure ? 0 : TelamonStyle.spacingLarge
             Layout.preferredWidth: Kirigami.Units.iconSizes.small

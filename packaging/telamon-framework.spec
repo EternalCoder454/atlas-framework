@@ -217,6 +217,11 @@ fi
   shadow in Dark. The spinner's arc is longer and no longer cut off at 16 px.
   API: TelamonStyle.outline and SectionRow.switchEnabled are new.
 
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.5-1
+- Added TelamonIcon (a Kirigami.Icon that is a layer on the software renderer).
+- Fix: icons drawn over dialogs, popups and menus with the software renderer;
+  Telamon.Ui's controls use TelamonIcon for all their icons.
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.4-1
 - Native app bundles: tools/make-bundle.sh and tools/bundle.py pack a built
   app as a per-user bundle (<id>-<version>-x86_64.tar.zst and

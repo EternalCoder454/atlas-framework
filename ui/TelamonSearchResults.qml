@@ -244,7 +244,7 @@ T.Control {
                     anchors.verticalCenter: parent.verticalCenter
                     width: Kirigami.Units.iconSizes.medium
                     height: width
-                    Kirigami.Icon {
+                    TelamonIcon {
                         anchors.fill: parent
                         visible: row.iconName.length > 0
                         source: row.iconName

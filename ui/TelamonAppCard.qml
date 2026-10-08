@@ -169,7 +169,7 @@ T.AbstractButton {
             Layout.alignment: Qt.AlignVCenter
             radius: Math.round(priv.iconSide * 0.225) // proportional to the icon, an app-icon squircle, not a token
             color: priv.hasIcon ? "transparent" : TelamonStyle.alpha(TelamonStyle.accent, 0.14)
-            Kirigami.Icon {
+            TelamonIcon {
                 anchors.fill: parent
                 visible: priv.hasIcon
                 source: control.icon.name.length > 0 ? control.icon.name : control.icon.source

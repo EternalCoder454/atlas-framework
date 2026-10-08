@@ -204,7 +204,7 @@ Item {
                         shown: closeButton.visualFocus
                     }
                 }
-                contentItem: Kirigami.Icon {
+                contentItem: TelamonIcon {
                     source: "window-close"
                     isMask: true
                     color: Kirigami.Theme.textColor

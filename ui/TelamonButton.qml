@@ -180,7 +180,7 @@ T.AbstractButton {
                     color: label.color
                 }
             }
-            Kirigami.Icon {
+            TelamonIcon {
                 id: themeIcon
                 visible: control.symbol === 0 && control.icon.name.length > 0 && !control.busy
                 source: control.icon.name

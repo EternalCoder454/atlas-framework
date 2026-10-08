@@ -92,7 +92,7 @@ TelamonPage {
         Layout.topMargin: Kirigami.Units.gridUnit
         spacing: TelamonStyle.spacingSmall
 
-        Kirigami.Icon {
+        TelamonIcon {
             Layout.alignment: Qt.AlignHCenter
             source: TelamonApp.id
             // No hole where an icon that isn't installed would be.

@@ -58,7 +58,7 @@ SecondaryButton {
         menu.popup(control, control.mirrored ? control.width - menu.implicitWidth : 0, control.height + 4);
     }
 
-    Kirigami.Icon {
+    TelamonIcon {
         x: control.mirrored ? TelamonStyle.spacingSmall + 2 : parent.width - width - TelamonStyle.spacingSmall - 2
         anchors.verticalCenter: parent.verticalCenter
         source: "arrow-down"
