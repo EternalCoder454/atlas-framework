@@ -9,6 +9,23 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.3
+
+- New: native app bundles. A Telamon app that is not part of the OS image can
+  ship as a bundle (`<id>-<version>-x86_64.tar.zst` plus `telamon-bundle.json`)
+  that Telamon Store installs for one user from the app's GitHub release, with
+  no Flatpak. `tools/make-bundle.sh` builds and packs an app in the fedora:44
+  build container (`tools/bundle.py` writes and verifies the archive: a
+  reproducible tar, sha256 of every file, relocatability checked); the
+  reusable workflow `.github/workflows/bundle.yml` runs it on a `v*` tag and
+  attaches both files to the release. The format, the install layout, the
+  data convention (an app finds its files next to its executable) and the
+  three steps that connect an app are in `docs/BUNDLES.md`. The app template
+  now carries the caller workflow, a metainfo file and an icon. No API
+  change; apps need nothing from this release unless they ship as bundles
+  (the tools come from `framework-ref`, so a pin to any commit from 2.0.3 on
+  is enough).
+
 ## 2.0.2
 
 - Fix: crash reports (`crash::collect_coredumps`) are only for the host's own
