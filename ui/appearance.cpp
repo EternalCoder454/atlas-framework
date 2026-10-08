@@ -300,6 +300,11 @@ void Appearance::watchWindow(QQuickWindow *window)
     }, Qt::DirectConnection);
     const QMetaObject::Connection destroyed = connect(window, &QObject::destroyed, this, [this, window] { m_probes.remove(window); });
     m_probes.insert(window, Probe{connection, destroyed});
+    // The probe only sees frames drawn from now on. A window that drew its
+    // first frames before this object existed (the style is created on first
+    // use) and then sits idle would never draw one, and the flag would stay
+    // false: ask for one. A window not shown yet ignores it.
+    window->update();
 }
 
 // Stops probing one window.
