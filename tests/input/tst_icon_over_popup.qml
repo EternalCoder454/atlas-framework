@@ -68,6 +68,24 @@ Item {
             compare(i.layer.enabled, root.GraphicsInfo.api === GraphicsInfo.Software);
         }
 
+        // The layer is drawn again when the icon changes (it is not live).
+        function test_layer_follows_the_icon() {
+            if (root.GraphicsInfo.api !== GraphicsInfo.Software) {
+                skip("the software renderer only");
+            }
+            const i = icon();
+            // Not live at rest.
+            tryCompare(i.layer, "live", false);
+            const p = i.mapToItem(null, 0, 0);
+            const r = Qt.rect(p.x, p.y, i.width, i.height);
+            tryVerify(() => pixels.colorIn(Window.window, r) > 100);
+            i.source = "";
+            wait(300);
+            compare(pixels.colorIn(Window.window, r), 0);
+            i.source = "folder";
+            tryVerify(() => pixels.colorIn(Window.window, r) > 100);
+        }
+
         function test_icons_stay_under_a_dialog() {
             if (root.GraphicsInfo.api !== GraphicsInfo.Software) {
                 skip("the software renderer only");
