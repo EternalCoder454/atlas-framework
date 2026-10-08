@@ -79,6 +79,7 @@ All user files except `crash-reporting.toml` (0644) are under XDG directories an
 | `$XDG_STATE_HOME/telamon/crash-reports/quarantine/<file name>` | Files from `pending/` or `sent/` that are not reports (damaged or cut short), unchanged for a minute when found; a clash gets `.<n>` appended. Never listed or sent; removed after 90 days or when reporting is turned off |
 | `$XDG_STATE_HOME/telamon/crash-id` | The rotating anonymous ID: line 1 is 32 hex characters, line 2 the creation time in Unix seconds. Replaced after 30 days |
 | `$XDG_STATE_HOME/telamon/coredump-last` | The coredump marker: a Unix time in microseconds. An empty or damaged one counts as its modification time |
+| `$XDG_STATE_HOME/telamon/coredump-rules` | The version of the rules for skipping core dumps that are not the host's with which the pending queue was last cleaned (`1`). Missing or older: the next collection cleans it once and writes this |
 | `$XDG_STATE_HOME/telamon/events-last` | The event marker: an RFC 3339 time, a space, and how many events at that time were already taken. An empty or damaged one counts as its modification time, the events of that second taken |
 | `$XDG_STATE_HOME/telamon/send-*.json` | A transient curl body file during a send; stale ones (older than 10 minutes) are swept |
 

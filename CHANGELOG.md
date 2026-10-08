@@ -9,6 +9,22 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.2
+
+- Fix: crash reports (`crash::collect_coredumps`) are only for the host's own
+  crashes. systemd-coredump on the host records the crashes of every process
+  that shares its kernel, so the test containers of developers (podman, toolbox,
+  distrobox, docker) filled the queue and set off a "crashed" notification for
+  each. A core dump of a process in a container or machine (by its cgroup, or
+  by another host name in another PID namespace), or of a program outside the
+  OS (`/tmp`, `/work`, a build tree, a home directory), is now skipped: no
+  report, no notification. A Flatpak app's crash is kept and its `app_name` is
+  the Flatpak app ID. The first collection after the update deletes the
+  pending coredump reports the rules skip. No API change; the new state file
+  `coredump-rules` is in `formats.md`. Apps get this by moving to
+  `tag = "v2.0.2"` (Telamon Updater's tray and Telamon Settings collect and
+  list the reports).
+
 ## 2.0.1
 
 - Fix: the filled symbol of a selected `SidebarItem` (and any `Symbol` with
