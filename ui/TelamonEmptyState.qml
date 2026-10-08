@@ -118,7 +118,7 @@ Item {
                         color: TelamonStyle.textDisabled
                     }
                 }
-                Kirigami.Icon {
+                TelamonIcon {
                     anchors.fill: parent
                     visible: control.symbol === 0 && control.iconName.length > 0
                     source: control.iconName

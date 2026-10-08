@@ -100,7 +100,7 @@ ColumnLayout {
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
             }
-            Kirigami.Icon {
+            TelamonIcon {
                 id: chevron
                 Layout.preferredWidth: Kirigami.Units.iconSizes.small
                 Layout.preferredHeight: Kirigami.Units.iconSizes.small

@@ -202,7 +202,7 @@ T.ComboBox {
         delegate: filteredChoice
     }
 
-    indicator: Kirigami.Icon {
+    indicator: TelamonIcon {
         x: control.mirrored ? control.leftPadding : control.width - width - control.rightPadding
         y: Math.round((control.height - height) / 2)
         width: Kirigami.Units.iconSizes.small

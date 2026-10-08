@@ -9,6 +9,19 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.5
+
+- Fix: icons drawn over dialogs, popups and menus with the software renderer
+  (Telamon apps' default). `Kirigami.Icon` draws as a render node there, and
+  when a repaint touched part of an icon (a text cursor blinking, a list
+  update) the whole icon was painted again over whatever sat in front of it.
+  New `TelamonIcon` is a `Kirigami.Icon` that is a layer on the software
+  renderer only, and Telamon.Ui's own controls (buttons, sidebar items, list
+  rows, fields, menus, banners and the others) use it for all their icons.
+  Apps use `TelamonIcon` instead of `Kirigami.Icon` for icons that can end up
+  under a dialog or menu. Test: tests/input/tst_icon_over_popup.qml. Apps get
+  this by moving to `tag = "v2.0.5"` and requiring `telamon-ui >= 2.0.5`.
+
 ## 2.0.2
 
 - Fix: crash reports (`crash::collect_coredumps`) are only for the host's own

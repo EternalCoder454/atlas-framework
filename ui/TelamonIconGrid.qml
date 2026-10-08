@@ -214,7 +214,7 @@ T.Control {
                     y: TelamonStyle.spacingLarge
                     width: control.iconSize
                     height: control.iconSize
-                    Kirigami.Icon {
+                    TelamonIcon {
                         anchors.fill: parent
                         visible: cell.iconName.length > 0
                         source: cell.iconName

@@ -785,6 +785,8 @@ TelamonHeaderBar.property titleCentered: bool [readonly]
 TelamonHeaderBar.property trailing: QQmlListProperty<QObject> [readonly]
 TelamonHeaderBar.property windowButtons: bool
 TelamonHeaderBar.type
+TelamonIcon.base Icon
+TelamonIcon.type
 TelamonIconGrid.base QQuickControl
 TelamonIconGrid.property count: int [readonly]
 TelamonIconGrid.property currentIndex: int

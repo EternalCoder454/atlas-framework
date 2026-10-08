@@ -58,6 +58,7 @@ qt_add_qml_module(telamonui
         ContextMenuItem.qml
         ContextMenuSeparator.qml
         Symbol.qml
+        TelamonIcon.qml
         TelamonAboutPage.qml
         TabBar.qml
         FindBar.qml

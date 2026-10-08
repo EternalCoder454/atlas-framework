@@ -234,7 +234,7 @@ Item {
                 color: menuButton.down ? TelamonStyle.alpha(Kirigami.Theme.highlightColor, 0.45) : menuButton.hovered ? TelamonStyle.alpha(Kirigami.Theme.highlightColor, 0.28) : "transparent"
             }
             contentItem: Item {
-                Kirigami.Icon {
+                TelamonIcon {
                     anchors.centerIn: parent
                     width: 18
                     height: 18

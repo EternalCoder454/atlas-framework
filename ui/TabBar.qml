@@ -477,7 +477,7 @@ Item {
                             radius: width / 2
                             color: closeButton.down ? TelamonStyle.pressed : closeButton.hovered ? TelamonStyle.hover : "transparent"
                         }
-                        contentItem: Kirigami.Icon {
+                        contentItem: TelamonIcon {
                             source: "window-close"
                             isMask: true
                             color: TelamonStyle.textMuted

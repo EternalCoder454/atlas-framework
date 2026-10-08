@@ -222,7 +222,7 @@ FocusScope {
             spacing: TelamonStyle.spacingSmall
             Layout.alignment: Qt.AlignVCenter
         }
-        Kirigami.Icon {
+        TelamonIcon {
             visible: root.iconName.length > 0 && !root._hasLeading
             source: root.iconName
             fallback: "applications-other"
@@ -281,7 +281,7 @@ FocusScope {
             implicitWidth: Kirigami.Units.iconSizes.smallMedium
             Accessible.ignored: true
         }
-        Kirigami.Icon {
+        TelamonIcon {
             visible: root.checkmark
             source: "checkmark"
             isMask: true
@@ -301,7 +301,7 @@ FocusScope {
                 checked = Qt.binding(() => root.switchChecked);
             }
         }
-        Kirigami.Icon {
+        TelamonIcon {
             visible: root.chevron && !root.busy
             source: root.mirrored ? "arrow-left" : "arrow-right"
             isMask: true
