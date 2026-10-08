@@ -96,7 +96,7 @@ trailing newline; `files` and `links` are sorted by path.
 | `name`, `summary`, `license`, `homepage` | From the metainfo (`<name>`, `<summary>`, `<project_license>`, `<url type="homepage">`); without a metainfo the tool falls back to the `.desktop` file's `Name` and `Comment` and the spec's `License:` and `URL:`, and fails if one is still missing. `homepage` is an `https://` URL. |
 | `version` | Dotted numbers with an optional prerelease: `0.2.0`, `1.0.0-beta.1`. The release tag without its `v`. It must agree with the numbers of `project(... VERSION)` in the app's CMake. |
 | `arch` | `x86_64`, the only one. |
-| `min_telamon_ui` | The oldest `telamon-ui` that runs the app: the highest `BuildRequires: telamon-ui >= X` of the app's spec, else the version of `telamon-ui` installed in the build container. QML is compiled against the types Telamon.Ui had when the app was built, so a reader refuses an OS with an older one. |
+| `min_telamon_ui` | The oldest `telamon-ui` that runs the app: the highest `BuildRequires: telamon-ui >= X` of the app's spec (else `Requires:`), else the version of `telamon-ui` installed in the build container. QML is compiled against the types Telamon.Ui had when the app was built, so a reader refuses an OS with an older one. |
 | `min_os_version` | `VERSION_ID` of the build container's `/etc/os-release` (Fedora 44: `44`). |
 | `files` | Every regular file in the archive except `telamon-bundle.json`: `path`, `size`, `sha256` (lowercase hex) and `executable` (any execute bit). |
 | `links` | The symlinks: `path` and the relative `target`. `[]` when there are none. |
@@ -201,7 +201,10 @@ What it does:
    default (`if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)`, as Telamon Gates
    and Telamon Notepad do), which an explicit prefix skips.
 3. Remaps the source, build and cargo directories (`--remap-path-prefix`,
-   `-ffile-prefix-map`) so panic messages and `__FILE__` do not carry them.
+   `-ffile-prefix-map`) so panic messages and `__FILE__` do not carry them. It
+   does this with `CARGO_ENCODED_RUSTFLAGS`, which cargo prefers over the
+   `rustflags` of `.cargo/config.toml`: put an app's own rust flags in `RUSTFLAGS`
+   when it is built into a bundle.
 4. Checks that **no file in the tree contains the stage path or the build directory**.
 5. Packs with `tools/bundle.py pack`: the tree is validated (the layout rules
    above, exactly one `.desktop` file named like the id, every `Exec=` naming an
@@ -231,7 +234,7 @@ fake app and every kind of bad bundle it must refuse; `tools/dev-check.sh` and C
 3. runs `tools/make-bundle.sh` (with `--version` set to the tag, so a tag that
    disagrees with CMake fails);
 4. uploads the two files as the workflow artifact `telamon-bundle`, always; and
-5. for a `v*` tag, attaches them to that tag's release: it creates the release with
+5. in a second job, for a `v*` tag, attaches them to that tag's release: it creates the release with
    generated notes when it does not exist (GitHub sometimes answers 5xx, so it
    tries again a few times), otherwise `gh release upload --clobber`.
 
@@ -243,7 +246,7 @@ fake app and every kind of bad bundle it must refuse; `tools/dev-check.sh` and C
 | `attach` | `true` (default): attach to the release of a `v*` tag. |
 
 It needs no secrets. The calling job must grant `contents: write` (the workflow
-itself defaults to `contents: read` and asks for write only in its one job).
+itself defaults to `contents: read`: the build job keeps it, and only the final `attach` job, which runs nothing but `gh` on the two uploaded files, asks for write).
 Every action is pinned by commit sha. A cache written by a tag run is read only
 by that tag: run the caller by hand on the default branch (`workflow_dispatch`)
 once to seed a cache that every tag can read.
@@ -319,7 +322,7 @@ then `zstd -dc <archive> | tar -x -C /tmp/some-empty-dir` and run
 - **Unpacking** (Store, and `tools/bundle.py verify` the same way) accepts only the
   entries above: paths cannot leave the prefix (no `..`, no absolute path, no
   `./`), nothing is written through a symlink (every symlink is relative and
-  stays inside the tree, no entry sits below one), no hard links or device
+  stays inside the tree, also through the links on its way, no entry sits below one), no hard links or device
   files, and the archive is capped (50,000 entries, 2 GiB of files).
 - **Later**: GitHub artifact attestations (Sigstore provenance for the workflow's
   run, which Store can check against the pinned repository) and a

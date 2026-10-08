@@ -221,7 +221,7 @@ expect_fail "a version that is not the CMake version" "does not match project" -
 expect_fail "a version that is not a version" "version .* dotted numbers" --version banana
 
 # --------------------------------------------------------- tampered installs
-expect_fail "a .desktop Exec naming a missing binary" "bin/fake-missing is not in the bundle" --cmake-arg -DFAKE=bad-exec
+expect_fail "a .desktop Exec naming a missing binary" "bin/fake-missing is not an executable file in the bundle" --cmake-arg -DFAKE=bad-exec
 expect_fail "two .desktop files" "exactly one .desktop file is required, found 2" --cmake-arg -DFAKE=two-desktops
 expect_fail "the stage path inside a binary" "not relocatable" --cmake-arg -DFAKE=stage-leak
 expect_fail "a symlink pointing outside the tree" "not a relative path inside the tree" --cmake-arg -DFAKE=link-out
@@ -265,6 +265,13 @@ for ti, data in members:
         ti.mtime += 5
     out.append((ti, data))
 extra = None
+more = []
+if mode == "reorder":
+    out.reverse()
+if mode == "linkdots":
+    # d -> .. is share/net.example.fake/sub/.. ; e climbs one more through d
+    extra = ("share/net.example.fake/sub/d", b"", tarfile.SYMTYPE, "../..")
+    more = [("share/net.example.fake/sub/e", b"", tarfile.SYMTYPE, "d/../../../../bin")]
 if mode == "extra":
     extra = ("share/net.example.fake/extra.txt", b"not in the manifest\n", tarfile.REGTYPE, "")
 if mode == "dotdot":
@@ -283,12 +290,13 @@ if mode == "toplevel":
     extra = ("lib/libx.so", b"x", tarfile.REGTYPE, "")
 if mode == "dupe":
     extra = ("bin/fake-app", b"#!/bin/sh\n", tarfile.REGTYPE, "")
-if extra:
-    name, data, typ, link = extra
+for name, data, typ, link in ([extra] if extra else []) + more:
     ti = tarfile.TarInfo(name)
     ti.type, ti.linkname, ti.mode, ti.mtime = typ, link, 0o644, out[0][0].mtime
     ti.size = len(data) if typ == tarfile.REGTYPE else 0
     out.append((ti, data if typ == tarfile.REGTYPE else None))
+if mode != "reorder":
+    out.sort(key=lambda m: m[0].name)
 buf = io.BytesIO()
 with tarfile.open(fileobj=buf, mode="w", format=tarfile.PAX_FORMAT) as tf:
     for ti, data in out:
@@ -325,7 +333,16 @@ tamper toplevel "outside bin/ and share/"
 tamper dupe "listed twice"
 tamper mode "expected 0755 or 0644"
 tamper owner "expected 0:0"
+tamper reorder "not sorted by path"
+tamper linkdots "not a relative path inside the tree"
 tamper mtime "different modification times"
+# fields are matched whole: a trailing newline is not a version
+check "a version, os version or hash with a trailing newline is not valid" python3 -I -c "
+import sys; sys.path.insert(0, '$here'); import bundle
+assert not bundle.VERSION_RE.fullmatch('1.0.0\\n') and not bundle.OSVER_RE.fullmatch('44\\n') and not bundle.ID_RE.fullmatch('a.b\\n')
+assert bundle.VERSION_RE.fullmatch('1.0.0-beta.1') and bundle.VERSION_RE.fullmatch('0.1.0')
+assert bundle.exec_values('[Desktop Entry]\\nExec = /usr/bin/evil\\n') == [('Desktop Entry', '/usr/bin/evil')]
+"
 # a manifest that does not match its archive
 cp -r "$out1" "$scratch/badmanifest"
 sed -i 's/"size": 1[0-9]*,/"size": 1,/' "$scratch/badmanifest/telamon-bundle.json"

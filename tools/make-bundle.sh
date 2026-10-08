@@ -63,7 +63,7 @@ while [ $# -gt 0 ]; do
     --min-telamon-ui) need_arg "$1" $#; min_ui=$2; shift 2 ;;
     --min-os-version) need_arg "$1" $#; min_os=$2; shift 2 ;;
     --keep) keep=1; shift ;;
-    -h | --help) sed -n '2,31p' "$0"; exit 0 ;;
+    -h | --help) sed '/^set -euo/,$d;1d' "$0"; exit 0 ;;
     *) die "unknown argument: $1 (see --help)" ;;
     esac
 done

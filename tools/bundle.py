@@ -34,10 +34,10 @@ FILE_KEYS = ["path", "size", "sha256", "executable"]
 LINK_KEYS = ["path", "target"]
 ARCHIVE_KEYS = ["name", "sha256", "size"]
 
-ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-VERSION_RE = re.compile(r"^[0-9]+(\.[0-9]+)+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$")
-OSVER_RE = re.compile(r"^[0-9]+$")
-SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+VERSION_RE = re.compile(r"[0-9]+(\.[0-9]+)+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?")
+OSVER_RE = re.compile(r"[0-9]+")
+SHA_RE = re.compile(r"[0-9a-f]{64}")
 
 MAX_ENTRIES = 50000
 MAX_TOTAL = 2 * 1024 ** 3
@@ -90,14 +90,40 @@ def path_problem(p):
     return None
 
 
-def resolve_link(path, target):
-    """The tree path a symlink at `path` points to, or None if it leaves the tree."""
+def resolve_link(path, target, by_path=None):
+    """The tree path a symlink at `path` points to, or None if it leaves the tree.
+    With `by_path` (every entry), links on the way are followed too, so `d/..`
+    through a link to a directory cannot climb out."""
     if target == "" or target.startswith("/") or "\\" in target:
         return None
-    joined = posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
-    if joined == "." or joined == ".." or joined.startswith("../"):
-        return None
-    return joined
+    if by_path is None:
+        joined = posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
+        if joined == "." or joined == ".." or joined.startswith("../"):
+            return None
+        return joined
+    parts = _walk(by_path, posixpath.dirname(path).split("/") if "/" in path else [], target, 0)
+    return "/".join(parts) if parts else None
+
+
+def _walk(by_path, start, rel, depth):
+    parts = list(start)
+    for comp in rel.split("/"):
+        if comp in ("", "."):
+            continue
+        if comp == "..":
+            if not parts:
+                return None
+            parts.pop()
+            continue
+        parts.append(comp)
+        e = by_path.get("/".join(parts))
+        if e is not None and e.kind == "link":
+            if depth >= 16 or e.target == "" or e.target.startswith("/") or "\\" in e.target:
+                return None
+            parts = _walk(by_path, parts[:-1], e.target, depth + 1)
+            if parts is None:
+                return None
+    return parts
 
 
 def validate(entries, archive):
@@ -151,7 +177,7 @@ def validate(entries, archive):
             if e.path.startswith("bin/") and e.path.count("/") > 1:
                 errs.append(f"{e.path}: bin/ holds no subdirectories")
         elif e.kind == "link":
-            dest = resolve_link(e.path, e.target)
+            dest = resolve_link(e.path, e.target, by_path)
             if dest is None:
                 errs.append(f"{e.path}: symlink to {e.target!r}, which is not a relative path inside the tree")
             elif dest not in by_path and not any(x.startswith(dest + "/") for x in by_path):
@@ -159,6 +185,9 @@ def validate(entries, archive):
             if e.path.startswith("bin/") and e.path.count("/") > 1:
                 errs.append(f"{e.path}: bin/ holds no subdirectories")
     if archive:
+        paths = [e.path for e in entries]
+        if paths != sorted(paths):
+            errs.append("entries are not sorted by path (a directory must come before its content)")
         mt = {e.mtime for e in entries}
         if len(mt) > 1:
             errs.append(f"entries have {len(mt)} different modification times; they must all be the commit time")
@@ -186,14 +215,17 @@ def parse_ini_group(text, group):
 
 
 def exec_values(text):
-    """Every Exec= of a .desktop file, the [Desktop Action ...] groups' too: [(group, value)]."""
+    """Every Exec= of a .desktop file, the [Desktop Action ...] groups' too: [(group, value)].
+    The key is trimmed, as GLib's key-file parser does."""
     cur, out = None, []
     for raw in text.splitlines():
         line = raw.strip()
         if line.startswith("[") and line.endswith("]"):
             cur = line[1:-1]
-        elif cur is not None and line.startswith("Exec="):
-            out.append((cur, line[len("Exec="):].strip()))
+        elif cur is not None and "=" in line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            if key.strip() == "Exec":
+                out.append((cur, value.strip()))
     return out
 
 
@@ -211,15 +243,16 @@ def exec_name(value):
     return first
 
 
-def resolves_to_file(by_path, path):
+def resolves_to_executable(by_path, path):
+    """`path` is, or links (inside the tree) to, a regular file with an execute bit."""
     seen = 0
     while path in by_path and seen < 8:
         e = by_path[path]
         if e.kind == "file":
-            return True
+            return bool(e.mode & 0o111)
         if e.kind != "link":
             return False
-        path = resolve_link(e.path, e.target)
+        path = resolve_link(e.path, e.target, by_path)
         seen += 1
     return False
 
@@ -236,35 +269,41 @@ def check_semantics(by_path, read):
     app_id = posixpath.basename(dpath)[: -len(".desktop")]
     if dpath != f"share/applications/{app_id}.desktop":
         errs.append(f"{dpath}: must be share/applications/<app id>.desktop")
-    if not ID_RE.match(app_id) or "." not in app_id:
+    if not ID_RE.fullmatch(app_id) or "." not in app_id:
         errs.append(f"{dpath}: the app id {app_id!r} must be reverse-DNS: letters, digits, '.', '_' and '-', with a dot")
 
     if by_path[dpath].kind != "file":
         errs.append(f"{dpath}: must be a regular file")
     else:
         values = exec_values(read(dpath).decode("utf-8", "replace"))
-        if not any(g == "Desktop Entry" for g, _ in values):
+        groups = [g for g, _ in values]
+        if "Desktop Entry" not in groups:
             errs.append(f"{dpath}: no Exec= in [Desktop Entry]")
+        for g in sorted({g for g in groups if groups.count(g) > 1}):
+            errs.append(f"{dpath} [{g}]: Exec= twice")
         for group, value in values:
             try:
                 name = exec_name(value)
             except ValueError as exc:
                 errs.append(f"{dpath} [{group}]: {exc}")
             else:
-                if not resolves_to_file(by_path, f"bin/{name}"):
-                    errs.append(f"{dpath} [{group}]: Exec={name!r}, but bin/{name} is not in the bundle")
+                if not resolves_to_executable(by_path, f"bin/{name}"):
+                    errs.append(f"{dpath} [{group}]: Exec={name!r}, but bin/{name} is not an executable file in the bundle")
 
     services = sorted(p for p in by_path if p.startswith("share/dbus-1/services/") and p.endswith(".service")
                       and by_path[p].kind == "file")
     for sp in services:
-        entry = parse_ini_group(read(sp).decode("utf-8", "replace"), "D-BUS Service")
+        values = exec_values(read(sp).decode("utf-8", "replace"))
+        if len(values) != 1 or values[0][0] != "D-BUS Service":
+            errs.append(f"{sp}: exactly one Exec= in [D-BUS Service] is required")
+            continue
         try:
-            name = exec_name(entry.get("Exec", ""))
+            name = exec_name(values[0][1])
         except ValueError as exc:
             errs.append(f"{sp}: {exc}")
         else:
-            if not resolves_to_file(by_path, f"bin/{name}"):
-                errs.append(f"{sp}: Exec={name!r}, but bin/{name} is not in the bundle")
+            if not resolves_to_executable(by_path, f"bin/{name}"):
+                errs.append(f"{sp}: Exec={name!r}, but bin/{name} is not an executable file in the bundle")
 
     meta = {}
     mpath = f"share/metainfo/{app_id}.metainfo.xml"
@@ -286,8 +325,8 @@ XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 
 def parse_metainfo(data, app_id):
     # No entity or DOCTYPE tricks: a metainfo file has neither.
-    if b"<!DOCTYPE" in data or b"<!ENTITY" in data:
-        raise BundleError("a DOCTYPE or ENTITY declaration is not allowed")
+    if b"<!DOCTYPE" in data or b"<!ENTITY" in data or b"\x00" in data or not data.lstrip(b"\xef\xbb\xbf \t\r\n").startswith(b"<"):
+        raise BundleError("must be UTF-8 XML without a DOCTYPE or ENTITY declaration")
     try:
         root = ET.fromstring(data)
     except ET.ParseError as exc:
@@ -322,6 +361,8 @@ def cmake_version(app_dir):
         raise BundleError(f"cannot read {path}: {exc}") from None
     text = re.sub(r"#[^\n]*", "", text)
     m = re.search(r"\bproject\s*\(\s*[^\s)]+[^)]*?\bVERSION\s+([0-9]+(?:\.[0-9]+)*)", text, re.I | re.S)
+    if m is None and re.search(r"\bproject\s*\([^)]*\bVERSION\b", text, re.I | re.S):
+        raise BundleError(f"project(... VERSION ...) in {path} is not literal numbers (a variable?): the bundle version cannot be checked against it")
     return m.group(1) if m else None
 
 
@@ -329,7 +370,7 @@ def resolve_version(app_dir, wanted):
     cm = cmake_version(app_dir)
     if wanted:
         wanted = wanted[1:] if wanted.startswith("v") else wanted
-        if not VERSION_RE.match(wanted):
+        if not VERSION_RE.fullmatch(wanted):
             raise BundleError(f"version {wanted!r}: dotted numbers with an optional -prerelease (0.2.0, 1.0.0-beta.1)")
         core = wanted.split("-", 1)[0]
         if cm is not None and core != cm:
@@ -338,7 +379,7 @@ def resolve_version(app_dir, wanted):
         return wanted
     if cm is None:
         raise BundleError(f"no project(... VERSION x.y.z) in {app_dir}/CMakeLists.txt: pass --version")
-    if not VERSION_RE.match(cm):
+    if not VERSION_RE.fullmatch(cm):
         raise BundleError(f"project VERSION {cm} needs at least major.minor")
     return cm
 
@@ -365,7 +406,7 @@ def spec_min_ui(spec):
 
 def installed_ui():
     r = subprocess.run(["rpm", "-q", "--qf", "%{VERSION}", "telamon-ui"], capture_output=True, text=True)
-    if r.returncode == 0 and re.match(r"^[0-9]+(\.[0-9]+)*$", r.stdout.strip()):
+    if r.returncode == 0 and re.fullmatch(r"[0-9]+(\.[0-9]+)*", r.stdout.strip()):
         return r.stdout.strip()
     return None
 
@@ -466,9 +507,9 @@ def cmd_pack(a):
                  "min_os_version": "VERSION_ID in /etc/os-release"}
         raise BundleError([f"no {k}: needs {hints.get(k, '--' + k.replace('_', '-'))}" for k in missing])
     for key, rx, what in (("id", ID_RE, "id"), ("version", VERSION_RE, "version"), ("min_os_version", OSVER_RE, "os version")):
-        if not rx.match(meta[key]):
+        if not rx.fullmatch(meta[key]):
             raise BundleError(f"{what} {meta[key]!r} is not valid")
-    if not re.match(r"^[0-9]+(\.[0-9]+)*$", meta["min_telamon_ui"]):
+    if not re.fullmatch(r"[0-9]+(\.[0-9]+)*", meta["min_telamon_ui"]):
         raise BundleError(f"min_telamon_ui {meta['min_telamon_ui']!r} is not a dotted number")
 
     inner = build_manifest(meta, entries)
@@ -545,8 +586,10 @@ def read_archive(path):
                 elif ti.issym():
                     e = Entry(name, "link", ti.mode, target=ti.linkname)
                 elif ti.isreg():
+                    if total + ti.size > MAX_TOTAL:
+                        raise BundleError("the archive is larger than the limits (entries or bytes)")
                     h = hashlib.sha256()
-                    keep = ti.size <= SMALL
+                    keep = ti.size <= SMALL and (name == MANIFEST or name.endswith((".desktop", ".service", ".metainfo.xml")))
                     buf = bytearray()
                     f = tf.extractfile(ti)
                     for chunk in iter(lambda: f.read(1 << 20), b""):
@@ -602,15 +645,15 @@ def check_manifest_shape(m, with_archive):
             errs.append(f"{k} must be a non-empty string")
     if errs:
         return errs
-    if not ID_RE.match(m["id"]) or "." not in m["id"]:
+    if not ID_RE.fullmatch(m["id"]) or "." not in m["id"]:
         errs.append(f"id {m['id']!r} is not reverse-DNS")
-    if not VERSION_RE.match(m["version"]):
+    if not VERSION_RE.fullmatch(m["version"]):
         errs.append(f"version {m['version']!r} is not dotted numbers with an optional -prerelease")
     if m["arch"] != ARCH:
         errs.append(f"arch is {m['arch']!r}, expected {ARCH}")
-    if not re.match(r"^[0-9]+(\.[0-9]+)*$", m["min_telamon_ui"]):
+    if not re.fullmatch(r"[0-9]+(\.[0-9]+)*", m["min_telamon_ui"]):
         errs.append(f"min_telamon_ui {m['min_telamon_ui']!r} is not a dotted number")
-    if not OSVER_RE.match(m["min_os_version"]):
+    if not OSVER_RE.fullmatch(m["min_os_version"]):
         errs.append(f"min_os_version {m['min_os_version']!r} is not a number")
     if not m["homepage"].startswith("https://"):
         errs.append("homepage must be an https:// URL")
@@ -621,7 +664,7 @@ def check_manifest_shape(m, with_archive):
         if not isinstance(f, dict) or list(f.keys()) != FILE_KEYS:
             errs.append(f"a files entry must have exactly {FILE_KEYS}: {f!r}")
         elif (not isinstance(f["path"], str) or not isinstance(f["size"], int) or isinstance(f["size"], bool)
-              or not isinstance(f["sha256"], str) or not SHA_RE.match(f["sha256"]) or not isinstance(f["executable"], bool)):
+              or not isinstance(f["sha256"], str) or not SHA_RE.fullmatch(f["sha256"]) or not isinstance(f["executable"], bool)):
             errs.append(f"a files entry has a wrong type or hash: {f!r}")
     for ln in m["links"]:
         if not isinstance(ln, dict) or list(ln.keys()) != LINK_KEYS or not all(isinstance(v, str) for v in ln.values()):
@@ -636,7 +679,7 @@ def check_manifest_shape(m, with_archive):
         ar = m["archive"]
         if not isinstance(ar, dict) or list(ar.keys()) != ARCHIVE_KEYS:
             errs.append(f"archive must have exactly {ARCHIVE_KEYS}")
-        elif (not isinstance(ar["name"], str) or not isinstance(ar["sha256"], str) or not SHA_RE.match(ar["sha256"])
+        elif (not isinstance(ar["name"], str) or not isinstance(ar["sha256"], str) or not SHA_RE.fullmatch(ar["sha256"])
               or not isinstance(ar["size"], int) or isinstance(ar["size"], bool)):
             errs.append("archive has a wrong type or hash")
         elif ar["name"] != f"{m['id']}-{m['version']}-{m['arch']}.tar.zst":
@@ -660,6 +703,8 @@ def verify(archive_path, manifest_path, epoch=None):
         errs.append("the manifest is not in the canonical form (2-space indent, trailing newline)")
 
     ar = outer["archive"]
+    if not os.path.isfile(archive_path):
+        raise BundleError(f"cannot read {archive_path}")
     if os.path.basename(archive_path) != ar["name"]:
         errs.append(f"the archive file is {os.path.basename(archive_path)}, the manifest names {ar['name']}")
     if os.path.getsize(archive_path) != ar["size"]:
