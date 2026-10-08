@@ -2199,6 +2199,10 @@ impl Origin {
 /// and `docker/<id>`, `lxc.payload.<name>` and `kubepods*` are theirs when the
 /// runtime uses cgroupfs.
 fn is_container_cgroup(component: &str) -> bool {
+    // podman's own supervisor runs on the host, in a scope of this name
+    if component.starts_with("libpod-conmon-") {
+        return false;
+    }
     const PREFIXES: &[&str] = &[
         "libpod-",
         "libpod_",
@@ -2642,7 +2646,9 @@ impl<F: Fn(&str) -> io::Result<Option<String>>> RpmLookup<F> {
 /// Blocks: it runs `journalctl` (up to twice, 10 s each at most) and
 /// `rpm -qf` for programs without a package field (5 s at most; after one
 /// timeout, as when an update holds the rpmdb lock, no more this call), so
-/// up to about 25 s. Call it from a worker thread, never the GUI thread.
+/// up to about 25 s (once, after an update that raised the origin rules, up
+/// to 12 more journal lookups for the pending reports). Call it from a worker
+/// thread, never the GUI thread.
 pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     if !Settings::load().enabled {
         return Vec::new();
@@ -2819,36 +2825,60 @@ fn purge_ignored_in(
     seconds.sort_unstable();
     seconds.dedup();
     let mut ignored = std::collections::HashSet::new();
+    let mut kept = std::collections::HashSet::new();
     let mut found = false;
     let mut i = 0;
-    while i < seconds.len() {
-        // one journal call for crashes that are close together
+    let mut groups = 0;
+    while i < seconds.len() && groups < MAX_PURGE_LOOKUPS {
+        // One journal call for crashes that are close together, never for a
+        // span longer than [`PURGE_SPAN`]. The journal files an entry when
+        // the core has been written and its trace made, which takes a while
+        // for a big program: the window reaches [`PURGE_LATE`] seconds past
+        // the crash.
         let (first, mut last) = (seconds[i], seconds[i]);
-        while i + 1 < seconds.len() && seconds[i + 1] - last <= 5 {
+        while i + 1 < seconds.len()
+            && seconds[i + 1] - last <= 5
+            && seconds[i + 1] - first <= PURGE_SPAN
+        {
             i += 1;
             last = seconds[i];
         }
         i += 1;
-        let entries = lookup(first.saturating_sub(1) * 1_000_000, (last + 2) * 1_000_000);
+        groups += 1;
+        let entries = lookup(
+            first.saturating_sub(1) * 1_000_000,
+            (last + PURGE_LATE) * 1_000_000,
+        );
         found |= !entries.is_empty();
         for d in entries.iter().filter_map(|e| Coredump::parse(e, uid)) {
+            let key = (
+                d.time(),
+                d.host_name(scrubber),
+                scrubber.scrub_message(&cap_message(&d.host_message(scrubber))),
+            );
             if d.origin.ignored() {
-                ignored.insert((
-                    d.time(),
-                    d.host_name(scrubber),
-                    scrubber.scrub_message(&cap_message(&d.host_message(scrubber))),
-                ));
+                ignored.insert(key);
+            } else {
+                kept.insert(key);
             }
         }
     }
     for r in &undecided {
-        if ignored.contains(&(r.time.clone(), r.app_name.clone(), r.message.clone())) {
+        let key = (r.time.clone(), r.app_name.clone(), r.message.clone());
+        // a host crash of the same program in the same second stays
+        if ignored.contains(&key) && !kept.contains(&key) {
             remove(r);
             removed += 1;
         }
     }
     found.then_some(removed)
 }
+
+/// The most seconds one purge lookup spans, how long after a crash its entry
+/// may be filed, and how many lookups one purge makes.
+const PURGE_SPAN: u64 = 60;
+const PURGE_LATE: u64 = 120;
+const MAX_PURGE_LOOKUPS: usize = 12;
 
 /// Unix seconds of a `YYYY-MM-DDTHH:MM:SSZ` time (what [`now_rfc3339`] and
 /// the coredump reports use); `None` for any other shape.
@@ -5679,6 +5709,17 @@ mod tests {
         let mut e = dump("/usr/bin/plasmashell", "plasmashell", "", HOST, false);
         e["COREDUMP_USER_UNIT"] = json!(format!("libpod-{PODMAN_ID}.scope"));
         assert_eq!(origin_of(&e), Origin::Container);
+        // podman's supervisor runs on the host
+        let e = dump(
+            "/usr/bin/conmon",
+            "conmon",
+            &format!(
+                "/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-conmon-{PODMAN_ID}.scope"
+            ),
+            HOST,
+            false,
+        );
+        assert!(kept(&e));
         // a program whose own name merely looks like one is not a container
         let e = dump(
             "/usr/bin/docker-compose",
@@ -5925,9 +5966,10 @@ mod tests {
         assert!(b.path.as_ref().unwrap().exists(), "host crash stays");
         assert!(f.path.as_ref().unwrap().exists(), "flatpak crash stays");
         assert!(panic.path.as_ref().unwrap().exists());
-        // crashes minutes apart are asked for separately, never a whole day
+        // crashes minutes apart are asked for separately, never a whole day;
+        // one lookup reaches past the crash for the entry filed late
         assert!(
-            calls.borrow().len() >= 2 && calls.borrow().iter().all(|(s, u)| u - s < 60_000_000)
+            calls.borrow().len() >= 2 && calls.borrow().iter().all(|(s, u)| u - s < 200_000_000)
         );
         // and a second pass finds nothing to do
         assert_eq!(purge_ignored_in(&pending, &sc(), "1000", journal), Some(0));
