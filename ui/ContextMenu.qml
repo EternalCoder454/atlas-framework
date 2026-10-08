@@ -15,6 +15,13 @@ import org.kde.kirigami as Kirigami
 //
 // A menu taller than the window (less its margins) is cut to fit and scrolls;
 // the arrow keys keep the current row in view. Radio rows: see ContextMenuItem.
+//
+// Keyboard: Up and Down move over the rows that can be chosen (not over
+// separators, disabled or hidden rows) and wrap at the ends, Home and End go to
+// the first and last, Enter and Space choose, Escape closes. Right opens a
+// submenu and Left closes it (the other way round in a right-to-left layout).
+// A row of your own (a T.MenuItem with several buttons, say) gets the keys
+// first; let the ones it does not use go on (`event.accepted = false`).
 T.Menu {
     id: control
 
@@ -29,6 +36,84 @@ T.Menu {
     focus: true
 
     delegate: ContextMenuItem {}
+
+    // Whether the keyboard may stop on this row: a menu item that is shown and on.
+    // Separators, labels and hidden or disabled rows are passed over.
+    function _canChoose(item: var): bool {
+        return item instanceof T.MenuItem && item.visible && item.enabled;
+    }
+    // The nearest row from `from` to choose, going `dir` (1 or -1) and wrapping
+    // at the ends; -1 when there is none. `from` -1 starts before the first row
+    // going down and after the last going up.
+    function _next(from: int, dir: int): int {
+        const n = control.count;
+        const start = from < 0 ? (dir > 0 ? -1 : n) : from;
+        for (let k = 1; k <= n; ++k) {
+            const i = (((start + dir * k) % n) + n) % n;
+            if (control._canChoose(control.itemAt(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    // The first (`dir` 1) or last (-1) row to choose; -1 when there is none.
+    function _edge(dir: int): int {
+        const n = control.count;
+        for (let k = 0; k < n; ++k) {
+            const i = dir > 0 ? k : n - 1 - k;
+            if (control._canChoose(control.itemAt(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    function _go(index: int): void {
+        if (index >= 0) {
+            control.currentIndex = index;
+        }
+    }
+    // Whether this menu is the submenu of a row of another menu.
+    readonly property bool _isSubmenu: (control.parent as T.MenuItem)?.subMenu === control
+    // Opens the submenu of the current row, if it has one.
+    function _openSubmenu(): void {
+        const row = control.itemAt(control.currentIndex) as T.MenuItem;
+        const sub = row?.subMenu;
+        if (sub && control._canChoose(row)) {
+            row.click();
+            // The submenu starts on its first row, as the pointer would not.
+            if (sub.count > 0 && sub.currentIndex < 0) {
+                sub.currentIndex = typeof sub._edge === "function" ? sub._edge(1) : 0;
+            }
+        }
+    }
+    // Handles a key the rows did not take; true when it was the menu's.
+    function _key(key: int): bool {
+        switch (key) {
+        case Qt.Key_Right:
+        case Qt.Key_Left:
+            // Towards the end of the line opens a submenu, back from it closes
+            // one; Qt's own keys ignore a right-to-left layout.
+            if ((key === Qt.Key_Right) !== control.mirrored) {
+                control._openSubmenu();
+            } else if (control._isSubmenu) {
+                control.close();
+            }
+            return true;
+        case Qt.Key_Down:
+            control._go(control._next(control.currentIndex, 1));
+            return true;
+        case Qt.Key_Up:
+            control._go(control._next(control.currentIndex, -1));
+            return true;
+        case Qt.Key_Home:
+            control._go(control._edge(1));
+            return true;
+        case Qt.Key_End:
+            control._go(control._edge(-1));
+            return true;
+        }
+        return false;
+    }
 
     // Items added just before popup() are measured before it is placed,
     // not one turn later (when it would first be placed too narrow).
@@ -74,8 +159,15 @@ T.Menu {
         boundsBehavior: Flickable.StopAtBounds
         onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
         currentIndex: control.currentIndex
-        keyNavigationEnabled: true
-        keyNavigationWraps: true
+        // The menu moves the current row itself (Keys.onPressed below), over the
+        // rows it may choose: the list's own keys would stop on separators and
+        // take the arrow keys from a row that holds the keyboard.
+        keyNavigationEnabled: false
+        focus: true
+        Keys.onPressed: event => {
+            // Ctrl, Alt and Meta with a key are the application's (shortcuts).
+            event.accepted = !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && control._key(event.key);
+        }
     }
 
     background: Item {

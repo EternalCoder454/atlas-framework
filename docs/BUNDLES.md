@@ -292,7 +292,7 @@ once to seed a cache that every tag can read.
 Three steps for the app's owner:
 
 **(a) Add the workflow to the app's repository**, as `.github/workflows/bundle.yml`
-(`<sha>` is the full 40-character commit sha of the framework release, here v2.0.3):
+(`<sha>` is the full 40-character commit sha of the framework release, here v2.0.4):
 
 ```yaml
 name: Telamon bundle
@@ -306,7 +306,7 @@ jobs:
   bundle:
     permissions:
       contents: write
-    uses: EternalCoder454/atlas-framework/.github/workflows/bundle.yml@<sha> # v2.0.3
+    uses: EternalCoder454/atlas-framework/.github/workflows/bundle.yml@<sha> # v2.0.4
     with:
       framework-ref: <sha>
 ```

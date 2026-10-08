@@ -9,7 +9,7 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
-## 2.0.3
+## 2.0.4
 
 - New: native app bundles. A Telamon app that is not part of the OS image can
   ship as a bundle (`<id>-<version>-x86_64.tar.zst` plus `telamon-bundle.json`)
@@ -23,8 +23,25 @@ package side.
   three steps that connect an app are in `docs/BUNDLES.md`. The app template
   now carries the caller workflow, a metainfo file and an icon. No API
   change; apps need nothing from this release unless they ship as bundles
-  (the tools come from `framework-ref`, so a pin to any commit from 2.0.3 on
+  (the tools come from `framework-ref`, so a pin to any commit from 2.0.4 on
   is enough).
+
+## 2.0.3
+
+- Fix: the keyboard in `ContextMenu`. The menu's list took the arrow keys for
+  itself (`keyNavigationEnabled`), so Up and Down stopped on separators (the
+  highlight seemed lost, Enter did nothing there) and on hidden rows, and a row
+  that held the keyboard, such as an icon row, kept the keys from the menu.
+  Now Up and Down move over the rows that can be chosen only (not separators,
+  disabled or hidden rows) and wrap at the ends; Home and End jump to the first
+  and last of them; Enter and Space choose; Escape closes (one submenu at a
+  time); Right opens a submenu and Left closes it, mirrored in a right-to-left
+  layout (Qt's own keys ignored it). A custom row gets the keys first and
+  lets the ones it does not use go on with `event.accepted = false`. An app
+  that worked around it with `contentItem.keyNavigationEnabled = false` (Telamon
+  Files) can drop that line; keeping it does no harm. No API change; the keys
+  are on the ContextMenu reference page. Apps get this by moving to
+  `tag = "v2.0.3"` and requiring `telamon-ui >= 2.0.3`.
 
 ## 2.0.2
 

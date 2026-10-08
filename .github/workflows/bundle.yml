@@ -75,7 +75,7 @@ jobs:
             echo "::error::fetched $(git -C "$dir" rev-parse HEAD), not $FRAMEWORK_REF"; exit 1
           fi
           if [ ! -x "$dir/tools/make-bundle.sh" ]; then
-            echo "::error::framework-ref has no tools/make-bundle.sh: use a commit from 2.0.3 on"; exit 1
+            echo "::error::framework-ref has no tools/make-bundle.sh: use a commit from 2.0.4 on"; exit 1
           fi
           {
             echo "dir=$dir"
