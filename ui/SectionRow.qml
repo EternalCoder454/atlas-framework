@@ -33,6 +33,9 @@ FocusScope {
     property bool radio: false
     property bool showSwitch: false
     property bool switchChecked: false
+    // False: the switch is dimmed and takes no input, while the title and the
+    // subtitle keep their colours (a disabled row dims all of it).
+    property bool switchEnabled: true
     property bool clickable: chevron
     property bool busy: false
     // Turn the busy spinner; off for a fixed arc, e.g. in screenshots.
@@ -165,8 +168,12 @@ FocusScope {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
+        // The text's edge on the leading side, the row's padding on the other.
         anchors.leftMargin: TelamonStyle.spacingLarge + (root._hasLeading ? leadingRow.width + TelamonStyle.spacingLarge : (root.iconName.length > 0 ? Kirigami.Units.iconSizes.smallMedium + TelamonStyle.spacingLarge : 0))
-        height: 1
+        anchors.rightMargin: TelamonStyle.spacingLarge
+        // One device pixel, whatever the scale: a logical 1 is 1.5 pixels at
+        // 150% and draws as 1 pixel on one row and 2 on the next.
+        height: 1 / root.Screen.devicePixelRatio
         color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.1)
     }
 
@@ -273,6 +280,11 @@ FocusScope {
             id: trailingRow
             spacing: TelamonStyle.spacingSmall
             Layout.alignment: Qt.AlignVCenter
+            // An empty slot takes no room: the layout would still add its
+            // spacing before it, and a value would end a spacing short of
+            // the edge, where a chevron or a switch ends at it. It has no
+            // width exactly when nothing in it shows.
+            visible: width > 0
         }
         TelamonSpinner {
             visible: root.busy
@@ -291,6 +303,7 @@ FocusScope {
         }
         TelamonSwitch {
             visible: root.showSwitch
+            enabled: root.switchEnabled
             checked: root.switchChecked
             Accessible.name: root.title
             Accessible.description: root.subtitle
@@ -301,19 +314,29 @@ FocusScope {
                 checked = Qt.binding(() => root.switchChecked);
             }
         }
-        TelamonIcon {
+        // The chevron is a Symbol (the same on every icon theme) and the slot is
+        // only as wide as the mark's ink, so its tip ends where a value ends,
+        // at the row's padding. The glyph is centred in its square and its ink
+        // is 0.26 of the square wide; it turns about its own centre.
+        Item {
+            id: chevronSlot
+            readonly property real side: Math.round(Kirigami.Units.iconSizes.small * 1.5)
             visible: root.chevron && !root.busy
-            source: root.mirrored ? "arrow-left" : "arrow-right"
-            isMask: true
-            color: Kirigami.Theme.textColor
-            opacity: 0.45
-            // A quarter turn to point down, whichever way it starts.
-            rotation: root.disclosure && root.expanded ? (root.mirrored ? -90 : 90) : 0
-            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+            Layout.preferredWidth: Math.round(side * 0.26)
+            // The glyph is taller than the slot: it draws past it, and a compact row stays compact.
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
-            Behavior on rotation {
-                NumberAnimation {
-                    duration: TelamonStyle.durationShort
+            Layout.alignment: Qt.AlignVCenter
+            Symbol {
+                anchors.centerIn: parent
+                icon: root.mirrored ? Symbols.ChevronLeft : Symbols.ChevronRight
+                size: chevronSlot.side
+                color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.55)
+                // A quarter turn to point down, whichever way it starts.
+                rotation: root.disclosure && root.expanded ? (root.mirrored ? -90 : 90) : 0
+                Behavior on rotation {
+                    NumberAnimation {
+                        duration: TelamonStyle.durationShort
+                    }
                 }
             }
         }

@@ -21,7 +21,7 @@ LiveChartItem {
     implicitHeight: Kirigami.Units.gridUnit * 8
 
     color: TelamonStyle.accent
-    color2: Kirigami.Theme.neutralTextColor
+    color2: TelamonStyle.warning
     textColor: Kirigami.Theme.textColor
     font.family: TelamonStyle.fontFamily
     font.pointSize: TelamonStyle.fontSizeCaption

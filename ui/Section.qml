@@ -100,14 +100,26 @@ ColumnLayout {
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
             }
-            TelamonIcon {
+            // A Symbol in a slot as wide as its ink, as in SectionRow; folded it
+            // points along the line, open it points down.
+            Item {
                 id: chevron
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                readonly property real side: Math.round(Kirigami.Units.iconSizes.small * 1.5)
+                Layout.preferredWidth: Math.round(side * 0.26)
                 Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                source: root.folded ? (fold.mirrored ? "go-previous" : "go-next") : "go-down"
-                isMask: true
-                color: Kirigami.Theme.textColor
-                opacity: 0.6
+                Layout.alignment: Qt.AlignVCenter
+                Symbol {
+                    anchors.centerIn: parent
+                    icon: fold.mirrored ? Symbols.ChevronLeft : Symbols.ChevronRight
+                    size: chevron.side
+                    color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.6)
+                    rotation: root.folded ? 0 : (fold.mirrored ? -90 : 90)
+                    Behavior on rotation {
+                        NumberAnimation {
+                            duration: TelamonStyle.durationShort
+                        }
+                    }
+                }
             }
             Item {
                 Layout.fillWidth: true

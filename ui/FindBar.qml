@@ -262,7 +262,7 @@ Item {
                     font.family: TelamonStyle.fontFamily
                     font.pointSize: TelamonStyle.fontSizeCaption
                     horizontalAlignment: Text.AlignHCenter
-                    color: control.failed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
+                    color: control.failed ? TelamonStyle.error : Kirigami.Theme.textColor
                     opacity: control.failed ? 1 : 0.7
                     Accessible.role: Accessible.StaticText
                     Accessible.name: text

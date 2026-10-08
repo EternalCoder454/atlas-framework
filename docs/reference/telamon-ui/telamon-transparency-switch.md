@@ -5,9 +5,9 @@ section: Layout
 since: "1.4.0"
 ---
 
-TelamonTransparencySwitch is a [SectionRow](section-row.md) with a switch bound to `Appearance.transparency`, stored as `Transparency` under `[Appearance]` in telamonrc. Put it in a [Section](section.md) on the settings page. Turning it off makes every window, menu, dialog and tooltip solid. When the compositor offers no blur the row is disabled and says why.
+TelamonTransparencySwitch is a [SectionRow](section-row.md) with a switch bound to `Appearance.transparency`, stored as `Transparency` under `[Appearance]` in telamonrc. Put it in a [Section](section.md) on the settings page. Turning it off makes every window, menu, dialog and tooltip solid. When the compositor offers no blur the switch is off and dimmed and the subtitle says why; the title and the subtitle keep the colours of any row (before 2.0.6 the whole row was dimmed, below 2:1 contrast, and the switch still showed on).
 
-All properties, signals and methods are those of `SectionRow`; the row sets `title`, `subtitle`, `iconName`, `showSwitch` and `switchChecked` itself.
+All properties, signals and methods are those of `SectionRow`; the row sets `title`, `subtitle`, `leading` (a blur symbol), `showSwitch`, `switchChecked` and `switchEnabled` itself.
 
 ## Example
 
@@ -40,6 +40,7 @@ Section {
 | `showSwitch` | `bool` | `false` | Shows a `TelamonSwitch` at the trailing end. |
 | `subtitle` | `string` | `""` | A second, smaller line under the title. |
 | `switchChecked` | `bool` | `false` | The state the switch shows. Bind it to the real setting: after `switchToggled` the switch goes back to this value. |
+| `switchEnabled` | `bool` | `true` | `false` dims the switch and takes its input, while the title and subtitle keep their colours (`enabled: false` dims the whole row). Since 2.0.6. |
 | `title` | `string` | `""` | The main text. |
 | `trailing` | `list<Item>` (read-only) | — | The default property: items at the trailing end (a button, a combo box). They keep their own focus and Tab order after the row's. |
 | `value` | `string` | `""` | Text at the trailing end, dimmed and elided; hidden while `busy`. |
@@ -60,4 +61,4 @@ Section {
 | `step(var forward, var event): var` | Moves focus and selection to the next (`forward`) or previous radio row; does nothing on a non-radio row. |
 
 > [!NOTE]
-> Don't set the properties the row binds (`title`, `subtitle`, `switchChecked`, `enabled`): it follows `Appearance.blurAvailable` and `Appearance.transparency`.
+> Don't set the properties the row binds (`title`, `subtitle`, `switchChecked`, `switchEnabled`): it follows `Appearance.blurAvailable` and `Appearance.effective`.

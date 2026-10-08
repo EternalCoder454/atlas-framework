@@ -60,8 +60,15 @@ Item {
         return out.join("\n");
     }
 
+    // The horizontal bar sits under the text, in room of its own: over the
+    // text it hides the last line (all of a one-line view). The bar is drawn
+    // only while the view is wider than the room it has, so the room is
+    // reserved only then.
+    readonly property bool _scrollsSideways: !control.wrap && flick.contentWidth > flick.width + 0.5
+    readonly property real _barRoom: control._scrollsSideways ? hbar.implicitHeight : 0
+
     implicitWidth: Kirigami.Units.gridUnit * 30
-    implicitHeight: Math.min(control.maximumHeight, content.height + control._pad * 2)
+    implicitHeight: Math.min(control.maximumHeight, content.height + control._barRoom + control._pad * 2)
     opacity: control.enabled ? 1 : 0.5
 
     // The name is the view's to set; the text field below forwards it.
@@ -92,9 +99,16 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         contentWidth: content.width
         contentHeight: content.height
+        // Scrolled to the end, the last line stops above the bar.
+        bottomMargin: control._barRoom
 
-        QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
-        QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
+        QQC2.ScrollBar.vertical: TelamonScrollBar {}
+        QQC2.ScrollBar.horizontal: TelamonScrollBar {
+            id: hbar
+            // Steady while there is room reserved for it: it is the only sign
+            // that a line goes on past the edge.
+            policy: control._scrollsSideways ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AsNeeded
+        }
 
         Row {
             id: content
@@ -140,10 +154,11 @@ Item {
                 // Keyboard selection and caret moves keep the caret in view.
                 onCursorRectangleChanged: {
                     const r = cursorRectangle;
+                    const shown = flick.height - control._barRoom;
                     if (r.y < flick.contentY) {
                         flick.contentY = r.y;
-                    } else if (r.y + r.height > flick.contentY + flick.height) {
-                        flick.contentY = r.y + r.height - flick.height;
+                    } else if (r.y + r.height > flick.contentY + shown) {
+                        flick.contentY = r.y + r.height - shown;
                     }
                     if (r.x < flick.contentX) {
                         flick.contentX = r.x;

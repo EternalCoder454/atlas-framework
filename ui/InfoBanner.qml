@@ -32,8 +32,12 @@ Item {
 
     signal closed
 
-    readonly property color tint: type === "error" ? Kirigami.Theme.negativeTextColor : type === "warning" ? Kirigami.Theme.neutralTextColor : TelamonStyle.accent
+    readonly property color tint: type === "error" ? TelamonStyle.error : type === "warning" ? TelamonStyle.warning : TelamonStyle.accent
     readonly property string iconName: type === "error" ? "dialog-error" : type === "warning" ? "dialog-warning" : "dialog-information"
+    // What is drawn: a Material Symbol in the banner's own tint, so the icon
+    // comes from the palette (a theme's "dialog-information" is a saturated
+    // blue that has nothing to do with the accent) and needs no icon theme.
+    readonly property int _symbol: type === "error" ? Symbols.Error : type === "warning" ? Symbols.Warning : Symbols.Info
     implicitWidth: Kirigami.Units.gridUnit * 20
     implicitHeight: Math.round(card.implicitHeight * card.progress)
     visible: card.progress > 0
@@ -117,11 +121,12 @@ Item {
             anchors.rightMargin: TelamonStyle.spacingSmall + 2
             spacing: TelamonStyle.spacingLarge
 
-            TelamonIcon {
-                Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                Layout.preferredHeight: Layout.preferredWidth
+            Symbol {
                 Layout.alignment: Qt.AlignVCenter
-                source: control.iconName
+                icon: control._symbol
+                filled: true
+                size: Kirigami.Units.iconSizes.smallMedium
+                color: control.tint
             }
             QQC2.Label {
                 Layout.fillWidth: true

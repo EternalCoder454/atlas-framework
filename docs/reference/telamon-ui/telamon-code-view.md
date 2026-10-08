@@ -5,7 +5,7 @@ section: Text and code
 since: "1.4.0"
 ---
 
-TelamonCodeView shows selectable (mouse, Ctrl+A, Ctrl+C) plain text: nothing in it is taken as HTML. It is as tall as its text up to `maximumHeight`, then it scrolls, down and sideways (unless `wrap`). `framed` draws a card around it, `showCopy` adds a copy button in the top trailing corner, and `lineNumbers` adds a number column (a wrapped line has one number).
+TelamonCodeView shows selectable (mouse, Ctrl+A, Ctrl+C) plain text: nothing in it is taken as HTML. It is as tall as its text up to `maximumHeight`, then it scrolls, down and sideways (unless `wrap`). The scroll bars are [TelamonScrollBar](telamon-scroll-bar.md)s; a view wider than its room keeps its horizontal bar under the text, in room of its own, so the bar never covers the last line. `framed` draws a card around it, `showCopy` adds a copy button in the top trailing corner, and `lineNumbers` adds a number column (a wrapped line has one number).
 
 ## Example
 

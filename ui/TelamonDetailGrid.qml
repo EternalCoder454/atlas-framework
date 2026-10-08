@@ -198,7 +198,7 @@ Item {
                                 contentItem: Symbol {
                                     icon: copyButton.copied ? Symbols.Check : Symbols.ContentCopy
                                     size: Kirigami.Units.iconSizes.small
-                                    color: copyButton.copied ? Kirigami.Theme.positiveTextColor : TelamonStyle.textMuted
+                                    color: copyButton.copied ? TelamonStyle.success : TelamonStyle.textMuted
                                     anchors.centerIn: parent
                                 }
                                 QQC2.ToolTip.visible: hovered

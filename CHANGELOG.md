@@ -9,6 +9,67 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.6
+
+Visual and accessibility fixes found by the Telamon Gates screenshots at 150%
+scale, Light and Dark. API: `TelamonStyle.outline` and `SectionRow.switchEnabled`
+are new (nothing is removed or renamed). Apps get this by moving to
+`tag = "v2.0.6"` and requiring `telamon-ui >= 2.0.6`; their goldens may change
+where they show a focus ring, an error, a menu, a spinner, a chevron row or an
+info banner.
+
+- Fix: `TelamonCodeView` with `wrap: false` drew the old arrowed Qt scroll bar
+  over its last line (a one-line block showed only the bar). The bars are
+  `TelamonScrollBar`s now, the horizontal one stays under the text in room of
+  its own (only while the view scrolls sideways), and a view that scrolls down
+  ends above it.
+- Fix: the focus ring (`TelamonStyle.focus`) was magenta, which clashed with the
+  violet accent on text areas, search fields and combo boxes. It is the accent
+  now, and keeps 3:1 against the window, controls and raised surfaces in both
+  schemes and under high contrast: a Plasma accent that falls short is mixed
+  toward the text colour until it passes.
+- Fix: the `TelamonSidebar` filter (`SearchField`): the clear button was a flat
+  grey backspace shape 4 px from the edge while the magnifier had a 12 px inset,
+  and the text started right at the magnifier. Both are Material Symbols now
+  (search, cancel) at the same inset, and the text has a gap from each.
+- Fix: `TelamonTransparencySwitch` without blur dimmed the whole row (title 1.5:1,
+  explanation 1.3:1) and the switch still showed on. Only the switch is
+  disabled, and it shows off; the title and the explanation keep the contrast of
+  any row. The icon is a blur symbol in place of a theme icon that could be
+  missing. New: `SectionRow.switchEnabled`.
+- Fix: `TelamonStyle.error` (the scheme's rgb(218,68,83)) was 2.5:1 on Dark
+  surfaces and 3.2 to 3.8:1 on Light ones. It is `#AB1E2C` in Light and
+  `#FF959E` in Dark, 4.5:1 or more as text on every surface and on `errorFill`
+  (Dark's fill is 8% instead of 10%); under high contrast it is still the
+  scheme's. `InfoBanner`, `FindBar`, `TelamonInstallButton` and `TelamonStat`
+  use it instead of the Kirigami negative colour.
+- Fix: `TelamonAboutPage` (any `SectionRow`) at 150%: the dividers were 1 and 2
+  pixels thick in turn, are inset 12 px on the left and 0 on the right, and a
+  value ended 12 px short of where a chevron did. A divider is one device pixel,
+  padded as the row is on both sides, and a value and a chevron end at the row's
+  padding (the chevron is a Symbol now, whatever the icon theme).
+- Fix: `InfoBanner` type "info" drew the icon theme's saturated blue
+  "dialog-information" inside the violet banner. The icons of all three types
+  are Material Symbols in the banner's own tint (the accent for info).
+- Fix: a `SidebarItem` title that elides ran to 2 px from the selection's right
+  edge. It keeps as much room on the right as the icon has on the left.
+- Fix: `ContextMenu` with one row was 11 grid units wide, and in Dark it had no
+  visible edge or shadow over the sidebar. It is as wide as its widest row
+  (7 to 24 grid units), has a 1 px `TelamonStyle.outline` edge (new) and a
+  stronger shadow in Dark.
+- Fix: `TelamonSpinner` at 16 px was a short arc whose ends looked cut off. The
+  arc is a third of the ring and the ring is drawn half a pixel inside the
+  item's bounds, so nothing is clipped at any size or scale.
+- Fix: the same class of bug elsewhere. `TelamonTextField.clearable` draws the
+  filled cancel Symbol of `SearchField` in place of the theme's `edit-clear`;
+  the disclosure chevron of `SidebarItem` and the fold chevron of `Section` are
+  Symbols in a slot as wide as their ink, as in `SectionRow`;
+  `TelamonStyle.success` and `warning` (2.4:1 and 2.9:1 on a Light surface) are
+  `#14602F` / `#74DE9C` and `#7A3B00` / `#FFBB63`, 4.5:1 or more as text and on
+  their own fill, and `TelamonBadge`, `InfoBanner`, `LiveChart`,
+  `TelamonAppCard`, `TelamonDetailGrid`, `TelamonRating` and `TelamonStat` use
+  them.
+
 ## 2.0.5
 
 - Added: `TelamonIcon`, a `Kirigami.Icon` that is a layer on Quick's software

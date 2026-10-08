@@ -58,8 +58,16 @@ Rectangle {
             symbol: Symbols.Monitor
             rating: 4.2
             sizeText: "8 MB"
-            installState: "installing"
-            progress: 0.4
+            // The card's own button shimmers while it works; this one holds still
+            // for the pictures (`animated` is not forwarded by the card).
+            actionComponent: Component {
+                TelamonInstallButton {
+                    animated: root.animate
+                    installState: "installing"
+                    progress: 0.4
+                    Accessible.name: "Atlas Monitor: " + text
+                }
+            }
         }
         TelamonAppCard {
             Layout.fillWidth: true
@@ -112,8 +120,16 @@ Rectangle {
             summary: "A long summary that has to be cut to one line"
             symbol: Symbols.Monitor
             sizeText: "1.2 GB"
-            installState: "removing"
-            progress: 0.4
+            // The card's own button shimmers while it works; this one holds still
+            // for the pictures (`animated` is not forwarded by the card).
+            actionComponent: Component {
+                TelamonInstallButton {
+                    animated: root.animate
+                    installState: "removing"
+                    progress: 0.4
+                    Accessible.name: "A compact row with a really long name that cannot possibly fit: " + text
+                }
+            }
         }
     }
 }

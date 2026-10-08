@@ -67,7 +67,7 @@ T.AbstractButton {
         readonly property bool filled: !priv.working && !priv.queued && control.installState !== "installed" && control.installState !== "error" && control.installState !== "remove"
         // The negative colour: a failed install and the destructive Remove.
         readonly property bool failed: control.installState === "error" || control.installState === "remove"
-        readonly property color tint: priv.failed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
+        readonly property color tint: priv.failed ? TelamonStyle.error : Kirigami.Theme.textColor
         readonly property string label: {
             switch (control.installState) {
             case "installing":

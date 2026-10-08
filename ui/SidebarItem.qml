@@ -138,6 +138,9 @@ T.AbstractButton {
             // Unmirrored, Qt's natural alignment (by the label's first strong
             // character) applies, so a right-to-left label keeps its side.
             horizontalAlignment: control.mirrored ? Text.AlignLeft : undefined
+            // As much room after the title as before the icon, when no badge,
+            // value or chevron follows it (those carry the margin themselves).
+            Layout.rightMargin: control.badge.length > 0 || control.value.length > 0 || control.disclosure ? 0 : TelamonStyle.spacingLarge
             text: control.text
             font.family: TelamonStyle.fontFamily
             font.pointSize: TelamonStyle.fontSizeBody
@@ -166,19 +169,27 @@ T.AbstractButton {
             textFormat: Text.PlainText
             color: TelamonStyle.textMuted
         }
-        TelamonIcon {
+        // A Symbol in a slot as wide as its ink (0.26 of the symbol), as in
+        // SectionRow: the same on every icon theme, and its tip is at the margin.
+        Item {
+            id: disclosureSlot
+            readonly property real side: Math.round(Kirigami.Units.iconSizes.small * 1.5)
             visible: !control.compact && control.disclosure
             Layout.rightMargin: TelamonStyle.spacingLarge
-            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+            Layout.preferredWidth: Math.round(side * 0.26)
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
-            source: control.mirrored ? "arrow-left" : "arrow-right"
-            isMask: true
-            color: TelamonStyle.textMuted
-            // A quarter turn to point down, whichever way it starts.
-            rotation: control.expanded ? (control.mirrored ? -90 : 90) : 0
-            Behavior on rotation {
-                NumberAnimation {
-                    duration: TelamonStyle.durationShort
+            Layout.alignment: Qt.AlignVCenter
+            Symbol {
+                anchors.centerIn: parent
+                icon: control.mirrored ? Symbols.ChevronLeft : Symbols.ChevronRight
+                size: disclosureSlot.side
+                color: TelamonStyle.textMuted
+                // A quarter turn to point down, whichever way it starts.
+                rotation: control.expanded ? (control.mirrored ? -90 : 90) : 0
+                Behavior on rotation {
+                    NumberAnimation {
+                        duration: TelamonStyle.durationShort
+                    }
                 }
             }
         }

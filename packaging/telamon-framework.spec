@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.5
+Version:        2.0.6
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -203,6 +203,20 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.6-1
+- Fix: ten things the Telamon Gates screenshots showed at 150%. A code view's
+  horizontal bar no longer covers its last line (it is a TelamonScrollBar and
+  has room of its own). The focus ring is the accent, not magenta. The sidebar
+  filter's magnifier and clear symbol share an inset and the text clears the
+  magnifier. The transparency row without blur dims only its switch (shown
+  off), not its text. The error colour passes 4.5:1 as text in Light and Dark.
+  About-page dividers are one device pixel and as padded on the right as on the
+  left, and a value ends where a chevron does. An info banner's icon is in the
+  accent. A sidebar title that elides keeps its right padding. A context menu
+  is as wide as its content (7 to 24 grid units) and has an outline and a
+  shadow in Dark. The spinner's arc is longer and no longer cut off at 16 px.
+  API: TelamonStyle.outline and SectionRow.switchEnabled are new.
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.5-1
 - Added TelamonIcon (a Kirigami.Icon that is a layer on the software renderer).
 - Fix: icons drawn over dialogs, popups and menus with the software renderer;

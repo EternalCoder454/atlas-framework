@@ -209,11 +209,15 @@ T.TextField {
             radius: width / 2
             color: TelamonStyle.alpha(Kirigami.Theme.textColor, clearButton.down ? 0.15 : clearButton.hovered ? 0.08 : 0)
         }
-        contentItem: TelamonIcon {
-            source: "edit-clear"
-            isMask: true
-            color: Kirigami.Theme.textColor
-            opacity: 0.6
+        // The same filled "cancel" as SearchField's clear button.
+        contentItem: Item {
+            Symbol {
+                anchors.centerIn: parent
+                icon: Symbols.Cancel
+                filled: true
+                size: Kirigami.Units.iconSizes.small
+                color: TelamonStyle.textMuted
+            }
         }
     }
 

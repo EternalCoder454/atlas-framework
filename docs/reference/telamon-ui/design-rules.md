@@ -32,7 +32,7 @@ A screen that reports "all is well" (no updates, nothing to fix) shows the OS lo
 
 Calm and precise, Light and Dark equally.
 
-- Violet is the accent (`TelamonStyle.accent`) for buttons and selection; magenta-violet (`TelamonStyle.focus`) is for focus rings. When the user has chosen an accent in Plasma, that accent wins, as in other KDE apps.
+- Violet is the accent (`TelamonStyle.accent`) for buttons and selection; focus rings (`TelamonStyle.focus`) are the same accent, kept at 3:1 against what they sit on. When the user has chosen an accent in Plasma, that accent wins, as in other KDE apps.
 - Fonts are IBM Plex Sans and JetBrains Mono for code (`TelamonStyle.fontFamily` and `monoFamily`), falling back to the system fonts. The application font's size stays the user's.
 - Corners are small (4, 6 and 8) and motion is quick and subtle (100, 150 and 250 ms).
 - Every colour comes from [TelamonStyle](telamon-style.md) or `Kirigami.Theme`, every size from `Kirigami.Units` or TelamonStyle's scale. No hard-coded colours, so light, dark and the user's accent all work.

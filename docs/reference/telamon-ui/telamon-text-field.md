@@ -28,7 +28,7 @@ TelamonTextField {
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `clearable` | `bool` | `false` | Shows a small cross that empties the field once there is text. |
+| `clearable` | `bool` | `false` | Shows a small filled cancel symbol (the one `SearchField` has) that empties the field once there is text. |
 | `errorText` | `string` | `""` | The message under the field; empty for no error. Shows at once and wins over `invalidText`. |
 | `hasError` | `bool` (read-only) | — | `true` while `errorText` or `invalidText` shows. |
 | `invalidText` | `string` | `""` | The message for a text the `validator` (or `inputMask`) does not accept. See below for when it shows. Since 1.4.0. |

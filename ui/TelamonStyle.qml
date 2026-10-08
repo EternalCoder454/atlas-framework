@@ -25,9 +25,10 @@ import Telamon.Ui
 //                           violet in Light (#5B4BD6, 6:1 with white), the
 //                           brighter one in Dark (#A396F7)
 //   accentStrongText        text on `accentStrong` (4.5:1 or more)
-//   focus                   the keyboard focus ring: magenta-violet
-//                           (#A62A8C light, 5:1 on the window; #E28BE0 dark),
-//                           or the user's Plasma accent
+//   focus                   the keyboard focus ring: the accent, nudged
+//                           toward the text colour only when it would fall
+//                           under 3:1 against the window, a control or a
+//                           raised surface (the Telamon violet never is)
 //   base                    the window background (tonal step 0)
 //   surface                 a card over the page (Section's card, step 1)
 //   surfaceRaised           menus, popovers, dialogs, tooltips (step 2)
@@ -43,8 +44,20 @@ import Telamon.Ui
 //   textDisabled            disabled text, still readable (55% of text)
 //   separator               decorative hairlines and card borders (light)
 //   controlBorder           control edges (stronger than separator)
-//   success, warning, error  the scheme's positive, neutral and negative text
-//   errorFill               the faint fill of an invalid field
+//   outline                 the 1 px edge of a floating surface (menu, dialog):
+//                           stronger than `separator`, so it still parts a
+//                           menu from the sidebar behind it in Dark
+//   success, warning        the positive and neutral colours, per scheme:
+//                           #14602F / #74DE9C and #7A3B00 / #FFBB63 (Light /
+//                           Dark), each 4.5:1 or more as text on the surfaces
+//                           and on their own faint fill, so also 3:1 as an
+//                           icon or a fill (the scheme's own under high contrast)
+//   error                   the negative colour, per scheme: #AB1E2C in Light,
+//                           #FF959E in Dark, each 4.5:1 or more as text on the
+//                           surfaces and on `errorFill` (the scheme's own
+//                           negative colour under high contrast)
+//   errorFill               the faint fill of an invalid field or a
+//                           destructive button
 //   sakura                  the signature gradient runs from violet (`accent`)
 //                           to sakura. Only for the edge glow, an active
 //                           progress shimmer and "update ready": never on
@@ -129,7 +142,22 @@ QtObject {
     readonly property color accentText: _system ? _theme.Kirigami.Theme.highlightedTextColor : (_dark ? "#14121F" : "#FFFFFF")
     readonly property color accentStrong: _system ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#A396F7" : "#5B4BD6")
     readonly property color accentStrongText: _system ? _theme.Kirigami.Theme.highlightedTextColor : (_dark ? "#14121F" : "#FFFFFF")
-    readonly property color focus: _system ? _theme.Kirigami.Theme.highlightColor : (_dark ? "#E28BE0" : "#A62A8C")
+    // The ring is the accent, so it never clashes with a selection, a checked
+    // control or the text cursor beside it. It must keep 3:1 (WCAG 1.4.11)
+    // against the surfaces it is drawn on: the Telamon violet does in both
+    // schemes; a Plasma accent that does not is mixed toward the text colour
+    // until it does.
+    readonly property color focus: {
+        const surfaces = [base, control, surfaceRaised];
+        const ink = _theme.Kirigami.Theme.textColor;
+        for (let t = 0; t < 1; t += 0.05) {
+            const c = mix(accent, ink, t);
+            if (surfaces.every(s => _contrast(c, s) >= 3.0)) {
+                return c;
+            }
+        }
+        return ink;
+    }
 
     // Neutrals: the scheme's window colour tinted toward violet, then tonal
     // steps. Light steps up toward white; Dark toward a lighter grey.
@@ -152,10 +180,15 @@ QtObject {
     readonly property color textDisabled: alpha(_theme.Kirigami.Theme.textColor, 0.55)
     readonly property color separator: alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.4 : 0.08)
     readonly property color controlBorder: alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.8 : 0.22)
-    readonly property color success: _theme.Kirigami.Theme.positiveTextColor
-    readonly property color warning: _theme.Kirigami.Theme.neutralTextColor
-    readonly property color error: _theme.Kirigami.Theme.negativeTextColor
-    readonly property color errorFill: alpha(error, _dark ? 0.1 : 0.06)
+    readonly property color outline: alpha(_theme.Kirigami.Theme.textColor, highContrast ? 0.8 : (_dark ? 0.3 : 0.16))
+    // Like `error`: the scheme's own positive (Breeze's #27AE60, 2.4:1 on a
+    // Light surface) and neutral (#F67400, 2.9:1) are too faint as text.
+    readonly property color success: highContrast ? _theme.Kirigami.Theme.positiveTextColor : (_dark ? "#74DE9C" : "#14602F")
+    readonly property color warning: highContrast ? _theme.Kirigami.Theme.neutralTextColor : (_dark ? "#FFBB63" : "#7A3B00")
+    // The scheme's own negative colour (Breeze's rgb(218,68,83)) is 2.5:1 on a
+    // Dark surface and 3.2:1 on a Light control: too faint for text.
+    readonly property color error: highContrast ? _theme.Kirigami.Theme.negativeTextColor : (_dark ? "#FF959E" : "#AB1E2C")
+    readonly property color errorFill: alpha(error, _dark ? 0.08 : 0.06)
     readonly property color sakura: _dark ? "#F4B3CF" : "#E58BB4"
     readonly property color floatingBackground: Appearance.effective ? alpha(surfaceRaised, 0.85) : surfaceRaised
     readonly property color chromeBackground: Appearance.effective ? alpha(base, 0.94) : base
@@ -164,6 +197,16 @@ QtObject {
     // (NaN is 0). Typed, unlike Qt.alpha and Qt.rgba, so bindings compile.
     function alpha(c: color, a: real): color { return TelamonColorsPrivate.alpha(c, a); }
     function mix(a: color, b: color, t: real): color { return TelamonColorsPrivate.mix(a, b, t); }
+    // The WCAG contrast ratio of two colours, 1 to 21 (alpha is ignored); `focus` uses it.
+    function _contrast(a: color, b: color): real {
+        const la = _luminance(a);
+        const lb = _luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+    function _luminance(c: color): real {
+        const lin = v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+    }
 
     readonly property real spacingXSmall: 2
     readonly property real spacingSmall: 4
