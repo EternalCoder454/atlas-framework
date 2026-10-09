@@ -86,13 +86,9 @@ const LOADER_SOURCES: &[(&str, &str)] = &[(
     "the gallery loads its own demos: a fixed qrc prefix and the name of a type of its own list",
 )];
 
-/// Files the Text rule leaves to their owner. The app template is copied by
-/// every new app and is checked as part of the template's own tests; it needs
-/// `textFormat: Text.PlainText` on its labels too (see the report of this change).
-const TEXT_PENDING: &[(&str, &str)] = &[(
-    "template/qml/MainPage.qml",
-    "a Label in the template's sample page: the template is edited with the template's own change",
-)];
+/// Files the Text rule leaves to their owner, with the reason. None today: the
+/// app template, which every new app copies, is held to the rule too.
+const TEXT_PENDING: &[(&str, &str)] = &[];
 
 /// Who may call `TelamonPortal.openUrl`, with what argument, and why that
 /// argument is checked.

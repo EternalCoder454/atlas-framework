@@ -194,6 +194,23 @@ jobs:
             echo "::error::the tag is $TAG but the bundle's version is $got: tag v$got"; exit 1
           fi
 
+      # The build job is the app's own code with a read-only token, but what it
+      # uploads is data for a job that can write: only the two files a bundle is.
+      - name: Only the bundle and its manifest
+        run: |
+          shopt -s nullglob dotglob
+          files=(bundle-out/*)
+          if [ ${#files[@]} -ne 2 ] || [ ! -f bundle-out/telamon-bundle.json ] || [ -L bundle-out/telamon-bundle.json ]; then
+            echo "::error::the uploaded bundle is not exactly an archive and telamon-bundle.json"; exit 1
+          fi
+          for f in "${files[@]}"; do
+            b=${f#bundle-out/}
+            [ "$b" = telamon-bundle.json ] && continue
+            if ! [[ $b =~ ^[a-z0-9][a-z0-9._-]*-[0-9][A-Za-z0-9.+~_-]*-x86_64\.tar\.zst$ ]] || [ -L "$f" ] || [ ! -f "$f" ]; then
+              echo "::error::unexpected file in the uploaded bundle"; exit 1
+            fi
+          done
+
       - name: Attach the bundle to the release
         env:
           GH_TOKEN: ${{ github.token }}
