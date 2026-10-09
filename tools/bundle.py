@@ -8,6 +8,12 @@
 tools/make-bundle.sh builds and installs an app, then calls `pack`. The format
 is described in docs/BUNDLES.md; this file is its reference implementation
 (the Store reads the same rules). Standard library only, plus the `zstd` program.
+
+`verify` reads hostile input (a bundle may come from anywhere, and the signing
+job of .github/workflows/bundle.yml runs it on whatever an app's build
+made), so it never extracts: the archive is streamed through `zstd -dc` and
+`tarfile` in memory, every entry is only looked at and hashed, and nothing is
+written to disk. The stream is capped, and what the Store would not accept is refused.
 """
 
 import argparse
@@ -56,7 +62,13 @@ MAX_EXPORT = 1024 * 1024          # one exported file
 MAX_KEYFILE = 64 * 1024           # a .desktop or .service file
 MAX_KEYFILE_LINES = 1000
 MAX_PATH = 1024                   # bytes, a whole path
-SMALL = MAX_EXPORT                # files read whole: desktop, service, metainfo, manifest
+MAX_FOLLOWS = 40                  # symlinks followed to resolve one link (Linux's own limit)
+SMALL = MAX_EXPORT                # files read whole: desktop, service, metainfo
+MAX_MANIFEST = 1024 * 1024        # telamon-bundle.json, the outer one and the one in the archive (the Store's cap)
+MAX_META = 16 * 1024              # a PAX or GNU long-name header; a path is at most 1 KiB
+# The decompressed tar stream: the files, plus 512-byte headers, padding and PAX headers for every entry.
+MAX_STREAM = MAX_TOTAL + MAX_ENTRIES * 8192 + 1024 * 1024
+ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 
 
 def valid_version(v):
@@ -137,7 +149,42 @@ class Entry:
 
 def dump(obj):
     """The one JSON form: insertion order, 2-space indent, trailing newline."""
-    return json.dumps(obj, indent=2, ensure_ascii=False) + "\n"
+    return json.dumps(obj, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+
+
+def canonical(obj):
+    """`dump(obj)` as UTF-8 bytes, or None when it cannot be written (a lone surrogate, NaN)."""
+    try:
+        return dump(obj).encode("utf-8")
+    except (UnicodeEncodeError, ValueError):
+        return None
+
+
+def printable(text):
+    """`text` with control, hidden and non-printing characters written as \\uXXXX, for messages:
+    a file name must not be able to start a line of its own in a log (GitHub Actions reads
+    `::workflow-command::` lines) or move the cursor in a terminal."""
+    return "".join(c if c.isprintable() and not hidden(c) else
+                   (f"\\u{ord(c):04x}" if ord(c) <= 0xFFFF else f"\\U{ord(c):08x}") for c in text)
+
+
+def tool_env():
+    """The environment of the programs run: the caller's, without zstd's own settings
+    (ZSTD_CLEVEL and ZSTD_NBTHREADS would change what `zstd` writes)."""
+    return {k: v for k, v in os.environ.items() if not k.startswith("ZSTD_")}
+
+
+def open_regular(path):
+    """Opens a regular file for reading without following a symlink at `path`
+    (a file swapped for a link while the tree is read is refused)."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
+    except OSError as exc:
+        raise BundleError(f"cannot read {printable(path)}: {exc.strerror}") from None
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise BundleError(f"{printable(path)}: not a regular file")
+    return os.fdopen(fd, "rb")
 
 
 # ---------------------------------------------------------------- path rules
@@ -193,11 +240,13 @@ def resolve_link(path, target, by_path=None):
         if joined == "." or joined == ".." or joined.startswith("../"):
             return None
         return joined
-    parts = _walk(by_path, posixpath.dirname(path).split("/") if "/" in path else [], target, 0)
+    # Like the kernel, at most MAX_FOLLOWS links are followed to resolve one path (ELOOP):
+    # without it a few links that name each other many times over take for ever.
+    parts = _walk(by_path, posixpath.dirname(path).split("/") if "/" in path else [], target, [MAX_FOLLOWS])
     return "/".join(parts) if parts else None
 
 
-def _walk(by_path, start, rel, depth):
+def _walk(by_path, start, rel, budget):
     parts = list(start)
     for comp in rel.split("/"):
         if comp in ("", "."):
@@ -210,9 +259,10 @@ def _walk(by_path, start, rel, depth):
         parts.append(comp)
         e = by_path.get("/".join(parts))
         if e is not None and e.kind == "link":
-            if depth >= 16 or e.target == "" or e.target.startswith("/") or "\\" in e.target:
+            budget[0] -= 1
+            if budget[0] < 0 or e.target == "" or e.target.startswith("/") or "\\" in e.target:
                 return None
-            parts = _walk(by_path, parts[:-1], e.target, depth + 1)
+            parts = _walk(by_path, parts[:-1], e.target, budget)
             if parts is None:
                 return None
     return parts
@@ -242,6 +292,8 @@ def validate(entries, archive):
     if nfiles > MAX_FILES or nlinks > MAX_FILES:
         errs.append(f"{nfiles} files and {nlinks} links: at most {MAX_FILES} of each")
 
+    # every directory some entry is below, to tell a link to a missing directory in O(1)
+    dirs = {p.rsplit("/", i)[0] for p in by_path for i in range(1, p.count("/") + 1)}
     for e in by_path.values():
         top = e.path.split("/", 1)[0]
         if "/" not in e.path and e.kind != "dir":
@@ -281,7 +333,7 @@ def validate(entries, archive):
             if dest is None:
                 errs.append(f"{e.path}: symlink to {e.target!r}, which is not a relative path inside the tree "
                             "(plain names and '..', no empty or '.' part, no hidden character)")
-            elif dest not in by_path and not any(x.startswith(dest + "/") for x in by_path):
+            elif dest not in by_path and dest not in dirs:
                 errs.append(f"{e.path}: symlink to {e.target!r}, which is not in the archive")
             if e.path.startswith("bin/") and e.path.count("/") > 1:
                 errs.append(f"{e.path}: bin/ holds no subdirectories")
@@ -574,6 +626,11 @@ def parse_metainfo(data, app_id):
     # No entity or DOCTYPE tricks: a metainfo file has neither.
     if b"<!DOCTYPE" in data or b"<!ENTITY" in data or b"\x00" in data or not data.lstrip(b"\xef\xbb\xbf \t\r\n").startswith(b"<"):
         raise BundleError("must be UTF-8 XML without a DOCTYPE or ENTITY declaration")
+    # Another declared encoding would hide a DOCTYPE from the check above (the rest of the
+    # file is then in that encoding, EBCDIC for example).
+    declared = re.match(rb"\s*<\?xml[^>]*?\bencoding\s*=\s*[\"']([^\"']*)[\"']", data.lstrip(b"\xef\xbb\xbf"))
+    if declared and declared.group(1).lower().replace(b"_", b"-") not in (b"utf-8", b"utf8"):
+        raise BundleError(f"declares the encoding {printable(declared.group(1).decode('latin-1'))}: it must be UTF-8")
     try:
         root = ET.fromstring(data)
     except ET.ParseError as exc:
@@ -603,7 +660,7 @@ def parse_metainfo(data, app_id):
 def cmake_version(app_dir):
     path = os.path.join(app_dir, "CMakeLists.txt")
     try:
-        text = open(path, encoding="utf-8").read()
+        text = open(path, encoding="utf-8", errors="replace").read()
     except OSError as exc:
         raise BundleError(f"cannot read {path}: {exc}") from None
     text = re.sub(r"#[^\n]*", "", text)
@@ -640,7 +697,7 @@ def vkey(v):
 def spec_min_ui(spec):
     found = {"BuildRequires": [], "Requires": []}
     try:
-        lines = open(spec, encoding="utf-8").read().splitlines()
+        lines = open(spec, encoding="utf-8", errors="replace").read().splitlines()
     except OSError as exc:
         raise BundleError(f"cannot read {spec}: {exc}") from None
     for line in lines:
@@ -673,7 +730,7 @@ def os_version_id():
 def spec_field(spec, field):
     if not spec:
         return ""
-    for line in open(spec, encoding="utf-8"):
+    for line in open(spec, encoding="utf-8", errors="replace"):
         m = re.match(rf"^{field}:\s*(\S.*?)\s*$", line)
         if m and "%{" not in m.group(1):
             return m.group(1)
@@ -682,9 +739,15 @@ def spec_field(spec, field):
 
 # ------------------------------------------------------------------- tree / pack
 
+def read_small(tree, rel):
+    """At most SMALL + 1 bytes of a file of the tree (more means it is too large)."""
+    with open_regular(os.path.join(tree, rel)) as f:
+        return f.read(SMALL + 1)
+
+
 def sha256_file(path):
     h = hashlib.sha256()
-    with open(path, "rb") as f:
+    with open_regular(path) as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
@@ -705,10 +768,13 @@ def scan_tree(tree):
             elif stat.S_ISLNK(st.st_mode):
                 entries.append(Entry(r, "link", 0o777, target=os.readlink(p)))
             elif stat.S_ISREG(st.st_mode):
+                if st.st_mode & 0o7000:
+                    raise BundleError(f"{printable(r)}: mode {st.st_mode & 0o7777:04o} has a setuid, setgid or sticky bit: "
+                                      "nothing in a bundle runs with another identity; install it with mode 0755 or 0644")
                 mode = 0o755 if st.st_mode & 0o111 else 0o644
                 entries.append(Entry(r, "file", mode, size=st.st_size, sha256=sha256_file(p)))
             else:
-                raise BundleError(f"{r}: not a directory, file or symlink")
+                raise BundleError(f"{printable(r)}: not a directory, file or symlink (a device, fifo or socket)")
 
     walk("")
     return entries
@@ -727,6 +793,15 @@ def build_manifest(meta, entries):
     return m
 
 
+def new_file(path):
+    """Creates `path` (mode 0644 less the umask) for writing; a stale file of ours is removed first, and a link
+    or any other file appearing at the name meanwhile is an error, never written through."""
+    if os.path.lexists(path):
+        os.unlink(path)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o644)
+    return os.fdopen(fd, "wb")
+
+
 def cmd_pack(a):
     tree = os.path.abspath(a.tree)
     out = os.path.abspath(a.out)
@@ -734,10 +809,9 @@ def cmd_pack(a):
     if not entries:
         raise BundleError("the install produced no files")
     by_path = validate(entries, archive=False)
-    app_id, mi = check_semantics(by_path, lambda p: open(os.path.join(tree, p), "rb").read(SMALL + 1))
+    app_id, mi = check_semantics(by_path, lambda p: read_small(tree, p))
 
-    desktop = parse_ini_group(open(os.path.join(tree, f"share/applications/{app_id}.desktop"),
-                                   encoding="utf-8", errors="replace").read(), "Desktop Entry")
+    desktop = parse_ini_group(read_small(tree, f"share/applications/{app_id}.desktop").decode("utf-8", "replace"), "Desktop Entry")
     meta = {
         "id": app_id,
         "name": a.name or mi.get("name") or desktop.get("Name", ""),
@@ -769,7 +843,14 @@ def cmd_pack(a):
                           f"none of \\ \" < > ` {{ }} | ^); it would be {https_url(meta['homepage'])!r}")
 
     inner = build_manifest(meta, entries)
-    inner_bytes = dump(inner).encode("utf-8")
+    inner_bytes = canonical(inner)
+    if inner_bytes is None:
+        raise BundleError("the manifest cannot be written as UTF-8 JSON")
+    if len(inner_bytes) > MAX_MANIFEST:
+        raise BundleError(f"the manifest is {len(inner_bytes)} bytes: the Store reads at most {MAX_MANIFEST} (1 MiB); "
+                          f"{len(entries)} entries is too many for one app")
+    if a.epoch < 0:
+        raise BundleError("--epoch must not be negative")
     entries.append(Entry(MANIFEST, "file", 0o644, size=len(inner_bytes)))
     name = f"{meta['id']}-{meta['version']}-{ARCH}.tar.zst"
     os.makedirs(out, exist_ok=True)
@@ -778,10 +859,11 @@ def cmd_pack(a):
     tmp = archive_path + ".part"
 
     try:
-        with open(tmp, "wb") as outf:
-            z = subprocess.Popen(["zstd", "-19", "-T1", "-q", "-c"], stdin=subprocess.PIPE, stdout=outf)
+        # A new file, never one that was already there (or a link to somewhere else).
+        with new_file(tmp) as outf:
+            z = subprocess.Popen(["zstd", "-19", "-T1", "-q", "-c"], stdin=subprocess.PIPE, stdout=outf, env=tool_env())
             try:
-                with tarfile.open(fileobj=z.stdin, mode="w|", format=tarfile.PAX_FORMAT) as tf:
+                with tarfile.open(fileobj=z.stdin, mode="w|", format=tarfile.PAX_FORMAT, encoding="utf-8") as tf:
                     for e in sorted(entries, key=lambda x: x.path):
                         ti = tarfile.TarInfo(e.path)
                         ti.mtime, ti.uid, ti.gid, ti.uname, ti.gname = a.epoch, 0, 0, "", ""
@@ -797,7 +879,7 @@ def cmd_pack(a):
                             tf.addfile(ti, io.BytesIO(inner_bytes))
                         else:
                             ti.size = e.size
-                            with open(os.path.join(tree, e.path), "rb") as f:
+                            with open_regular(os.path.join(tree, e.path)) as f:
                                 tf.addfile(ti, f)
             finally:
                 z.stdin.close()
@@ -811,8 +893,15 @@ def cmd_pack(a):
 
     outer = dict(inner)
     outer["archive"] = {"name": name, "sha256": sha256_file(archive_path), "size": os.path.getsize(archive_path)}
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        f.write(dump(outer))
+    outer_bytes = canonical(outer)
+    mtmp = manifest_path + ".part"
+    try:
+        with new_file(mtmp) as f:
+            f.write(outer_bytes)
+        os.replace(mtmp, manifest_path)
+    finally:
+        if os.path.lexists(mtmp):
+            os.unlink(mtmp)
     try:
         verify(archive_path, manifest_path, epoch=a.epoch)
     except BundleError:
@@ -826,26 +915,76 @@ def cmd_pack(a):
 
 # ------------------------------------------------------------------------ verify
 
+class _Capped:
+    """The decompressed stream, with a ceiling: a read past `limit` bytes in all fails
+    (a decompression bomb), and no read is ever unbounded."""
+
+    def __init__(self, f, limit):
+        self.f, self.limit, self.n = f, limit, 0
+
+    def read(self, size=-1):
+        if size is None or size < 0 or size > 1 << 20:
+            size = 1 << 20
+        data = self.f.read(size)
+        self.n += len(data)
+        if self.n > self.limit:
+            raise BundleError("the archive unpacks to more than the limits allow (1 GiB of files, 40,000 entries): refused")
+        return data
+
+
+class _SafeInfo(tarfile.TarInfo):
+    """A tar header as tarfile reads it, except that a header which only describes the next
+    entry (PAX, GNU long name or link) may not claim more than MAX_META bytes (tarfile reads the
+    whole of it into memory), a *global* PAX header is refused (it renames or resizes every entry
+    after it, which readers do not agree on, and the packer never writes one), and so is a GNU
+    sparse file. `_proc_member` is tarfile's one place for every header, first or chained."""
+
+    def _proc_member(self, tarfile_):
+        if self.type == tarfile.XGLTYPE:
+            raise BundleError("the archive has a global PAX header, which no bundle has")
+        if self.type == tarfile.GNUTYPE_SPARSE:
+            raise BundleError("the archive has a GNU sparse file, which no bundle has")
+        if self.type in (tarfile.XHDTYPE, tarfile.SOLARIS_XHDTYPE, tarfile.GNUTYPE_LONGNAME, tarfile.GNUTYPE_LONGLINK) \
+                and self.size > MAX_META:
+            raise BundleError(f"an extended tar header of {self.size} bytes (a name is at most {MAX_PATH}): refused")
+        return super()._proc_member(tarfile_)
+
+
 def read_archive(path):
-    """(entries, {path: bytes} for the small files)."""
+    """(entries, {path: bytes} for the small files). Nothing is extracted: the tar is read as a
+    stream and every regular file is only hashed."""
     try:
-        z = subprocess.Popen(["zstd", "-dc", "-q", "--", path], stdout=subprocess.PIPE)
+        with open(path, "rb") as f:
+            magic = f.read(4)
+    except OSError as exc:
+        raise BundleError(f"cannot read {path}: {exc.strerror}") from None
+    if magic != ZSTD_MAGIC:
+        # `zstd -d` also unpacks gzip, xz and lz4 when built with them: a bundle is zstd.
+        raise BundleError("the archive is not zstd-compressed")
+    try:
+        z = subprocess.Popen(["zstd", "-dc", "-q", "--", path], stdout=subprocess.PIPE, env=tool_env())
     except FileNotFoundError:
         raise BundleError("zstd is not installed") from None
     entries, small, total = [], {}, 0
+    stream = _Capped(z.stdout, MAX_STREAM)
     try:
-        with tarfile.open(fileobj=z.stdout, mode="r|") as tf:
+        with tarfile.open(fileobj=stream, mode="r|", encoding="utf-8", errors="surrogateescape", tarinfo=_SafeInfo) as tf:
             for ti in tf:
                 name = ti.name
+                if ti.size < 0:
+                    raise BundleError(f"{printable(name)}: a negative size")
                 if ti.isdir():
                     e = Entry(name, "dir", ti.mode)
                 elif ti.issym():
                     e = Entry(name, "link", ti.mode, target=ti.linkname)
-                elif ti.isreg():
+                elif ti.type in (tarfile.REGTYPE, tarfile.AREGTYPE):
                     if total + ti.size > MAX_TOTAL:
                         raise BundleError("the archive is larger than the limits (entries or bytes)")
                     h = hashlib.sha256()
-                    keep = ti.size <= SMALL and (name == MANIFEST or name.endswith((".desktop", ".service", ".metainfo.xml", ".appdata.xml")))
+                    limit = MAX_MANIFEST if name == MANIFEST else SMALL
+                    keep = ti.size <= limit and (name == MANIFEST or name.endswith((".desktop", ".service", ".metainfo.xml", ".appdata.xml")))
+                    if name == MANIFEST and ti.size > MAX_MANIFEST:
+                        raise BundleError(f"{MANIFEST} in the archive is {ti.size} bytes: the Store reads at most {MAX_MANIFEST}")
                     buf = bytearray()
                     f = tf.extractfile(ti)
                     for chunk in iter(lambda: f.read(1 << 20), b""):
@@ -855,21 +994,34 @@ def read_archive(path):
                     e = Entry(name, "file", ti.mode, size=ti.size, sha256=h.hexdigest())
                     if keep:
                         small[name] = bytes(buf)
+                elif ti.isreg():
+                    raise BundleError(f"{printable(name)}: a sparse or contiguous file: only plain regular files are allowed")
                 else:
-                    raise BundleError(f"{name}: a {tarfile_type(ti)}: only directories, files and symlinks are allowed")
-                e.uid, e.gid, e.mtime = ti.uid, ti.gid, int(ti.mtime)
+                    raise BundleError(f"{printable(name)}: a {tarfile_type(ti)}: only directories, files and symlinks are allowed")
+                try:
+                    e.uid, e.gid, e.mtime = ti.uid, ti.gid, int(ti.mtime)
+                except (ValueError, OverflowError):
+                    raise BundleError(f"{printable(name)}: the modification time is not a number") from None
                 entries.append(e)
                 total += e.size
                 if total > MAX_TOTAL or len(entries) > MAX_ENTRIES:
                     raise BundleError("the archive is larger than the limits (entries or bytes)")
-        z.stdout.read()
+        # After the end of the tar only zero padding may follow (read within the cap, never whole).
+        while True:
+            chunk = stream.read(1 << 20)
+            if not chunk:
+                break
+            if chunk.count(0) != len(chunk):
+                raise BundleError("there is data after the end of the tar archive")
     except tarfile.TarError as exc:
-        raise BundleError(f"not a readable tar archive: {exc}") from None
+        raise BundleError(f"not a readable tar archive: {printable(str(exc))}") from None
     finally:
         z.stdout.close()
         rc = z.wait()
     if rc != 0:
         raise BundleError(f"zstd could not decompress the archive ({rc})")
+    if not entries:
+        raise BundleError("the archive is empty")
     return entries, small
 
 
@@ -884,8 +1036,8 @@ def tarfile_type(ti):
 def load_json_ordered(data, what):
     try:
         return json.loads(data, object_pairs_hook=lambda pairs: dict(pairs))
-    except (ValueError, UnicodeDecodeError) as exc:
-        raise BundleError(f"{what} is not valid JSON: {exc}") from None
+    except (ValueError, UnicodeDecodeError, RecursionError) as exc:
+        raise BundleError(f"{what} is not valid JSON: {printable(str(exc))}") from None
 
 
 def check_manifest_shape(m, with_archive):
@@ -946,16 +1098,19 @@ def check_manifest_shape(m, with_archive):
 def verify(archive_path, manifest_path, epoch=None):
     errs = []
     try:
-        outer_raw = open(manifest_path, "rb").read()
+        with open(manifest_path, "rb") as mf:
+            outer_raw = mf.read(MAX_MANIFEST + 1)
     except OSError as exc:
-        raise BundleError(f"cannot read {manifest_path}: {exc}") from None
+        raise BundleError(f"cannot read {manifest_path}: {exc.strerror}") from None
+    if len(outer_raw) > MAX_MANIFEST:
+        raise BundleError(f"{manifest_path} is larger than {MAX_MANIFEST} bytes (1 MiB), the most the Store reads")
     outer = load_json_ordered(outer_raw, manifest_path)
     if not isinstance(outer, dict):
         raise BundleError("the manifest is not a JSON object")
     shape = check_manifest_shape(outer, with_archive=True)
     if shape:
         raise BundleError(shape)
-    if outer_raw != dump(outer).encode("utf-8"):
+    if outer_raw != canonical(outer):
         errs.append("the manifest is not in the canonical form (2-space indent, trailing newline)")
 
     ar = outer["archive"]
@@ -984,7 +1139,7 @@ def verify(archive_path, manifest_path, epoch=None):
     else:
         inner = load_json_ordered(inner_raw, f"{MANIFEST} in the archive")
         expect = {k: v for k, v in outer.items() if k != "archive"}
-        if inner != expect or inner_raw != dump(expect).encode("utf-8"):
+        if inner != expect or inner_raw != canonical(expect):
             errs.append("the manifest inside the archive is not the outer manifest without `archive`")
 
     listed = {f["path"]: f for f in outer["files"]}
@@ -1055,7 +1210,11 @@ def main(argv):
             print(f"ok: {m['id']} {m['version']}, {len(m['files'])} files, {len(m['links'])} links")
     except BundleError as exc:
         for line in exc.problems:
-            print(f"bundle: {line}", file=sys.stderr)
+            print(f"bundle: {printable(line)}", file=sys.stderr)
+        return 1
+    except (OSError, ValueError, OverflowError, RecursionError, MemoryError, subprocess.SubprocessError) as exc:
+        # Whatever else a hostile or broken input provokes: a failure with a message, never a traceback.
+        print(f"bundle: unexpected {exc.__class__.__name__} while reading the bundle: {printable(str(exc))}", file=sys.stderr)
         return 1
     return 0
 

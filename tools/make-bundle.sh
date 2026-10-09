@@ -32,8 +32,11 @@ set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 bundle_py=$here/bundle.py
 
+# A message may hold a name from the app's tree: no control character (a newline
+# could start a "::command::" line in a GitHub Actions log) reaches the log.
 die() {
-    echo "make-bundle: $*" >&2
+    local msg=$*
+    echo "make-bundle: ${msg//[[:cntrl:]]/?}" >&2
     exit 1
 }
 
@@ -85,7 +88,7 @@ if [ -z "$app_dir" ]; then
     fi
 fi
 [ -f "$app_dir/CMakeLists.txt" ] || die "$app_dir/CMakeLists.txt does not exist"
-app_dir=$(cd "$app_dir" && pwd)
+app_dir=$(cd -- "$app_dir" && pwd)
 
 if [ -z "$spec" ]; then
     mapfile -t found < <(compgen -G 'packaging/*.spec' || true)
@@ -98,7 +101,7 @@ if [ -n "$spec" ]; then
 fi
 
 # The version first, so a mismatch fails before the build.
-version=$(python3 -I "$bundle_py" version --app-dir "$app_dir" ${version:+--version "$version"}) || exit 1
+version=$(python3 -I "$bundle_py" version --app-dir="$app_dir" ${version:+--version="$version"}) || exit 1
 
 if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
     SOURCE_DATE_EPOCH=$(git -c safe.directory='*' -C "$app_dir" log -1 --format=%ct 2>/dev/null || true)
@@ -113,6 +116,7 @@ cleanup() {
 }
 trap cleanup EXIT
 work=$(mktemp -d "${TMPDIR:-/tmp}/telamon-bundle.XXXXXX")
+work=$(cd -- "$work" && pwd -P)
 [ -n "$stage" ] || stage=$work/stage
 [ -n "$build" ] || build=$work/build
 case $stage in /*) ;; *) stage=$PWD/$stage ;; esac
@@ -164,26 +168,47 @@ cmake --install "$build" >&2
 [ -n "$(ls -A -- "$stage")" ] || die "cmake --install put nothing in $stage"
 
 # Legacy files an app still installs for its RPM (an old .desktop file, a
-# renamed command's link) do not go in a bundle.
+# renamed command's link) do not go in a bundle. The pattern is a glob read
+# inside the stage; what it matches is removed only when its directory really
+# is inside the stage (a link in the app's tree to somewhere else must not
+# send the removal there), and a name is never split at a newline.
+stage_real=$(cd -- "$stage" && pwd -P)
 for pattern in "${excludes[@]}"; do
     case $pattern in /* | *..*) die "--exclude $pattern: a path inside the tree, without '..'" ;; esac
-    matched=0
-    while IFS= read -r -d '' path; do
-        rm -rf -- "$path"
-        matched=1
-    done < <(cd "$stage" && compgen -G "$pattern" | while IFS= read -r f; do printf '%s\0' "$stage/$f"; done)
-    [ "$matched" = 1 ] || die "--exclude $pattern matches nothing in the install"
+    matches=()
+    while IFS= read -r -d '' f; do
+        matches+=("$f")
+    done < <(
+        cd -- "$stage" || exit 1
+        shopt -s nullglob
+        IFS= # the glob below is not split into words
+        # shellcheck disable=SC2086
+        for m in $pattern; do
+            if [ -e "$m" ] || [ -L "$m" ]; then printf '%s\0' "$m"; fi
+        done
+    )
+    [ "${#matches[@]}" -gt 0 ] || die "--exclude $pattern matches nothing in the install"
+    for f in "${matches[@]}"; do
+        parent=$(cd -- "$stage/$(dirname -- "$f")" 2>/dev/null && pwd -P) || die "--exclude $pattern: cannot enter the directory of $f"
+        case $parent/ in
+        "$stage_real"/*) rm -rf -- "${stage:?}/$f" ;;
+        *) die "--exclude $pattern: $f is not inside the install (a link in the tree leads out of it)" ;;
+        esac
+    done
 done
 
 # Relocatable: the tree may not name where it was built or staged.
 echo "== relocatability" >&2
-leaks=$(grep -rlaF --binary-files=text -e "$stage" -e "$build" -- "$stage" || true)
-if [ -n "$leaks" ]; then
+leaks=()
+while IFS= read -r -d '' f; do
+    leaks+=("$f")
+done < <(grep -rlaZF --binary-files=text -e "$stage" -e "$build" -- "$stage" || true)
+if [ "${#leaks[@]}" -gt 0 ]; then
     echo "make-bundle: these files hold the stage or build path, so the app is not relocatable:" >&2
-    echo "${leaks//"$stage"\//  }" >&2
+    for f in "${leaks[@]}"; do printf '  %q\n' "${f#"$stage"/}" >&2; done
     die "find the path with: grep -a -o -e '${stage}[^[:space:]]*' <file>; an app finds its data relative to its executable (docs/BUNDLES.md, \"Data\")"
 fi
 
 echo "== pack" >&2
-python3 -I "$bundle_py" pack --tree "$stage" --out "$out" --epoch "$SOURCE_DATE_EPOCH" --version "$version" \
-    ${spec:+--spec "$spec"} ${min_ui:+--min-telamon-ui "$min_ui"} ${min_os:+--min-os-version "$min_os"}
+python3 -I "$bundle_py" pack --tree="$stage" --out="$out" --epoch="$SOURCE_DATE_EPOCH" --version="$version" \
+    ${spec:+--spec="$spec"} ${min_ui:+--min-telamon-ui="$min_ui"} ${min_os:+--min-os-version="$min_os"}
