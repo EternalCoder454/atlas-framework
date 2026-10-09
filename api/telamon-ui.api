@@ -548,6 +548,44 @@ TelamonClipboard.method text(): QString
 TelamonClipboard.property hasImage: bool [readonly]
 TelamonClipboard.property hasText: bool [readonly]
 TelamonClipboard.type
+TelamonCodeEditor.base QQuickFocusScope
+TelamonCodeEditor.enum MarkKind: Added = 0
+TelamonCodeEditor.enum MarkKind: Changed = 1
+TelamonCodeEditor.method clearMarks(): QVariant
+TelamonCodeEditor.method copy(): QVariant
+TelamonCodeEditor.method markLines(QVariant ranges, int kind, QVariant fadeMs): QVariant
+TelamonCodeEditor.method redo(): QVariant
+TelamonCodeEditor.method scrollToLine(int n): QVariant
+TelamonCodeEditor.method selectAll(): QVariant
+TelamonCodeEditor.method setTextPreserving(QString newText): QVariant
+TelamonCodeEditor.method undo(): QVariant
+TelamonCodeEditor.property canRedo: bool [readonly]
+TelamonCodeEditor.property canUndo: bool [readonly]
+TelamonCodeEditor.property cursorColumn: int
+TelamonCodeEditor.property cursorLine: int
+TelamonCodeEditor.property fileName: QString
+TelamonCodeEditor.property firstVisibleLine: int [readonly]
+TelamonCodeEditor.property framed: bool
+TelamonCodeEditor.property highlightCurrentLine: bool
+TelamonCodeEditor.property insertSpaces: bool
+TelamonCodeEditor.property language: QString
+TelamonCodeEditor.property lastVisibleLine: int [readonly]
+TelamonCodeEditor.property lineCount: int [readonly]
+TelamonCodeEditor.property loading: bool [readonly]
+TelamonCodeEditor.property markFadeDuration: int
+TelamonCodeEditor.property maximumSize: int
+TelamonCodeEditor.property modified: bool
+TelamonCodeEditor.property readOnly: bool
+TelamonCodeEditor.property showLineNumbers: bool
+TelamonCodeEditor.property syntaxName: QString [readonly]
+TelamonCodeEditor.property tabWidth: int
+TelamonCodeEditor.property text: QString
+TelamonCodeEditor.property tooLarge: bool [readonly]
+TelamonCodeEditor.property wrap: bool
+TelamonCodeEditor.signal cursorMoved()
+TelamonCodeEditor.signal loaded()
+TelamonCodeEditor.signal textEdited()
+TelamonCodeEditor.type
 TelamonCodeView.base QQuickItem
 TelamonCodeView.property framed: bool
 TelamonCodeView.property inset: bool

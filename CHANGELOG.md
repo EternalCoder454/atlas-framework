@@ -46,7 +46,20 @@ Apps that use `TelamonCodeEditor` or `TelamonConsoleView` raise their
   - Keys: Tab and Shift+Tab indent and outdent (Escape then Tab leaves the editor),
     smart Home, Ctrl+Z, Ctrl+Shift+Z, Ctrl+A. Screen readers get an editable text
     named "Code editor" (set `Accessible.name`).
-- New: `TelamonConsoleView`. (Draft: the entry is written with the control.)
+- New: `TelamonConsoleView`, a read-only monospace view for a command's streaming output
+  ([reference](docs/reference/telamon-ui/telamon-console-view.md)).
+  - `append(text)` adds output without laying out the whole text again (chunks may split an
+    escape sequence, a CRLF or a surrogate pair); `clear()`, `copy()`, `selectAll()`,
+    `selectedText`, `plainText()`, `lineCount`, `wrap`, `framed`, `inset`.
+  - The scrollback is bounded (`maximumLines`, 10,000 by default; whole lines from the top go
+    first, and an append of 100,000 lines inserts only what stays). `follow` keeps the view at the
+    end until the user scrolls up (`following`, `scrollToEnd()`).
+  - Output is hostile text: only colour and attribute escape sequences (SGR) act. 16, 256 and
+    true colours are mapped to the theme's palette and kept legible, never taken as RGB; in high
+    contrast nothing is coloured. Every other escape sequence (cursor movement, OSC titles,
+    links and clipboard writes, DCS) and every other control character (bell included) and
+    bidi control is dropped; a lone CR rewrites the last line; a line over 4,096 units is split.
+    The text is plain: HTML and Markdown in it stay literal.
 - Build: `telamon-ui` links KF6 SyntaxHighlighting (`BuildRequires:
   cmake(KF6SyntaxHighlighting)`, `Requires: kf6-syntax-highlighting`). `TelamonTextView`'s
   own `syntax` properties are unchanged and still unused by it.
