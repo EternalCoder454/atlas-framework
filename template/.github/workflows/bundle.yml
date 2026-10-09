@@ -17,3 +17,12 @@ jobs:
     uses: EternalCoder454/atlas-framework/.github/workflows/bundle.yml@<FRAMEWORK_SHA> # vX.Y.Z
     with:
       framework-ref: <FRAMEWORK_SHA>
+      # Telamon Store offers only releases signed with the key its catalog lists for
+      # the app. `publish: false` leaves each release a draft, so you sign
+      # telamon-bundle.json on your own computer and publish it (docs/BUNDLES.md,
+      # "Signing"): the safest way. Remove it, and pass the key as a secret below, to
+      # sign in CI instead; read "What CI signing does not protect" first.
+      publish: false
+    # secrets:
+    #   minisign-key: ${{ secrets.MINISIGN_KEY }}
+    #   minisign-password: ${{ secrets.MINISIGN_PASSWORD }}   # only if the key has a password

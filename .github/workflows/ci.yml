@@ -393,7 +393,8 @@ jobs:
   bundles:
     # tools/make-bundle.sh and tools/bundle.py (docs/BUNDLES.md): a fake app
     # through the whole flow, and every kind of bad bundle refused. The runner
-    # has cmake, python3, zstd and shellcheck.
+    # has cmake, python3, zstd and shellcheck; minisign is installed for the
+    # signature round trip.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -402,9 +403,14 @@ jobs:
           persist-credentials: false
 
       - name: shellcheck
-        run: shellcheck tools/make-bundle.sh tools/test-make-bundle.sh
+        run: shellcheck tools/make-bundle.sh tools/sign-bundle.sh tools/test-make-bundle.sh
+
+      - name: minisign
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq minisign
 
       - name: Test the bundle tools
+        env:
+          TELAMON_REQUIRE_MINISIGN: '1'
         run: tools/test-make-bundle.sh
 
   publish-docs:

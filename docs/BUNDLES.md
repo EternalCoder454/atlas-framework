@@ -8,23 +8,26 @@ it. The binary links them from the OS image, which is the point: it was built
 against the same libraries it runs on, and it starts as fast as an app of the
 image does.
 
-This page is the format (schema 1), the tools that make a bundle, and what an
-app owner does to publish one. The producer side is `tools/make-bundle.sh`,
-`tools/bundle.py` and `.github/workflows/bundle.yml`; the reader is Telamon
-Store (`atlasos-store`).
+This page is the format (schema 1), the tools that make and sign a bundle, and
+what an app owner does to publish one. The producer side is `tools/make-bundle.sh`,
+`tools/bundle.py`, `tools/sign-bundle.sh` and `.github/workflows/bundle.yml`; the
+reader is Telamon Store (`atlasos-store`), which uses a release only when it
+is signed ("Signing" below).
 
 ## The release assets
 
-A GitHub release of the tag `vX.Y.Z` carries two files:
+A GitHub release of the tag `vX.Y.Z` carries three files:
 
 | Asset | What it is |
 |---|---|
 | `<app-id>-<version>-x86_64.tar.zst` | The bundle: a zstd-compressed tar. |
 | `telamon-bundle.json` | The **outer manifest**: the manifest inside the archive plus an `archive` object with the archive's name, sha256 and size. |
+| `telamon-bundle.json.minisig` | The [minisign](https://jedisct1.github.io/minisign/) signature over the exact bytes of `telamon-bundle.json`. Telamon Store offers a release only when it is there and verifies with a key the catalog lists for the app. |
 
 An archive cannot contain its own hash, so the outer manifest is the inner one
-plus `archive`; a reader fetches the small JSON first, shows the app, and
-checks the archive it downloads against `archive.sha256`.
+plus `archive`; a reader fetches the small JSON first, checks its signature,
+shows the app, and checks the archive it downloads against `archive.sha256`.
+The signature covers the archive through that hash and size.
 
 ## The archive
 
@@ -32,11 +35,13 @@ Entries are UTF-8 relative paths (no leading `./` (a reader tolerates it; the to
 no backslash, and no control, hidden, zero-width or bidi characters), and only directories, regular files and
 relative symlinks that stay inside the tree: no hard links, devices or fifos. Every entry
 is owned by 0:0, with mode 0755 (directories, executables) or 0644 (files), and
-the modification time of the commit (`SOURCE_DATE_EPOCH`); symlinks are mode 0777. Entries
+the modification time of the commit (`SOURCE_DATE_EPOCH`); symlinks are mode 0777.
+A setuid, setgid or sticky bit is an error when the tool packs a file and when it reads one. Entries
 are sorted by path (compared without the trailing `/` that a directory's name is written
 with in the tar header), and every directory has its own entry before its content. A tar
 header too small for a long or non-ASCII name is followed by a PAX `x` extended header
-that carries it; a reader must read both.
+that carries it; a reader must read both. Nothing follows the end of the tar but zero
+padding, and there are no global PAX headers and no GNU sparse files.
 
 Limits, the Store's: 20,000 files and 20,000 links, 40,000 entries in all, 512 MiB for
 one file, 1 GiB unpacked, a 256 MiB archive, a path of 1,024 bytes (255 in a name), and for
@@ -217,7 +222,7 @@ tools/make-bundle.sh --app-dir apps/telamon-gates --spec packaging/telamon-gates
 | `--version V` | The CMake `project()` VERSION. With a value (a tag's `vX.Y.Z` is fine, and a prerelease `1.0.0-beta.1` of CMake's `1.0.0`) it must agree, or the tool fails before building. |
 | `--stage DIR` | A new directory in `$TMPDIR`. The install prefix: new or empty. |
 | `--build-dir DIR` | A temporary one. |
-| `--exclude PATH` | Leaves a path (a glob, relative to the tree) out of the bundle: a legacy `.desktop` file or a renamed command's link that the RPM still installs. Repeatable. |
+| `--exclude PATH` | Leaves a path (a glob, relative to the tree) out of the bundle: a legacy `.desktop` file or a renamed command's link that the RPM still installs. Repeatable. It removes only what is inside the install: a match whose directory leads out of it (a symlink in the tree) is an error. |
 | `--cmake-arg ARG` | An extra `cmake` configure argument. Repeatable. |
 | `--min-telamon-ui X`, `--min-os-version N` | Override what is read from the spec and the container. |
 | `--keep` | Keep the temporary directories. |
@@ -258,7 +263,9 @@ fake app and every kind of bad bundle it must refuse; `tools/dev-check.sh` and C
 ## The workflow
 
 `.github/workflows/bundle.yml` is a reusable workflow
-(`on: workflow_call`). In a `registry.fedoraproject.org/fedora:44` container it:
+(`on: workflow_call`) of three jobs. The first, `bundle`, runs in a
+`registry.fedoraproject.org/fedora:44` container and is the only one that runs
+the app's code:
 
 1. fetches the framework at `framework-ref`, builds its RPMs with
    `packaging/build-rpm.sh` (cached by commit and month, like the Store's CI) and
@@ -266,33 +273,146 @@ fake app and every kind of bad bundle it must refuse; `tools/dev-check.sh` and C
 2. runs `dnf builddep` on the app's spec;
 3. runs `tools/make-bundle.sh` (with `--version` set to the tag, so a tag that
    disagrees with CMake fails) and checks that the tag is `v` + the manifest's `version`;
-4. uploads the two files as the workflow artifact `telamon-bundle`, always; and
-5. in a second job, for a `v*` tag, attaches them to that tag's release: when there is
-   none it creates a **draft** with generated notes, uploads both files, and only then
+4. uploads the two files as the workflow artifact `telamon-bundle`, always.
+
+For a `v*` tag two more jobs follow:
+
+5. `sign` (a `fedora:44` container, no token): runs only the framework's own tools,
+   fetched by commit sha. It downloads `telamon-bundle`, **verifies it again**
+   (`tools/bundle.py verify`: the archive against the manifest and the layout rules; a
+   directory with anything else in it is refused), and signs `telamon-bundle.json` with
+   `minisign` and the optional secret `minisign-key`, through `tools/sign-bundle.sh`
+   ("Signing" below). It uploads `telamon-bundle.json.minisig` as the artifact
+   `telamon-bundle-signature`. Without the secret it signs nothing, prints a
+   `::warning::` that Telamon Store will not offer an unsigned release, and the run goes on.
+6. `attach` (the only job with a write token; it runs nothing but `gh`, `jq` and
+   `sha256sum`): downloads both artifacts and checks that the manifest is the file
+   `sign` verified (its sha256), that the archive is the one the manifest names, and
+   that the directory holds exactly those files and the signature. When there is no
+   release for the tag it creates a **draft** with generated notes, uploads the files, and only then
    publishes it (`gh release edit --draft=false`), so Store never sees a release
-   without its bundle; a draft it made is deleted if the upload fails. An existing release just
+   without its bundle; a draft it made is deleted if the upload fails. With
+   `publish: false` it stops at the draft. An existing release just
    gets the files (`gh release upload --clobber`). GitHub sometimes answers 5xx, so each
    call is tried again a few times.
 
 | Input | |
 |---|---|
-| `framework-ref` | **Required**: the full 40-character sha of the telamon-framework commit, used for the tools and for the `telamon-ui` RPMs. A branch, a tag or a short sha fails the run, because they name something that moves (or cannot be fetched). |
+| `framework-ref` | **Required**: the full 40-character sha of the telamon-framework commit, used for the tools and for the `telamon-ui` RPMs. A branch, a tag or a short sha fails the run, because they name something that moves (or cannot be fetched). Use a commit from 2.0.8 on to get the signing job. |
 | `app-dir` | As `--app-dir`. |
 | `spec` | As `--spec`; also the spec `dnf builddep` installs. |
-| `attach` | `true` (default): attach to the release of a `v*` tag. |
+| `attach` | `true` (default): sign and attach to the release of a `v*` tag. |
+| `publish` | `true` (default): publish a release this run created. `false`: leave it a **draft**, so its owner can sign `telamon-bundle.json` offline and publish it by hand ("Signing"). |
+| `minisign-public-key` | Optional: the catalog's public key for the app (`RW...`). When given, the signature made with the secret must verify with it, so a wrong key in the secret fails the run and not the users. |
 
-It needs no secrets. The calling job must grant `contents: write` (the workflow
-itself defaults to `contents: read`: the build job keeps it, and only the final `attach` job, which runs nothing but `gh` on the two uploaded files, asks for write).
-Every action is pinned by commit sha. A cache written by a tag run is read only
+| Secret | |
+|---|---|
+| `minisign-key` | Optional: the **content of the minisign secret key file** (both lines). Without it the release is attached unsigned. It is read by one step of the `sign` job and by nothing that runs the app's code. |
+| `minisign-password` | Optional: the key's password, if it has one. |
+
+The calling job must grant `contents: write` (the workflow itself defaults to
+`contents: read`: the build job keeps it, the sign job has no token, and only the final
+`attach` job asks for write) and passes the secrets by name: `secrets: inherit` hands over all of
+the repository's, which is more than the workflow needs.
+No job asks for an OIDC token (`id-token`).
+Every action is pinned by commit sha. The tag is checked against
+`^v[0-9]+(\.[0-9]+)+(-[0-9A-Za-z.-]+)?$` before any job uses it, and every input and the
+tag reach a script only through an environment variable, quoted. A cache written by a tag run is read only
 by that tag: run the caller by hand on the default branch (`workflow_dispatch`)
 once to seed a cache that every tag can read.
 
+## Signing
+
+Telamon Store installs or offers a release only when its `telamon-bundle.json`
+has a valid minisign signature by a key that its catalog lists **for that app**.
+The signature is the release asset `telamon-bundle.json.minisig`: the output
+of `minisign -S` in its default form (Ed25519 over the BLAKE2b-512 hash of the
+file, which minisign marks `ED`; the legacy kind that `-l` writes, `Ed`, is
+refused), over the exact bytes of `telamon-bundle.json`. The trusted comment
+is signed but means nothing to the Store. There is no separate signature of
+the archive: the manifest holds its sha256 and size.
+
+**The key.** One key pair per app, made once, off the repository:
+
+```sh
+mkdir -p ~/.minisign
+minisign -G -p telamon-gates.pub -s ~/.minisign/telamon-gates.key     # asks for a password: give one
+minisign -G -W -p telamon-gates.pub -s ~/.minisign/telamon-gates.key  # -W: no password, for a key that CI holds
+```
+
+`minisign -G` prints the public key (`RW` and 54 more characters, also the second
+line of the `.pub` file). The secret key never goes into a repository or a chat; keep a backup.
+
+**The catalog entry** pins the public key for the app, in `catalog/native-apps.json`
+of the Store (a reviewed pull request):
+
+```json
+{
+  "id": "net.eterneon.telamon.gates",
+  "repo": "EternalCoder454/telamon-gates",
+  "channel": "releases",
+  "signers": [ { "type": "minisign", "key": "RWQ..." } ]
+}
+```
+
+Up to four signers; a release signed by any other key, or with the legacy
+kind, is refused. **Rotating a key:** add the new public key beside the old one
+(pull request), sign the next release with the new key, and remove the old one
+in a second pull request when it is no longer needed or when it leaks. While
+both are listed either may sign. Stores refetch the catalog within 6 hours;
+what is installed stays installed.
+
+There are two ways to make the signature.
+
+**Offline (recommended).** The key stays on the owner's computer. The workflow
+is called with `publish: false`: it builds, verifies and attaches the archive
+and the manifest to a **draft** release and stops. The owner then signs and
+publishes (the run's summary lists the sha256 of both files, to compare):
+
+```sh
+tag=v0.2.0 repo=EternalCoder454/telamon-gates
+mkdir bundle && cd bundle
+gh release download "$tag" --repo "$repo"
+python3 /path/to/telamon-framework/tools/bundle.py verify *.tar.zst telamon-bundle.json
+minisign -Sm telamon-bundle.json -s ~/.minisign/telamon-gates.key     # writes telamon-bundle.json.minisig
+minisign -Vm telamon-bundle.json -P RWQ...                            # against the key in the catalog
+gh release upload "$tag" telamon-bundle.json.minisig --repo "$repo"
+gh release edit "$tag" --draft=false --repo "$repo"
+```
+
+**In CI.** The key file's content is a repository secret and the caller passes
+it. The `sign` job puts the key in a file on tmpfs (umask 077), runs `minisign -S`
+with it, shreds the file and removes it whatever happens; the key and the password
+are never an argument, never printed (tracing is off), and not in the environment of
+`minisign`. The job checks the form of the signature (`ED`, four lines), and with
+`minisign-public-key` that it verifies with the catalog's key. It runs none
+of the app's code, and only signs a bundle that passes `tools/bundle.py verify`.
+
+**What CI signing does not protect.** The job signs what the app's build
+made, after checking that it is a *valid* bundle (the archive matches its
+manifest and the layout rules; an arbitrary file cannot be signed). That is all
+the check can say: whoever controls the app's build controls what is signed.
+That is everyone who can get code into the build of a tag, push a tag, or change
+the workflow in that repository, and also a compromised dependency of the
+build. A repository secret can be read by anyone who can change the workflow
+that is run with it. **For an app whose repository has more than one writer,
+sign offline.** A key kept in CI suits a repository with one trusted owner who
+accepts that a stolen account or token can sign a release.
+
+Without a key the run is not an error: the archive and the manifest are attached,
+the run prints `::warning::` that Telamon Store will not offer the release, and
+the owner can add `telamon-bundle.json.minisig` to the release afterwards, as above.
+
 ## Connecting an app
 
-Three steps for the app's owner:
+Four steps for the app's owner:
 
-**(a) Add the workflow to the app's repository**, as `.github/workflows/bundle.yml`
-(`<sha>` is the full 40-character commit sha of the framework release, here v2.0.4):
+**(a) Make the app's signing key** (once, "Signing" above): `minisign -G -p
+telamon-<app>.pub -s ~/.minisign/telamon-<app>.key`. The public key is what the
+catalog pins.
+
+**(b) Add the workflow to the app's repository**, as `.github/workflows/bundle.yml`
+(`<sha>` is the full 40-character commit sha of the framework release, here v2.0.8):
 
 ```yaml
 name: Telamon bundle
@@ -306,32 +426,41 @@ jobs:
   bundle:
     permissions:
       contents: write
-    uses: EternalCoder454/atlas-framework/.github/workflows/bundle.yml@<sha> # v2.0.4
+    uses: EternalCoder454/atlas-framework/.github/workflows/bundle.yml@<sha> # v2.0.8
     with:
       framework-ref: <sha>
+      publish: false   # leave the release a draft and sign it offline (recommended)
+    # To sign in CI instead (read "What CI signing does not protect"): drop `publish`, and
+    # pass the key file's content as a repository secret:
+    # secrets:
+    #   minisign-key: ${{ secrets.MINISIGN_KEY }}
+    #   minisign-password: ${{ secrets.MINISIGN_PASSWORD }}   # only if the key has a password
 ```
 
 The app needs a spec (`packaging/<app>.spec`) whose `BuildRequires:` build it
 (the workflow installs them) and a `project(<name> VERSION x.y.z)` in its
 CMake. The template (`template/`) has this workflow, a metainfo file and an icon.
 
-**(b) Tag a release.** The version must equal the CMake project version:
+**(c) Tag a release.** The version must equal the CMake project version:
 
 ```sh
 git tag vX.Y.Z && git push --tags
 ```
 
-The workflow builds the bundle and attaches `<id>-<version>-x86_64.tar.zst` and
-`telamon-bundle.json` to the release.
+The workflow builds the bundle and attaches `<id>-<version>-x86_64.tar.zst`,
+`telamon-bundle.json` and (signing in CI) `telamon-bundle.json.minisig` to the
+release; offline, sign the draft and publish it as under "Signing".
 
-**(c) Add the app to the catalog**: one entry in `catalog/native-apps.json` of
-`github.com/EternalCoder454/atlasos-store`, by pull request:
+**(d) Add the app to the catalog**: one entry in `catalog/native-apps.json` of
+`github.com/EternalCoder454/atlasos-store`, by pull request, with the public
+key:
 
 ```json
-{ "id": "net.eterneon.telamon.gates", "repo": "EternalCoder454/telamon-gates", "channel": "releases" }
+{ "id": "net.eterneon.telamon.gates", "repo": "EternalCoder454/telamon-gates", "channel": "releases",
+  "signers": [ { "type": "minisign", "key": "RWQ..." } ] }
 ```
 
-Store lists the app from then on and updates it when a newer release appears.
+Store lists the app from then on and updates it when a newer signed release appears.
 
 ## Trying a bundle
 
@@ -339,31 +468,72 @@ Store lists the app from then on and updates it when a newer release appears.
 telamon-store --install-bundle <archive.tar.zst>    # Store checks it and installs it for you
 ```
 
-To look at one without Store: `python3 tools/bundle.py verify <archive> <manifest>`,
-then `zstd -dc <archive> | tar -x -C /tmp/some-empty-dir` and run
+To look at one without Store: `python3 tools/bundle.py verify <archive> <manifest>`
+(it reads the archive without unpacking it anywhere, and refuses what the Store would),
+`minisign -Vm telamon-bundle.json -P <the catalog's key>` for the signature, then `zstd -dc <archive> | tar -x -C /tmp/some-empty-dir` and run
 `bin/<exe>` from there. It finds its data next to itself.
 
 ## Security model
 
-- **Integrity** is HTTPS to github.com, the sha256 of the archive and of every
-  file in the manifest of the same release, and a catalog that pins which
-  repositories Store trusts to publish which app ID. The hashes catch a damaged or
-  mismatched download, not a malicious release: whoever can publish a release
-  of a pinned repository can replace both files. Trust is in the repository
-  owner and in the catalog entry, which is changed by a reviewed pull request.
-  The manifest's `id` must be the catalog entry's.
+Enforced today:
+
+- **Authenticity is a signature pinned in the catalog.** Store uses a release only when
+  `telamon-bundle.json` carries a valid minisign signature by a key listed for
+  that app in its catalog entry (a reviewed pull request, "Signing"). It is verified over the
+  manifest's exact bytes as downloaded, before the manifest is read for anything; a
+  missing, oversize or edited signature, the legacy `Ed` kind, and a good signature by
+  a key the entry does not list are all refusals. The manifest's `id` must be the
+  catalog entry's and the tag must be `v` + its `version`. Whoever can publish a
+  release of the repository, or replace its assets, without the signing key can only
+  make Store refuse the release.
+- **A hash chain from the signature to every byte.** The signature covers the manifest;
+  the manifest holds the archive's sha256, size and name, and the sha256 and size
+  of every file in it; Store checks each as it downloads and unpacks. HTTPS to
+  github.com carries them.
+- **No downgrade.** Store never offers or installs a release older than the installed
+  version, so a validly signed old release served as "latest" does not roll an app back.
 - **A bundle is code that runs as the user**, with the user's permissions and no
   sandbox, as any program a user installs from a trusted publisher. Nothing in a
   bundle runs as root and nothing in it is installed outside `~/.local/share`.
-- **Unpacking** (Store, and `tools/bundle.py verify` the same way) accepts only the
+- **Unpacking** (Store, and `tools/bundle.py verify` the same way, which does not
+  extract anything: it streams the tar and hashes) accepts only the
   entries above: paths cannot leave the prefix (no `..`, no absolute path, no
   `./`), nothing is written through a symlink (every symlink is relative and
-  stays inside the tree, also through the links on its way, no entry sits below one), no hard links or device
-  files, and the archive is capped (the limits under "The archive").
-- **Later**: GitHub artifact attestations (Sigstore provenance for the workflow's
-  run, which Store can check against the pinned repository) and a
-  minisign signature with a key pinned in the catalog. Neither is in schema 1;
-  they would be added as release assets next to the manifest.
+  stays inside the tree, also through the links on its way, no entry sits below one), no hard links,
+  device files, setuid, setgid or sticky bits, and the archive is capped (the limits under "The archive",
+  and `verify` stops reading a decompressed stream that is longer than they allow).
+- **The producer's workflow** keeps the secret away from the app's code: the job
+  that builds the app has a read-only token and no secret; the job that holds the key
+  runs the framework's own tools (by commit sha) on a bundle it has verified; the job
+  that writes the release runs only `gh` on files whose hashes it has checked. The tag
+  and the inputs never reach a shell as code, actions are pinned by sha, and no job
+  asks for an OIDC token.
+
+What remains:
+
+- **A stolen signing key signs anything** that installs on every computer whose
+  catalog lists it, until the owner removes the key from the catalog (a pull request;
+  Stores stop accepting it when they refetch, at most 6 hours). Nothing installed
+  before is removed. Keep the key off the repository, with a password; offline
+  signing exposes it least.
+- **In the secret-key-in-CI model a malicious build gets a bundle signed.** The `sign`
+  job verifies that the bundle is valid, not that it is what the owner meant to
+  ship: whoever controls the app's build, the workflow or a tag in that repository
+  controls what is signed, and can read the secret. This is why offline signing
+  (`publish: false`) is the recommended model for any app whose repository has
+  several writers.
+- **No freshness.** A signature does not expire: an attacker who can block or
+  replay GitHub's answers can keep a computer on an older signed release, and a
+  validly signed old release that is still the latest can be offered to a computer
+  that has none installed.
+- **Sigstore and GitHub artifact attestations are not verified.** Store does not
+  check build provenance (which workflow of which repository made the archive). The
+  catalog's `signers` list is typed, so `sigstore` entries can be added later without a new
+  schema, and the workflow can then also publish an attestation for the archive (it
+  would ask for `id-token: write` and `attestations: write`, which no job does today).
+- The archive is not signed by itself, only through the manifest's hash: this is
+  complete as long as the manifest's `archive.sha256` and `size` are checked, which
+  both Store and `bundle.py verify` do.
 
 ## Changing the format
 
