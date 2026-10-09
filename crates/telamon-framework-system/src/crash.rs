@@ -21,15 +21,18 @@
 //!   moved there whole, so reports waiting for a decision are not lost.
 //!
 //! Collected: Telamon OS version, channel, previous version; app name, version
-//! and category; the stack trace; kernel; GPU model and driver; uptime; CPU
-//! model, RAM total and use; a timestamp and the report type. A rotating
+//! and category; the stack trace; kernel; GPU model and driver; uptime (whole
+//! hours, rounded down); CPU model, RAM total (whole GB) and use; a timestamp
+//! and the report type. A rotating
 //! random ID (new every 30 days; never `/etc/machine-id`) stays on the
 //! machine: it is not sent, so public reports can't be linked to each other.
-//! Never: core dumps, usernames, hostnames, MAC/IP addresses, serials, email
-//! addresses, credentials and tokens, installed apps, file contents, command
+//! Never: core dumps, usernames, hostnames, MAC/IP addresses, email addresses,
+//! credentials and tokens, installed apps, file contents, command
 //! lines, environment or working directory. Every string is scrubbed
-//! ([`Scrubber`]).
-
+//! ([`Scrubber`]). The report collects no hardware serial number; one that
+//! turns up in a message is hidden when it is named (`serial=`, `ID_SERIAL=`,
+//! `imei=`) or has the shape of an IMEI, not in any other form.
+//!
 use std::cell::Cell;
 use std::fs;
 use std::io::{self, Read, Write};
@@ -96,10 +99,73 @@ pub struct Report {
     pub path: Option<PathBuf>,
 }
 
+/// The longest payload [`Report::payload`] makes, serialized, in bytes. A
+/// longer one has its stack trace cut, and as a last resort its message.
+pub const MAX_PAYLOAD: usize = 64 * 1024;
+
+/// A message over this is cut first when the payload is too long.
+const MESSAGE_BUDGET: usize = 8 * 1024;
+
 impl Report {
-    /// The exact Sentry event JSON that [`send`] posts.
+    /// The exact Sentry event JSON that [`send`] posts. At most
+    /// [`MAX_PAYLOAD`] bytes: when the report is bigger, frames are dropped
+    /// from the far end of the stack (the top of the stack stays), then the
+    /// message is cut; `extra.trace_frames_dropped` says how many frames went.
+    /// Uptime is in whole hours and RAM total in whole GB, however the report
+    /// stored them.
     pub fn payload(&self) -> Value {
-        let tag = |v: &Option<String>| v.clone().unwrap_or_else(|| "unknown".to_string());
+        let frames = parse_frames(&self.stacktrace);
+        let mut keep = frames.len();
+        let mut message = self.message.clone();
+        loop {
+            let ev = self.event(
+                &message,
+                &frames[frames.len() - keep..],
+                frames.len() - keep,
+            );
+            let size = serde_json::to_vec(&ev).map_or(0, |v| v.len());
+            if size <= MAX_PAYLOAD {
+                return ev;
+            }
+            if message.len() > MESSAGE_BUDGET {
+                // the message is in the payload twice: it goes first, down to
+                // a size that leaves room for a trace
+                // (room left for the note)
+                let mut end = MESSAGE_BUDGET - 16;
+                while !message.is_char_boundary(end) {
+                    end -= 1;
+                }
+                message.truncate(end);
+                message.push_str(" [... cut]");
+            } else if keep > 0 {
+                keep /= 2;
+            } else if message.is_empty() {
+                // the other fields alone are too long: nothing left to cut
+                return ev;
+            } else if message.len() <= 32 {
+                message.clear();
+            } else {
+                let mut end = message.len() / 2;
+                while !message.is_char_boundary(end) {
+                    end -= 1;
+                }
+                message.truncate(end);
+                message.push_str(" [... cut]");
+            }
+        }
+    }
+
+    /// One Sentry event with `message` and the given frames.
+    fn event(&self, message: &str, frames: &[Value], dropped: usize) -> Value {
+        // a report file is only JSON: no field is trusted to be short
+        let tag = |v: &Option<String>| {
+            v.as_deref()
+                .map_or_else(|| "unknown".to_string(), |s| s.chars().take(512).collect())
+        };
+        let (uptime, ram) = (
+            coarse_uptime(self.uptime_secs),
+            coarse_ram_kb(self.ram_total_kb),
+        );
         let mut event = json!({
             "event_id": self.event_id,
             "timestamp": self.time,
@@ -108,7 +174,7 @@ impl Report {
             "logger": "atlas-core",
             "release": format!("atlasos@{}", tag(&self.atlasos_version)),
             "environment": tag(&self.channel),
-            "message": self.message,
+            "message": message,
             "tags": {
                 "app": self.app_name,
                 "app_version": tag(&self.app_version),
@@ -126,18 +192,20 @@ impl Report {
                        "kernel_version": tag(&self.kernel)},
                 "gpu": {"name": tag(&self.gpu), "version": tag(&self.gpu_driver)},
                 // saturating: a report file is only JSON, any number may be in it
-                "device": {"cpu": tag(&self.cpu_model), "memory_size": self.ram_total_kb.saturating_mul(1024),
-                           "free_memory": self.ram_total_kb.saturating_sub(self.mem_used_kb).saturating_mul(1024)},
-                "runtime": {"uptime_secs": self.uptime_secs},
+                "device": {"cpu": tag(&self.cpu_model), "memory_size": ram.saturating_mul(1024),
+                           "free_memory": ram.saturating_sub(self.mem_used_kb).saturating_mul(1024)},
+                "runtime": {"uptime_secs": uptime},
             },
         });
-        let frames = parse_frames(&self.stacktrace);
         if !frames.is_empty() {
             event["exception"] = json!({"values": [{
                 "type": self.report_type,
-                "value": self.message,
+                "value": message,
                 "stacktrace": {"frames": frames},
             }]});
+        }
+        if dropped > 0 {
+            event["extra"] = json!({"trace_frames_dropped": dropped});
         }
         event
     }
@@ -516,6 +584,31 @@ pub struct Scrubber {
     homes: Vec<String>,
 }
 
+/// The names and home directories of `uid` in /etc/passwd `text`: the login
+/// name, the full name (the first GECOS field) as a whole and each word of it
+/// of 3 or more characters (a report may say "Smith" or "zachary" alone), and
+/// the home.
+fn passwd_names(text: &str, uid: &str) -> (Vec<String>, Vec<String>) {
+    let (mut users, mut homes) = (Vec::new(), Vec::new());
+    for l in text.lines() {
+        let f: Vec<&str> = l.split(':').collect();
+        if f.len() >= 6 && f[2] == uid {
+            users.push(f[0].to_string());
+            if let Some(full) = f[4].split(',').next() {
+                users.push(full.to_string());
+                users.extend(
+                    full.split_whitespace()
+                        .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()))
+                        .filter(|w| w.chars().count() >= 3)
+                        .map(str::to_string),
+                );
+            }
+            homes.push(f[5].to_string());
+        }
+    }
+    (users, homes)
+}
+
 /// Names too common to hide: scrubbing them would mangle ordinary text
 /// (`/dev/null`, `atlas_core::...`, image names), and a home directory
 /// called after one is still handled by the `/home/<name>` rule.
@@ -605,15 +698,9 @@ impl Scrubber {
                     .map(|n| n.to_string_lossy().into_owned()),
             );
         }
-        let uid = own_uid();
-        for l in read("/etc/passwd").lines() {
-            let f: Vec<&str> = l.split(':').collect();
-            if f.len() >= 6 && f[2] == uid {
-                users.push(f[0].to_string());
-                users.extend(f[4].split(',').next().map(str::to_string));
-                homes.push(f[5].to_string());
-            }
-        }
+        let (u, h) = passwd_names(&read("/etc/passwd"), &own_uid());
+        users.extend(u);
+        homes.extend(h);
         let mut hosts = vec![read("/proc/sys/kernel/hostname"), read("/etc/hostname")];
         hosts.extend(toml_value(&read("/etc/machine-info"), "PRETTY_HOSTNAME"));
         let (u, h, hm): (Vec<&str>, Vec<&str>, Vec<&str>) = (
@@ -653,7 +740,9 @@ impl Scrubber {
         for h in &self.hosts {
             out = replace_ci(&out, h, "HOST");
         }
-        scrub_addresses(&scrub_secrets(&out))
+        scrub_addresses(&scrub_hex(&scrub_blobs(&scrub_webhooks(&scrub_secrets(
+            &out,
+        )))))
     }
 
     /// [`scrub`](Self::scrub), then hide paths that can name a file the user
@@ -761,6 +850,29 @@ fn all_hex(t: &str) -> bool {
     !t.is_empty() && t.chars().all(|c| c.is_ascii_hexdigit())
 }
 
+/// 15 digits with a valid Luhn check digit: the shape of an IMEI. (One in ten
+/// other 15-digit numbers passes the check too; there are few of them.)
+fn is_imei(t: &str) -> bool {
+    if t.len() != 15 || !t.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    let sum: u32 = t
+        .bytes()
+        .rev()
+        .enumerate()
+        .map(|(i, b)| {
+            let d = u32::from(b - b'0');
+            if i % 2 == 1 {
+                let x = d * 2;
+                x / 10 + x % 10
+            } else {
+                d
+            }
+        })
+        .sum();
+    sum.is_multiple_of(10)
+}
+
 /// What a whole word is, if it is an address or ID: `<mac>`, `<ip>` or `<id>`.
 fn classify(word: &str) -> Option<&'static str> {
     let mut w = word;
@@ -795,6 +907,11 @@ fn classify(word: &str) -> Option<&'static str> {
         Some("<ip>")
     } else if (w.len() == 32 && all_hex(w)) || uuid {
         Some("<id>")
+    } else if w.len() >= 40 && all_hex(w) {
+        // SHA-1 and SHA-256 digests, key material in hex
+        Some("<id>")
+    } else if is_imei(w) {
+        Some("<id>")
     } else {
         None
     }
@@ -813,8 +930,9 @@ fn scrub_word(tok: &str) -> String {
     if let Some(k) = classify(core) {
         return format!("{k}{suffix}");
     }
-    // a label in front: `host:10.0.0.1`, `inet:192.168.0.2`
-    for (i, _) in core.match_indices(':') {
+    // a label in front: `host:10.0.0.1`, `inet:192.168.0.2` (not in a long
+    // word: every colon would classify the rest, which is quadratic)
+    for (i, _) in core.match_indices(':').filter(|_| core.len() <= 128) {
         if let Some(k) = classify(&core[i + 1..]) {
             return format!("{}:{k}{suffix}", &core[..i]);
         }
@@ -823,19 +941,22 @@ fn scrub_word(tok: &str) -> String {
 }
 
 /// Names whose value is a secret: `token=...`, `Password: ...`,
-/// `access_token=...`, `Authorization: Bearer ...`.
+/// `access_token=...`, `Authorization: Bearer ...`; also identifiers that
+/// name one device (`serial=`, `ID_SERIAL=`, `imei=`).
 const SECRET_KEYS: &[&str] = &[
     "token",
     "secret",
     "password",
     "passwd",
     "pwd",
+    "pass",
     "passphrase",
     "key",
     "apikey",
     "auth",
     "authorization",
     "bearer",
+    "basic",
     "credential",
     "credentials",
     "session",
@@ -843,13 +964,66 @@ const SECRET_KEYS: &[&str] = &[
     "cookie",
     "signature",
     "sig",
+    "code",
+    "code_verifier",
+    "serial",
+    "serialnumber",
+    "serial_number",
+    "serial_short",
+    "imei",
 ];
 
-/// Hide the value after a [`SECRET_KEYS`] name (`=`, `:` or, for `bearer`,
-/// a space). A name counts at the end of a word (`access_token`, `api-key`)
-/// but not inside one (`monkey`), nor as part of a `::` path
+/// Names that count at the end of a longer word too (`PGPASSWORD`,
+/// `dbPassword`, `csrftoken`). The short ones do not: `monkey` is no key.
+/// (A name also starts after a lower case letter in camel case: `apiKey`.)
+const INNER_KEYS: &[&str] = &[
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "passphrase",
+    "apikey",
+    "authorization",
+    "credential",
+    "credentials",
+];
+
+/// Where a name starts: at a word, after `_`, `-` or punctuation, at a
+/// camel case boundary, or (for [`INNER_KEYS`]) inside a word.
+fn name_starts(b: &[u8], i: usize, key: &str) -> bool {
+    let Some(p) = i.checked_sub(1).map(|p| b[p]) else {
+        return true;
+    };
+    !p.is_ascii_alphanumeric()
+        || INNER_KEYS.contains(&key)
+        || (b[i].is_ascii_uppercase() && (p.is_ascii_lowercase() || p.is_ascii_digit()))
+}
+
+/// `Word`, `word` or `WordWord`: letters only, every capital followed by a
+/// lower case letter, ending in one. Real base64 is not.
+fn wordy(t: &[u8]) -> bool {
+    t.iter().all(u8::is_ascii_alphabetic)
+        && t.last().is_some_and(u8::is_ascii_lowercase)
+        && t.windows(2)
+            .all(|w| !w[0].is_ascii_uppercase() || w[1].is_ascii_lowercase())
+}
+
+/// What follows `Basic `: a base64 credential (`dXNlcjpwYXNz`), not a word
+/// of the text (`Basic configuration`).
+fn basic_credential(rest: &[u8]) -> bool {
+    let n = rest
+        .iter()
+        .position(|c| !(c.is_ascii_alphanumeric() || b"+/=_-".contains(c)))
+        .unwrap_or(rest.len());
+    n >= 12 && !wordy(&rest[..n])
+}
+
+/// Hide the value after a [`SECRET_KEYS`] name (`=`, `:` or, for `bearer`
+/// and `basic`, a space). A name counts at the end of a word (`access_token`,
+/// `api-key`) but not inside one (`monkey`), nor as part of a `::` path
 /// (`zbus::auth::handshake`, `Session::open`). A quoted value is hidden up to
-/// its closing quote, spaces and all.
+/// its closing quote, spaces and all. `pass` needs a `=`, `code` a URL query
+/// (`?code=`), and `basic` a base64 credential after it.
 fn scrub_secrets(s: &str) -> String {
     // Bytes, not str slices: a name only starts on an ASCII byte, and text
     // around it may be any UTF-8.
@@ -865,16 +1039,30 @@ fn scrub_secrets(s: &str) -> String {
                     .get(i + k.len())
                     .is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_' || *c == b'-')
         });
-        let Some(key) = key.filter(|_| i == 0 || !b[i - 1].is_ascii_alphanumeric()) else {
+        let Some(key) = key.filter(|k| name_starts(b, i, k)) else {
             i += 1;
             continue;
         };
         let mut j = i + key.len();
+        // `code` only in a URL query: `?code=abc&state=x`
+        if matches!(*key, "code" | "code_verifier")
+            && !(i > 0 && matches!(b[i - 1], b'?' | b'&') && b.get(j) == Some(&b'='))
+        {
+            i += key.len();
+            continue;
+        }
+        let quoted_name = matches!(b.get(j), Some(b'"' | b'\''));
         // `"key": "value"`, `key = value`, `Bearer value`
-        while j < b.len() && matches!(b[j], b' ' | b'"' | b'\'') {
+        while j < b.len() && matches!(b[j], b' ' | b'\t' | b'"' | b'\'') {
             j += 1;
         }
         let sep = j < b.len() && matches!(b[j], b'=' | b':');
+        // `pass` is a common word: `pass=x` or `"pass": "x"`, not `pass: 3`
+        // `basic` is one too: only `Basic <credential>`
+        if (*key == "pass" && sep && b[j] == b':' && !quoted_name) || (*key == "basic" && sep) {
+            i += key.len();
+            continue;
+        }
         let path = |at: usize| b.get(at..at + 2) == Some(b"::".as_slice());
         // `zbus::auth::x`, `Session::open`; but `cfg::password=x` is a value
         let assign = sep && !path(j);
@@ -885,7 +1073,7 @@ fn scrub_secrets(s: &str) -> String {
         let mut quote = None;
         if sep {
             j += 1;
-            while j < b.len() && b[j] == b' ' {
+            while j < b.len() && matches!(b[j], b' ' | b'\t') {
                 j += 1;
             }
             if j < b.len() && matches!(b[j], b'"' | b'\'') {
@@ -893,14 +1081,28 @@ fn scrub_secrets(s: &str) -> String {
                 j += 1;
             }
             // `Authorization: Bearer x`: hide the word after the scheme too
-            for scheme in ["bearer ", "basic ", "token "] {
-                if lower[j..].starts_with(scheme.as_bytes()) {
+            // (any number of spaces or tabs between them)
+            for scheme in ["bearer", "basic", "token"] {
+                if lower[j..].starts_with(scheme.as_bytes())
+                    && matches!(b.get(j + scheme.len()), Some(b' ' | b'\t'))
+                {
                     j += scheme.len();
+                    while j < b.len() && matches!(b[j], b' ' | b'\t') {
+                        j += 1;
+                    }
                 }
             }
-        } else if *key != "bearer" || j == i + key.len() {
-            i += key.len();
-            continue;
+        } else {
+            let value = j > i + key.len();
+            let ok = match *key {
+                "bearer" => value,
+                "basic" => value && basic_credential(&b[j..]),
+                _ => false,
+            };
+            if !ok {
+                i += key.len();
+                continue;
+            }
         }
         let end = match quote {
             // up to the closing quote (not an escaped one), else the end of
@@ -923,6 +1125,131 @@ fn scrub_secrets(s: &str) -> String {
             copied = end;
         }
         i = end.max(i + 1);
+    }
+    out.push_str(&s[copied..]);
+    out
+}
+
+/// Where a service hands out a secret in the URL path itself.
+const WEBHOOKS: &[&str] = &[
+    "hooks.slack.com/services/",
+    "discord.com/api/webhooks/",
+    "discordapp.com/api/webhooks/",
+];
+
+/// `https://hooks.slack.com/services/T0/B0/xyz` (any case): the rest of the
+/// path is the secret.
+fn scrub_webhooks(s: &str) -> String {
+    let lower = s.to_ascii_lowercase().into_bytes();
+    let b = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let (mut copied, mut i) = (0, 0);
+    while i < b.len() {
+        let Some(h) = WEBHOOKS
+            .iter()
+            .find(|h| lower[i..].starts_with(h.as_bytes()))
+        else {
+            i += 1;
+            continue;
+        };
+        let start = i + h.len();
+        let end = b[start..]
+            .iter()
+            .position(|c| c.is_ascii_whitespace() || b"\"'`<>)]}".contains(c))
+            .map_or(b.len(), |n| start + n);
+        if end > start {
+            out.push_str(&s[copied..start]);
+            out.push_str("<token>");
+            copied = end;
+        }
+        i = end.max(i + 1);
+    }
+    out.push_str(&s[copied..]);
+    out
+}
+
+/// A base64 secret the word rules cut in pieces: it holds a `/` (which ends a
+/// word) or ends in `=` padding. The whole run becomes `<token>` when it is
+/// long, mixed case, has digits (or `+`, or padding) and a path's few slashes
+/// do not make it up (`/usr/lib64/Foo/Bar2` is no secret).
+fn scrub_blobs(s: &str) -> String {
+    let b = s.as_bytes();
+    let body = |c: u8| c.is_ascii_alphanumeric() || matches!(c, b'+' | b'/' | b'_' | b'-');
+    let mut out = String::with_capacity(s.len());
+    let (mut copied, mut i) = (0, 0);
+    while i < b.len() {
+        if !body(b[i]) {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < b.len() && body(b[i]) {
+            i += 1;
+        }
+        let run = &b[start..i];
+        let pad = b[i..].iter().take(2).take_while(|c| **c == b'=').count();
+        let after = b.get(i + pad).copied();
+        // `==` is padding; one `=` only before the end of the value (a long
+        // `settingName=value` is no secret)
+        let padded = pad == 2
+            || (pad == 1
+                && match after {
+                    None => true,
+                    Some(c) if c.is_ascii_whitespace() || matches!(c, b',' | b';') => true,
+                    Some(c @ (b'"' | b'\'')) => start > 0 && b[start - 1] == c,
+                    Some(_) => false,
+                });
+        let slashes = run.iter().filter(|c| **c == b'/').count();
+        let count = |f: fn(&u8) -> bool| run.iter().filter(|c| f(c)).count();
+        let (digits, plus) = (count(u8::is_ascii_digit), run.contains(&b'+'));
+        // random enough: `==` is enough by itself, one `=` wants a digit
+        let random = if pad == 2 && padded {
+            true
+        } else if padded {
+            digits >= 1 || plus
+        } else {
+            digits >= 2 || plus
+        };
+        if run.len() >= 24
+            && (slashes > 0 || padded)
+            && run[0] != b'/'
+            && slashes * 12 <= run.len()
+            && count(u8::is_ascii_uppercase) > 0
+            && count(u8::is_ascii_lowercase) > 0
+            && random
+        {
+            let end = if padded { i + pad } else { i };
+            out.push_str(&s[copied..start]);
+            out.push_str("<token>");
+            copied = end;
+            i = end;
+        }
+    }
+    out.push_str(&s[copied..]);
+    out
+}
+
+/// Every run of 40 or more hex digits (a SHA-1 or SHA-256 digest, key
+/// material) becomes `<id>`, wherever it sits in a word: `build-<hex>`,
+/// `0x<hex>`, `<hex>.json`. The compiler commit after `/rustc/` stays.
+fn scrub_hex(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let (mut copied, mut i) = (0, 0);
+    while i < b.len() {
+        if !b[i].is_ascii_hexdigit() {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < b.len() && b[i].is_ascii_hexdigit() {
+            i += 1;
+        }
+        if i - start >= 40 && !s[..start].ends_with("/rustc/") {
+            out.push_str(&s[copied..start]);
+            out.push_str("<id>");
+            copied = i;
+        }
     }
     out.push_str(&s[copied..]);
     out
@@ -951,6 +1278,10 @@ fn classify_secret(w: &str) -> Option<String> {
         && at + 1 < w.len()
     {
         let (local, domain) = (&w[..at], &w[at + 1..]);
+        if local == "REDACTED" {
+            // the result of this function: scrubbing again changes nothing
+            return None;
+        }
         if local.contains(':') {
             return Some(format!("REDACTED@{domain}"));
         }
@@ -1004,16 +1335,30 @@ fn scrub_addresses(s: &str) -> String {
     let delim = |c: char| c.is_whitespace() || "'\"`(),;[]{}<>=/|\\".contains(c);
     let mut out = String::with_capacity(s.len());
     let mut tok = String::new();
+    // the word before the last delimiter, and that delimiter
+    let (mut prev, mut sep) = (String::new(), ' ');
+    // `/rustc/<40 hex>/library/...`: the commit of the compiler, in every
+    // panic location of the standard library
+    let word = |tok: &str, prev: &str, sep: char| {
+        if sep == '/' && prev == "rustc" && tok.len() >= 40 && all_hex(tok) {
+            tok.to_string()
+        } else {
+            scrub_word(tok)
+        }
+    };
     for c in s.chars() {
         if delim(c) {
-            out.push_str(&scrub_word(&tok));
-            tok.clear();
+            out.push_str(&word(&tok, &prev, sep));
+            if !tok.is_empty() {
+                prev = std::mem::take(&mut tok);
+            }
+            sep = c;
             out.push(c);
         } else {
             tok.push(c);
         }
     }
-    out.push_str(&scrub_word(&tok));
+    out.push_str(&word(&tok, &prev, sep));
     out
 }
 
@@ -1065,6 +1410,77 @@ fn private_prefix_at(s: &str, i: usize) -> bool {
             .is_some_and(|c| c.is_alphanumeric() || "_.-".contains(c));
     }
     true
+}
+
+/// Directories whose contents belong to the system, not to the user: a path
+/// under one of them is shown. Any other absolute path may name a file the
+/// user had open (`/data/clients/Acme/q3.xlsx`, `/storage/photos/me.jpg`,
+/// `/Volumes/x`) and is hidden. (`/run/user`, `/run/media` and the places of
+/// [`PRIVATE_PREFIXES`] are hidden first.) `/rustc` and `/builddir` are where
+/// the standard library and a package build remap their sources to.
+const SYSTEM_DIRS: &[&str] = &[
+    "usr",
+    "bin",
+    "sbin",
+    "lib",
+    "lib64",
+    "opt",
+    "app",
+    "etc",
+    "proc",
+    "sys",
+    "dev",
+    "boot",
+    "run",
+    "sysroot",
+    "ostree",
+    "rustc",
+    "builddir",
+    "var/lib/flatpak",
+    "var/lib/telamon",
+    "var/lib/atlas-core",
+    "var/log",
+];
+
+/// Whether the path at the start of `rest` is under a [`SYSTEM_DIRS`] entry
+/// (or is one): `/usr/lib/x`, `/etc`, but not `/usr.bak` or `/devices`.
+fn under_system_dir(rest: &str) -> bool {
+    let Some(r) = rest.strip_prefix('/') else {
+        return false;
+    };
+    SYSTEM_DIRS.iter().any(|d| {
+        r.strip_prefix(d).is_some_and(|more| {
+            !more.starts_with(|c: char| c.is_alphanumeric() || "_.-".contains(c))
+        })
+    })
+}
+
+/// An absolute path starting at byte `i` of `s` that is not the system's: it
+/// starts a word (after a space, a quote, a bracket, `=`, `,`, `;`, `|` or
+/// `:`; not `://` of a URL, not `</div>`, not a Qt resource `qrc:/...`), and
+/// is not under a [`SYSTEM_DIRS`] entry.
+fn foreign_path_at(s: &str, i: usize) -> bool {
+    let rest = &s[i..];
+    let mut chars = rest.chars();
+    if chars.next() != Some('/') {
+        return false;
+    }
+    if !chars
+        .next()
+        .is_some_and(|c| c.is_alphanumeric() || "._-~@+".contains(c))
+    {
+        return false;
+    }
+    let before = &s[..i];
+    let starts_word = before
+        .chars()
+        .next_back()
+        .is_none_or(|c| c.is_whitespace() || "'\"`([{=,;|:".contains(c));
+    // Qt resources, not files: `qrc:/qt/qml/...` and `:/icons/x.png`
+    let resource = before.strip_suffix(':').is_some_and(|b| {
+        b.ends_with("qrc") || !b.chars().next_back().is_some_and(char::is_alphanumeric)
+    });
+    starts_word && !resource && !under_system_dir(rest)
 }
 
 /// The libc texts of the errors that may follow a redacted path.
@@ -1135,13 +1551,14 @@ fn path_end(s: &str, i: usize) -> usize {
     line_end
 }
 
-/// From a private path prefix on, replace the path with `<path>` (see
-/// [`path_end`]).
+/// From a private path prefix on, or from an absolute path outside the
+/// system's directories (see [`foreign_path_at`]), replace the path with
+/// `<path>` (see [`path_end`]).
 fn redact_paths(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut i = 0;
     while i < s.len() {
-        if private_prefix_at(s, i) {
+        if private_prefix_at(s, i) || foreign_path_at(s, i) {
             out.push_str("<path>");
             i = path_end(s, i);
             continue;
@@ -1283,21 +1700,44 @@ fn category_of(app: &str) -> &'static str {
     }
 }
 
+/// The longest version or channel a report keeps.
+const MAX_VERSION: usize = 64;
+
+/// `v` up to its first character that a version has no use for (anything but
+/// letters, digits and `._+~:-`), at most [`MAX_VERSION`] characters; `None`
+/// when nothing is left. The history file is written by root, but it is only
+/// a file: its first line must not put free text into a public report.
+fn plain_version(v: &str) -> Option<String> {
+    let v: String = v
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || "._+~:-".contains(*c))
+        .take(MAX_VERSION)
+        .collect();
+    (!v.is_empty()).then_some(v)
+}
+
 /// The version, channel and previous version of the running Telamon OS from a
-/// `bootc status --json` document and the history.
+/// `bootc status --json` document and the history. Each is cut to a plain
+/// version (see [`plain_version`]).
 pub(crate) fn os_info(
     status: Option<&crate::bootc::Status>,
     hist: &[history::Entry],
 ) -> (Option<String>, Option<String>, Option<String>) {
+    let from_hist =
+        |e: Option<&history::Entry>| e.and_then(|e| e.version.as_deref()).and_then(plain_version);
     let version = status
         .and_then(|s| s.status.booted.as_ref())
-        .and_then(|b| b.version().map(str::to_string))
-        .or_else(|| hist.first().and_then(|e| e.version.clone()));
-    let channel = status.and_then(|s| s.channel()).map(|c| c.to_string());
+        .and_then(|b| b.version())
+        .and_then(plain_version)
+        .or_else(|| from_hist(hist.first()));
+    let channel = status
+        .and_then(|s| s.channel())
+        .and_then(|c| plain_version(&c.to_string()));
     let previous = status
         .and_then(|s| s.status.rollback.as_ref())
-        .and_then(|b| b.version().map(str::to_string))
-        .or_else(|| hist.get(1).and_then(|e| e.version.clone()));
+        .and_then(|b| b.version())
+        .and_then(plain_version)
+        .or_else(|| from_hist(hist.get(1)));
     (version, channel, previous)
 }
 
@@ -1340,21 +1780,21 @@ pub(crate) fn build_report(
         &read("/usr/share/hwdata/pci.ids"),
         Path::new("/sys/module"),
     );
-    let s = |x: &str| scrubber.scrub(x);
+    let one = |x: &str, max: usize| scrubber.scrub(&clean(x, max, false));
     Ok(Report {
         schema: 2,
         event_id: random_hex(16)?,
-        report_type: crash.report_type.to_string(),
+        report_type: one(crash.report_type, 64),
         time: time.map_or_else(now_rfc3339, str::to_string),
         crash_id: crash_id()?,
-        atlasos_version,
-        channel,
-        previous_version,
-        app_name: s(crash.app_name),
-        app_version: crash.app_version.map(s),
+        atlasos_version: atlasos_version.map(|v| one(&v, MAX_VERSION)),
+        channel: channel.map(|v| one(&v, MAX_VERSION)),
+        previous_version: previous_version.map(|v| one(&v, MAX_VERSION)),
+        app_name: one(crash.app_name, 512),
+        app_version: crash.app_version.map(|v| one(v, 128)),
         category: category_of(crash.app_name).to_string(),
-        message: scrubber.scrub_message(&cap_message(crash.message)),
-        stacktrace: scrubber.scrub_message(&filter_trace(crash.stacktrace)),
+        message: untrusted_text(scrubber, &cap_message(crash.message)),
+        stacktrace: untrusted_text(scrubber, &cap_trace(&filter_trace(crash.stacktrace))),
         kernel: Some(read("/proc/sys/kernel/osrelease").trim().to_string())
             .filter(|k| !k.is_empty()),
         gpu,
@@ -1362,18 +1802,184 @@ pub(crate) fn build_report(
             Some(v) => format!("{d} {v}"),
             None => d,
         }),
-        uptime_secs: read("/proc/uptime")
-            .split_whitespace()
-            .next()
-            .and_then(|u| u.parse::<f64>().ok())
-            .map_or(0, |u| u as u64),
+        uptime_secs: coarse_uptime(
+            read("/proc/uptime")
+                .split_whitespace()
+                .next()
+                .and_then(|u| u.parse::<f64>().ok())
+                .map_or(0, |u| u as u64),
+        ),
         cpu_model: cpu_model(&read("/proc/cpuinfo")),
-        ram_total_kb: total,
+        ram_total_kb: coarse_ram_kb(total),
         mem_used_kb: total.saturating_sub(avail),
         sent_event_id: None,
         issue_url: None,
         path: None,
     })
+}
+
+/// Uptime as a report keeps it: whole hours, rounded down. With the report's
+/// time an exact uptime is the boot instant, which would tie two public
+/// reports of one boot together.
+fn coarse_uptime(secs: u64) -> u64 {
+    secs / 3600 * 3600
+}
+
+/// RAM total as a report keeps it: whole GB (1 GB at least), rounded to the
+/// nearest. The exact figure tells one machine from another.
+fn coarse_ram_kb(kb: u64) -> u64 {
+    const GB: u64 = 1024 * 1024;
+    if kb == 0 {
+        return 0;
+    }
+    (kb / GB + u64::from(kb % GB >= GB / 2))
+        .max(1)
+        .saturating_mul(GB)
+}
+
+/// The longest stack trace a report keeps, in bytes (a report file stays far
+/// below the size [`read_reports`] takes).
+const MAX_TRACE: usize = 256 * 1024;
+
+/// `trace` cut to [`MAX_TRACE`] bytes at a line end (the top of the stack
+/// comes first), else on a character boundary.
+fn cap_trace(trace: &str) -> String {
+    if trace.len() <= MAX_TRACE {
+        return trace.to_string();
+    }
+    let mut end = 0;
+    for l in trace.split_inclusive('\n') {
+        if end + l.len() > MAX_TRACE {
+            break;
+        }
+        end += l.len();
+    }
+    if end == 0 {
+        end = MAX_TRACE;
+        while !trace.is_char_boundary(end) {
+            end -= 1;
+        }
+    }
+    trace[..end].trim_end().to_string()
+}
+
+/// Text that comes from outside the framework (a panic or fatal message, a
+/// frame, a journal line): without control, invisible and bidi characters
+/// (they could split a secret from the scrubber, or reverse the text a reader
+/// sees), scrubbed, hidden paths, and made inert for GitHub (see [`defang`]).
+fn untrusted_text(scrubber: &Scrubber, text: &str) -> String {
+    // defanged before the scrubber too: it reads `@<hex>` as one word, and
+    // the result must not change when it is run again
+    defang(&scrubber.scrub_message(&defang(&clean(text, usize::MAX, true))))
+}
+
+/// Whether the `]` at `chars[i]` closes a `[...]` that follows a word, a `]`
+/// or a `)`: an index expression, not a link label.
+fn is_index(chars: &[char], i: usize) -> bool {
+    let from = i.saturating_sub(100);
+    let Some(open) = chars[from..i].iter().rposition(|c| *c == '[' || *c == ']') else {
+        return false;
+    };
+    let open = from + open;
+    chars[open] == '['
+        && open > 0
+        && (chars[open - 1].is_alphanumeric() || "_])".contains(chars[open - 1]))
+}
+
+/// Whether the `]` at `chars[i]` ends the label of a link reference
+/// definition: `[x]: https://...` at the start of a line (up to 3 spaces in
+/// front), with an address that has a scheme or `//`.
+fn ref_definition(chars: &[char], i: usize) -> bool {
+    // the label is short: look back a little only (a line may be huge)
+    let from = i.saturating_sub(300);
+    let line = match chars[from..i].iter().rposition(|c| *c == '\n') {
+        Some(n) => from + n + 1,
+        None if from == 0 => 0,
+        None => return false,
+    };
+    let label = &chars[line..i];
+    let indent = label.iter().take_while(|c| **c == ' ').count();
+    if indent > 3 || label.get(indent) != Some(&'[') || label[indent + 1..].contains(&']') {
+        return false;
+    }
+    let after: String = chars[i + 2..]
+        .iter()
+        .skip_while(|c| **c == ' ' || **c == '\t')
+        .take_while(|c| !c.is_whitespace())
+        .take(256)
+        .collect();
+    let after = after.trim_start_matches('<');
+    after.starts_with("//") || after.contains("://") || after.starts_with("mailto:")
+}
+
+/// Text that GitHub would act on, made plain: `@name` (it would notify the
+/// person), `[text](url)` and `![alt](url)` (a link, or an image the reader's
+/// browser loads), and HTML elements with attributes that link or load
+/// (`<img src=...>`, `<a href=...>`, `<iframe src=...>`, ...), also `[a][ref]`,
+/// a `[x]: https://...` definition and a `<https://...>` autolink. A space is
+/// put in each: `@ name`, `] (url)`, `< img src=...>`.
+fn defang(s: &str) -> String {
+    const TAGS: &[&str] = &[
+        "a", "img", "image", "picture", "source", "video", "audio", "iframe", "script", "style",
+        "link", "meta", "base", "object", "embed", "svg", "math", "form", "input", "button",
+        "textarea", "details", "summary", "body", "html", "head",
+    ];
+    let chars: Vec<char> = s.chars().collect();
+    let mut out = String::with_capacity(s.len() + 8);
+    for (i, &c) in chars.iter().enumerate() {
+        out.push(c);
+        let next = chars.get(i + 1).copied();
+        match c {
+            // a mention starts a word
+            '@' if next.is_some_and(|n| n.is_alphanumeric())
+                && !(i > 0 && (chars[i - 1].is_alphanumeric() || chars[i - 1] == '_')) =>
+            {
+                out.push(' ');
+            }
+            // `[a](url)`; `[a][ref]` too, unless it is an index (`v[0][1]`,
+            // `grid[i][j]`: the `[` follows a word)
+            ']' if next == Some('(') || (next == Some('[') && !is_index(&chars, i)) => {
+                out.push(' ')
+            }
+            // a reference definition at the start of a line: `[x]: https://...`
+            ']' if next == Some(':') && ref_definition(&chars, i) => out.push(' '),
+            '<' => {
+                let rest = &chars[i + 1..];
+                let name: String = rest
+                    .iter()
+                    .take_while(|c| c.is_ascii_alphanumeric())
+                    .map(char::to_ascii_lowercase)
+                    .collect();
+                let tail = &rest[name.len()..];
+                // an autolink: `<https://...>`, `<mailto:a@b>` (not the
+                // `<alloc::vec::Vec<T> as ...>` of a Rust frame)
+                let scheme = rest
+                    .iter()
+                    .take_while(|c| c.is_ascii_alphanumeric() || "+.-".contains(**c))
+                    .count();
+                if rest.first().is_some_and(char::is_ascii_alphabetic)
+                    && (2..=32).contains(&scheme)
+                    && rest.get(scheme) == Some(&':')
+                    && rest
+                        .get(scheme + 1)
+                        .is_some_and(|c| *c != ':' && !c.is_whitespace())
+                {
+                    out.push(' ');
+                }
+                // an element with attributes (`<img src=x>`, `<a href=y>`,
+                // `<img/src=x>`), not `Vec<Form>`, `<Form as Trait>::f` or a
+                // closing tag: those load or link nothing
+                if TAGS.contains(&name.as_str())
+                    && tail.first().is_some_and(|c| c.is_whitespace() || *c == '/')
+                    && !tail.starts_with(&[' ', 'a', 's', ' '])
+                {
+                    out.push(' ');
+                }
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 // ----------------------------------------------------------------- storage
@@ -1556,9 +2162,16 @@ fn is_stale(e: &fs::DirEntry, now: SystemTime) -> bool {
     })
 }
 
+/// The longest `time` a report is saved with: an RFC 3339 time is 20 to 35
+/// characters, and the time is the file name (255 bytes at most).
+const MAX_TIME: usize = 40;
+
 /// Save `report` in `dir` as `<time>-<nn>.json` (0600; `dir` becomes 0700).
+/// A `time` that is not an RFC 3339 time (empty, over 40 characters or with
+/// others than digits and `TZ:-+.`) fails with `InvalidInput`.
 pub(crate) fn write_report(dir: &Path, report: &Report) -> io::Result<PathBuf> {
     if report.time.is_empty()
+        || report.time.len() > MAX_TIME
         || !report
             .time
             .chars()
@@ -1673,6 +2286,37 @@ fn quarantine(path: &Path, now: SystemTime) {
     }
 }
 
+/// The biggest report file that is read. A report is far smaller (the
+/// message is at most 64 KiB, the trace at most [`MAX_TRACE`]).
+const MAX_REPORT_BYTES: u64 = 1024 * 1024;
+
+/// A report file's bytes: never through a symlink, only a regular file (a
+/// FIFO would block), at most [`MAX_REPORT_BYTES`] (`InvalidData` when
+/// bigger).
+fn read_report_file(path: &Path) -> io::Result<Vec<u8>> {
+    let f = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_NOCTTY | libc::O_CLOEXEC)
+        .open(path)?;
+    let meta = f.metadata()?;
+    if !meta.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    let too_big = || io::Error::new(io::ErrorKind::InvalidData, "report file is too large");
+    if meta.len() > MAX_REPORT_BYTES {
+        return Err(too_big());
+    }
+    let mut bytes = Vec::new();
+    f.take(MAX_REPORT_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_REPORT_BYTES {
+        return Err(too_big());
+    }
+    Ok(bytes)
+}
+
 fn read_reports(dir: &Path) -> Vec<Report> {
     let mut paths: Vec<PathBuf> = fs::read_dir(dir)
         .into_iter()
@@ -1686,7 +2330,17 @@ fn read_reports(dir: &Path) -> Vec<Report> {
     paths
         .into_iter()
         .filter_map(|p| {
-            let bytes = fs::read(&p).ok()?;
+            let bytes = match read_report_file(&p) {
+                Ok(b) => b,
+                Err(e) => {
+                    // too big for a report: out of the list, kept to look at.
+                    // A link, a FIFO or an unreadable file is left alone.
+                    if e.kind() == io::ErrorKind::InvalidData {
+                        quarantine(&p, now);
+                    }
+                    return None;
+                }
+            };
             match serde_json::from_slice::<Report>(&bytes) {
                 Ok(mut r) => {
                     r.path = Some(p);
@@ -1711,20 +2365,70 @@ fn read_reports(dir: &Path) -> Vec<Report> {
         .collect()
 }
 
+/// `r` as it is shown and sent: every string that was copied from outside
+/// scrubbed again with the current rules (a report that an older version
+/// queued was scrubbed with weaker ones), cleaned of control and bidi
+/// characters and made inert for GitHub, the version fields cut to plain
+/// versions, and uptime and RAM coarse. Nothing is written back.
+fn rescrub(mut r: Report, scrubber: &Scrubber) -> Report {
+    let one = |x: &str, max: usize| scrubber.scrub(&clean(x, max, false));
+    let version = |v: Option<String>| {
+        v.and_then(|v| plain_version(&v))
+            .map(|v| one(&v, MAX_VERSION))
+    };
+    r.report_type = one(&r.report_type, 64);
+    // part by part, like a Flatpak app ID in `coredump_report`: a whole long
+    // ID looks like an access token
+    r.app_name = clean(&r.app_name, 512, false)
+        .split('.')
+        .map(|part| scrubber.scrub(part))
+        .collect::<Vec<_>>()
+        .join(".");
+    r.app_version = r.app_version.map(|v| one(&v, 128));
+    r.atlasos_version = version(r.atlasos_version);
+    r.channel = version(r.channel);
+    r.previous_version = version(r.previous_version);
+    r.kernel = r.kernel.map(|v| one(&v, 256));
+    r.gpu = r.gpu.map(|v| one(&v, 256));
+    r.gpu_driver = r.gpu_driver.map(|v| one(&v, 256));
+    r.cpu_model = r.cpu_model.map(|v| one(&v, 256));
+    r.message = untrusted_text(scrubber, &cap_message(&r.message));
+    r.stacktrace = untrusted_text(scrubber, &cap_trace(&filter_trace(&r.stacktrace)));
+    r.uptime_secs = coarse_uptime(r.uptime_secs);
+    r.ram_total_kb = coarse_ram_kb(r.ram_total_kb);
+    r
+}
+
 /// Reports waiting for the user's decision, oldest first.
 pub fn pending() -> Vec<Report> {
     prune_sent();
     reports_dir()
-        .map(|d| read_pending(&d.join("pending")))
+        .map(|d| pending_in(&d.join("pending"), &Scrubber::from_env()))
         .unwrap_or_default()
+}
+
+/// [`pending`] for the directory `dir`, scrubbed again with `scrubber`.
+fn pending_in(dir: &Path, scrubber: &Scrubber) -> Vec<Report> {
+    read_pending(dir)
+        .into_iter()
+        .map(|r| rescrub(r, scrubber))
+        .collect()
 }
 
 /// Reports already sent, oldest first (the history list).
 pub fn sent() -> Vec<Report> {
     prune_sent();
     reports_dir()
-        .map(|d| read_reports(&d.join("sent")))
+        .map(|d| sent_in(&d.join("sent"), &Scrubber::from_env()))
         .unwrap_or_default()
+}
+
+/// [`sent`] for the directory `dir`, scrubbed again with `scrubber`.
+fn sent_in(dir: &Path, scrubber: &Scrubber) -> Vec<Report> {
+    read_reports(dir)
+        .into_iter()
+        .map(|r| rescrub(r, scrubber))
+        .collect()
 }
 
 /// "Don't send": delete the pending report's file. Only a report file in
@@ -2056,6 +2760,15 @@ const MAX_MESSAGE: usize = 64 * 1024;
 /// `s` cut to [`MAX_MESSAGE`] bytes on a char boundary, with a note saying
 /// so; copies at most that much.
 fn cap_message(s: &str) -> String {
+    // already cut by an earlier call (a report read again): leave it as is
+    let note = "\n[... cut: the message was ";
+    if let Some(i) = s.rfind(note)
+        && i <= MAX_MESSAGE
+        && s.len() - i < 64
+        && s.ends_with(" bytes]")
+    {
+        return s.to_string();
+    }
     if s.len() <= MAX_MESSAGE {
         return s.to_string();
     }
@@ -2190,7 +2903,9 @@ fn valid_exe(e: &str) -> bool {
 }
 
 /// Drops control characters (newlines and tabs kept only if `multiline`) and
-/// invisible Unicode format/bidi characters, then keeps at most `max` chars.
+/// invisible Unicode format/bidi characters (zero-width ones, the bidi
+/// overrides and isolates, interlinear marks, "tag" characters), then keeps at
+/// most `max` chars.
 fn clean(s: &str, max: usize, multiline: bool) -> String {
     s.chars()
         .filter(|&c| {
@@ -2200,7 +2915,8 @@ fn clean(s: &str, max: usize, multiline: bool) -> String {
             !c.is_control()
                 && !matches!(c, '\u{ad}' | '\u{61c}' | '\u{180e}'
                     | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}'
-                    | '\u{2060}'..='\u{206f}' | '\u{feff}')
+                    | '\u{2060}'..='\u{206f}' | '\u{feff}' | '\u{fff9}'..='\u{fffb}'
+                    | '\u{e0000}'..='\u{e007f}')
         })
         .take(max)
         .collect()
@@ -3072,7 +3788,7 @@ fn collect_events_in(
         };
         r.report_type = scrubber.scrub_message(&name);
         if r.atlasos_version.is_none() {
-            r.atlasos_version = version;
+            r.atlasos_version = version.as_deref().and_then(plain_version);
         }
         if !enabled() {
             break;
@@ -3506,6 +4222,14 @@ fn post(report: &Report, ep: &Endpoint) -> io::Result<Server> {
 /// [`post`] with the body file made in `dir`.
 fn post_in(dir: &Path, report: &Report, ep: &Endpoint) -> io::Result<Server> {
     let body = serde_json::to_vec(&report.payload()).map_err(io::Error::other)?;
+    // `payload` keeps to the limit unless the fields other than the trace and
+    // message alone are over it: such a report is never sent
+    if body.len() > MAX_PAYLOAD {
+        return Err(io::Error::new(
+            SendFailure::Rejected.kind(),
+            SendFailure::Rejected,
+        ));
+    }
     let tmp = dir.join(format!("send-{}.json", random_hex(8)?));
     write_private(&tmp, &body, false)?;
     let out = run_curl(ep, &tmp);
@@ -3594,6 +4318,30 @@ fn is_event_type(t: &str) -> bool {
     !matches!(t, "panic" | "fatal" | "coredump")
 }
 
+/// The longest run of backticks left in a trace for the issue URL; a longer
+/// one gets a space every this many (the fence is one longer, and stays short
+/// enough to fit the URL).
+const MAX_TICKS: usize = 8;
+
+/// `s` with a space put into every run of more than [`MAX_TICKS`] backticks.
+fn break_backticks(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut run = 0;
+    for c in s.chars() {
+        if c == '`' {
+            if run == MAX_TICKS {
+                out.push(' ');
+                run = 0;
+            }
+            run += 1;
+        } else {
+            run = 0;
+        }
+        out.push(c);
+    }
+    out
+}
+
 /// A prefilled `https://github.com/EternalCoder454/<repo>/issues/new?...`
 /// URL, at most about 7 KB (the trace is cut to fit, and a message too long
 /// on its own too). Secondary to [`send`].
@@ -3640,8 +4388,20 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
             message
         )
     };
-    let trace = filter_trace(&r.stacktrace);
+    // one frame must not take the whole URL: each line is cut to 400 characters
+    let trace = break_backticks(
+        &filter_trace(&r.stacktrace)
+            .lines()
+            .map(|l| l.chars().take(400).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
     let has_trace = !trace.trim().is_empty();
+    // A fence longer than any run of backticks in the trace: a "```" in a
+    // frame cannot end the code block early (and let the rest render as
+    // markdown).
+    let longest_run = trace.split(|c| c != '`').map(str::len).max().unwrap_or(0);
+    let fence = "`".repeat(longest_run.max(2) + 1);
     // The message alone may be over the budget (up to 64 KiB): cut it until
     // the head with an empty trace block fits.
     let chars: Vec<(usize, char)> = r.message.char_indices().collect();
@@ -3655,7 +4415,7 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         };
         let head = head_with(&msg);
         let empty = if has_trace {
-            format!("{head}```\n\n```\n")
+            format!("{head}{fence}\n\n{fence}\n")
         } else {
             head.trim_end().to_string()
         };
@@ -3668,7 +4428,7 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         // no stack trace (an event report): no empty code block
         return cap_url(format!("{base}{}", percent_encode(head.trim_end())));
     }
-    let head = format!("{head}```\n");
+    let head = format!("{head}{fence}\n");
     let lines: Vec<&str> = trace.lines().collect();
     let mut keep = lines.len();
     loop {
@@ -3677,7 +4437,10 @@ pub fn github_issue_url(r: &Report, repo: &str) -> String {
         } else {
             ""
         };
-        let body = percent_encode(&format!("{head}{}{cut}\n```\n", lines[..keep].join("\n")));
+        let body = percent_encode(&format!(
+            "{head}{}{cut}\n{fence}\n",
+            lines[..keep].join("\n")
+        ));
         if base.len() + body.len() <= MAX_URL || keep == 0 {
             return cap_url(format!("{base}{body}"));
         }
@@ -4767,10 +5530,14 @@ mod tests {
         );
         assert_eq!(s.scrub_message("(/root/x)"), "(<path>");
         assert_eq!(s.scrub_message("/root"), "<path>");
-        assert_eq!(
-            s.scrub_message("/rootfs/x /rootless /usr/tmp/x /var/roothomes"),
-            "/rootfs/x /rootless /usr/tmp/x /var/roothomes"
-        );
+        // `/root` is a whole component: these are not it (the private-prefix
+        // rule), but since 2.0.8 any path outside the system's directories is
+        // hidden anyway (`foreign_path_at`), so only the system one is shown
+        for p in ["/rootfs/x", "/rootless", "/var/roothomes"] {
+            assert!(!private_prefix_at(p, 0), "{p}");
+            assert_eq!(s.scrub_message(p), "<path>", "{p}");
+        }
+        assert_eq!(s.scrub_message("/usr/tmp/x"), "/usr/tmp/x");
     }
 
     #[test]
@@ -6171,5 +6938,921 @@ mod tests {
         assert!(url.len() <= MAX_URL, "{}", url.len());
         assert!(!url.ends_with('%') && !url[..url.len() - 1].ends_with('%'));
         assert!(std::str::from_utf8(&percent_decode(&url)).is_ok());
+    }
+
+    // ---- 2.0.8: the scrubber's gaps found by the security audit
+
+    #[test]
+    fn s1_secret_names_inside_words_and_camel_case() {
+        let s = sc();
+        for (input, want) in [
+            (
+                "PGPASSWORD=hunter2 psql -h db",
+                "PGPASSWORD=REDACTED psql -h db",
+            ),
+            ("dbPassword=hunter2", "dbPassword=REDACTED"),
+            ("db_password: hunter2", "db_password: REDACTED"),
+            ("DB_PASS=abc", "DB_PASS=REDACTED"),
+            ("pass=abc", "pass=REDACTED"),
+            (r#"{"pass": "abc def"}"#, r#"{"pass": "REDACTED"}"#),
+            ("apiKey=abc123", "apiKey=REDACTED"),
+            ("csrftoken=abc123", "csrftoken=REDACTED"),
+            ("MYSQL_PWD=abc", "MYSQL_PWD=REDACTED"),
+        ] {
+            assert_eq!(s.scrub(input), want, "{input}");
+        }
+        // words that only contain a name, and the common word `pass`
+        for same in [
+            "monkey: 3",
+            "turkey=1",
+            "pass: 3 fail: 0",
+            "the pass completed",
+            "passed=4",
+            "secretary: Ann",
+            "basic: true",
+            "Basic configuration is missing",
+            "Basic BufferedReader failed",
+            "exit code=1 status code: 500",
+            "zbus::auth::handshake",
+        ] {
+            assert_eq!(s.scrub(same), same, "{same}");
+        }
+    }
+
+    #[test]
+    fn s1_oauth_code_only_in_a_url_query() {
+        let s = sc();
+        assert_eq!(
+            s.scrub("GET /cb?code=abcDEF123&state=xyz HTTP/1.1"),
+            "GET /cb?code=REDACTED&state=xyz HTTP/1.1"
+        );
+        assert_eq!(
+            s.scrub("https://idp.example/token?x=1&code_verifier=AbC123dEf"),
+            "https://idp.example/token?x=1&code_verifier=REDACTED"
+        );
+        assert_eq!(s.scrub("error code=5"), "error code=5");
+        assert_eq!(s.scrub("code: 12"), "code: 12");
+    }
+
+    #[test]
+    fn s1_authorization_with_more_than_one_space_or_a_tab() {
+        let s = sc();
+        for (input, want) in [
+            (
+                "Authorization: Bearer  abc123def",
+                "Authorization: Bearer  REDACTED",
+            ),
+            (
+                "Authorization: Bearer abc123def",
+                "Authorization: Bearer REDACTED",
+            ),
+            (
+                "Authorization:Bearer\ttoken-value-1",
+                "Authorization:Bearer\tREDACTED",
+            ),
+            (
+                "authorization:\tbearer \t abc123def end",
+                "authorization:\tbearer \t REDACTED end",
+            ),
+            (
+                "Authorization: Basic   dXNlcjpwYXNz",
+                "Authorization: Basic   REDACTED",
+            ),
+            ("Bearer  abc123def", "Bearer  REDACTED"),
+            ("Bearer\tabc123def", "Bearer\tREDACTED"),
+        ] {
+            assert_eq!(s.scrub(input), want, "{input}");
+        }
+    }
+
+    #[test]
+    fn s1_standalone_basic_credential() {
+        let s = sc();
+        assert_eq!(s.scrub("Basic dXNlcjpwYXNz"), "Basic REDACTED");
+        assert_eq!(
+            s.scrub("sent Basic dXNlcjpwYXNzd29yZDEyMw== to the proxy"),
+            "sent Basic REDACTED to the proxy"
+        );
+        assert_eq!(s.scrub("basic dXNlcjpwYXNz"), "basic REDACTED");
+    }
+
+    #[test]
+    fn s1_long_hex_runs_are_ids() {
+        let s = sc();
+        let sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        assert_eq!(s.scrub(&format!("sha256 {sha256} bad")), "sha256 <id> bad");
+        assert_eq!(s.scrub(&format!("sum={}", &sha256[..40])), "sum=<id>");
+        assert_eq!(s.scrub(&sha256.to_uppercase()), "<id>");
+        assert_eq!(s.scrub(&"ab".repeat(100)), "<id>");
+        // 32 hex chars still, shorter ones are no id
+        assert_eq!(s.scrub(&sha256[..32]), "<id>");
+        assert_eq!(s.scrub(&sha256[..39]), &sha256[..39]);
+        // the compiler's commit in a standard library panic location
+        let loc = format!(
+            "at /rustc/{}/library/core/src/option.rs:12:5",
+            &sha256[..40]
+        );
+        assert_eq!(s.scrub_message(&loc), loc);
+    }
+
+    #[test]
+    fn s1_base64_secrets_with_a_slash_or_padding_go_whole() {
+        let s = sc();
+        let blob = "AAAAB3NzaC1yc2EAAAADAQABAAABgQC+abc/0123456789ABCDEFG";
+        assert_eq!(s.scrub(blob), "<token>");
+        assert_eq!(s.scrub(&format!("ssh-rsa {blob} me")), "ssh-rsa <token> me");
+        assert_eq!(s.scrub(&format!("key \"{blob}\"")), "key \"<token>\"");
+        // padding, with or without digits
+        assert_eq!(
+            s.scrub("data VGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl== end"),
+            "data <token> end"
+        );
+        assert_eq!(
+            s.scrub("data AbCdEfGhIjKlMnOpQrSt1vWxYz= end"),
+            "data <token> end"
+        );
+        assert_eq!(
+            s.scrub("data AbCdEfGhIjKlMnOpQrStUvWxYz= end"),
+            "data AbCdEfGhIjKlMnOpQrStUvWxYz= end",
+            "one `=` and no digit: a name, not a secret"
+        );
+        // slash early and late, no digit at all but a `+`
+        assert_eq!(
+            s.scrub("QWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4/eXphYmNkZWZnaGlqa2xtbm9w+QUJD"),
+            "<token>"
+        );
+        // not secrets: paths, identifiers, `name=value`, short strings
+        for same in [
+            "/usr/lib64/QtQuick/Controls2/Material/impl/ButtonBackground",
+            "QtQuick/Controls/Material/impl/ButtonBackground",
+            "maximumConnectionTimeoutSeconds=30",
+            "maximumConnectionTimeoutSeconds=",
+            "Plasma/Lookandfeel5/contents/Foo2",
+            "image/svg+xml",
+            "https://example.org/Download/File/Abc123/def456xyzQRSTUV",
+        ] {
+            assert_eq!(s.scrub(same), same, "{same}");
+        }
+    }
+
+    #[test]
+    fn s1_webhook_paths_in_any_case() {
+        let s = sc();
+        assert_eq!(
+            s.scrub(&format!(
+                "POST https://hooks.slack.com/services/{}/{}/{} failed",
+                "T0123ABCD",
+                "B0123ABCD",
+                "X".repeat(24)
+            )),
+            "POST https://hooks.slack.com/services/<token> failed"
+        );
+        assert_eq!(
+            s.scrub(&format!(
+                "https://HOOKS.SLACK.COM/SERVICES/{}/{}/{}\"",
+                "T0123ABCD",
+                "B0123ABCD",
+                "X".repeat(24)
+            )),
+            "https://HOOKS.SLACK.COM/SERVICES/<token>\""
+        );
+        assert_eq!(
+            s.scrub("https://discord.com/api/webhooks/1234567890/ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+            "https://discord.com/api/webhooks/<token>"
+        );
+        assert_eq!(
+            s.scrub("https://hooks.slack.com/"),
+            "https://hooks.slack.com/"
+        );
+    }
+
+    #[test]
+    fn s1_serials_and_imeis() {
+        let s = sc();
+        for (input, want) in [
+            ("ID_SERIAL=WD-WX12A3456789", "ID_SERIAL=REDACTED"),
+            ("ID_SERIAL_SHORT=WX12A3456789", "ID_SERIAL_SHORT=REDACTED"),
+            ("serial: 4C4C4544-0042", "serial: REDACTED"),
+            ("SerialNumber=ABC123", "SerialNumber=REDACTED"),
+            ("imei=490154203237518", "imei=REDACTED"),
+            // a bare IMEI (15 digits, valid check digit)
+            ("modem 490154203237518 failed", "modem <id> failed"),
+        ] {
+            assert_eq!(s.scrub(input), want, "{input}");
+        }
+        // not an IMEI: wrong check digit, wrong length; not a key: `serial` alone
+        for same in [
+            "modem 490154203237519 failed",
+            "count 4901542032375",
+            "the serial port is closed",
+            "serial_console=ttyS0 x",
+        ] {
+            let got = s.scrub(same);
+            if same.contains("serial_console") {
+                assert!(got.contains("serial_console=ttyS0"), "{got}");
+            } else {
+                assert_eq!(got, same, "{same}");
+            }
+        }
+    }
+
+    // ---- 2.0.8: paths outside the system's directories are hidden
+
+    #[test]
+    fn s2_any_absolute_path_outside_the_system_is_hidden() {
+        let s = sc();
+        for (input, want) in [
+            (
+                "open /data/clients/AcmeCorp/q3-report.xlsx failed",
+                "open <path>",
+            ),
+            ("/storage/photos/me.jpg", "<path>"),
+            ("see /Volumes/x/y", "see <path>"),
+            ("x=/data/y z", "x=<path>"),
+            ("'/data/a b/c'", "'<path>"),
+            ("(/mnt2/y)", "(<path>"),
+            ("a:/srv2/x", "a:<path>"),
+            (
+                "cannot read /data/x: Permission denied (os error 13)",
+                "cannot read <path>: Permission denied (os error 13)",
+            ),
+            ("/home", "<path>"),
+            ("/var/cache/private/x", "<path>"),
+            ("/usr.bak/x", "<path>"),
+            ("/devices/x", "<path>"),
+        ] {
+            assert_eq!(s.scrub_message(input), want, "{input}");
+        }
+    }
+
+    #[test]
+    fn s2_system_paths_and_non_paths_stay() {
+        let s = sc();
+        for same in [
+            "/usr/lib64/libfoo.so.1",
+            "/usr",
+            "/bin/sh -c",
+            "/sbin/x /lib/x /lib64/x /opt/x /app/bin/x",
+            "/etc/os-release",
+            "/etc",
+            "/proc/self/maps /sys/class/drm/card0 /dev/dri/renderD128",
+            "/boot/efi /run/dbus/system_bus_socket /sysroot/ostree/repo /ostree/deploy",
+            "/var/lib/flatpak/app/org.x.Y /var/lib/atlas-core/events.jsonl /var/log/journal",
+            "at /rustc/4d91de4e48198da2e33413efdcd9cd2cc0c46688/library/core/src/option.rs:1:1",
+            "at /builddir/build/BUILD/telamon-2.0.8/src/lib.rs:1:1",
+            "https://example.org/a/b",
+            "http://localhost:8080/x",
+            "load qrc:/qt/qml/Telamon/Ui/Main.qml:12:5 and :/icons/x.png",
+            "a/b and/or 10/12/2026 text/plain km/h",
+            "1 / 2 and / alone",
+            "unexpected </div> tag",
+            "src/main.rs:12:5 ./rel/x ../up",
+        ] {
+            assert_eq!(s.scrub_message(same), same, "{same}");
+        }
+        // private places are still hidden first
+        assert_eq!(s.scrub_message("/run/user/1000/bus"), "<path>");
+        assert_eq!(s.scrub_message("/tmp/x /usr/lib/y"), "<path>");
+    }
+
+    // ---- 2.0.8: the full name's words
+
+    #[test]
+    fn s3_each_word_of_the_full_name_is_scrubbed() {
+        let passwd = "root:x:0:0:Super User:/root:/bin/bash\n\
+                      zach:x:1000:1000:Zachary O'Smith,Room 4,555-1,555-2:/var/home/zach:/bin/bash\n\
+                      jo:x:1001:1001:Jo Li:/home/jo:/bin/sh\n";
+        let (users, homes) = passwd_names(passwd, "1000");
+        assert_eq!(homes, ["/var/home/zach"]);
+        for want in ["zach", "Zachary O'Smith", "Zachary", "O'Smith"] {
+            assert!(users.iter().any(|u| u == want), "{want} in {users:?}");
+        }
+        // words under 3 characters and the other fields are not names
+        assert!(
+            !users.iter().any(|u| u == "O" || u.contains("Room")),
+            "{users:?}"
+        );
+        let u: Vec<&str> = users.iter().map(String::as_str).collect();
+        let s = Scrubber::new(&u, &[], &["/var/home/zach"]);
+        assert_eq!(
+            s.scrub("O'Smith wrote, ZACHARY too, smithy and zacharyx not, Zachary O'Smith"),
+            "USER wrote, USER too, smithy and zacharyx not, USER"
+        );
+        // other users' lines and short words
+        let (users, _) = passwd_names(passwd, "1001");
+        assert_eq!(users, ["jo", "Jo Li"]);
+        let (users, _) = passwd_names(passwd, "0");
+        // `Super User`: `User` is a common name and is not scrubbed
+        let u: Vec<&str> = users.iter().map(String::as_str).collect();
+        assert_eq!(Scrubber::new(&u, &[], &[]).scrub("a Super User"), "a USER");
+    }
+
+    // ---- 2.0.8: uptime and RAM are coarse
+
+    #[test]
+    fn s4_uptime_is_whole_hours_and_ram_whole_gb() {
+        assert_eq!(coarse_uptime(0), 0);
+        assert_eq!(coarse_uptime(3599), 0);
+        assert_eq!(coarse_uptime(3600), 3600);
+        assert_eq!(coarse_uptime(98_765), 97_200);
+        const GB: u64 = 1024 * 1024;
+        assert_eq!(coarse_ram_kb(0), 0);
+        assert_eq!(coarse_ram_kb(300_000), GB, "1 GB at least");
+        assert_eq!(coarse_ram_kb(33_000_000), 31 * GB); // 31.47 GB
+        assert_eq!(coarse_ram_kb(33_500_000), 32 * GB); // 31.95 GB
+        assert_eq!(coarse_ram_kb(32 * GB), 32 * GB);
+        assert_eq!(
+            coarse_ram_kb(u64::MAX),
+            u64::MAX,
+            "saturates, never overflows"
+        );
+        // built reports hold the coarse values; the payload applies them to
+        // a stored (older) report too
+        let r = report("  0: f\n");
+        assert_eq!(r.uptime_secs % 3600, 0);
+        assert_eq!(r.ram_total_kb % GB, 0);
+        let mut old = r.clone();
+        old.uptime_secs = 98_765;
+        old.ram_total_kb = 33_000_000;
+        old.mem_used_kb = 1_000_000;
+        let p = old.payload();
+        assert_eq!(p["contexts"]["runtime"]["uptime_secs"], 97_200);
+        assert_eq!(p["contexts"]["device"]["memory_size"], 31 * GB * 1024);
+        assert_eq!(
+            p["contexts"]["device"]["free_memory"],
+            (31 * GB - 1_000_000) * 1024
+        );
+    }
+
+    // ---- 2.0.8: text from outside is cleaned and made inert
+
+    #[test]
+    fn s5_messages_and_frames_lose_bidi_and_invisible_characters() {
+        let c = Crash {
+            report_type: "panic",
+            app_name: "net.eterneon.telamon.up\u{202e}dater",
+            app_version: Some("0.1.\u{200b}0"),
+            message: "txt\u{202e}fdp.exe \u{200b}zero\u{feff}width \u{e0041}tag\u{2066}x\u{2069} bell\u{7}\r!",
+            stacktrace: "  0: foo\u{202e}bar\n  1: ba\u{200b}z\n",
+        };
+        let r = build_report(&c, &sc(), Some("2026-10-02T10:00:00Z")).unwrap();
+        for text in [&r.message, &r.stacktrace, &r.app_name] {
+            assert!(
+                !text.chars().any(|c| c.is_control() && c != '\n'
+                    || matches!(c, '\u{202a}'..='\u{202e}' | '\u{2060}'..='\u{206f}'
+                        | '\u{200b}'..='\u{200f}' | '\u{feff}' | '\u{e0000}'..='\u{e007f}')),
+                "{text:?}"
+            );
+        }
+        assert_eq!(r.message, "txtfdp.exe zerowidth tagx bell!");
+        assert_eq!(r.stacktrace, "  0: foobar\n  1: baz");
+        assert_eq!(r.app_name, "net.eterneon.telamon.updater");
+        assert_eq!(r.app_version.as_deref(), Some("0.1.0"));
+        // the same in the payload
+        let p = r.payload().to_string();
+        assert!(!p.contains("202e") && !p.contains('\u{202e}'));
+    }
+
+    #[test]
+    fn s5_invisible_characters_cannot_split_a_secret_from_the_scrubber() {
+        let c = Crash {
+            report_type: "fatal",
+            app_name: "app",
+            app_version: None,
+            message: "pass\u{200b}word=hunter2 and tok\u{202e}en: abcdef",
+            stacktrace: "",
+        };
+        let r = build_report(&c, &sc(), Some("2026-10-02T10:00:00Z")).unwrap();
+        assert_eq!(r.message, "password=REDACTED and token: REDACTED");
+    }
+
+    #[test]
+    fn s5_mentions_links_images_and_html_are_made_inert() {
+        let c = Crash {
+            report_type: "panic",
+            app_name: "app",
+            app_version: None,
+            message: "ping @octocat and @org/team! ![x](http://t.example/p.png) [a](http://e.example) <img src=x> <A href=y> a<img/src=//t.example/p> </iframe> <script> Vec<Form> <Form as Trait>::f",
+            stacktrace: "  0: <alloc::vec::Vec<u8> as core::fmt::Debug>::fmt\n  1: f@plt\n",
+        };
+        let r = build_report(&c, &sc(), Some("2026-10-02T10:00:00Z")).unwrap();
+        assert_eq!(
+            r.message,
+            "ping @ octocat and @ org/team! ![x] (http://t.example/p.png) [a] (http://e.example) < img src=x> < A href=y> a< img/src=//t.example/p> </iframe> <script> Vec<Form> <Form as Trait>::f"
+        );
+        // generics, `f@plt`, e-mail like words are untouched
+        assert_eq!(
+            r.stacktrace,
+            "  0: <alloc::vec::Vec<u8> as core::fmt::Debug>::fmt\n  1: f@plt"
+        );
+        assert_eq!(
+            defang("Vec<a::b> a<b x@y.z (1)[2]"),
+            "Vec<a::b> a<b x@y.z (1)[2]"
+        );
+        // idempotent: a second pass changes nothing
+        assert_eq!(defang(&r.message), r.message);
+    }
+
+    #[test]
+    fn s5_code_fence_is_longer_than_any_backtick_run_in_the_trace() {
+        let r = report("  0: a```b\n  1: c`d\n  2: e``````f\n");
+        let url = github_issue_url(&r, "AtlasOS");
+        let body = String::from_utf8(percent_decode(&url)).unwrap();
+        let body = body.split("&body=").nth(1).unwrap();
+        // 6 backticks in a frame: the fence is 7
+        assert!(body.contains("\n```````\n  "), "{body}");
+        assert!(body.trim_end().ends_with("\n```````"), "{body}");
+        assert!(!body.contains("\n``````\n"), "{body}");
+        // no backticks in the trace: the usual three
+        let url = github_issue_url(&report("  0: f\n"), "AtlasOS");
+        let body = String::from_utf8(percent_decode(&url)).unwrap();
+        assert!(body.contains("\n```\n  0: f\n```"), "{body}");
+        // still bounded when a long trace is cut
+        let long: String = (0..2000).map(|i| format!("  {i}: f```{i}\n")).collect();
+        let url = github_issue_url(&report(&long), "AtlasOS");
+        assert!(url.len() <= MAX_URL);
+        let body = String::from_utf8(percent_decode(&url)).unwrap();
+        assert!(
+            body.contains("\n````\n") && !body.contains("\n```\n"),
+            "a run of 3 backticks needs a fence of 4"
+        );
+    }
+
+    // ---- 2.0.8: events with a time that cannot be a file name
+
+    #[test]
+    fn s9_a_very_long_time_is_invalid_input_and_does_not_stall_events() {
+        let d = tempfile::tempdir().unwrap();
+        let mut r = report("  0: f\n");
+        r.time = "0".repeat(300);
+        let e = write_report(d.path(), &r).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::InvalidInput);
+        r.time = "2".repeat(41);
+        assert_eq!(
+            write_report(d.path(), &r).unwrap_err().kind(),
+            io::ErrorKind::InvalidInput
+        );
+        r.time = "2026-10-02T10:00:00.123456789+00:00".into();
+        write_report(d.path(), &r).unwrap();
+
+        let (marker, pending) = (d.path().join("events-last"), d.path().join("pending"));
+        let sc = Scrubber::new(&[], &[], &[]);
+        // the long time sorts after the real ones (a longer string with the
+        // same start): the event is picked, cannot be written, and is skipped
+        let long = format!("2026-10-02T10:00:01Z{}", "0".repeat(300));
+        let log = vec![
+            ev("2026-10-02T10:00:00Z"),
+            ev(&long),
+            ev("2026-10-02T10:00:02Z"),
+        ];
+        fs::write(&marker, "2026-10-02T09:00:00Z 0").unwrap();
+        let on = || true;
+        let out = collect_events_in(
+            &log,
+            &marker,
+            &pending,
+            &sc,
+            "2026-10-02T12:00:00Z",
+            None,
+            &on,
+        )
+        .unwrap();
+        assert_eq!(out.len(), 2, "both good events, the long one skipped");
+        let m = fs::read_to_string(&marker).unwrap();
+        assert!(m.starts_with("2026-10-02T10:00:02Z"), "{m}");
+        let again = collect_events_in(
+            &log,
+            &marker,
+            &pending,
+            &sc,
+            "2026-10-02T12:00:00Z",
+            None,
+            &on,
+        )
+        .unwrap();
+        assert!(again.is_empty());
+    }
+
+    // ---- 2.0.8: the OS version from the history file
+
+    #[test]
+    fn s10_versions_are_plain_and_capped() {
+        assert_eq!(
+            plain_version("44.20261008.0").as_deref(),
+            Some("44.20261008.0")
+        );
+        assert_eq!(
+            plain_version("stable-1.2~rc1+x:3").as_deref(),
+            Some("stable-1.2~rc1+x:3")
+        );
+        // up to the first character a version does not have
+        assert_eq!(
+            plain_version("1.2.3 (call me @octocat)").as_deref(),
+            Some("1.2.3")
+        );
+        assert_eq!(plain_version("1.2\u{202e}3").as_deref(), Some("1.2"));
+        assert_eq!(plain_version("\u{202e}1.2"), None);
+        assert_eq!(plain_version(""), None);
+        let long = "1".repeat(500);
+        assert_eq!(plain_version(&long).unwrap().len(), MAX_VERSION);
+
+        let entry = |v: &str| history::Entry {
+            version: Some(v.to_string()),
+            digest: "sha256:x".into(),
+            image: "ghcr.io/x/y:stable".into(),
+            timestamp: None,
+            first_booted: "2026-10-01T00:00:00Z".into(),
+        };
+        let hist = vec![entry(&long), entry("44.1 secret words")];
+        let (v, ch, prev) = os_info(None, &hist);
+        assert_eq!(v.unwrap().len(), MAX_VERSION);
+        assert_eq!(prev.as_deref(), Some("44.1"));
+        assert_eq!(ch, None);
+    }
+
+    #[test]
+    fn s10_an_event_version_is_a_plain_version_in_the_report() {
+        let d = tempfile::tempdir().unwrap();
+        let (marker, pending) = (d.path().join("events-last"), d.path().join("pending"));
+        let sc = Scrubber::new(&[], &[], &[]);
+        let mut e = ev("2026-10-02T10:00:00Z");
+        e.event = "update-failed".into();
+        e.version = Some(format!("9.9{}@octocat {}", "9".repeat(200), "x"));
+        fs::write(&marker, "2026-10-02T09:00:00Z 0").unwrap();
+        let on = || true;
+        let out = collect_events_in(
+            &[e],
+            &marker,
+            &pending,
+            &sc,
+            "2026-10-02T12:00:00Z",
+            None,
+            &on,
+        )
+        .unwrap();
+        assert_eq!(out.len(), 1);
+        if let Some(v) = &out[0].atlasos_version {
+            assert!(v.len() <= MAX_VERSION, "{v}");
+            assert!(
+                v.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || ".-_+~:".contains(c))
+            );
+        }
+    }
+
+    // ---- 2.0.8: reading report files
+
+    fn write_json(dir: &Path, name: &str, r: &Report) -> PathBuf {
+        fs::create_dir_all(dir).unwrap();
+        let p = dir.join(name);
+        fs::write(&p, serde_json::to_vec_pretty(r).unwrap()).unwrap();
+        p
+    }
+
+    #[test]
+    fn s11_report_files_are_not_followed_through_links_nor_read_from_fifos() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        fs::create_dir_all(&pend).unwrap();
+        let outside = write_json(d.path(), "outside.json", &report("  0: f\n"));
+        std::os::unix::fs::symlink(&outside, pend.join("2026-10-02T10:00:00Z-00.json")).unwrap();
+        let fifo = pend.join("2026-10-02T10:00:01Z-00.json");
+        let c = std::ffi::CString::new(fifo.to_str().unwrap()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
+        fs::create_dir(pend.join("2026-10-02T10:00:02Z-00.json")).unwrap();
+        // a real one next to them
+        write_json(&pend, "2026-10-02T10:00:03Z-00.json", &report("  0: f\n"));
+        let got = read_reports(&pend); // returns: the FIFO is not opened for good
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert!(
+            got[0]
+                .path
+                .as_ref()
+                .unwrap()
+                .ends_with("2026-10-02T10:00:03Z-00.json")
+        );
+        // the link, the FIFO and the directory are left where they are
+        assert_eq!(fs::read_dir(&pend).unwrap().count(), 4);
+        assert!(outside.exists());
+    }
+
+    #[test]
+    fn s11_a_report_file_over_the_limit_is_not_read_and_is_quarantined() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        fs::create_dir_all(&pend).unwrap();
+        let big = pend.join("2026-10-02T10:00:00Z-00.json");
+        let f = fs::File::create(&big).unwrap();
+        f.set_len(MAX_REPORT_BYTES + 1).unwrap();
+        f.set_modified(SystemTime::now() - Duration::from_secs(3600))
+            .unwrap();
+        drop(f);
+        let small = write_json(&pend, "2026-10-02T10:00:01Z-00.json", &report("  0: f\n"));
+        assert_eq!(
+            read_report_file(&big).unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        );
+        let got = read_reports(&pend);
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].path.as_deref(), Some(small.as_path()));
+        assert!(!big.exists(), "moved out of pending/");
+        assert!(
+            d.path()
+                .join(QUARANTINE)
+                .join("2026-10-02T10:00:00Z-00.json")
+                .exists()
+        );
+    }
+
+    #[test]
+    fn s11_an_old_report_is_scrubbed_again_when_listed_and_sent() {
+        let d = tempfile::tempdir().unwrap();
+        let pend = d.path().join("pending");
+        let mut old = report("  0: f\n  1: g\u{202e}h\n");
+        old.message =
+            "pass=hunter2 \u{202e}cod.exe open /data/clients/Acme/q3.xlsx @octocat zachary Smith"
+                .into();
+        old.stacktrace = "  0: f(token=abc123 /data/x)\n  1: g\u{202e}h\n  junk line\n".into();
+        old.app_name = "net.eterneon.telamon.updater\u{200b}".into();
+        old.atlasos_version = Some(format!("44.1 {}", "very secret ".repeat(40)));
+        old.channel = Some("stable\u{202e}".into());
+        old.uptime_secs = 98_765;
+        old.ram_total_kb = 33_000_000;
+        write_json(&pend, "2026-10-02T10:00:00Z-00.json", &old);
+        // the file itself is as the old version wrote it
+        let raw = read_reports(&pend);
+        assert!(raw[0].message.contains("hunter2"));
+
+        let listed = pending_in(&pend, &sc());
+        assert_eq!(listed.len(), 1);
+        let r = &listed[0];
+        assert_eq!(r.message, "pass=REDACTED cod.exe open <path>");
+        assert_eq!(r.stacktrace, "  0: f(token=REDACTED <path>\n  1: gh");
+        assert_eq!(r.app_name, "net.eterneon.telamon.updater");
+        assert_eq!(r.atlasos_version.as_deref(), Some("44.1"));
+        assert_eq!(r.channel.as_deref(), Some("stable"));
+        assert_eq!(r.uptime_secs, 97_200);
+        assert_eq!(r.ram_total_kb, 31 * 1024 * 1024);
+        assert_eq!(r.path, raw[0].path);
+        // what is shown is what is sent
+        let shown = r.to_json_pretty().unwrap();
+        for leak in ["hunter2", "Acme", "202e", "98765", "octocat"] {
+            assert!(!shown.contains(leak), "{leak} in {shown}");
+        }
+        assert!(!shown.contains('\u{202e}'));
+        // the history list too
+        let sent = d.path().join("sent");
+        write_json(&sent, "2026-10-02T10:00:00Z-00.json", &old);
+        assert_eq!(
+            sent_in(&sent, &sc())[0].message,
+            "pass=REDACTED cod.exe open <path>"
+        );
+        // a Flatpak app ID is not taken for a token
+        let mut fp = report("  0: f\n");
+        fp.app_name = "io.github.musmandev092.ClaudeDesktop".into();
+        assert_eq!(
+            rescrub(fp, &sc()).app_name,
+            "io.github.musmandev092.ClaudeDesktop"
+        );
+        // scrubbing again changes nothing
+        let again = rescrub(r.clone(), &sc());
+        assert_eq!(&again, r);
+    }
+
+    // ---- 2.0.8: the payload has a size limit
+
+    #[test]
+    fn payload_is_capped_by_dropping_frames_far_from_the_top() {
+        let trace: String = (0..6000)
+            .map(|i| format!("  {i}: some::module::function_number_{i}\n"))
+            .collect();
+        let mut r = report("  0: f\n");
+        r.stacktrace = trace;
+        r.message = "m".repeat(MAX_MESSAGE);
+        let p = r.payload();
+        let body = serde_json::to_vec(&p).unwrap();
+        assert!(body.len() <= MAX_PAYLOAD, "{}", body.len());
+        serde_json::from_slice::<Value>(&body).unwrap();
+        let frames = p["exception"]["values"][0]["stacktrace"]["frames"]
+            .as_array()
+            .unwrap();
+        // Sentry order: the top of the stack (frame 0) is the last one
+        assert_eq!(
+            frames.last().unwrap()["function"],
+            "some::module::function_number_0"
+        );
+        assert!(frames.len() < 6000);
+        assert_eq!(
+            p["extra"]["trace_frames_dropped"].as_u64().unwrap() as usize,
+            6000 - frames.len()
+        );
+        // a small report is as it was, with no note
+        let q = report("  0: f\n").payload();
+        assert!(q.get("extra").is_none());
+        assert_eq!(
+            q["exception"]["values"][0]["stacktrace"]["frames"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn payload_cuts_a_message_that_alone_is_too_long() {
+        let mut r = report("");
+        r.message = "ü\"\n".repeat(60_000); // escapes make it bigger than it is
+        let p = r.payload();
+        let body = serde_json::to_vec(&p).unwrap();
+        assert!(body.len() <= MAX_PAYLOAD, "{}", body.len());
+        let m = p["message"].as_str().unwrap();
+        assert!(
+            m.ends_with("[... cut]") && m.starts_with("ü\"\n"),
+            "{}",
+            &m[m.len() - 20..]
+        );
+        // the other fields too long for any cut: not sent
+        let d = tempfile::tempdir().unwrap();
+        let mut r = report("  0: f\n");
+        r.app_name = "a".repeat(2 * MAX_PAYLOAD);
+        let ep = Endpoint {
+            key: "k".into(),
+            store_url: "https://127.0.0.1:9/api/1/store/".into(),
+        };
+        let e = post_in(d.path(), &r, &ep).unwrap_err();
+        assert_eq!(send_failure(&e), Some(&SendFailure::Rejected));
+        assert_eq!(
+            fs::read_dir(d.path()).unwrap().count(),
+            0,
+            "no body file made"
+        );
+    }
+
+    // ---- 2.0.8, second round: findings of the security review
+
+    #[test]
+    fn f1_a_word_full_of_colons_is_scrubbed_in_linear_time() {
+        let s = sc();
+        for unit in [":", "a:", "1:", "::1", "a:b:"] {
+            let word = unit.repeat(256 * 1024 / unit.len());
+            let start = Instant::now();
+            let _ = s.scrub(&word);
+            let _ = untrusted_text(&s, &word);
+            let took = start.elapsed();
+            assert!(took < Duration::from_secs(5), "{unit:?} took {took:?}");
+        }
+        // a reported trace line of that kind, listed (`rescrub`)
+        let mut r = report("  0: f\n");
+        r.stacktrace = format!("  0: {}", ":".repeat(256 * 1024));
+        let start = Instant::now();
+        let _ = rescrub(r, &s);
+        assert!(start.elapsed() < Duration::from_secs(5));
+        // short labels still work
+        assert_eq!(s.scrub("host:10.0.0.1"), "host:<ip>");
+    }
+
+    #[test]
+    fn f2_untrusted_text_is_idempotent() {
+        let s = sc();
+        let hex = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let cases = [
+            format!("@{hex}"),
+            "@490154203237518".to_string(),
+            "x @octocat y".to_string(),
+            "a.@victim x-@victim +@victim _@v".to_string(),
+            "![x](http://e.example/p.png)[a][b] [x]: https://e.example\n[y]:   //e.example".to_string(),
+            "<https://evil.example/x> <mailto:a@b.example> <img src=x> <A href=y>".to_string(),
+            "pass\u{200b}word=hunter2 @pass=1 token: @abc".to_string(),
+            "@@@octocat @ @1 ]( ][ ]:".to_string(),
+            "zachary@fedora-box.local @zachary @fedora-box".to_string(),
+            format!("sha-{hex} 0x{hex} {hex}.json @{hex}.json"),
+            "/data/x @/data/y </data/z> @/home/zachary".to_string(),
+            "AAAAB3NzaC1yc2EAAAADAQABAAABgQC+abc/0123456789ABCDEFG @AAAAB3NzaC1yc2EAAAADAQABAAABgQC+abc/0123456789ABCDEFG".to_string(),
+            "Authorization: Bearer  @abc\tBasic dXNlcjpwYXNz".to_string(),
+            "```\n``````````````````````````````\n".to_string(),
+            "ü@ü <ü> \u{202e}@x".to_string(),
+        ];
+        for c in &cases {
+            let once = untrusted_text(&s, c);
+            assert_eq!(untrusted_text(&s, &once), once, "{c:?} -> {once:?}");
+        }
+        assert!(!untrusted_text(&s, &cases[0]).contains(&hex[..16]));
+        assert!(!untrusted_text(&s, &cases[1]).contains("490154203237518"));
+    }
+
+    #[test]
+    fn f3_long_hex_runs_go_inside_words_too() {
+        let s = sc();
+        let h64 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let h40 = &h64[..40];
+        for (input, want) in [
+            (format!("build-{h40}"), "build-<id>".to_string()),
+            (format!("sha-{h64}"), "sha-<id>".to_string()),
+            (format!("0x{h64}"), "0x<id>".to_string()),
+            (format!("{h40}.json"), "<id>.json".to_string()),
+            (format!("x{h40}y"), "x<id>y".to_string()),
+            (format!("a/{h64}/b"), "a/<id>/b".to_string()),
+            (format!("{h64}{h64}"), "<id>".to_string()),
+            (format!("sha256:{h64}"), "sha256:<id>".to_string()),
+        ] {
+            assert_eq!(s.scrub(&input), want, "{input}");
+        }
+        // 39 digits, and the compiler commit, stay
+        let h39 = h40[..39].to_string();
+        assert_eq!(s.scrub(&format!("x-{h39}")), format!("x-{h39}"));
+        let loc = format!("at /rustc/{h40}/library/core/src/option.rs:1:1");
+        assert_eq!(s.scrub_message(&loc), loc);
+        assert_eq!(s.scrub(&format!("rustc/{h40}")), "rustc/<id>");
+    }
+
+    #[test]
+    fn f4_a_mention_after_a_non_word_character_is_defanged() {
+        assert_eq!(defang("x-@victim"), "x-@ victim");
+        assert_eq!(defang("a.@victim"), "a.@ victim");
+        assert_eq!(defang("+@victim"), "+@ victim");
+        assert_eq!(
+            defang("(@victim) \"@victim\" =@victim"),
+            "(@ victim) \"@ victim\" =@ victim"
+        );
+        // after a letter, digit or `_`: not a mention (an address, `icon@2x`)
+        assert_eq!(
+            defang("a@b.example icon@2x _@v 9@v"),
+            "a@b.example icon@2x _@v 9@v"
+        );
+        let s = sc();
+        assert_eq!(s.scrub("mail a@b.example"), "mail <email>");
+        assert_eq!(untrusted_text(&s, "mail a@b.example"), "mail <email>");
+    }
+
+    #[test]
+    fn f5_reference_links_definitions_and_autolinks_are_defanged() {
+        assert_eq!(defang("[a][b]"), "[a] [b]");
+        assert_eq!(defang("see [a b][c]"), "see [a b] [c]");
+        assert_eq!(defang("![a][b]"), "![a] [b]");
+        assert_eq!(
+            defang("[x]: https://e.example/p"),
+            "[x] : https://e.example/p"
+        );
+        assert_eq!(
+            defang("ok\n   [x]: //e.example"),
+            "ok\n   [x] : //e.example"
+        );
+        assert_eq!(
+            defang("[x]: <https://e.example>"),
+            "[x] : < https://e.example>"
+        );
+        assert_eq!(defang("<https://e.example/p>"), "< https://e.example/p>");
+        assert_eq!(defang("<mailto:a@b.example>"), "< mailto:a@b.example>");
+        // normal text and frames are not changed
+        for same in [
+            "[2026-10-02] [INFO]: started",
+            "[x]: not an address",
+            "text [x]: https://e.example",
+            "     [x]: https://e.example",
+            "<alloc::vec::Vec<u8> as core::fmt::Debug>::fmt",
+            "<T as core::ops::Drop>::drop",
+            "<std::io::Error>::new a < b > c <:",
+            "v[0][1] a[i][j] x[1]: y",
+            "<foo bar> <3 < 4",
+        ] {
+            assert_eq!(defang(same), same, "{same}");
+        }
+        // a huge line of `]:` is no slower
+        let start = Instant::now();
+        let _ = defang(&"]:".repeat(128 * 1024));
+        assert!(start.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn f6_a_long_run_of_backticks_in_a_frame_keeps_the_trace_in_the_url() {
+        let r = report(&format!("  0: a{}b\n  1: g\n", "`".repeat(5000)));
+        let url = github_issue_url(&r, "AtlasOS");
+        assert!(url.len() <= MAX_URL);
+        let body = String::from_utf8(percent_decode(&url)).unwrap();
+        assert!(body.contains("1: g"), "{body}");
+        assert!(body.contains("  0: a"), "{body}");
+        // the fence is at most MAX_TICKS + 1, and no run in the trace reaches it
+        let runs = body.split(|c| c != '`').map(str::len).collect::<Vec<_>>();
+        assert_eq!(
+            runs.iter().filter(|n| **n == MAX_TICKS + 1).count(),
+            2,
+            "{runs:?}"
+        );
+        assert!(runs.iter().all(|n| *n <= MAX_TICKS + 1));
+        assert_eq!(break_backticks("``````````"), "```````` ``");
+        assert_eq!(break_backticks("a`b````"), "a`b````");
+    }
+
+    #[test]
+    fn f9_a_cut_message_is_not_cut_again() {
+        let big = "m".repeat(MAX_MESSAGE + 1000);
+        let once = cap_message(&big);
+        assert!(once.ends_with(&format!("[... cut: the message was {} bytes]", big.len())));
+        assert_eq!(cap_message(&once), once);
+        assert_eq!(cap_message(&cap_message(&once)), once);
+        // through a re-read
+        let mut r = report("  0: f\n");
+        r.message = once.clone();
+        assert_eq!(rescrub(r, &sc()).message, once);
     }
 }

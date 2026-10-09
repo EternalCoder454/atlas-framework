@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.7
+Version:        2.0.8
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -217,6 +217,17 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.8-1
+- Fix: the crash report scrubber hides more. Secrets such as PGPASSWORD=,
+  dbPassword=, pass=, an OAuth ?code=, Authorization: Bearer with several
+  spaces, a standalone Basic credential, long hex digests, base64 secrets that
+  contain a slash or end in =, webhook paths and serial or IMEI values. Every
+  absolute path outside the system's directories is hidden, and each word of
+  the full name. Uptime is rounded to the hour and RAM to the GB. Messages and
+  frames lose bidi and invisible characters. An event with a very long time no
+  longer stops event collection. Report files are read safely, scrubbed again
+  and the payload is at most 64 KiB.
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.7-1
 - Fix: an InfoBanner's close button (and FindBar's, TabBar's, and the shortcut
   field's clear button) draws a Material Symbol, not a chevron where the icon

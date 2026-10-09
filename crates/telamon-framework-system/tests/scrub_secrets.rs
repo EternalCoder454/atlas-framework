@@ -219,6 +219,21 @@ fn the_fixture_covers_every_kind() {
         "cookie",
         "set-cookie",
         "home-path",
+        "pgpassword-env",
+        "camelcase-password",
+        "db-pass",
+        "pass-assign",
+        "oauth-code",
+        "bearer-two-spaces",
+        "bearer-tab",
+        "basic-standalone",
+        "hex-sha256",
+        "hex-private-key",
+        "base64-with-slash",
+        "base64-padded",
+        "slack-webhook-upper",
+        "serial-key",
+        "imei",
     ] {
         assert!(kinds.iter().any(|k| k == want), "no {want} case");
     }
