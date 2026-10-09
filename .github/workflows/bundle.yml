@@ -259,7 +259,7 @@ jobs:
             echo "::error::fetched $(git -C "$dir" rev-parse HEAD), not $FRAMEWORK_REF"; exit 1
           fi
           if [ ! -x "$dir/tools/sign-bundle.sh" ]; then
-            echo "::error::framework-ref has no tools/sign-bundle.sh: use a commit from 2.0.8 on"; exit 1
+            echo "::error::framework-ref has no tools/sign-bundle.sh: use a commit from 2.0.10 on"; exit 1
           fi
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
 

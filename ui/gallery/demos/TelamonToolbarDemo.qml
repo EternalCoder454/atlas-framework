@@ -62,6 +62,7 @@ Item {
         spacing: Kirigami.Units.gridUnit
 
         QQC2.Label {
+            textFormat: Text.PlainText
             text: "Wide"
             font: Kirigami.Theme.smallFont
             opacity: 0.6
@@ -70,11 +71,13 @@ Item {
             Layout.fillWidth: true
             actions: [undo, redo, bold, italic, link, image]
             leading: QQC2.Label {
+                textFormat: Text.PlainText
                 text: "Notes"
                 font.bold: true
             }
         }
         QQC2.Label {
+            textFormat: Text.PlainText
             text: "Narrow: the rest is behind More"
             font: Kirigami.Theme.smallFont
             opacity: 0.6
@@ -85,6 +88,7 @@ Item {
             actions: [undo, redo, bold, italic, link, image]
         }
         QQC2.Label {
+            textFormat: Text.PlainText
             text: "Scroll: one button per step, with chevrons"
             font: Kirigami.Theme.smallFont
             opacity: 0.6
@@ -96,6 +100,7 @@ Item {
             actions: [undo, redo, bold, italic, link, image]
         }
         QQC2.Label {
+            textFormat: Text.PlainText
             text: "Vertical"
             font: Kirigami.Theme.smallFont
             opacity: 0.6

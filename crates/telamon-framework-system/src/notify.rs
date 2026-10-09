@@ -58,6 +58,16 @@ const NO_SERVICE: &str = "No notification service is running";
 /// The longest event id [`event_id_ok`] accepts.
 const MAX_EVENT_CHARS: usize = 64;
 
+/// What `send` puts on the bus, in characters (bytes for the icon): a title,
+/// a body, an action label, an action key, an icon, and the number of actions.
+/// Longer text is cut; more actions are dropped.
+const MAX_TITLE_CHARS: usize = 256;
+const MAX_BODY_CHARS: usize = 4096;
+const MAX_LABEL_CHARS: usize = 64;
+const MAX_KEY_CHARS: usize = 64;
+const MAX_ICON_BYTES: usize = 4096;
+const MAX_ACTIONS: usize = 8;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Urgency {
     Normal,
@@ -75,6 +85,8 @@ pub struct Note {
     pub event: &'static str,
     pub title: String,
     /// Body markup: escape anything that came from outside with [`escape`].
+    /// `send` also keeps only `<b>`, `<i>`, `<u>`, `<br>` and https links
+    /// and cuts the body at 4096 characters (see [`sanitize_body`]).
     pub text: String,
     /// Empty (the app's own icon), an icon name (letters, digits and
     /// `._+-`) or an absolute path without `..`. Anything else (a URL, a
@@ -122,6 +134,116 @@ pub fn escape(s: &str) -> String {
     out
 }
 
+/// `s` as a plain line for the server: control characters (NUL included) and
+/// line breaks become spaces, at most `max` characters.
+fn plain_text(s: &str, max: usize) -> String {
+    s.chars()
+        .take(max)
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect()
+}
+
+/// The markup the body keeps: `<b>`, `<i>`, `<u>`, `<br>` and their closing
+/// tags without attributes, and `<a href="https://...">`/`</a>` with a plain
+/// https link. Every other `<` (an `<img>`, which would make the server fetch
+/// or open something, a link to `file:` or `javascript:`, a stray tag) is
+/// turned into `&lt;`. Control characters other than line feed and tab
+/// become spaces, and the body is cut at `max` characters, never inside an
+/// entity or a tag. Text that went through [`escape`] has no `<` left, so it
+/// comes out as it went in.
+pub fn sanitize_body(text: &str, max: usize) -> String {
+    let text: String = text
+        .chars()
+        .map(|c| {
+            if c.is_control() && c != '\n' && c != '\t' {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect();
+    let mut out = String::with_capacity(text.len().min(max * 4));
+    let mut chars = 0usize;
+    let mut rest = text.as_str();
+    while !rest.is_empty() && chars < max {
+        if let Some(r) = rest.strip_prefix('<') {
+            let (piece, tail) = match tag_len(r) {
+                Some(n) => (&rest[..n + 1], &rest[n + 1..]),
+                None => ("&lt;", r),
+            };
+            let n = piece.chars().count();
+            if chars + n > max {
+                break;
+            }
+            out.push_str(piece);
+            chars += n;
+            rest = tail;
+        } else if rest.starts_with('&') {
+            // an entity is taken whole or not at all
+            let end = rest[1..]
+                .find(|c: char| !(c.is_ascii_alphanumeric() || c == '#'))
+                .map_or(rest.len(), |i| i + 1);
+            let whole = rest[end..].starts_with(';');
+            let n = if whole { end + 1 } else { 1 };
+            let piece = &rest[..n];
+            let w = piece.chars().count();
+            if chars + w > max {
+                break;
+            }
+            out.push_str(piece);
+            chars += w;
+            rest = &rest[n..];
+        } else {
+            let c = rest.chars().next().unwrap_or(' ');
+            out.push(c);
+            chars += 1;
+            rest = &rest[c.len_utf8()..];
+        }
+    }
+    out
+}
+
+/// If `r` (the text after a `<`) starts an allowed tag, the length of the
+/// tag after that `<`, up to and with the `>`.
+fn tag_len(r: &str) -> Option<usize> {
+    let end = r.find('>')?;
+    if end > 512 {
+        return None;
+    }
+    let inner = &r[..end];
+    let plain = |t: &str| matches!(t, "b" | "i" | "u" | "br" | "br/" | "br /" | "a");
+    let name = inner.strip_prefix('/').unwrap_or(inner);
+    if plain(name) || (inner.starts_with('/') && name == "a") {
+        return Some(end + 1);
+    }
+    // <a href="https://...">: one attribute, quoted, a plain link
+    let url = inner
+        .strip_prefix("a href=\"")
+        .and_then(|u| u.strip_suffix('"'))
+        .or_else(|| {
+            inner
+                .strip_prefix("a href='")
+                .and_then(|u| u.strip_suffix('\''))
+        })?;
+    let ok = url.len() > "https://".len()
+        && url.len() <= 2048
+        && url.starts_with("https://")
+        && url
+            .bytes()
+            .all(|b| b.is_ascii_graphic() && !matches!(b, b'"' | b'\'' | b'<' | b'>' | b'\\'));
+    ok.then_some(end + 1)
+}
+
+/// Whether `key` can be an action key: 1 to 64 ASCII letters, digits and
+/// `-`, `_`, `.`. ([`DEFAULT_ACTION`] is one.)
+pub fn action_key_ok(key: &str) -> bool {
+    !key.is_empty()
+        && key.len() <= MAX_KEY_CHARS
+        && key
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
+}
+
 /// Whether `event` can name a notifyrc group: 1 to 64 ASCII letters and
 /// digits, not starting with a digit (KNotification's camelCase ids). The
 /// id becomes part of a settings group name (`Event/<id>`), so nothing else
@@ -143,8 +265,11 @@ pub fn icon_ok(icon: &str) -> bool {
     if icon.starts_with('/') {
         return !icon.chars().any(char::is_control) && !icon.split('/').any(|part| part == "..");
     }
-    icon.bytes()
-        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'+' | b'-'))
+    icon != "."
+        && icon != ".."
+        && icon
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'+' | b'-'))
 }
 
 /// Whether a D-Bus error name says nobody owns the notification service.
@@ -257,20 +382,38 @@ impl Notifier {
                 n.event
             )));
         }
-        // Reads files: off the async worker.
+        for (key, _) in &n.actions {
+            if !action_key_ok(key) {
+                return Err(zbus::Error::Failure(format!(
+                    "not a notification action key: {key:?}"
+                )));
+            }
+        }
+        // Reads files: off the async worker, and not waited for for good (a
+        // home directory that hangs).
         let (component, legacy, event) = (
             self.component.clone(),
             self.legacy_component.clone(),
             n.event.to_string(),
         );
-        let popup = tokio::task::spawn_blocking(move || popup_for(&component, &legacy, &event))
-            .await
-            .unwrap_or(true);
+        let read = tokio::task::spawn_blocking(move || popup_for(&component, &legacy, &event));
+        let popup = match tokio::time::timeout(CALL_TIMEOUT, read).await {
+            Ok(r) => r.unwrap_or(true),
+            Err(_) => return Err(timed_out()),
+        };
         if !popup {
             return Ok(None);
         }
-        let mut actions: Vec<&str> = Vec::with_capacity(n.actions.len() * 2);
-        for (key, label) in &n.actions {
+        let title = plain_text(&n.title, MAX_TITLE_CHARS);
+        let text = sanitize_body(&n.text, MAX_BODY_CHARS);
+        let labels: Vec<String> = n
+            .actions
+            .iter()
+            .take(MAX_ACTIONS)
+            .map(|(_, label)| plain_text(label, MAX_LABEL_CHARS))
+            .collect();
+        let mut actions: Vec<&str> = Vec::with_capacity(labels.len() * 2);
+        for ((key, _), label) in n.actions.iter().zip(&labels) {
             actions.push(key);
             actions.push(label);
         }
@@ -287,7 +430,7 @@ impl Notifier {
         }
         let icon = if n.icon.is_empty() {
             self.app_icon()
-        } else if icon_ok(&n.icon) {
+        } else if icon_ok(&n.icon) && n.icon.len() <= MAX_ICON_BYTES {
             n.icon.as_str()
         } else {
             log::warn!(
@@ -302,8 +445,8 @@ impl Notifier {
             self.app_name.as_str(),
             0u32,
             icon,
-            n.title.as_str(),
-            n.text.as_str(),
+            title.as_str(),
+            text.as_str(),
             actions,
             hints,
             timeout,
@@ -475,6 +618,8 @@ mod tests {
             assert!(icon_ok(ok), "{ok:?}");
         }
         for bad in [
+            ".",
+            "..",
             "https://example.com/x.png",
             "file:///etc/passwd",
             "rel/x.png",
@@ -690,5 +835,131 @@ mod tests {
         let n = Note::new("updateStaged", "T", "B");
         assert!(n.icon.is_empty() && n.actions.is_empty());
         assert!(n.urgency.is_none() && !n.persistent);
+    }
+
+    #[test]
+    fn the_body_keeps_only_safe_markup() {
+        let keep = |t: &str| assert_eq!(sanitize_body(t, 4096), t, "{t:?}");
+        keep("plain & simple");
+        keep("<b>bold</b> <i>it</i><u>u</u><br/>x<br>");
+        keep("see <a href=\"https://example.org/a?b=c&amp;d\">this</a>");
+        keep("&lt;img src=x&gt; &amp; &#39;");
+        let cut = |t: &str, want: &str| assert_eq!(sanitize_body(t, 4096), want, "{t:?}");
+        cut(
+            "<img src=\"file:///etc/passwd\">",
+            "&lt;img src=\"file:///etc/passwd\">",
+        );
+        cut(
+            "<a href=\"file:///etc/passwd\">x</a>",
+            "&lt;a href=\"file:///etc/passwd\">x</a>",
+        );
+        cut(
+            "<a href=\"javascript:alert(1)\">x",
+            "&lt;a href=\"javascript:alert(1)\">x",
+        );
+        cut(
+            "<a href=\"http://example.org\">x",
+            "&lt;a href=\"http://example.org\">x",
+        );
+        cut(
+            "<a href=\"https://e.org\" onclick=\"x\">",
+            "&lt;a href=\"https://e.org\" onclick=\"x\">",
+        );
+        cut("<b onmouseover=x>", "&lt;b onmouseover=x>");
+        cut("a<b", "a&lt;b");
+        cut("nul\0bell\x07\u{85}ok\n\t", "nul bell  ok\n\t");
+        // escape() output passes through unchanged, whatever went in
+        let raw = "<img src=x> & \"q\" 'z' <a href=\"https://e.org\">";
+        assert_eq!(sanitize_body(&escape(raw), 4096), escape(raw));
+    }
+
+    #[test]
+    fn the_body_is_cut_outside_tags_and_entities() {
+        assert_eq!(sanitize_body("abcdef", 3), "abc");
+        assert_eq!(sanitize_body("ab&amp;cd", 3), "ab");
+        assert_eq!(sanitize_body("ab&amp;cd", 7), "ab&amp;");
+        assert_eq!(sanitize_body("ab<b>cd", 3), "ab");
+        assert_eq!(sanitize_body("ab<b>cd", 5), "ab<b>");
+        assert_eq!(sanitize_body("ééé", 2), "éé");
+        assert_eq!(sanitize_body(&"x".repeat(10_000), 4096).len(), 4096);
+    }
+
+    #[test]
+    fn titles_and_labels_are_one_plain_line() {
+        assert_eq!(plain_text("a\nb\0c\u{85}d", 99), "a b c d");
+        assert_eq!(plain_text("éééé", 2), "éé");
+    }
+
+    #[test]
+    fn action_keys_are_plain_words() {
+        for ok in ["default", "restart-now", "a_b.c", "A1"] {
+            assert!(action_key_ok(ok), "{ok}");
+        }
+        for bad in ["", "a b", "a\nb", "a\0", "é", "a/b", &"k".repeat(65)] {
+            assert!(!action_key_ok(bad), "{bad:?}");
+        }
+        assert!(action_key_ok(DEFAULT_ACTION));
+    }
+
+    mod props {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn markup() -> impl Strategy<Value = String> {
+            prop_oneof![
+                2 => any::<String>(),
+                3 => "[a-z<>&;#=\"'/ \\n\\u{0}\\u{85}b-iu]{0,60}",
+                1 => "(<[a-z/]{0,3}( [a-z]{1,4}=\"[a-z:/.]{0,8}\")?>|&[a-z]{0,4};?|[a-z ]){0,12}",
+            ]
+        }
+
+        proptest! {
+            #[test]
+            fn prop_body_is_bounded_and_has_no_unsafe_tag(t in markup(), max in 0usize..80) {
+                let out = sanitize_body(&t, max);
+                prop_assert!(out.chars().count() <= max);
+                prop_assert!(!out.chars().any(|c| c.is_control() && c != '\n' && c != '\t'));
+                // every '<' left starts an allowed tag
+                let mut rest = out.as_str();
+                while let Some(i) = rest.find('<') {
+                    let r = &rest[i + 1..];
+                    let n = tag_len(r);
+                    prop_assert!(n.is_some(), "{:?} in {:?}", &rest[i..], out);
+                    let n = n.unwrap();
+                    let tag = &r[..n];
+                    prop_assert!(!tag.starts_with("img"), "{tag}");
+                    if tag.starts_with("a ") {
+                        prop_assert!(tag.contains("href=\"https://") || tag.contains("href='https://"));
+                    }
+                    rest = &r[n..];
+                }
+            }
+
+            #[test]
+            fn prop_escaped_text_passes_unchanged(t in any::<String>()) {
+                let e = escape(&t);
+                // text that was escaped has no tag in it to remove
+                let out = sanitize_body(&e, 4096);
+                if e.chars().count() <= 4096 {
+                    prop_assert_eq!(out, e);
+                }
+            }
+
+            #[test]
+            fn prop_validators_never_panic(s in any::<String>()) {
+                if event_id_ok(&s) {
+                    prop_assert!(s.len() <= 64 && s.bytes().all(|b| b.is_ascii_alphanumeric()));
+                }
+                if icon_ok(&s) && !s.is_empty() {
+                    prop_assert!(!s.contains(['\0', '\n']));
+                    prop_assert!(!s.split('/').any(|p| p == ".."));
+                    prop_assert!(!s.contains("://"));
+                }
+                if action_key_ok(&s) {
+                    prop_assert!(s.is_ascii() && s.len() <= 64);
+                }
+                let _ = plain_text(&s, 5);
+            }
+        }
     }
 }

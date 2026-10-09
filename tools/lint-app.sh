@@ -359,7 +359,7 @@ total_errors=0
 total_warnings=0
 for app in "$@"; do
     if [ ! -d "$app" ]; then
-        echo "lint-app: not a directory: $app" >&2
+        echo "lint-app: not a directory: ${app//[[:cntrl:]]/?}" >&2
         exit 2
     fi
     count=0

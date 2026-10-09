@@ -69,6 +69,7 @@ Item {
             actions: [undo, redo]
             stretch: [
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "A stretch row takes the rest of the bar"
                     elide: Text.ElideRight

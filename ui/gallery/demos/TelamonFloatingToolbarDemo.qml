@@ -42,6 +42,7 @@ Item {
     }
 
     QQC2.Label {
+        textFormat: Text.PlainText
         anchors.fill: parent
         anchors.margins: Kirigami.Units.gridUnit
         wrapMode: Text.WordWrap

@@ -9,47 +9,180 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
-## 2.0.8
+## 2.0.10
 
 Tooling only, no API change: nothing in Telamon.Ui or the crates moved. Apps that
 ship as native bundles (`docs/BUNDLES.md`) get this by moving the pinned
-`bundle.yml` to the 2.0.8 commit; Telamon Store offers only releases whose
+`bundle.yml` to the 2.0.10 commit; Telamon Store offers only releases whose
 `telamon-bundle.json` carries a minisign signature, and this is how a release gets one.
 
 - New: signing. The `bundle.yml` workflow has a `sign` job (the framework's own tools,
-  never the app's code: it re-verifies the bundle, then signs `telamon-bundle.json`
-  with `minisign`) and attaches `telamon-bundle.json.minisig` beside the other two
-  files. The key is the optional secret `minisign-key` (and `minisign-password`),
-  in the environment of a step that parses nothing (the bundle is verified in the
-  step before, with no secret); without it the release is attached but left a
-  **draft**, with an error annotation that says how to sign offline (Store will not
-  offer an unsigned release; the input `allow-unsigned: true` publishes it anyway).
-  The new input `publish: false` leaves any release a draft, so its owner
-  can sign offline (`minisign -Sm telamon-bundle.json`) and publish by hand: the
-  recommended model, because a key stored as a repository secret is available to
-  everyone who can change the workflow or the build. The new input
-  `minisign-public-key` makes the run check the signature against the catalog's key.
-  `tools/sign-bundle.sh` does the signing (and runs by hand); "Signing" in
+  never the app's code) and attaches `telamon-bundle.json.minisig` beside the other two
+  files. The job runs `tools/sign-bundle.sh` in two steps: step A re-verifies the bundle
+  (`tools/bundle.py verify`) with no secret in its environment, step B has the optional
+  secret `minisign-key` (and `minisign-password`), parses nothing, checks that the
+  manifest is the file step A verified, and signs it with `minisign`. So the key is
+  never in the environment of anything that parses the bundle. A release without a
+  signature (no secret, a misspelled one, a fork) is attached but left a **draft**,
+  with an error annotation that says how to sign offline and publish; the new input
+  `allow-unsigned: true` publishes it anyway (Store will not offer it). The new input
+  `publish: false` leaves any release a draft, so its owner can sign offline
+  (`minisign -Sm telamon-bundle.json`) and publish by hand: the recommended model,
+  because a key stored as a repository secret is available to everyone who can change
+  the workflow or the build. The new input `minisign-public-key` makes the run check the
+  signature against the catalog's key, and fail when the secret is missing. "Signing" in
   `docs/BUNDLES.md` has the keys, the catalog entry and key rotation.
-- Fix (security): `tools/bundle.py verify` read a hostile bundle without limits in
-  three places (and a PAX sparse member, which Python expands and the Store does not,
-  is refused): an extended tar header that claims gigabytes was read into memory,
-  the zeros after the end of the tar were read whole, and a GNU sparse file passed
-  as a regular one. The decompressed stream is now capped, such headers are refused,
-  data after the end of the tar is refused, and so are global PAX headers and
-  archives that are not zstd. A non-finite modification time, a NaN or a lone
-  surrogate in a manifest no longer end in a traceback; the manifest is read with a
-  1 MiB cap, and names in messages are escaped (a file name could start a
-  `::command::` line in a workflow log). `pack` refuses a file with a setuid, setgid
-  or sticky bit and does not follow a link swapped in for a file.
+  `tools/check-workflows.py` lists the signing job as the one job without an
+  `environment:` that may read (those two) secrets, with the reason.
 - Fix (security): `make-bundle.sh --exclude` removed what its glob matched through a
   symlink in the app's install tree, and split a name with a newline into two paths;
   either could delete a file outside the install. It now removes only what is inside
-  the install. The list of files holding the stage path is escaped.
+  the install. The list of files holding the stage path and the messages escape control
+  characters (a file name could start a `::command::` line in a workflow log).
+- Fix (security): `tools/bundle.py` resolved links in time proportional to links times
+  entries (40 s for 20,000 dangling links) and without a bound on the links followed
+  (now the kernel's 40); a metainfo file could declare another encoding to hide a
+  DOCTYPE; `verify` accepted a gzip, xz or lz4 archive; `pack` did not refuse a setuid,
+  setgid or sticky file and followed a link swapped in for a file; its messages did not
+  escape file names.
 - The workflow checks the tag against `vX.Y.Z[-pre]` before it uses it, refuses an
   `app-dir` or `spec` that starts with `-`, and attaches exactly the archive, the
   manifest and the signature (the sign job's hash of the manifest and the manifest's
-  hash of the archive must match), not whatever the artifact held.
+  hash of the archive must match).
+
+## 2.0.9
+
+Secure phase for the whole framework (docs/SECURITY.md has the threat model
+and the tests that keep each rule true). Apps get this by moving to
+`tag = "v2.0.9"`. API additions only: `app!`'s `crash:` field,
+`telamon_app_set_crash_reporting`, `TelamonAvatar.allowRemote`,
+`TelamonChoiceCard.allowRemote`, and a few documented functions in the crates
+(`fsutil::open_lock_file`, `create_private_dir_all`, `MAX_LINE_BYTES`,
+`bootc::MAX_JSON_BYTES`, `polkit::action_id_ok`, `unique_name_ok`,
+`notify::sanitize_body`, `action_key_ok`, flatpak `MORE_PERMISSIONS`,
+`MAX_METADATA_BYTES`). Behaviour that is stricter than before is listed under
+"Stricter".
+
+- New: `crash: false` in `app!` (or `telamon_app_set_crash_reporting(false)`
+  before `telamon_app_init`) keeps an app out of Telamon crash reporting
+  altogether: no panic hook, a fatal Qt message is only logged, whatever the
+  user chose for Telamon apps. For apps that are not part of Telamon OS. The
+  default is unchanged.
+- Fix (Telamon.Ui): about 100 `Text`, `Label` and `Heading` elements did not set
+  `textFormat`, so a string starting with `<` was read as HTML (an `<img>` made a
+  request). All are plain text now, as are `TelamonTextArea` and the About page's
+  link opening (through `TelamonPortal.openUrl`). `NotesText` rebuilds only the
+  tags a release note may have. A `TelamonAppMenu` data row's `&` is no longer a
+  mnemonic. A test (`crates/telamon-framework-ui/tests/qml_text.rs`) fails when
+  a text control is not plain, a link is opened elsewhere, an image source is not
+  vetted or QML fetches or evaluates text.
+- Fix (Telamon.Ui): every QML engine refuses cleartext `http:` and `ftp:`
+  (loopback excepted), so `Kirigami.Icon` cannot be pointed at one, and limits
+  redirects and transfer time. `TelamonAvatar` and `TelamonChoiceCard` take
+  https pictures only with `allowRemote: true`.
+- Fix (crash): a 3xx answer no longer counts as "sent"; curl is held to TLS 1.2
+  or newer; a core dump whose program path is odd is not taken for the host's
+  own crash; markers, the crash id and the ledger are read with a size cap and
+  never block on a FIFO; a report time that is not a plain time cannot name a
+  hidden file; the 1.x state directory becomes 0700; curl's error text is one
+  clean line in the log.
+- Fix (crates): `history.jsonl` fields from an image are cut and cleaned, lines
+  over 8 KB are refused, and lines over 64 KiB are dropped unread; a FIFO or
+  device as a log or lock file fails at once instead of blocking; `bootc status`
+  JSON is capped at 4 MiB; settings values can no longer forge another group or
+  key (`set_in` included), values keep non-ASCII edge spaces, and new
+  directories are 0700; the stderr log prefixes every line; polkit is asked only
+  about unique bus names and valid action ids; notification titles, labels, keys,
+  icons and bodies are validated and the body keeps only `b`, `i`, `u`, `br` and
+  https links; Flatpak permission lists from publishers are cleaned and bounded.
+- Fix (tools): `bundle.py verify` reads the tar with one strict parser and the
+  manifest as strict JSON, with the Store's rules and caps; `make-bundle.sh` has
+  a fixed environment and no downloads after the locked `cargo fetch`;
+  `open-update-pr.sh` moved its checks to `tools/lib/update-pr-lib.sh` and refuses
+  more (tests: `tools/test-open-update-pr.sh`); `migrate-app-to-telamon.sh` no
+  longer writes through a planted link; `lint-app.sh`, `check-app-names.sh` and
+  `docs.py` print file names with control characters replaced.
+- Build and CI: `cargo-deny` and `cargo-audit` (workspace and template, weekly),
+  `tools/check-workflows.py` (pinned actions, read-only tokens, no
+  `pull_request_target`, no untrusted expressions in scripts), Dependabot,
+  property tests with 20,000 cases, the bundle fuzzer, and a hardening check
+  (`packaging/check-hardening.sh`, with `annocheck`) in the spec's `%check` for
+  the plugin, `telamon-preview` and `telamon-symbols`. The bundle workflow
+  attaches only the archive and its manifest. `app-checks.yml` validates its
+  `framework-ref`.
+- Template: hardening flags in CMake, overflow checks in the release profile,
+  `publish = false`, `deny.toml`, a security workflow, Dependabot, the framework
+  workflow pinned by commit, a plain-text label, and the `crash: false` note.
+
+Stricter (could affect an app): `TelamonAvatar` and `TelamonChoiceCard` refuse
+`http:` and `data:` sources; a notification action key must be a plain word and
+a body loses tags other than `b`, `i`, `u`, `br` and https `a`; `Settings::set_in`
+returns the text unchanged for a name `set` would refuse; `polkit::check_bus_name`
+answers `Denied::Unavailable` for a name that is not a unique bus name.
+
+## 2.0.8
+
+Security fixes for the crash report scrubber, found by an audit of the built
+crate (`telamon-framework-system::crash`). No API change except the new
+constant `crash::MAX_PAYLOAD`. Apps get this by moving to `tag = "v2.0.8"`; a
+report's text can differ (more is hidden), and `uptime_secs` and
+`ram_total_kb` are coarse.
+
+- Fix: secrets that got through `Scrubber::scrub` are hidden: `PGPASSWORD=`,
+  `dbPassword=` and other secret names at the end of a longer word or after a
+  camel-case boundary, `DB_PASS=` / `pass=`, an OAuth `?code=` in a URL,
+  `Authorization: Bearer` with more than one space or a tab (and the token
+  after it), a standalone `Basic <base64>`, hex runs of 40 or more characters
+  (SHA-1/SHA-256 digests, key material; the compiler commit after `/rustc/`
+  stays), base64 secrets that contain `/` or end in `=` (hidden whole, no tail
+  left), Slack and Discord webhook paths in any case, and `serial=` /
+  `ID_SERIAL=` / `imei=` values and bare IMEI-shaped numbers. The claim "never:
+  serials" is now exact: no serial is read, and one in a message is hidden
+  only in those forms.
+- Fix: `Scrubber::scrub_message` hides every absolute path outside the system's
+  directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib64`, `/opt`, `/app`,
+  `/etc`, `/proc`, `/sys`, `/dev`, `/boot`, `/run`, `/sysroot`, `/ostree`,
+  `/rustc`, `/builddir`, `/var/lib/flatpak`, `/var/lib/telamon`,
+  `/var/lib/atlas-core`, `/var/log`), not only the ones under a home directory
+  and a few mount points: `/data/clients/Acme/q3.xlsx`, `/storage/...`,
+  `/Volumes/...`. URLs and Qt resources (`qrc:/...`) are not paths.
+- Fix: `Scrubber::from_env` also scrubs each word of 3 or more characters of
+  the passwd full name, not only the whole name.
+- Fix: a report no longer gives away the boot instant: `uptime_secs` is rounded
+  down to the hour and `ram_total_kb` to the nearest GB (the payload does it
+  for reports stored by an older version too).
+- Fix: panic and fatal messages, frames and the copied parts of events lose
+  control, zero-width and bidirectional characters (`U+202E`, tag characters)
+  before they are scrubbed, so they cannot hide a secret from the scrubber or
+  reverse what a reader sees; `@name`, `[text](url)`, `![alt](url)` and
+  HTML elements with attributes that link or load (`<img src=...>`) are made
+  plain. `github_issue_url` puts the
+  trace in a code fence longer than any run of backticks in it.
+- Fix (review round): a word made of colons no longer takes quadratic time in
+  `scrub` (`pending()` and `sent()` run it on every list); hex runs of 40 or
+  more are hidden inside words too (`build-<hex>`, `0x<hex>`, `<hex>.json`);
+  `@name` is defanged after `-`, `.` and `+` as well; `[a][ref]`, a
+  `[x]: https://...` definition and a `<https://...>` autolink get a space; the
+  text step is idempotent (`@<hex>` and `@<IMEI>` were left visible on a first
+  pass, `REDACTED@host` became `<email>` on a second); a backtick run of any
+  length in a frame no longer fills the issue URL (a run over 8 gets a space
+  every 8, a trace line is cut to 400 characters); a message that was cut is
+  not cut again when the report is read.
+- Fix: an event line with a `time` of more than 40 characters stopped event
+  collection for good (the file name was too long, which is not
+  `InvalidInput`, and the marker never moved). `events::read` leaves such
+  events out and `write_report` fails them with `InvalidInput`.
+- Fix: the OS version, channel and previous version of a report are cut to a
+  plain version (letters, digits, `._+~:-`, 64 characters) and scrubbed; the
+  history file's first line was put into the payload as it was.
+- Fix: report files are read with `O_NOFOLLOW | O_NONBLOCK`, only as regular
+  files of at most 1 MiB (a bigger one is moved to `quarantine/`), and
+  `crash::pending()` / `crash::sent()` scrub every string of a report again, so
+  a report an older version queued with weaker rules is shown and sent
+  scrubbed. A stored stack trace is cut to 256 KiB.
+- Fix: the payload is at most 64 KiB (`crash::MAX_PAYLOAD`): the message is cut
+  to 8 KiB first, then frames far from the top of the stack are dropped
+  (`extra.trace_frames_dropped`); a report that is still too big is not sent.
 
 ## 2.0.7
 

@@ -1,0 +1,21 @@
+# Pull requests that move the pinned GitHub Actions (each by commit sha, with
+# its version in a comment) and the crates. The telamon-framework crates are
+# moved by the framework's release pull requests, not here.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: telamon-framework-*
+    groups:
+      crates:
+        update-types: [minor, patch]

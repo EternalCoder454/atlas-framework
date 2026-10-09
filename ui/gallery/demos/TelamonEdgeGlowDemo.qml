@@ -15,6 +15,7 @@ Item {
     implicitHeight: layout.implicitHeight + Kirigami.Units.gridUnit * 2
 
     component Caption: QQC2.Label {
+        textFormat: Text.PlainText
         font: Kirigami.Theme.smallFont
         color: TelamonStyle.textMuted
     }

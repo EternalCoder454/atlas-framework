@@ -41,6 +41,15 @@ extern "C" {
 // Calling it again does nothing, so telamon_app_run after your own call is safe.
 void telamon_app_init();
 
+// Optional, before telamon_app_init (or telamon_app_run, which calls it): keep
+// the app out of Telamon crash reporting (false), or into it (true), over the
+// `crash:` of the app's `app!` (on by default). Off means no panic hook and no
+// report for a fatal Qt message, whatever the user chose for Telamon apps;
+// logging, settings and the rest of the start are unchanged. For an app that is
+// not part of Telamon OS and must never feed its crash relay. After
+// telamon_app_init the call is logged and ignored (the hook is in place).
+void telamon_app_set_crash_reporting(bool enabled);
+
 // After QApplication: the display name, the window icon, and what Telamon.Ui's
 // TelamonApp shows.
 void telamon_app_ready();

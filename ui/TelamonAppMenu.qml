@@ -168,14 +168,21 @@ Item {
         }
         return rows;
     }
+    // The text of a model row. A row that is data (a file name, a title) is
+    // shown as it is: its "&" is doubled, as the menus read "&&" as one "&"
+    // and "&x" as a mnemonic (Alt+X) for x. A row that is an Action keeps the
+    // Action's own text, whose "&" is the app's mnemonic.
     function _rowText(md, textRole): string {
+        const isObject = md !== null && md !== undefined && typeof md === "object";
+        let text;
         if (typeof md === "string") {
-            return md;
+            text = md;
+        } else if (isObject && textRole && md[textRole] !== undefined) {
+            text = String(md[textRole]);
+        } else {
+            text = md === null || md === undefined ? "" : String(md);
         }
-        if (md !== null && md !== undefined && typeof md === "object" && textRole && md[textRole] !== undefined) {
-            return String(md[textRole]);
-        }
-        return md === null || md === undefined ? "" : String(md);
+        return isObject && typeof md.trigger === "function" ? text : text.replace(/&/g, "&&");
     }
     function _shortcutOf(e): var {
         return root.exportShortcuts && e.shortcut !== undefined && e.shortcut !== null ? e.shortcut : undefined;
@@ -260,7 +267,7 @@ Item {
         _fill(kit, sub, e.lead, depth);
         const rows = _rowsOf(e.model);
         if (rows.length === 0 && e.emptyText !== undefined && String(e.emptyText).length > 0) {
-            kit.add(sub, kit.row("", String(e.emptyText), undefined, -1, false));
+            kit.add(sub, kit.row("", String(e.emptyText).replace(/&/g, "&&"), undefined, -1, false));
         }
         for (let i = 0; i < rows.length; ++i) {
             const item = kit.row(String(e.id ?? ""), _rowText(rows[i], e.textRole), rows[i], i, true);

@@ -14,7 +14,7 @@ NotesText is a Qt Quick `Text` ([Qt documentation](https://doc.qt.io/qt-6/qml-qt
 NotesText {
     html: backend.notesHtml
     plain: backend.notesPlain
-    onLinkClicked: link => { if (backend.isSafeLink(link)) Qt.openUrlExternally(link) }
+    onLinkClicked: link => { if (backend.isSafeLink(link)) TelamonPortal.openUrl(link) }
 }
 ```
 
@@ -36,4 +36,4 @@ NotesText {
 | `linkClicked(string link)` | Emitted when the user activates a link; `link` is its address. Nothing is opened by NotesText itself. |
 
 > [!NOTE]
-> NotesText renders rich text. Only give it HTML the backend has made safe, and open a link only after checking it.
+> NotesText renders rich text. Only give it HTML the backend has made safe, and open a link only after checking it. As a second line of defence NotesText drops `<img>`, `<style>`, `<script>`, `<link>`, frames, forms and media tags from `html` before it draws it, so the notes can never make it fetch a picture.

@@ -16,6 +16,9 @@ telamon_framework_ui::app! {
     // (or missing), the app says so in a plain window and exits instead of
     // failing half-drawn. Raise it when the app starts using a newer Telamon.Ui.
     ui: "1.4.0",
+    // Crash reports: on by default, so a panic or a fatal Qt message is queued
+    // when the user turned reports on for Telamon apps. An app that is not part
+    // of Telamon OS must never feed its crash relay: add `crash: false,` here.
 }
 
 use std::ffi::c_void;

@@ -141,6 +141,11 @@ jobs:
       - name: Clippy
         run: $RUN cargo clippy --locked --workspace --all-features --all-targets -- -D warnings
 
+      # The property tests (prop_*) of the parsers that read what other programs
+      # send, with far more cases than a local run: docs/SECURITY.md, "Fuzzing".
+      - name: Property tests (20000 cases)
+        run: $RUN env PROPTEST_CASES=20000 cargo test --locked --workspace --all-features -- prop_
+
       - name: Baseline for cargo-semver-checks
         id: baseline
         env:
@@ -403,7 +408,10 @@ jobs:
           persist-credentials: false
 
       - name: shellcheck
-        run: shellcheck tools/make-bundle.sh tools/sign-bundle.sh tools/test-make-bundle.sh
+        run: shellcheck -x tools/*.sh tools/lib/*.sh packaging/*.sh
+
+      - name: Hardening check, tested against programs built with and without each protection
+        run: packaging/test-check-hardening.sh
 
       - name: minisign
         run: sudo apt-get update -qq && sudo apt-get install -y -qq minisign
@@ -412,6 +420,19 @@ jobs:
         env:
           TELAMON_REQUIRE_MINISIGN: '1'
         run: tools/test-make-bundle.sh
+
+      # The bundle verifier against the Store's rules (a reference port and a
+      # seeded fuzzer): docs/SECURITY.md, "Bundles".
+      - name: Bundle rules, fuzzed (20000 cases)
+        run: python3 -I tools/test_bundle_rules.py --cases 20000
+
+      # The release workflow's app pull requests: what the publish step accepts
+      # from the lock step, against forged outputs. No network, no token.
+      - name: Update pull request checks
+        run: tools/test-open-update-pr.sh
+
+      - name: Scripts that read other people's trees
+        run: tools/test-tool-scripts.sh
 
   publish-docs:
     # main, and v* tags that point at main's tip: rebuilds the docs-published

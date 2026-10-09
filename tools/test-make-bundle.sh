@@ -103,6 +103,25 @@ endif()
 if(FAKE STREQUAL "lib")
     install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/lib/libx.so\" \"x\")")
 endif()
+if(FAKE STREQUAL "connect")
+    # an install step that reaches out (to a listener the test runs on 127.0.0.1)
+    install(CODE [=[
+        execute_process(COMMAND python3 -c "import os, socket; socket.create_connection(('127.0.0.1', int(os.environ['FAKE_PORT'])), 2)"
+                        RESULT_VARIABLE r ERROR_QUIET)
+        if(NOT r EQUAL 0)
+            message(FATAL_ERROR "the build cannot reach 127.0.0.1")
+        endif()
+    ]=])
+endif()
+if(FAKE STREQUAL "env")
+    install(CODE [=[
+        file(WRITE "${CMAKE_INSTALL_PREFIX}/share/net.example.fake/env.txt"
+             "CARGO_NET_OFFLINE=$ENV{CARGO_NET_OFFLINE}\nLC_ALL=$ENV{LC_ALL}\nTZ=$ENV{TZ}\nSOURCE_DATE_EPOCH=$ENV{SOURCE_DATE_EPOCH}\nproxy=$ENV{https_proxy}\nZSTD_CLEVEL=$ENV{ZSTD_CLEVEL}\n")
+    ]=])
+endif()
+if(FAKE STREQUAL "touch-lock")
+    install(CODE "file(APPEND \"${CMAKE_CURRENT_SOURCE_DIR}/Cargo.lock\" \"# changed by the build\\n\")")
+endif()
 if(FAKE STREQUAL "force-prefix")
     set(CMAKE_INSTALL_PREFIX /usr/local/fake-forced CACHE PATH "" FORCE)
 endif()
@@ -226,6 +245,37 @@ else
     bad "a second build works" "$(tail -n 20 "$scratch/log")"
 fi
 
+# The same bytes whoever builds it and wherever: another checkout path, another
+# locale, time zone and umask, other zstd and Python settings in the environment.
+cp -r "$repo" "$scratch/another-checkout"
+out3=$scratch/out3
+if (cd "$scratch/another-checkout" && umask 077 && LC_ALL=tr_TR.UTF-8 LANG=de_DE.UTF-8 TZ=Pacific/Auckland PYTHONHASHSEED=random \
+        ZSTD_CLEVEL=3 ZSTD_NBTHREADS=8 PYTHONUTF8=0 HOME="$scratch" TMPDIR="$scratch" \
+        "$make_bundle" --out "$out3" --min-os-version 44 --build-dir "$scratch/build-out3") >"$scratch/log" 2>&1; then
+    check "a build from another path, locale, time zone, umask and zstd settings: archive is byte-identical" cmp "$archive" "$out3/net.example.fake-1.2.3-x86_64.tar.zst"
+    check "... and so is the manifest" cmp "$manifest" "$out3/telamon-bundle.json"
+else
+    bad "a build in another environment works" "$(tail -n 20 "$scratch/log")"
+fi
+if run_make "$scratch/out-env" --min-os-version 44 --cmake-arg -DFAKE=env &&
+    mkdir "$scratch/env-x" && zstd -dc -- "$scratch"/out-env/*.tar.zst | tar -xf - -C "$scratch/env-x" share/net.example.fake/env.txt; then
+    want="CARGO_NET_OFFLINE=true
+LC_ALL=C
+TZ=UTC
+SOURCE_DATE_EPOCH=1767225600
+proxy=http://127.0.0.1:9
+ZSTD_CLEVEL="
+    if [ "$(cat "$scratch/env-x/share/net.example.fake/env.txt")" = "$want" ]; then ok "the build runs with LC_ALL=C, TZ=UTC, SOURCE_DATE_EPOCH, CARGO_NET_OFFLINE, a dead proxy and no ZSTD_CLEVEL"
+    else bad "the build's environment" "$(cat "$scratch/env-x/share/net.example.fake/env.txt")"; fi
+else bad "a build that records its environment" "$(tail -n 8 "$scratch/log")"; fi
+# A name that is not ASCII, built under the C locale (the script sets it): kept, listed, verified and reproducible.
+nonascii=$(printf 'share/net.example.fake/caf\xc3\xa9-\xe4\xb8\xad.txt')
+if run_make "$scratch/out-u1" --min-os-version 44 --cmake-arg "-DFAKE_FILE=$nonascii" && run_make "$scratch/out-u2" --min-os-version 44 --cmake-arg "-DFAKE_FILE=$nonascii" --stage "$scratch/utf-stage" &&
+    python3 -I "$bundle_py" verify "$scratch"/out-u1/*.tar.zst "$scratch/out-u1/telamon-bundle.json" >/dev/null &&
+    zstd -dc -- "$scratch"/out-u1/*.tar.zst | tar --quoting-style=literal -tf - | grep -qxF "$nonascii" && cmp "$scratch"/out-u1/*.tar.zst "$scratch"/out-u2/*.tar.zst; then
+    ok "a non-ASCII file name is packed as UTF-8 (pax), verified and reproducible"
+else bad "a non-ASCII file name" "$(tail -n 8 "$scratch/log")"; fi
+
 # ---------------------------------------------------------------- version
 if run_make "$scratch/out-v" --min-os-version 44 --version v1.2.3 && [ -f "$scratch/out-v/net.example.fake-1.2.3-x86_64.tar.zst" ]; then
     ok "--version v1.2.3 (a tag) matches project VERSION"; else bad "--version v1.2.3 matches" "$(tail -n 5 "$scratch/log")"; fi
@@ -247,6 +297,102 @@ expect_fail() {
 }
 expect_fail "a version that is not the CMake version" "does not match project" --version 1.2.4
 expect_fail "a version that is not a version" "version .* dotted numbers" --version banana
+
+# ------------------------------------------------------ no network in the build
+# shellcheck disable=SC2016 # the ${} are CMake's
+# A CMake file that downloads is refused before anything is configured (comments are not read) ...
+for variant in 'include(FetchContent)\nFetchContent_Declare(x URL https://example.invalid/x.tgz)\nFetchContent_MakeAvailable(x)' \
+    'ExternalProject_Add(x GIT_REPOSITORY https://example.invalid/x.git)' \
+    'file(DOWNLOAD https://example.invalid/x.tgz x.tgz)' \
+    'execute_process(COMMAND curl -O https://example.invalid/x)' \
+    'execute_process(COMMAND wget https://example.invalid/x)' \
+    'execute_process(COMMAND git clone https://example.invalid/x.git)' \
+    'execute_process(COMMAND pip install requests)' \
+    'file(\n  DOWNLOAD https://example.invalid/x.tgz x.tgz)' \
+    'execute_process(COMMAND ${GIT_EXECUTABLE} clone https://example.invalid/x.git)'; do
+    rm -rf "$scratch/repo-dl"
+    cp -r "$repo" "$scratch/repo-dl"
+    printf '\n%b\n' "$variant" >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+    if (cd "$scratch/repo-dl" && "$make_bundle" --out "$scratch/out-dl" --min-os-version 44 --build-dir "$scratch/build-dl") >"$scratch/log" 2>&1; then
+        bad "a CMake file that downloads was accepted: ${variant%%$'\n'*}"
+    elif grep -q "downloads something at build time" "$scratch/log" && ! grep -q '^== configure' "$scratch/log"; then
+        ok "a CMake file that downloads is refused before configure: ${variant%%$'\n'*}"
+    else bad "a CMake file that downloads: ${variant%%$'\n'*}" "$(tail -n 5 "$scratch/log")"; fi
+done
+rm -rf "$scratch/repo-dl"
+cp -r "$repo" "$scratch/repo-dl"
+printf '\nmessage(STATUS "an app may link libcurl: find_package(CURL) and CURL::libcurl")\n' >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+if (cd "$scratch/repo-dl" && "$make_bundle" --out "$scratch/out-dl4" --min-os-version 44 --build-dir "$scratch/build-dl4") >"$scratch/log" 2>&1; then
+    ok "linking libcurl (find_package(CURL)) is not a download"; else bad "linking libcurl is not a download" "$(tail -n 5 "$scratch/log")"; fi
+rm -rf "$scratch/repo-dl"
+cp -r "$repo" "$scratch/repo-dl"
+printf '\n# curl, wget, git clone and FetchContent_Declare are only words in a comment here\n' >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+if (cd "$scratch/repo-dl" && "$make_bundle" --out "$scratch/out-dl2" --min-os-version 44 --build-dir "$scratch/build-dl2") >"$scratch/log" 2>&1; then
+    ok "a comment that names curl or FetchContent is not a download"; else bad "a comment is not a download" "$(tail -n 5 "$scratch/log")"; fi
+rm -rf "$scratch/repo-dl"
+cp -r "$repo" "$scratch/repo-dl"
+printf '\nfile(DOWNLOAD https://example.invalid/x.tgz x.tgz TIMEOUT 1)\n' >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+if (cd "$scratch/repo-dl" && "$make_bundle" --allow-network --out "$scratch/out-dl3" --min-os-version 44 --build-dir "$scratch/build-dl3") >"$scratch/log" 2>&1 ||
+    ! grep -q "downloads something at build time" "$scratch/log"; then
+    ok "--allow-network skips that refusal"; else bad "--allow-network skips the refusal" "$(tail -n 5 "$scratch/log")"; fi
+rm -rf "$scratch/repo-dl" "$scratch/out-dl3"
+
+# ... and a build that reaches out anyway fails where the kernel lets a user make a network namespace
+# (unshare -rn; GitHub's hosted runners often do not): the test listens on 127.0.0.1 of THIS namespace.
+python3 -I -c "
+import socket, sys
+s = socket.socket(); s.bind(('127.0.0.1', 0)); s.listen(16)
+print(s.getsockname()[1], flush=True)
+while True:
+    c, _ = s.accept(); c.close()
+" >"$scratch/port" 2>/dev/null &
+listener=$!
+trap 'kill "$listener" 2>/dev/null; rm -rf -- "$scratch"' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$scratch/port" ] && break; sleep 0.2; done
+FAKE_PORT=$(cat "$scratch/port") && export FAKE_PORT
+if run_make "$scratch/out-net" --min-os-version 44 --allow-network --cmake-arg -DFAKE=connect; then
+    ok "(control) the connecting build works when the network is allowed"; else bad "(control) the connecting build" "$(tail -n 8 "$scratch/log")"; fi
+if unshare -rn true 2>/dev/null; then
+    expect_fail "a build that connects to the network" "the build cannot reach 127.0.0.1" --cmake-arg -DFAKE=connect
+else
+    ok "(skipped: this kernel gives a user no network namespace; make-bundle.sh says so)"
+    run_make "$scratch/out-net2" --min-os-version 44 && check "... and warns that it did not isolate the build" grep -q "cannot make a network namespace" "$scratch/log"
+fi
+kill "$listener" 2>/dev/null
+
+# The crates of a Rust app are the one download, and locked: cargo is a stand-in that records what it was asked.
+mkdir "$scratch/shim"
+cat >"$scratch/shim/cargo" <<'EOF'
+#!/bin/sh
+echo "cargo $* [CARGO_NET_OFFLINE=${CARGO_NET_OFFLINE:-}]" >>"$CARGO_LOG"
+case $1 in
+fetch) [ -z "${CARGO_SHIM_FAIL:-}" ] || exit 1 ;;
+locate-project) while [ $# -gt 0 ]; do [ "$1" = --manifest-path ] && { echo "$2"; exit 0; }; shift; done; exit 1 ;;
+*) exit 0 ;;
+esac
+EOF
+chmod +x "$scratch/shim/cargo"
+rm -rf "$scratch/repo-rs"
+cp -r "$repo" "$scratch/repo-rs"
+printf '[package]\nname = "fake"\nversion = "1.2.3"\n' >"$scratch/repo-rs/apps/fake/Cargo.toml"
+printf '# lock\n' >"$scratch/repo-rs/apps/fake/Cargo.lock"
+export CARGO_LOG=$scratch/cargo.log
+: >"$CARGO_LOG"
+if (cd "$scratch/repo-rs" && PATH="$scratch/shim:$PATH" "$make_bundle" --out "$scratch/out-rs" --min-os-version 44 --build-dir "$scratch/build-rs") >"$scratch/log" 2>&1; then
+    ok "an app with a Cargo.toml builds"
+    check "the crates are fetched once, with --locked, before configure" bash -c \
+        "[ \"\$(grep -c '^cargo fetch' '$CARGO_LOG')\" = 1 ] && grep -q '^cargo fetch --locked --manifest-path .*/apps/fake/Cargo.toml' '$CARGO_LOG' &&
+         grep -n '^== fetch\\|^== configure' '$scratch/log' | head -2 | tail -1 | grep -q configure"
+    check "the fetch is the only cargo call that may use the network" bash -c "! grep -v '^cargo fetch\\|^cargo locate-project' '$CARGO_LOG'"
+else bad "an app with a Cargo.toml builds" "$(tail -n 8 "$scratch/log")"; fi
+rm -rf "$scratch/out-rs"
+if (cd "$scratch/repo-rs" && CARGO_SHIM_FAIL=1 PATH="$scratch/shim:$PATH" "$make_bundle" --out "$scratch/out-rs" --min-os-version 44 --build-dir "$scratch/build-rs2") >"$scratch/log" 2>&1; then
+    bad "a failing cargo fetch --locked was ignored"; elif grep -q "cargo fetch --locked failed" "$scratch/log" && ! grep -q '^== configure' "$scratch/log"; then
+    ok "a cargo fetch --locked that fails (the lock is not up to date) stops the build"; else bad "a failing cargo fetch" "$(tail -n 5 "$scratch/log")"; fi
+if (cd "$scratch/repo-rs" && PATH="$scratch/shim:$PATH" "$make_bundle" --out "$scratch/out-rs" --min-os-version 44 --build-dir "$scratch/build-rs3" --cmake-arg -DFAKE=touch-lock) >"$scratch/log" 2>&1; then
+    bad "a build that changed Cargo.lock was accepted"; elif grep -q "the build changed .*Cargo.lock" "$scratch/log" && [ ! -e "$scratch/out-rs/telamon-bundle.json" ]; then
+    ok "a build that changes Cargo.lock is refused"; else bad "a build that changes Cargo.lock" "$(tail -n 5 "$scratch/log")"; fi
+rm -rf "$scratch/repo-rs" "$scratch/out-rs"
 
 # --------------------------------------------------------- tampered installs
 expect_fail "a .desktop Exec naming a missing binary" "bin/fake-missing is not an executable file in the bundle" --cmake-arg -DFAKE=bad-exec
@@ -559,23 +705,23 @@ tamper owner "expected 0:0"
 tamper reorder "not sorted by path"
 tamper linkdots "not a relative path inside the tree"
 tamper mtime "different modification times"
-tamper infmtime "modification time is not a number"
-tamper nanmtime "modification time is not a number"
+tamper infmtime "pax header"
+tamper nanmtime "pax header"
 tamper longname "path component longer than 255"
 tamper longpath "path longer than 1024"
 tamper newlinename "hidden character"
 tamper bidiname "hidden character"
-tamper nulname "hidden character"
-tamper badutf8 "not valid UTF-8"
+tamper nulname "NUL in a name|hidden character"
+tamper badutf8 "pax header|not valid UTF-8"
 tamper rawname "not valid UTF-8"
 tamper many "larger than the limits"
-tamper bombsize "larger than the limits"
-tamper bombpax "extended tar header of 3221225472 bytes"
-tamper bombtail "unpacks to more than the limits"
-tamper sparse "GNU sparse"
-tamper paxsparse "sparse file \(PAX GNU.sparse\)"
-tamper globalpax "global PAX header"
-tamper trailing "data after the end of the tar"
+tamper bombsize "more than 536870912|larger than the limits"
+tamper bombpax "pax header that is empty, too large"
+tamper bombtail "data after its end marker"
+tamper sparse "sparse file"
+tamper paxsparse "pax header: only one"
+tamper globalpax "global pax header"
+tamper trailing "data after its end marker"
 tamper gzip "not zstd-compressed"
 tamper_ok submanifest
 # The Store's reader rules, as units (the Store's own tests cover its side)
@@ -651,8 +797,12 @@ for bad in ("telamon-other.notifyrc", "telamon-gatesx.notifyrc", "gates.notifyrc
 # hostile input: messages, the writer, the reader of a tree
 assert b.printable("a\n::error::b\x1b[2Jc‮d") == "a\\u000a::error::b\\u001b[2Jc\\u202ed"
 assert b.printable("share/été.txt") == "share/été.txt"
-assert b.canonical({"a": 1}) == b'{\n  "a": 1\n}\n'
-assert b.canonical({"a": float("nan")}) is None and b.canonical({"a": "\ud800"}) is None
+assert b.dump({"a": 1}) == '{\n  "a": 1\n}\n'
+try:
+    b.dump({"a": float("nan")})
+    raise SystemExit("dump wrote a NaN")
+except ValueError:
+    pass
 import os, stat, tempfile
 tree = tempfile.mkdtemp()
 os.makedirs(tree + "/bin")
@@ -680,14 +830,6 @@ os.symlink("/etc/passwd", tree + "/bin/lnk")
 assert [(e.path, e.kind) for e in b.scan_tree(tree)] == [("bin", "dir"), ("bin/lnk", "link"), ("bin/x", "file")]
 assert "cannot read" in (refused(b.open_regular, tree + "/bin/lnk") or "")
 assert "not a regular file" in (refused(b.open_regular, tree + "/bin") or "")
-# a tar stream is read through a ceiling: no read is unbounded, and the ceiling holds
-import io
-cap = b._Capped(io.BytesIO(bytes(10 * 1024 * 1024)), 4 * 1024 * 1024)
-assert len(cap.read(-1)) == 1 << 20 and len(cap.read(None)) == 1 << 20
-assert refused(lambda: [cap.read(1 << 20) for _ in range(10)])
-# the commands run without zstd's own environment
-os.environ["ZSTD_CLEVEL"] = "1"
-assert not any(k.startswith("ZSTD_") for k in b.tool_env())
 # hostile input costs time too: the most links and entries the Store allows, and links that name each other
 import time
 t0 = time.time()
@@ -720,6 +862,8 @@ for bad in (good_xml.replace(b"UTF-8", b"cp037"), good_xml.replace(b"UTF-8", b"I
     assert raises(b.parse_metainfo, bad, "net.example.fake"), bad
 print("units ok")
 EOF
+check "tools/test_bundle_rules.py: the archive, path and manifest rules against the Store's, with a seeded fuzzer" \
+    python3 -I "$here/test_bundle_rules.py" --cases "${TEST_BUNDLE_CASES:-2000}"
 check "the Store's reader rules hold as units (versions, ids, home page, links, names, key files, caps, notification names)" \
     python3 -I "$scratch/units.py" "$here"
 mkdir "$scratch/nover"
@@ -807,10 +951,10 @@ else
     pub_a=$(sed -n 2p "$keys/a.pub")
     pub_c=$(sed -n 2p "$keys/c.pub")
     fresh() { rm -rf -- "$scratch/sign"; cp -r "$out1" "$scratch/sign"; } # a good bundle directory
-    mkdir "$scratch/shim"
+    mkdir "$scratch/signshim"
     # A stand-in for minisign in front of the real one: records how it is called (arguments, the
     # environment, the key file's mode and place), then runs the real one.
-    cat >"$scratch/shim/minisign" <<EOF
+    cat >"$scratch/signshim/minisign" <<EOF
 #!/bin/bash
 {
     echo "args: \$*"
@@ -820,10 +964,10 @@ else
         if [ "\$prev" = -s ]; then echo "keyfile: \$(stat -c '%a %n %F' -- "\$a") on \$(stat -f -c %T -- "\$a")"; fi
         prev=\$a
     done
-} >>"$scratch/shim.log"
+} >>"$scratch/signshim.log"
 exec $(command -v minisign) "\$@"
 EOF
-    chmod +x "$scratch/shim/minisign"
+    chmod +x "$scratch/signshim/minisign"
 
     fresh
     if MINISIGN_KEY=$(cat "$keys/a.key") "$sign" --public-key "$pub_a" "$scratch/sign" >"$scratch/log" 2>&1; then
@@ -852,16 +996,16 @@ EOF
 
     # the key's way through: a password, the process list, the environment, the disk
     fresh
-    : >"$scratch/shim.log"
+    : >"$scratch/signshim.log"
     ls /dev/shm >"$scratch/shm.before" 2>/dev/null
-    if MINISIGN_KEY=$(cat "$keys/b.key") MINISIGN_PASSWORD='correct horse' PATH="$scratch/shim:$PATH" bash -x "$sign" --public-key "$(sed -n 2p "$keys/b.pub")" "$scratch/sign" >"$scratch/log" 2>&1; then
+    if MINISIGN_KEY=$(cat "$keys/b.key") MINISIGN_PASSWORD='correct horse' PATH="$scratch/signshim:$PATH" bash -x "$sign" --public-key "$(sed -n 2p "$keys/b.pub")" "$scratch/sign" >"$scratch/log" 2>&1; then
         ok "sign-bundle signs with a password-protected key (the password on stdin), under bash -x"
     else bad "sign-bundle signs with a password-protected key" "$(tail -n 5 "$scratch/log")"; fi
     check "...the signature verifies with the key's public key" minisign -V -p "$keys/b.pub" -m "$scratch/sign/telamon-bundle.json"
     check "...neither the key file's content nor the password is in the output, even with tracing on" bash -c \
         "! grep -qF '$(sed -n 2p "$keys/b.key")' '$scratch/log' && ! grep -qF 'correct horse' '$scratch/log'"
     check "...minisign got no key or password in its arguments or environment, and a 0600 file in tmpfs" bash -c \
-        "grep -q '^env: 0\$' '$scratch/shim.log' && ! grep -qF 'correct horse' '$scratch/shim.log' && ! grep -qF '$(sed -n 2p "$keys/b.key")' '$scratch/shim.log' && grep -qE '^keyfile: 600 /dev/shm/telamon-sign\\.[A-Za-z0-9]+/minisign\\.key regular file on tmpfs\$' '$scratch/shim.log'"
+        "grep -q '^env: 0\$' '$scratch/signshim.log' && ! grep -qF 'correct horse' '$scratch/signshim.log' && ! grep -qF '$(sed -n 2p "$keys/b.key")' '$scratch/signshim.log' && grep -qE '^keyfile: 600 /dev/shm/telamon-sign\\.[A-Za-z0-9]+/minisign\\.key regular file on tmpfs\$' '$scratch/signshim.log'"
     check "...and the key file is gone afterwards" bash -c "[ \"\$(ls /dev/shm 2>/dev/null)\" = \"\$(cat '$scratch/shm.before')\" ]"
 
     # what it refuses
@@ -913,26 +1057,26 @@ EOF
 
     # the key is never in the environment of anything that parses the bundle: stand-ins for python3
     # and zstd record the secret variables they were started with and their arguments
-    mkdir "$scratch/shim2"
+    mkdir "$scratch/signshim2"
     for prog in python3 zstd; do
-        cat >"$scratch/shim2/$prog" <<EOF
+        cat >"$scratch/signshim2/$prog" <<EOF
 #!/bin/bash
-echo "$prog: env=\$(env | grep -c '^MINISIGN_') \$*" >>"$scratch/shim2.log"
+echo "$prog: env=\$(env | grep -c '^MINISIGN_') \$*" >>"$scratch/signshim2.log"
 exec $(command -v "$prog") "\$@"
 EOF
-        chmod +x "$scratch/shim2/$prog"
+        chmod +x "$scratch/signshim2/$prog"
     done
     fresh
-    : >"$scratch/shim2.log"
-    if MINISIGN_KEY=$(cat "$keys/b.key") MINISIGN_PASSWORD='correct horse' PATH="$scratch/shim2:$PATH" "$sign" "$scratch/sign" >"$scratch/log" 2>&1 &&
-        grep -q 'bundle.py verify' "$scratch/shim2.log" && grep -q '^zstd:' "$scratch/shim2.log" && ! grep -qv ' env=0 ' "$scratch/shim2.log"; then
+    : >"$scratch/signshim2.log"
+    if MINISIGN_KEY=$(cat "$keys/b.key") MINISIGN_PASSWORD='correct horse' PATH="$scratch/signshim2:$PATH" "$sign" "$scratch/sign" >"$scratch/log" 2>&1 &&
+        grep -q 'bundle.py verify' "$scratch/signshim2.log" && grep -q '^zstd:' "$scratch/signshim2.log" && ! grep -qv ' env=0 ' "$scratch/signshim2.log"; then
         ok "in one go, python3 and zstd (which parse the bundle) are started without the key or the password"
-    else bad "the key is out of the environment of what parses the bundle" "$(cat "$scratch/log" "$scratch/shim2.log")"; fi
+    else bad "the key is out of the environment of what parses the bundle" "$(cat "$scratch/log" "$scratch/signshim2.log")"; fi
 
     # the two steps of the sign job
     fresh
     : >"$scratch/gh-output"
-    : >"$scratch/shim2.log"
+    : >"$scratch/signshim2.log"
     if MINISIGN_KEY=$(cat "$keys/a.key") "$sign" --verify-only "$scratch/sign" >"$scratch/log" 2>&1; then
         bad "the verify step ran with the key in its environment"
     elif grep -q "verify step has the signing key" "$scratch/log" && [ ! -e "$sig" ]; then ok "the verify step refuses to run with the key in its environment"
@@ -942,11 +1086,11 @@ EOF
         ok "step A (--verify-only) verifies, writes the manifest's hash as an output, and signs nothing"
     else bad "step A verifies and prints the hash" "$(cat "$scratch/log" "$scratch/gh-output")"; fi
     sha=$(sha256sum "$manifest" | cut -d' ' -f1)
-    if MINISIGN_KEY=$(cat "$keys/a.key") PATH="$scratch/shim2:$PATH" "$sign" --sign-only --manifest-sha256 "$sha" --public-key "$pub_a" "$scratch/sign" >"$scratch/log" 2>&1 &&
+    if MINISIGN_KEY=$(cat "$keys/a.key") PATH="$scratch/signshim2:$PATH" "$sign" --sign-only --manifest-sha256 "$sha" --public-key "$pub_a" "$scratch/sign" >"$scratch/log" 2>&1 &&
         minisign -V -H -p "$keys/a.pub" -m "$scratch/sign/telamon-bundle.json" >/dev/null &&
-        ! grep -q 'bundle.py\|^zstd:' "$scratch/shim2.log"; then
+        ! grep -q 'bundle.py\|^zstd:' "$scratch/signshim2.log"; then
         ok "step B (--sign-only) signs a manifest with the hash step A verified, and parses nothing (no bundle.py, no zstd)"
-    else bad "step B signs without parsing the archive" "$(cat "$scratch/log" "$scratch/shim2.log")"; fi
+    else bad "step B signs without parsing the archive" "$(cat "$scratch/log" "$scratch/signshim2.log")"; fi
     fresh
     if MINISIGN_KEY=$(cat "$keys/a.key") "$sign" --sign-only --manifest-sha256 "$(printf '0%.0s' {1..64})" "$scratch/sign" >"$scratch/log" 2>&1; then
         bad "step B signed a manifest that is not the verified one"

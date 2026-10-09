@@ -248,6 +248,15 @@ target_link_libraries(telamon-hardening-tests PRIVATE Qt6::Test Qt6::Qml)
 add_test(NAME hardening COMMAND telamon-hardening-tests)
 set_tests_properties(hardening PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+# What the QML engines fetch (ui/telamonnetwork.cpp, compiled in): cleartext
+# addresses of other computers are refused, https and this computer are not.
+add_executable(telamon-network-tests network/tst_network.cpp
+    ${PROJECT_SOURCE_DIR}/ui/telamonnetwork.h ${PROJECT_SOURCE_DIR}/ui/telamonnetwork.cpp)
+target_include_directories(telamon-network-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui)
+target_link_libraries(telamon-network-tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::Network)
+add_test(NAME network COMMAND telamon-network-tests)
+set_tests_properties(network PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 # Appearance.textScale through the clamp (ui/appearance.cpp, compiled in).
 add_executable(telamon-appearance-tests hardening/tst_appearance.cpp
     ${PROJECT_SOURCE_DIR}/ui/appearance.h ${PROJECT_SOURCE_DIR}/ui/appearance.cpp

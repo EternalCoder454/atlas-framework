@@ -9,11 +9,10 @@ tools/make-bundle.sh builds and installs an app, then calls `pack`. The format
 is described in docs/BUNDLES.md; this file is its reference implementation
 (the Store reads the same rules). Standard library only, plus the `zstd` program.
 
-`verify` reads hostile input (a bundle may come from anywhere, and the signing
-job of .github/workflows/bundle.yml runs it on whatever an app's build
-made), so it never extracts: the archive is streamed through `zstd -dc` and
-`tarfile` in memory, every entry is only looked at and hashed, and nothing is
-written to disk. The stream is capped, and what the Store would not accept is refused.
+`verify` reads hostile input (a bundle may come from anywhere, and the signing job of
+.github/workflows/bundle.yml runs it on whatever an app's build made), so it never
+extracts: the archive is streamed through `zstd -dc` into `scan_tar`, every entry is
+only looked at and hashed, and nothing is written to disk.
 """
 
 import argparse
@@ -63,12 +62,13 @@ MAX_KEYFILE = 64 * 1024           # a .desktop or .service file
 MAX_KEYFILE_LINES = 1000
 MAX_PATH = 1024                   # bytes, a whole path
 MAX_FOLLOWS = 40                  # symlinks followed to resolve one link (Linux's own limit)
-SMALL = MAX_EXPORT                # files read whole: desktop, service, metainfo
-MAX_MANIFEST = 1024 * 1024        # telamon-bundle.json, the outer one and the one in the archive (the Store's cap)
-MAX_META = 16 * 1024              # a PAX or GNU long-name header; a path is at most 1 KiB
-# The decompressed tar stream: the files, plus 512-byte headers, padding and PAX headers for every entry.
-MAX_STREAM = MAX_TOTAL + MAX_ENTRIES * 8192 + 1024 * 1024
-ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
+SMALL = MAX_EXPORT                # files read whole: desktop, service, metainfo, manifest
+MAX_MANIFEST = 1024 * 1024        # telamon-store-core native/manifest.rs MAX_MANIFEST
+MAX_PAX = 64 * 1024               # the one pax header before an entry (path, linkpath): nothing else is written
+# archive.rs `unpack`: the decompressor is cut off after MAX_UNPACKED plus 1536 bytes of headers
+# for each of the (2 * MAX_FILES + 16) entries a bundle may hold. A "zip bomb" ends there.
+MAX_DECOMPRESSED = MAX_TOTAL + (MAX_FILES * 2 + 16) * 1536
+MAX_NAME, MAX_SUMMARY, MAX_LICENSE = 80, 300, 100   # manifest.rs `check`: the Store cuts the texts shown at these
 
 
 def valid_version(v):
@@ -87,14 +87,46 @@ def valid_app_id(i):
 
 
 def hidden(c):
-    """The Store's `hidden` characters (control, invisible, bidi, filler), plus any
-    other format, control or line/paragraph separator."""
+    """The Store's `hidden` characters (telamon-store-core, launch.rs `hidden`: control, invisible, bidi, filler),
+    plus any other format, control or line/paragraph separator."""
     o = ord(c)
     return (unicodedata.category(c)[0] == "C" or unicodedata.category(c) in ("Zl", "Zp") or o in (
         0xAD, 0x34F, 0x61C, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x200B, 0x200E, 0x200F, 0x3164, 0xFEFF, 0xFFA0)
         or 0x180B <= o <= 0x180F or 0x2028 <= o <= 0x202E or 0x2060 <= o <= 0x206F
         or 0xFE00 <= o <= 0xFE0F or 0xFFF9 <= o <= 0xFFFB or 0x1BCA0 <= o <= 0x1BCA3
         or 0x1D173 <= o <= 0x1D17A or 0xE0000 <= o <= 0xE007F or 0xE0100 <= o <= 0xE01EF)
+
+
+# telamon-store-core text.rs `class` / `LineBuf`: the Store cleans every text it shows (drops controls and
+# invisible characters, collapses white space, cuts at a cap). A bundle's name, summary and license must
+# already be what that leaves, so the page shows exactly what the manifest says.
+_STORE_SPACE = frozenset("\t\n\x0b\x0c\r \x85\xa0\u1680\u2028\u2029\u202f\u205f\u3000") | frozenset(map(chr, range(0x2000, 0x200B)))
+
+
+def _store_dropped(c):
+    o = ord(c)
+    return (unicodedata.category(c) in ("Cc", "Cs") or o in (0xAD, 0x34F, 0x61C, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x200B, 0x3164, 0xFEFF, 0xFFA0)
+            or 0x180B <= o <= 0x180F or 0x202A <= o <= 0x202E or 0x2060 <= o <= 0x206F or 0xFE00 <= o <= 0xFE0F
+            or 0xFFF9 <= o <= 0xFFFC or 0x1BCA0 <= o <= 0x1BCA3 or 0x1D173 <= o <= 0x1D17A or 0xE0000 <= o <= 0xE007F
+            or 0xE0100 <= o <= 0xE01EF or 0xFDD0 <= o <= 0xFDEF or (o & 0xFFFE) == 0xFFFE)
+
+
+def store_clean(s, max_chars):
+    """What the Store's `text::clean(s, max_chars)` leaves of `s`."""
+    out, pending, n = [], False, 0
+    for c in s:
+        if c in _STORE_SPACE:
+            pending = n > 0
+        elif not _store_dropped(c):
+            extra = 2 if pending else 1
+            if n + extra > max_chars:
+                break
+            if pending:
+                out.append(" ")
+                pending = False
+            out.append(c)
+            n += extra
+    return "".join(out)
 
 
 _BAD_TLDS = {"local", "localhost", "localdomain", "lan", "home", "internal", "intranet", "private", "corp",
@@ -152,26 +184,12 @@ def dump(obj):
     return json.dumps(obj, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
 
 
-def canonical(obj):
-    """`dump(obj)` as UTF-8 bytes, or None when it cannot be written (a lone surrogate, NaN)."""
-    try:
-        return dump(obj).encode("utf-8")
-    except (UnicodeEncodeError, ValueError):
-        return None
-
-
 def printable(text):
     """`text` with control, hidden and non-printing characters written as \\uXXXX, for messages:
     a file name must not be able to start a line of its own in a log (GitHub Actions reads
     `::workflow-command::` lines) or move the cursor in a terminal."""
     return "".join(c if c.isprintable() and not hidden(c) else
                    (f"\\u{ord(c):04x}" if ord(c) <= 0xFFFF else f"\\U{ord(c):08x}") for c in text)
-
-
-def tool_env():
-    """The environment of the programs run: the caller's, without zstd's own settings
-    (ZSTD_CLEVEL and ZSTD_NBTHREADS would change what `zstd` writes)."""
-    return {k: v for k, v in os.environ.items() if not k.startswith("ZSTD_")}
 
 
 def open_regular(path):
@@ -190,7 +208,11 @@ def open_regular(path):
 # ---------------------------------------------------------------- path rules
 
 def path_problem(p):
-    """Why a tree path is not allowed, or None."""
+    """Why a tree path is not allowed, or None. The Store's rule is `valid_rel_path` (telamon-store-core,
+    native/manifest.rs: non-empty, at most 1,024 bytes, not absolute, every part non-empty, not `.` or `..`, at most 255
+    bytes, no `hidden` character) applied by native/archive.rs `entry_path` to each member name (it also
+    tolerates a leading `./` and a directory's trailing `/`, which this tool never writes and refuses). More
+    here: no backslash, and every other control, format or separator character, not only the Store's list."""
     if p == "" or p.startswith("/"):
         return "empty or absolute path"
     if "\\" in p:
@@ -212,8 +234,9 @@ def path_problem(p):
 
 
 def link_target_ok(path, target):
-    """The Store's lexical rule for a link target: relative, plain names and `..`, no
-    empty or `.` part, no hidden character, never above the root."""
+    """The Store's lexical rule for a link target (native/manifest.rs `link_target_ok`, checked again on the real
+    folders by archive.rs `unpack`): relative, plain names and `..`, no empty or `.` part, no hidden
+    character, at most 1,024 bytes, never above the root."""
     if not target or len(target.encode("utf-8", "replace")) > 1024 or target.startswith("/") or any(hidden(c) for c in target):
         return False
     depth = path.count("/")
@@ -793,18 +816,18 @@ def build_manifest(meta, entries):
     return m
 
 
-def new_file(path):
-    """Creates `path` (mode 0644 less the umask) for writing; a stale file of ours is removed first, and a link
-    or any other file appearing at the name meanwhile is an error, never written through."""
+def _create(path):
+    """A new file, mode 0644: never written through a link someone left at the name."""
     if os.path.lexists(path):
         os.unlink(path)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o644)
-    return os.fdopen(fd, "wb")
+    return os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0), 0o644), "wb")
 
 
 def cmd_pack(a):
     tree = os.path.abspath(a.tree)
     out = os.path.abspath(a.out)
+    if not 0 <= a.epoch < 8 ** 11:       # an octal mtime field of a ustar header: no pax `mtime` record
+        raise BundleError(f"SOURCE_DATE_EPOCH {a.epoch} is not a time between 1970 and 2242")
     entries = scan_tree(tree)
     if not entries:
         raise BundleError("the install produced no files")
@@ -843,14 +866,7 @@ def cmd_pack(a):
                           f"none of \\ \" < > ` {{ }} | ^); it would be {https_url(meta['homepage'])!r}")
 
     inner = build_manifest(meta, entries)
-    inner_bytes = canonical(inner)
-    if inner_bytes is None:
-        raise BundleError("the manifest cannot be written as UTF-8 JSON")
-    if len(inner_bytes) > MAX_MANIFEST:
-        raise BundleError(f"the manifest is {len(inner_bytes)} bytes: the Store reads at most {MAX_MANIFEST} (1 MiB); "
-                          f"{len(entries)} entries is too many for one app")
-    if a.epoch < 0:
-        raise BundleError("--epoch must not be negative")
+    inner_bytes = dump(inner).encode("utf-8")
     entries.append(Entry(MANIFEST, "file", 0o644, size=len(inner_bytes)))
     name = f"{meta['id']}-{meta['version']}-{ARCH}.tar.zst"
     os.makedirs(out, exist_ok=True)
@@ -858,12 +874,14 @@ def cmd_pack(a):
     manifest_path = os.path.join(out, MANIFEST)
     tmp = archive_path + ".part"
 
+    # Deterministic: one thread, a fixed level, a fixed tar format with the names written as UTF-8
+    # whatever the locale, and the time from SOURCE_DATE_EPOCH. The same tree and the same zstd give
+    # the same bytes.
     try:
-        # A new file, never one that was already there (or a link to somewhere else).
-        with new_file(tmp) as outf:
-            z = subprocess.Popen(["zstd", "-19", "-T1", "-q", "-c"], stdin=subprocess.PIPE, stdout=outf, env=tool_env())
+        with _create(tmp) as outf:
+            z = subprocess.Popen(["zstd", "-19", "-T1", "-q", "-c"], stdin=subprocess.PIPE, stdout=outf)
             try:
-                with tarfile.open(fileobj=z.stdin, mode="w|", format=tarfile.PAX_FORMAT, encoding="utf-8") as tf:
+                with tarfile.open(fileobj=z.stdin, mode="w|", format=tarfile.PAX_FORMAT, encoding="utf-8", errors="strict") as tf:
                     for e in sorted(entries, key=lambda x: x.path):
                         ti = tarfile.TarInfo(e.path)
                         ti.mtime, ti.uid, ti.gid, ti.uname, ti.gname = a.epoch, 0, 0, "", ""
@@ -888,16 +906,15 @@ def cmd_pack(a):
                 raise BundleError(f"zstd failed ({rc})")
         os.replace(tmp, archive_path)
     finally:
-        if os.path.exists(tmp):
+        if os.path.lexists(tmp):
             os.unlink(tmp)
 
     outer = dict(inner)
     outer["archive"] = {"name": name, "sha256": sha256_file(archive_path), "size": os.path.getsize(archive_path)}
-    outer_bytes = canonical(outer)
     mtmp = manifest_path + ".part"
     try:
-        with new_file(mtmp) as f:
-            f.write(outer_bytes)
+        with _create(mtmp) as f:
+            f.write(dump(outer).encode("utf-8"))
         os.replace(mtmp, manifest_path)
     finally:
         if os.path.lexists(mtmp):
@@ -915,146 +932,270 @@ def cmd_pack(a):
 
 # ------------------------------------------------------------------------ verify
 
-class _Capped:
-    """The decompressed stream, with a ceiling: a read past `limit` bytes in all fails
-    (a decompression bomb), and no read is ever unbounded."""
+BLOCK = 512
+_ZERO = bytes(BLOCK)
+_TYPES = {b"0": "file", b"2": "link", b"5": "dir"}
+_REFUSED = {b"1": "hard link", b"3": "device or fifo", b"4": "device or fifo", b"6": "device or fifo",
+            b"7": "contiguous file", b"g": "global pax header", b"S": "sparse file",
+            b"L": "GNU long name entry", b"K": "GNU long link entry", b"\0": "old-style file entry"}
 
-    def __init__(self, f, limit):
-        self.f, self.limit, self.n = f, limit, 0
 
-    def read(self, size=-1):
-        if size is None or size < 0 or size > 1 << 20:
-            size = 1 << 20
-        data = self.f.read(size)
-        self.n += len(data)
-        if self.n > self.limit:
-            raise BundleError("the archive unpacks to more than the limits allow (1 GiB of files, 40,000 entries): refused")
+def tarfile_type(flag):
+    return _REFUSED.get(flag, "special entry")
+
+
+def _octal(field, what):
+    """A tar number: octal digits, then NUL or spaces. No base-256, no sign, no letters:
+    the readers of a tar disagree about everything else."""
+    digits = bytes(field).split(b"\0", 1)[0].split(b" ", 1)[0]
+    rest = bytes(field)[len(digits):]
+    if not digits or not all(0x30 <= b <= 0x37 for b in digits) or rest.strip(b"\0 "):
+        raise BundleError(f"tar header: {what} is not a plain octal number")
+    return int(digits, 8)
+
+
+def _cstr(field, what):
+    raw = bytes(field)
+    text, _, rest = raw.partition(b"\0")
+    if rest.strip(b"\0"):
+        raise BundleError(f"tar header: {what} has bytes after its end")
+    return text
+
+
+def _utf8(raw, what):
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise BundleError(f"{what}: not valid UTF-8") from None
+    if "\0" in text:
+        raise BundleError(f"{what}: NUL in a name")
+    return text
+
+
+def parse_pax(data):
+    """The one extended header an entry may have: `path` and `linkpath` records, each at most once.
+    Anything else (size, uid, mtime, comments, ...) is how two readers come to read one archive two ways."""
+    out, i = {}, 0
+    while i < len(data):
+        sp = data.find(b" ", i)
+        if sp < 0 or not 0 < sp - i <= 7 or not data[i:sp].isdigit():
+            raise BundleError("pax header: a record does not start with its length")
+        n = int(data[i:sp])
+        rec = data[i:i + n]
+        if n < sp - i + 4 or len(rec) != n or not rec.endswith(b"\n"):
+            raise BundleError("pax header: a record's length is wrong")
+        key, eq, value = rec[sp + 1:-1].partition(b"=")
+        if not eq or key not in (b"path", b"linkpath") or key in out:
+            raise BundleError("pax header: only one `path` and one `linkpath` record are written")
+        out[key] = _utf8(value, f"pax {key.decode()}")
+        i += n
+    return out
+
+
+def scan_tar(stream, want_small=False):
+    """Reads an uncompressed tar from `stream` as strictly as the Store's unpacker does and more:
+    one canonical form (POSIX ustar headers, `path`/`linkpath` pax headers for long or non-ASCII
+    names; octal numbers; no GNU, sparse, global, hard link, device or fifo entries; no data after
+    the end marker; every header checksummed). Returns ([Entry], {name: bytes of the small files}).
+
+    The archive.rs reader (the `tar` crate) and any other reader then see the same entries; a
+    tar this function accepts has no second reading."""
+    entries, small, used = [], {}, 0
+    pending = None
+
+    def take(n):
+        nonlocal used
+        used += n
+        if used > MAX_DECOMPRESSED:
+            raise BundleError("the archive is larger than the limits (entries or bytes)")
+        data = stream.read(n)
+        if len(data) != n:
+            raise BundleError("the tar archive ends in the middle of an entry")
         return data
 
+    def padding(n):
+        if n and take(n).strip(b"\0"):
+            raise BundleError("tar: the padding after an entry's data is not zeros")
 
-class _SafeInfo(tarfile.TarInfo):
-    """A tar header as tarfile reads it, except that a header which only describes the next
-    entry (PAX, GNU long name or link) may not claim more than MAX_META bytes (tarfile reads the
-    whole of it into memory), a *global* PAX header is refused (it renames or resizes every entry
-    after it, which readers do not agree on, and the packer never writes one), and so is a GNU
-    sparse file. `_proc_member` is tarfile's one place for every header, first or chained."""
-
-    def _proc_member(self, tarfile_):
-        if self.type == tarfile.XGLTYPE:
-            raise BundleError("the archive has a global PAX header, which no bundle has")
-        if self.type == tarfile.GNUTYPE_SPARSE:
-            raise BundleError("the archive has a GNU sparse file, which no bundle has")
-        if self.type in (tarfile.XHDTYPE, tarfile.SOLARIS_XHDTYPE, tarfile.GNUTYPE_LONGNAME, tarfile.GNUTYPE_LONGLINK) \
-                and self.size > MAX_META:
-            raise BundleError(f"an extended tar header of {self.size} bytes (a name is at most {MAX_PATH}): refused")
-        return super()._proc_member(tarfile_)
+    while True:
+        hdr = take(BLOCK)
+        if hdr == _ZERO:
+            if pending is not None:
+                raise BundleError("tar: a pax header with no entry after it")
+            break
+        if hdr[257:263] != b"ustar\0" or hdr[263:265] != b"00":
+            raise BundleError("tar header: not a POSIX ustar header (GNU and old formats are not accepted)")
+        if sum(hdr[:148]) + 8 * 32 + sum(hdr[156:]) != _octal(hdr[148:156], "the checksum"):
+            raise BundleError("tar header: the checksum is wrong")
+        flag = hdr[156:157]
+        size = _octal(hdr[124:136], "the size")
+        mode, uid, gid = (_octal(hdr[a:b], w) for a, b, w in ((100, 108, "the mode"), (108, 116, "the uid"), (116, 124, "the gid")))
+        mtime = _octal(hdr[136:148], "the modification time")
+        if _cstr(hdr[265:329], "the owner names") or _cstr(hdr[345:500], "the name prefix"):
+            raise BundleError("tar header: owner names and the ustar name prefix are not written; a long name is a pax `path`")
+        if any(f.strip(b"\0") and _octal(f, "a device number") for f in (hdr[329:337], hdr[337:345])):
+            raise BundleError("tar header: device numbers on an entry that is not a device")
+        name_raw = _cstr(hdr[0:100], "the name")
+        link_raw = _cstr(hdr[157:257], "the link name")
+        if flag == b"x":
+            if pending is not None or size == 0 or size > MAX_PAX:
+                raise BundleError("tar: a pax header that is empty, too large or follows another")
+            data = take(size)
+            padding(-size % BLOCK)
+            pending = parse_pax(data)
+            continue
+        px, pending = pending or {}, None
+        name = px[b"path"] if b"path" in px else _utf8(name_raw, "a file name")
+        if flag not in _TYPES:
+            raise BundleError(f"{name}: a {tarfile_type(flag)}: only directories, files and symlinks are allowed")
+        if len(entries) >= MAX_ENTRIES:
+            raise BundleError("the archive is larger than the limits (entries or bytes)")
+        kind = _TYPES[flag]
+        if kind != "link" and (link_raw or b"linkpath" in px):
+            raise BundleError(f"{name}: a link name on an entry that is not a link")
+        if kind == "dir":
+            name = name[:-1] if name.endswith("/") else name
+        e = Entry(name, kind, mode)
+        e.uid, e.gid, e.mtime = uid, gid, mtime
+        if kind == "link":
+            e.target = px[b"linkpath"] if b"linkpath" in px else _utf8(link_raw, "a link target")
+            if size:
+                raise BundleError(f"{name}: a link with data")
+        elif kind == "dir":
+            if size:
+                raise BundleError(f"{name}: a directory with data")
+        else:
+            if size > MAX_FILE:
+                raise BundleError(f"{name}: {size} bytes, more than {MAX_FILE} (512 MiB)")
+            # Kept whole: the manifest and the few files check_semantics reads, each only up to the size
+            # the Store reads of it (a bigger one is refused there by its size, not by its content).
+            limit = (MAX_MANIFEST if name == MANIFEST else
+                     MAX_KEYFILE if name.endswith((".desktop", ".service")) and in_export_zone(name) else
+                     SMALL if name.endswith((".metainfo.xml", ".appdata.xml")) and in_export_zone(name) else -1)
+            h, keep, buf, left = hashlib.sha256(), want_small and size <= limit, bytearray(), size
+            while left:
+                chunk = take(min(left, 1 << 20))
+                left -= len(chunk)
+                h.update(chunk)
+                if keep:
+                    buf += chunk
+            padding(-size % BLOCK)
+            e.size, e.sha256 = size, h.hexdigest()
+            if keep:
+                small[name] = bytes(buf)
+        entries.append(e)
+    # The end: nothing but zeros after it (no archive hidden behind the marker), and the second zero block.
+    tail = 0
+    while True:
+        chunk = stream.read(1 << 20)
+        if not chunk:
+            break
+        used += len(chunk)
+        if used > MAX_DECOMPRESSED or chunk.strip(b"\0"):
+            raise BundleError("the tar archive has data after its end marker")
+        tail += len(chunk)
+    if tail < BLOCK:
+        raise BundleError("the tar archive has no end marker")
+    return entries, small
 
 
 def read_archive(path):
-    """(entries, {path: bytes} for the small files). Nothing is extracted: the tar is read as a
-    stream and every regular file is only hashed."""
+    """(entries, {path: bytes} for the small files)."""
     try:
         with open(path, "rb") as f:
             magic = f.read(4)
     except OSError as exc:
-        raise BundleError(f"cannot read {path}: {exc.strerror}") from None
-    if magic != ZSTD_MAGIC:
+        raise BundleError(f"cannot read {printable(path)}: {exc.strerror}") from None
+    if magic != b"\x28\xb5\x2f\xfd":
         # `zstd -d` also unpacks gzip, xz and lz4 when built with them: a bundle is zstd.
         raise BundleError("the archive is not zstd-compressed")
     try:
-        z = subprocess.Popen(["zstd", "-dc", "-q", "--", path], stdout=subprocess.PIPE, env=tool_env())
+        z = subprocess.Popen(["zstd", "-dc", "-qq", "--memory=128MiB", "--", path], stdout=subprocess.PIPE)
     except FileNotFoundError:
         raise BundleError("zstd is not installed") from None
-    entries, small, total = [], {}, 0
-    stream = _Capped(z.stdout, MAX_STREAM)
+    ok = False
     try:
-        with tarfile.open(fileobj=stream, mode="r|", encoding="utf-8", errors="surrogateescape", tarinfo=_SafeInfo) as tf:
-            for ti in tf:
-                name = ti.name
-                # tarfile expands a PAX sparse member (GNU.sparse.* records) to its full size, which
-                # the Store's reader does not: the two would see different files.
-                if ti.sparse is not None or any(k.startswith("GNU.sparse") for k in ti.pax_headers):
-                    raise BundleError(f"{printable(name)}: a sparse file (PAX GNU.sparse): only plain regular files are allowed")
-                if ti.size < 0:
-                    raise BundleError(f"{printable(name)}: a negative size")
-                if ti.isdir():
-                    e = Entry(name, "dir", ti.mode)
-                elif ti.issym():
-                    e = Entry(name, "link", ti.mode, target=ti.linkname)
-                elif ti.type in (tarfile.REGTYPE, tarfile.AREGTYPE):
-                    if total + ti.size > MAX_TOTAL:
-                        raise BundleError("the archive is larger than the limits (entries or bytes)")
-                    h = hashlib.sha256()
-                    limit = MAX_MANIFEST if name == MANIFEST else SMALL
-                    keep = ti.size <= limit and (name == MANIFEST or name.endswith((".desktop", ".service", ".metainfo.xml", ".appdata.xml")))
-                    if name == MANIFEST and ti.size > MAX_MANIFEST:
-                        raise BundleError(f"{MANIFEST} in the archive is {ti.size} bytes: the Store reads at most {MAX_MANIFEST}")
-                    buf = bytearray()
-                    f = tf.extractfile(ti)
-                    for chunk in iter(lambda: f.read(1 << 20), b""):
-                        h.update(chunk)
-                        if keep:
-                            buf += chunk
-                    e = Entry(name, "file", ti.mode, size=ti.size, sha256=h.hexdigest())
-                    if keep:
-                        small[name] = bytes(buf)
-                elif ti.isreg():
-                    raise BundleError(f"{printable(name)}: a sparse or contiguous file: only plain regular files are allowed")
-                else:
-                    raise BundleError(f"{printable(name)}: a {tarfile_type(ti)}: only directories, files and symlinks are allowed")
-                try:
-                    e.uid, e.gid, e.mtime = ti.uid, ti.gid, int(ti.mtime)
-                except (ValueError, OverflowError):
-                    raise BundleError(f"{printable(name)}: the modification time is not a number") from None
-                entries.append(e)
-                total += e.size
-                if total > MAX_TOTAL or len(entries) > MAX_ENTRIES:
-                    raise BundleError("the archive is larger than the limits (entries or bytes)")
-        # After the end of the tar only zero padding may follow (read within the cap, never whole).
-        while True:
-            chunk = stream.read(1 << 20)
-            if not chunk:
-                break
-            if chunk.count(0) != len(chunk):
-                raise BundleError("there is data after the end of the tar archive")
-    except tarfile.TarError as exc:
-        raise BundleError(f"not a readable tar archive: {printable(str(exc))}") from None
+        entries, small = scan_tar(z.stdout, want_small=True)
+        ok = True
     finally:
+        if not ok:
+            z.kill()
         z.stdout.close()
         rc = z.wait()
     if rc != 0:
         raise BundleError(f"zstd could not decompress the archive ({rc})")
-    if not entries:
-        raise BundleError("the archive is empty")
     return entries, small
 
 
-def tarfile_type(ti):
-    if ti.islnk():
-        return "hard link"
-    if ti.isdev():
-        return "device or fifo"
-    return "special entry"
+def _dup_keys(pairs):
+    d = {}
+    for k, v in pairs:
+        if k in d:
+            raise ValueError(f"the key {k!r} is given twice")
+        d[k] = v
+    return d
+
+
+def _refuse_constant(name):
+    raise ValueError(f"{name} is not JSON a manifest may hold")
+
+
+def _refuse_float(text):
+    raise ValueError(f"the number {text} has a fraction or an exponent: a manifest holds whole numbers only")
+
+
+def _whole(text):
+    if len(text) > 20:       # the Store reads u64: at most 20 digits
+        raise ValueError("a number longer than 20 digits")
+    return int(text)
 
 
 def load_json_ordered(data, what):
+    """Strict JSON, as serde_json reads it and more: UTF-8 without a byte order mark, at most
+    MAX_MANIFEST bytes, no duplicate keys, no NaN or Infinity, no fractions or exponents, whole
+    numbers of at most 20 digits, no lone surrogates. Key order is kept (dicts keep insertion order)."""
+    if len(data) > MAX_MANIFEST:
+        raise BundleError(f"{what} is larger than {MAX_MANIFEST // 1024} KiB")
+    if data.startswith(b"\xef\xbb\xbf"):
+        raise BundleError(f"{what} starts with a byte order mark")
     try:
-        return json.loads(data, object_pairs_hook=lambda pairs: dict(pairs))
-    except (ValueError, UnicodeDecodeError, RecursionError) as exc:
-        raise BundleError(f"{what} is not valid JSON: {printable(str(exc))}") from None
+        text = data.decode("utf-8")
+        obj = json.loads(text, object_pairs_hook=_dup_keys, parse_constant=_refuse_constant,
+                         parse_float=_refuse_float, parse_int=_whole)
+        dump(obj).encode("utf-8")   # a lone surrogate (\ud800) parses, and cannot be written
+    except (ValueError, RecursionError) as exc:       # UnicodeError is a ValueError
+        raise BundleError(f"{what} is not valid JSON: {exc}") from None
+    return obj
+
+
+def _is_int(v):
+    return type(v) is int          # not a bool, not a float
+
+
+def _text_problem(k, v, limit):
+    if not isinstance(v, str) or (not v and k != "homepage"):
+        return f"{k} must be a non-empty string"
+    if k in ("name", "summary", "license") and store_clean(v, limit) != v:
+        return (f"{k} {v!r} is not what the Store shows of it (it drops control and invisible characters, collapses "
+                f"white space and cuts at {limit} characters): write it that way")
+    return None
 
 
 def check_manifest_shape(m, with_archive):
+    """The manifest's keys, types and values: the Store's `Manifest::check` (native/manifest.rs)
+    and more (exact keys in one order, sorted lists). Returns a list of problems."""
     errs = []
     want = KEY_ORDER + (["archive"] if with_archive else [])
     if list(m.keys()) != want:
         errs.append(f"manifest keys are {list(m.keys())}, expected exactly {want} in that order")
         return errs
-    if m["schema"] != SCHEMA or isinstance(m["schema"], bool):
+    if not _is_int(m["schema"]) or m["schema"] != SCHEMA:
         errs.append(f"schema is {m['schema']!r}, this tool reads {SCHEMA}")
+    limits = {"name": MAX_NAME, "summary": MAX_SUMMARY, "license": MAX_LICENSE}
     for k in ("id", "name", "version", "summary", "homepage", "license", "arch", "min_telamon_ui", "min_os_version"):
-        if not isinstance(m[k], str) or (not m[k] and k != "homepage"):
-            errs.append(f"{k} must be a non-empty string")
+        bad = _text_problem(k, m[k], limits.get(k, 0))
+        if bad:
+            errs.append(bad)
     if errs:
         return errs
     if not valid_app_id(m["id"]):
@@ -1072,50 +1213,74 @@ def check_manifest_shape(m, with_archive):
     if not isinstance(m["files"], list) or not isinstance(m["links"], list):
         errs.append("files and links must be arrays")
         return errs
+    if not m["files"]:
+        errs.append("files is empty: a bundle holds at least its program")
+    if len(m["files"]) > MAX_FILES or len(m["links"]) > MAX_FILES:
+        errs.append(f"{len(m['files'])} files and {len(m['links'])} links: at most {MAX_FILES} of each")
+        return errs
     for f in m["files"]:
         if not isinstance(f, dict) or list(f.keys()) != FILE_KEYS:
             errs.append(f"a files entry must have exactly {FILE_KEYS}: {f!r}")
-        elif (not isinstance(f["path"], str) or not isinstance(f["size"], int) or isinstance(f["size"], bool)
+        elif (not isinstance(f["path"], str) or not _is_int(f["size"]) or not 0 <= f["size"] <= MAX_FILE
               or not isinstance(f["sha256"], str) or not SHA_RE.fullmatch(f["sha256"]) or not isinstance(f["executable"], bool)):
-            errs.append(f"a files entry has a wrong type or hash: {f!r}")
+            errs.append(f"a files entry has a wrong type, size or hash: {f!r}")
     for ln in m["links"]:
         if not isinstance(ln, dict) or list(ln.keys()) != LINK_KEYS or not all(isinstance(v, str) for v in ln.values()):
             errs.append(f"a links entry must have exactly {LINK_KEYS}: {ln!r}")
+    if errs:
+        return errs
+    for f in m["files"]:
+        bad = path_problem(f["path"]) or (f"{MANIFEST} lists itself" if f["path"] == MANIFEST else None)
+        if bad:
+            errs.append(f"{f['path']!r}: {bad}")
+    for ln in m["links"]:
+        bad = path_problem(ln["path"]) or (None if link_target_ok(ln["path"], ln["target"]) else "a link target that leaves the tree")
+        if bad:
+            errs.append(f"{ln['path']!r}: {bad}")
+    if sum(f["size"] for f in m["files"]) > MAX_TOTAL:
+        errs.append(f"files add up to more than {MAX_TOTAL} bytes (1 GiB unpacked)")
     if errs:
         return errs
     for key in ("files", "links"):
         paths = [x["path"] for x in m[key]]
         if paths != sorted(paths) or len(set(paths)) != len(paths):
             errs.append(f"{key} must be sorted by path, with no duplicates")
+    both = [x["path"] for x in m["files"]] + [x["path"] for x in m["links"]]
+    if len(set(both)) != len(both):
+        errs.append("a path is both a file and a link")
     if with_archive:
         ar = m["archive"]
         if not isinstance(ar, dict) or list(ar.keys()) != ARCHIVE_KEYS:
             errs.append(f"archive must have exactly {ARCHIVE_KEYS}")
         elif (not isinstance(ar["name"], str) or not isinstance(ar["sha256"], str) or not SHA_RE.fullmatch(ar["sha256"])
-              or not isinstance(ar["size"], int) or isinstance(ar["size"], bool)):
-            errs.append("archive has a wrong type or hash")
+              or not _is_int(ar["size"]) or not 0 < ar["size"] <= MAX_ARCHIVE):
+            errs.append(f"archive has a wrong type, hash or size (1 to {MAX_ARCHIVE} bytes)")
         elif ar["name"] != f"{m['id']}-{m['version']}-{m['arch']}.tar.zst":
             errs.append(f"archive.name {ar['name']!r} is not <id>-<version>-<arch>.tar.zst")
     return errs
 
 
+def parse_manifest(data, what, with_archive):
+    """Bytes of a manifest to its dict, or a BundleError naming every problem."""
+    obj = load_json_ordered(data, what)
+    if not isinstance(obj, dict):
+        raise BundleError(f"{what} is not a JSON object")
+    errs = check_manifest_shape(obj, with_archive)
+    if errs:
+        raise BundleError(errs)
+    if data != dump(obj).encode("utf-8"):
+        raise BundleError(f"{what} is not in the canonical form (2-space indent, trailing newline)")
+    return obj
+
+
 def verify(archive_path, manifest_path, epoch=None):
     errs = []
     try:
-        with open(manifest_path, "rb") as mf:
-            outer_raw = mf.read(MAX_MANIFEST + 1)
+        with open(manifest_path, "rb") as f:
+            outer_raw = f.read(MAX_MANIFEST + 1)
     except OSError as exc:
-        raise BundleError(f"cannot read {manifest_path}: {exc.strerror}") from None
-    if len(outer_raw) > MAX_MANIFEST:
-        raise BundleError(f"{manifest_path} is larger than {MAX_MANIFEST} bytes (1 MiB), the most the Store reads")
-    outer = load_json_ordered(outer_raw, manifest_path)
-    if not isinstance(outer, dict):
-        raise BundleError("the manifest is not a JSON object")
-    shape = check_manifest_shape(outer, with_archive=True)
-    if shape:
-        raise BundleError(shape)
-    if outer_raw != canonical(outer):
-        errs.append("the manifest is not in the canonical form (2-space indent, trailing newline)")
+        raise BundleError(f"cannot read {manifest_path}: {exc}") from None
+    outer = parse_manifest(outer_raw, str(manifest_path), with_archive=True)
 
     ar = outer["archive"]
     if not os.path.isfile(archive_path):
@@ -1123,7 +1288,7 @@ def verify(archive_path, manifest_path, epoch=None):
     if os.path.basename(archive_path) != ar["name"]:
         errs.append(f"the archive file is {os.path.basename(archive_path)}, the manifest names {ar['name']}")
     if not 0 < os.path.getsize(archive_path) <= MAX_ARCHIVE:
-        errs.append(f"the archive is {os.path.getsize(archive_path)} bytes: at most {MAX_ARCHIVE} (256 MiB)")
+        raise BundleError(errs + [f"the archive is {os.path.getsize(archive_path)} bytes: at most {MAX_ARCHIVE} (256 MiB)"])
     if os.path.getsize(archive_path) != ar["size"]:
         errs.append(f"archive size {os.path.getsize(archive_path)}, the manifest says {ar['size']}")
     if sha256_file(archive_path) != ar["sha256"]:
@@ -1143,7 +1308,7 @@ def verify(archive_path, manifest_path, epoch=None):
     else:
         inner = load_json_ordered(inner_raw, f"{MANIFEST} in the archive")
         expect = {k: v for k, v in outer.items() if k != "archive"}
-        if inner != expect or inner_raw != canonical(expect):
+        if inner != expect or inner_raw != dump(expect).encode("utf-8"):
             errs.append("the manifest inside the archive is not the outer manifest without `archive`")
 
     listed = {f["path"]: f for f in outer["files"]}
@@ -1216,9 +1381,8 @@ def main(argv):
         for line in exc.problems:
             print(f"bundle: {printable(line)}", file=sys.stderr)
         return 1
-    except (OSError, ValueError, OverflowError, RecursionError, MemoryError, subprocess.SubprocessError) as exc:
-        # Whatever else a hostile or broken input provokes: a failure with a message, never a traceback.
-        print(f"bundle: unexpected {exc.__class__.__name__} while reading the bundle: {printable(str(exc))}", file=sys.stderr)
+    except OSError as exc:      # an unreadable file, a full disk: a message, not a traceback
+        print(f"bundle: {printable(str(exc))}", file=sys.stderr)
         return 1
     return 0
 

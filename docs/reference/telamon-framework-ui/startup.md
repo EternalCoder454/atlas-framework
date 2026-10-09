@@ -28,7 +28,7 @@ The second launch's arguments are dropped. An app that opens files uses `telamon
 
 ## Crash hooks
 
-Both hooks save a report only when the user turned crash reporting on, and never send anything by themselves. See [crash](../telamon-framework-system/crash.md).
+Both hooks save a report only when the user turned crash reporting on, and never send anything by themselves. See [crash](../telamon-framework-system/crash.md). An app whose [`app!`](app-macro.md#keeping-an-app-out-of-crash-reports) says `crash: false` (or that called `telamon_app_set_crash_reporting(false)` before `telamon_app_init`) gets neither hook: no panic hook is installed and a fatal Qt message is only logged. `telamon_framework_ui::crash_reporting()` returns which applies.
 
 - **Rust panics.** `telamon_framework_system::crash::install` installs a panic hook. The default hook still prints the panic first. When reporting is enabled, a report is queued in `pending/`, at most 5 an hour and each crash once.
 - **Fatal Qt messages.** `telamon_app_init` installs a Qt message handler before `QApplication`, so a fatal while it starts (no display, no platform plugin) is saved too. On a `QtFatalMsg` it logs the text as an error and calls `crash::record_fatal`, then passes the message on to the previous handler, which aborts. Only the first fatal saves a report; a fatal on another thread waits until that report is saved so the abort cannot cut it off. A 10-second alarm ends the process if saving hangs.

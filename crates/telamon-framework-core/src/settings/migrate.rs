@@ -124,7 +124,7 @@ impl Settings {
         }
         let target = resolve_link(&self.path)?;
         if let Some(dir) = target.parent() {
-            fs::create_dir_all(dir)?;
+            crate::fsutil::create_private_dir_all(dir)?;
         }
         let _file = lock(&target)?;
         let _thread = WRITERS.lock().unwrap_or_else(|e| e.into_inner());

@@ -7,6 +7,27 @@ set(CMAKE_AUTOMOC ON)
 
 include(GNUInstallDirs)
 
+# Hardening (docs/SECURITY.md, "Template defaults"). An RPM build already has
+# Fedora's flags (%build_cxxflags and %build_ldflags: stack protectors,
+# _FORTIFY_SOURCE=3, _GLIBCXX_ASSERTIONS, position independent code, full
+# RELRO, BIND_NOW) and is left alone; any other build (a native bundle, a plain
+# cmake run) gets the same set, so an app is hardened however it is built.
+# -DTELAMON_HARDENING=OFF turns it off, e.g. for a sanitizer build.
+option(TELAMON_HARDENING "Build with the hardening flags of Fedora's packages" ON)
+if(TELAMON_HARDENING AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    if(NOT CMAKE_CXX_FLAGS MATCHES "-fstack-protector")
+        add_compile_options(-fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security
+            "$<$<NOT:$<CONFIG:Debug>>:-D_FORTIFY_SOURCE=3>" -D_GLIBCXX_ASSERTIONS)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+            add_compile_options(-fcf-protection=full)
+        endif()
+    endif()
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-z,?now")
+        add_link_options(-pie LINKER:-z,relro LINKER:-z,now LINKER:-z,noexecstack)
+    endif()
+endif()
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
 qt_policy(SET QTP0001 NEW)
 find_package(Corrosion REQUIRED)

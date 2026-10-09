@@ -305,6 +305,7 @@ Item {
     // Placed with anchors (not x), so it mirrors under LayoutMirroring.
     QQC2.Label {
         id: title
+        textFormat: Text.PlainText
         readonly property real _free: Math.max(0, root.width - leftRow.width - rightRow.width - TelamonStyle.spacing * 2)
         // With no actions the title may take all the free width; otherwise 40% of it.
         readonly property real _maxWidth: root.titleCentered ? Math.max(0, root.width - 2 * Math.max(leftRow.width, rightRow.width) - TelamonStyle.spacing * 2) : (root.actions.length > 0 || root._hasStretch ? _free * 0.4 : _free)

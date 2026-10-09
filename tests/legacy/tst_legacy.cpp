@@ -80,6 +80,16 @@ private Q_SLOTS:
         QVERIFY2(names.isEmpty(), qPrintable(names.join(QLatin1Char(' '))));
     }
 
+    void adoptDoesNotCopyWriteAccessOfGroupAndOthers()
+    {
+        const QString old = p("atlas-wrc"), fresh = p("telamon-wrc");
+        writeAll(old, "[Atlas]\nFormat=1\n");
+        QVERIFY(::chmod(QFile::encodeName(old).constData(), 0666) == 0);
+        QVERIFY(LegacyConfig::adoptFile(fresh, old));
+        QCOMPARE(int(QFileInfo(fresh).permissions()),
+                 int(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadUser | QFileDevice::WriteUser | QFileDevice::ReadGroup | QFileDevice::ReadOther));
+    }
+
     void adoptRefusesWhatIsNotASettingsFile()
     {
         QVERIFY(!LegacyConfig::adoptFile(p("telamon-none"), p("atlas-none")));

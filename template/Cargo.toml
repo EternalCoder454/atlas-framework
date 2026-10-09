@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 rust-version = "1.89"
+publish = false
 description = "Starting point for Telamon apps: Kirigami + CXX-Qt + telamon-framework"
 
 # The template is not part of the framework workspace; it builds on its own.
@@ -34,6 +35,9 @@ telamon-framework-system = { path = "../crates/telamon-framework-system", featur
 cxx-qt-build = "0.10"
 
 [profile.release]
+# Arithmetic that overflows panics (and the crash hook reports it) instead of
+# wrapping silently into a size or an index.
+overflow-checks = true
 lto = "thin"
 codegen-units = 4
 strip = true

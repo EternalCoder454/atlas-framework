@@ -20,6 +20,8 @@ const MAX_LINE_BYTES: usize = 8 * 1024;
 /// The biggest events file `read` takes (it is cut to 512 KB; this is for a
 /// file something else grew).
 const MAX_READ_BYTES: u64 = 16 * 1024 * 1024;
+/// `read` leaves out an event whose `time` is longer than this.
+const MAX_TIME_CHARS: usize = 40;
 pub const DEFAULT_PATH: &str = "/var/lib/atlas-core/events.jsonl";
 
 /// The line format the writers produce (`"format": 1`, before the event's
@@ -109,12 +111,7 @@ pub fn append(path: &Path, event: &Event) -> io::Result<()> {
             ),
         ));
     }
-    let lock = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .mode(0o600)
-        .custom_flags(libc::O_NOFOLLOW)
-        .open(path.with_extension("jsonl.lock"))?;
+    let lock = crate::fsutil::open_lock_file(&path.with_extension("jsonl.lock"))?;
     // released when `lock` is dropped; waits 2 s at most
     crate::fsutil::lock_with_deadline(&lock, crate::fsutil::LOCK_WAIT)?;
     crate::fsutil::append_line(path, &line, 0o644)?;
@@ -192,7 +189,8 @@ fn truncate(path: &Path) -> io::Result<()> {
 }
 
 /// All events, oldest first. A missing file, a file that is not a regular
-/// file or is over 16 MB, or bad lines give fewer events.
+/// file or is over 16 MB, bad lines, or a line with a `time` over 40
+/// characters give fewer events.
 pub fn read(path: &Path) -> Vec<Event> {
     let bytes = match crate::fsutil::read_capped(path, MAX_READ_BYTES) {
         Ok(b) => b,
@@ -205,7 +203,10 @@ pub fn read(path: &Path) -> Vec<Event> {
     };
     crate::fsutil::lossy_lines(&bytes)
         .iter()
-        .filter_map(|l| serde_json::from_str(l).ok())
+        .filter_map(|l| serde_json::from_str::<Event>(l).ok())
+        // a time is an RFC 3339 time (at most 35 characters), and a report
+        // is saved under it: a longer one can never be queued
+        .filter(|e| e.time.len() <= MAX_TIME_CHARS)
         .collect()
 }
 
@@ -415,5 +416,24 @@ mod tests {
         .unwrap();
         let names: Vec<_> = read(&p).into_iter().map(|e| e.event).collect();
         assert_eq!(names, ["a", "b"]);
+    }
+
+    #[test]
+    fn read_leaves_out_an_event_with_a_time_that_is_too_long() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("e.jsonl");
+        let long = format!(
+            r#"{{"event":"update-failed","time":"2026-10-02T10:00:00Z{}"}}"#,
+            "0".repeat(300)
+        );
+        let edge = format!(
+            r#"{{"event":"update-failed","time":"{}"}}"#,
+            "2".repeat(MAX_TIME_CHARS)
+        );
+        let ok = r#"{"format":1,"event":"update-failed","time":"2026-10-02T10:00:01Z"}"#;
+        std::fs::write(&p, format!("{long}\n{edge}\n{ok}\n")).unwrap();
+        let got = read(&p);
+        assert_eq!(got.len(), 2, "{got:?}");
+        assert_eq!(got[1].time, "2026-10-02T10:00:01Z");
     }
 }

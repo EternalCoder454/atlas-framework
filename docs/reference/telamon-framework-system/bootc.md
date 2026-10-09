@@ -40,7 +40,8 @@ assert_eq!("stable".parse::<Channel>().unwrap(), Channel::Stable);
 
 | Method | Description |
 |---|---|
-| `fn from_json(json: &str) -> Result<Status, serde_json::Error>` | Parses the document |
+| `fn from_json(json: &str) -> Result<Status, serde_json::Error>` | Parses the document. A document over `MAX_JSON_BYTES` (4 MiB) is an error without being parsed, and so is nesting deeper than serde_json's limit of 128 levels. The strings in it (image references, version labels) are the image builder's: they are kept as they are, so cut and clean them before they go into a file or a window |
+| `MAX_JSON_BYTES` | `pub const MAX_JSON_BYTES: usize` | 4 MiB, the biggest document `from_json` reads |
 | `fn booted_ref(&self) -> Option<&ImageReference>` | The booted image's reference; falls back to `spec.image` |
 | `fn channel(&self) -> Option<Channel>` | The channel the system follows, from `spec.image` (a switch changes it at once, while the booted ref keeps the old channel until the restart) |
 | `fn has_staged(&self) -> bool` | A staged deployment exists |

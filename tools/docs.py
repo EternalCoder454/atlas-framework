@@ -811,7 +811,9 @@ def main(argv):
         errors.append("docs/reference: no libraries to publish")
     if errors:
         for e in errors:
-            print(e, file=sys.stderr)
+            # File names come from the tree: a control character in one (an escape sequence, a CR that
+            # starts a CI log command) is shown as `?`.
+            print(re.sub(r"[\x00-\x1f\x7f-\x9f]", "?", e), file=sys.stderr)
         sys.exit(f"docs: {len(errors)} problem(s)")
     if argv[1] == "check":
         print(f"docs: ok ({sum(len(lib.pages) for lib in libraries)} pages in {len(libraries)} libraries)")

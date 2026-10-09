@@ -23,6 +23,7 @@ Item {
         RowLayout {
             spacing: Kirigami.Units.smallSpacing
             QQC2.Label {
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: "flatpak install flathub org.example.App"
                 font: Kirigami.Theme.fixedWidthFont
@@ -35,6 +36,7 @@ Item {
         RowLayout {
             spacing: Kirigami.Units.smallSpacing
             QQC2.Label {
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: "Details with a label"
                 elide: Text.ElideRight
@@ -47,6 +49,7 @@ Item {
         RowLayout {
             spacing: Kirigami.Units.smallSpacing
             QQC2.Label {
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: "Disabled"
             }

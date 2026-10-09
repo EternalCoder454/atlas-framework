@@ -130,6 +130,7 @@ Item {
             section.criteria: ViewSection.FullString
             // telamon-lint: allow the gallery shows Kirigami.Heading as is
             section.delegate: Kirigami.Heading {
+                textFormat: Text.PlainText
                 required property string section
                 width: ListView.view.width
                 level: 5
@@ -160,12 +161,14 @@ Item {
 
                 // telamon-lint: allow the gallery shows Kirigami.Heading as is
                 Kirigami.Heading {
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     level: 2
                     text: root.selected
                     elide: Text.ElideRight
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     text: qsTr("Disabled")
                 }
                 TelamonSwitch {
