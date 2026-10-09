@@ -81,8 +81,8 @@ def valid_app_id(i):
 
 
 def hidden(c):
-    """The Store's `hidden` characters (control, invisible, bidi, filler), plus any
-    other format, control or line/paragraph separator."""
+    """The Store's `hidden` characters (telamon-store-core, launch.rs `hidden`: control, invisible, bidi, filler),
+    plus any other format, control or line/paragraph separator."""
     o = ord(c)
     return (unicodedata.category(c)[0] == "C" or unicodedata.category(c) in ("Zl", "Zp") or o in (
         0xAD, 0x34F, 0x61C, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x200B, 0x200E, 0x200F, 0x3164, 0xFEFF, 0xFFA0)
@@ -181,7 +181,11 @@ def dump(obj):
 # ---------------------------------------------------------------- path rules
 
 def path_problem(p):
-    """Why a tree path is not allowed, or None."""
+    """Why a tree path is not allowed, or None. The Store's rule is `valid_rel_path` (telamon-store-core,
+    native/manifest.rs: non-empty, at most 1,024 bytes, not absolute, every part non-empty, not `.` or `..`, at most 255
+    bytes, no `hidden` character) applied by native/archive.rs `entry_path` to each member name (it also
+    tolerates a leading `./` and a directory's trailing `/`, which this tool never writes and refuses). More
+    here: no backslash, and every other control, format or separator character, not only the Store's list."""
     if p == "" or p.startswith("/"):
         return "empty or absolute path"
     if "\\" in p:
@@ -203,8 +207,9 @@ def path_problem(p):
 
 
 def link_target_ok(path, target):
-    """The Store's lexical rule for a link target: relative, plain names and `..`, no
-    empty or `.` part, no hidden character, never above the root."""
+    """The Store's lexical rule for a link target (native/manifest.rs `link_target_ok`, checked again on the real
+    folders by archive.rs `unpack`): relative, plain names and `..`, no empty or `.` part, no hidden
+    character, at most 1,024 bytes, never above the root."""
     if not target or len(target.encode("utf-8", "replace")) > 1024 or target.startswith("/") or any(hidden(c) for c in target):
         return False
     depth = path.count("/")
@@ -1017,8 +1022,12 @@ def scan_tar(stream, want_small=False):
         else:
             if size > MAX_FILE:
                 raise BundleError(f"{name}: {size} bytes, more than {MAX_FILE} (512 MiB)")
-            h, keep, buf, left = hashlib.sha256(), want_small and size <= SMALL and (
-                name == MANIFEST or name.endswith((".desktop", ".service", ".metainfo.xml", ".appdata.xml"))), bytearray(), size
+            # Kept whole: the manifest and the few files check_semantics reads, each only up to the size
+            # the Store reads of it (a bigger one is refused there by its size, not by its content).
+            limit = (MAX_MANIFEST if name == MANIFEST else
+                     MAX_KEYFILE if name.endswith((".desktop", ".service")) and in_export_zone(name) else
+                     SMALL if name.endswith((".metainfo.xml", ".appdata.xml")) and in_export_zone(name) else -1)
+            h, keep, buf, left = hashlib.sha256(), want_small and size <= limit, bytearray(), size
             while left:
                 chunk = take(min(left, 1 << 20))
                 left -= len(chunk)
