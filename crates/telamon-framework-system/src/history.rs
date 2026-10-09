@@ -4,7 +4,6 @@
 
 use std::fs;
 use std::io;
-use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -48,6 +47,15 @@ struct Line<'a> {
 
 /// The biggest history file read (16 MB; a real one is a few KB).
 const MAX_READ_BYTES: u64 = 16 * 1024 * 1024;
+/// `append_if_new` refuses a line longer than this (one made by
+/// [`record_boot`] is under 2 KB).
+const MAX_LINE_BYTES: usize = 8 * 1024;
+/// What [`record_boot`] keeps of the strings an image supplies (its version
+/// label, its reference, its build time, its digest), in characters.
+const MAX_VERSION_CHARS: usize = 128;
+const MAX_IMAGE_CHARS: usize = 512;
+const MAX_TIME_CHARS: usize = 64;
+const MAX_DIGEST_CHARS: usize = 128;
 
 /// Read the history at the default path, newest first.
 pub fn read_default() -> io::Result<Vec<Entry>> {
@@ -74,33 +82,52 @@ pub fn read(path: &Path) -> io::Result<Vec<Entry>> {
 /// a line was written. The file is created 0644. A lock file beside it
 /// (`<path>.lock`, the pattern of [`crate::events`]) makes the check and the
 /// write one step for concurrent callers; it fails with `TimedOut` when the
-/// lock is still held after 2 s.
+/// lock is still held after 2 s, and with `InvalidInput` when the line is
+/// over 8 KB.
 pub fn append_if_new(path: &Path, entry: &Entry) -> io::Result<bool> {
+    let line = serde_json::to_string(&Line {
+        format: FORMAT,
+        entry,
+    })
+    .map_err(io::Error::other)?;
+    if line.len() > MAX_LINE_BYTES {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!(
+                "history line is {} bytes, the limit is {MAX_LINE_BYTES}",
+                line.len()
+            ),
+        ));
+    }
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    let lock = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .mode(0o600)
-        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
-        .open(path.with_extension("jsonl.lock"))?;
+    let lock = crate::fsutil::open_lock_file(&path.with_extension("jsonl.lock"))?;
     crate::fsutil::lock_with_deadline(&lock, crate::fsutil::LOCK_WAIT)?;
     if let Some(last) = read(path)?.first()
         && last.digest == entry.digest
     {
         return Ok(false);
     }
-    let line = serde_json::to_string(&Line {
-        format: FORMAT,
-        entry,
-    })
-    .map_err(io::Error::other)?;
     crate::fsutil::append_line(path, &line, 0o644)?;
     Ok(true)
 }
 
-/// Record the booted deployment of `status`. `now` is RFC 3339 (see [`now_rfc3339`]).
+/// `s` cut to `max` characters, with control characters (a line break in an
+/// image's version label, say) made spaces: what an image supplies is not
+/// trusted to be short or plain.
+fn tidy(s: &str, max: usize) -> String {
+    s.chars()
+        .take(max)
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect()
+}
+
+/// Record the booted deployment of `status`. `now` is RFC 3339 (see
+/// [`now_rfc3339`]). The strings the image supplies are cut (version 128
+/// characters, image reference 512, build time 64, digest 128) and have
+/// control characters replaced by spaces, so a hostile label cannot grow
+/// the file or smuggle in terminal escapes.
 pub fn record_boot(path: &Path, status: &Status, now: &str) -> io::Result<bool> {
     let booted = status
         .status
@@ -109,11 +136,14 @@ pub fn record_boot(path: &Path, status: &Status, now: &str) -> io::Result<bool> 
         .and_then(|b| b.image.as_ref())
         .ok_or_else(|| io::Error::other("bootc reports no booted image"))?;
     let entry = Entry {
-        version: booted.version.clone(),
-        digest: booted.image_digest.clone(),
-        image: booted.image.image.clone(),
-        timestamp: booted.timestamp.clone(),
-        first_booted: now.to_string(),
+        version: booted
+            .version
+            .as_deref()
+            .map(|v| tidy(v, MAX_VERSION_CHARS)),
+        digest: tidy(&booted.image_digest, MAX_DIGEST_CHARS),
+        image: tidy(&booted.image.image, MAX_IMAGE_CHARS),
+        timestamp: booted.timestamp.as_deref().map(|t| tidy(t, MAX_TIME_CHARS)),
+        first_booted: tidy(now, MAX_TIME_CHARS),
     };
     append_if_new(path, &entry)
 }

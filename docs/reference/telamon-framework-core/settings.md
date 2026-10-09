@@ -29,6 +29,7 @@ s.set("Restart", "ScheduledAt", None)?; // removes the key
 
 - Each `set` reads the file, changes one key and replaces the file atomically (temp file, sync, rename, then a directory sync). Every other line is kept, and so are the file's mode and, when running as root, its owner.
 - Writers take an `flock` on `.<name>.lock` beside the file and a thread lock. The wait for the file lock is bounded: `LOCK_NB` polling for 2 seconds, then `set` fails with `ErrorKind::TimedOut` (a stopped holder or a hung network home never freezes the caller for good). A caller must handle that error and show it, as it must any `set` error. The lock file stays on purpose: removing it would race the next writer. Concurrent `set` calls in Telamon code never lose a change. Another program writing the file without the lock can still race, but cannot corrupt it.
+- A directory that `set` or `watch` has to create gets mode 0700 (less the umask), and a new file mode 0600; an existing file keeps its mode. A value is escaped so that it stays on one line (`\n`, `\r`, `\t`, other control characters as `\xNN`, `\\`, and a space at either end as `\s`) and reads back as written, also when it begins or ends with a no-break or other Unicode space: only ASCII blanks around a value are trimmed on reading.
 - `set` writes nothing, and takes no lock, when the file would not change. This works where the app can read but not write.
 - A file that cannot be read is never overwritten. Reading is bounded: only a regular file of at most 4 MB is read (a FIFO is not opened for blocking, a larger file is an error), and bytes that are not UTF-8 read as U+FFFD, but such a file is never rewritten (`set` fails with `InvalidData`), so no other line or comment is changed.
 - Under the lock, `set` removes the temp files (`.<name>.tmp<pid>-<n>`, exactly) left by a crashed writer when they are older than a day, once per process and file.
@@ -120,7 +121,7 @@ let _watch = s.watch(|new| {
 | `fn path(&self) -> &Path` | The file's path |
 | `fn get(&self, group: &str, key: &str) -> Option<String>` | The unescaped value, or `None` if the file, group or key is missing |
 | `fn get_bool(&self, group: &str, key: &str) -> Option<bool>` | `true`, `1`, `yes`, `on` and `false`, `0`, `no`, `off` (any case); anything else, or a missing key, is `None` |
-| `fn set(&self, group: &str, key: &str, value: Option<&str>) -> io::Result<()>` | Sets the key, or removes it for `None`. Errors: `InvalidInput` for a group or key that cannot be written as one (empty, control characters, brackets, `=` in a key, edge spaces, a leading `#` or `;`), `PermissionDenied` for an immutable one, `NotFound` when there is no home directory |
+| `fn set(&self, group: &str, key: &str, value: Option<&str>) -> io::Result<()>` | Sets the key, or removes it for `None`. Errors: `InvalidInput` for a group or key that cannot be written as one (empty, control characters, brackets, `=` in a key, edge spaces, a leading `#` or `;`, a group starting with `$`), `PermissionDenied` for an immutable one, `NotFound` when there is no home directory |
 
 ## Functions and constants
 
@@ -129,4 +130,4 @@ let _watch = s.watch(|new| {
 | `FORMAT` | `pub const u32` | The format version written, `1` |
 | `config_dir()` | `pub fn config_dir() -> PathBuf` | `$XDG_CONFIG_HOME`, else `~/.config`. Relative values are ignored, as the XDG spec says. With neither, `/nonexistent`, where nothing is written |
 | `get_in` | `pub fn get_in(text: &str, group: &str, key: &str) -> Option<String>` | Reads a value from KConfig text you already hold |
-| `set_in` | `pub fn set_in(text: &str, group: &str, key: &str, value: Option<&str>) -> String` | Returns `text` with the key set (escaped) or removed. Does no file work and no name checks |
+| `set_in` | `pub fn set_in(text: &str, group: &str, key: &str, value: Option<&str>) -> String` | Returns `text` with the key set (escaped) or removed. Does no file work. A `group` or `key` that `set` would refuse (control characters, brackets, `=` in a key, edge spaces, a leading `#` or `;`, or a group starting with `$`) cannot be written as itself and could forge other lines, so then `text` comes back unchanged |

@@ -1157,7 +1157,38 @@ fn runtime_id(k: &KeyFile, key: &str) -> Option<String> {
     Some(v.split('/').next().unwrap_or_default().trim().to_string())
 }
 
+/// The most entries a permission list keeps.
+const MAX_PERMISSIONS: usize = 64;
+/// The longest permission entry kept, in characters.
+const MAX_PERMISSION_CHARS: usize = 200;
+/// What a list that was cut at [`MAX_PERMISSIONS`] ends with.
+pub const MORE_PERMISSIONS: &str = "more permissions than are listed";
+
+/// The entries of a permission list as they are shown: the metadata is
+/// written by the app's publisher, so each entry goes through [`clean_to`]
+/// (no control, invisible or direction-changing characters, a length limit)
+/// and the list is cut at [`MAX_PERMISSIONS`] entries.
+fn shown(list: Vec<String>) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for p in list {
+        let p = clean_to(&p, MAX_PERMISSION_CHARS);
+        if p.is_empty() || out.contains(&p) {
+            continue;
+        }
+        if out.len() == MAX_PERMISSIONS {
+            out.push(MORE_PERMISSIONS.to_string());
+            break;
+        }
+        out.push(p);
+    }
+    out
+}
+
 fn key_file_permissions(old: &KeyFile, new: &KeyFile) -> Vec<String> {
+    shown(raw_permissions(old, new))
+}
+
+fn raw_permissions(old: &KeyFile, new: &KeyFile) -> Vec<String> {
     let mut out = Vec::new();
     for key in ["runtime", "sdk"] {
         let n = runtime_id(new, key);
@@ -1206,14 +1237,27 @@ fn key_file_permissions(old: &KeyFile, new: &KeyFile) -> Vec<String> {
     out
 }
 
+/// The biggest metadata [`new_permissions`] reads (1 MiB; a real one is a
+/// few KB). Bigger counts as [`UNREADABLE`].
+pub const MAX_METADATA_BYTES: usize = 1024 * 1024;
+
 /// What `new` (a metadata key file) grants that `old` does not, as
 /// "group: key=item" strings. Empty when the update asks for nothing new.
 /// `[Context]` lists (`filesystems=home;xdg-download;`) are compared by
 /// what they grant in the end (a `!item` takes an item away); D-Bus
 /// policies by level; other values whole, so any change counts. Metadata that
 /// can't be parsed is reported as [`UNREADABLE`], never as nothing new.
+///
+/// The metadata is the app publisher's, so the entries are untrusted text:
+/// each is cleaned (control, invisible and direction-changing characters
+/// removed, at most 200 characters), duplicates are dropped, and a list of
+/// more than 64 entries ends with [`MORE_PERMISSIONS`]. They are still text
+/// from the publisher: show them as plain text, never as markup or a link.
 pub fn new_permissions(old: &str, new: &str) -> Vec<String> {
     let load = |t: &str| {
+        if t.len() > MAX_METADATA_BYTES {
+            return None;
+        }
         let k = KeyFile::new();
         k.load_from_data(t, KeyFileFlags::NONE).ok().map(|_| k)
     };
@@ -1623,5 +1667,78 @@ mod tests {
             Some(RefKind::Runtime)
         );
         assert_eq!(split_ref("bogus"), None);
+    }
+
+    #[test]
+    fn permission_entries_from_a_publisher_are_clean_and_bounded() {
+        // control characters, a right-to-left override, a line break
+        let evil = OLD.to_string()
+            + "\n[Environment]\nX=a\u{202e}b\u{7}c\u{85}d\n\n[Session Bus Policy]\norg.evil.Name=talk\n";
+        let got = new_permissions(OLD, &evil);
+        assert!(!got.is_empty());
+        for p in &got {
+            assert!(!p.chars().any(|c| c.is_control() || hidden(c)), "{p:?}");
+        }
+        assert!(
+            got.contains(&"Environment: X=ab c d".to_string()),
+            "{got:?}"
+        );
+        // a very long value is cut
+        let long = format!("{OLD}\n[Environment]\nX={}\n", "v".repeat(100_000));
+        let got = new_permissions(OLD, &long);
+        assert_eq!(got.len(), 1);
+        assert!(got[0].chars().count() <= MAX_PERMISSION_CHARS);
+        // a very long list is cut and says so
+        let many: String = (0..500).map(|i| format!("path{i};")).collect();
+        let big = format!("[Context]\nfilesystems={many}\n");
+        let got = new_permissions(OLD, &big);
+        assert_eq!(got.len(), MAX_PERMISSIONS + 1);
+        assert_eq!(got.last().map(String::as_str), Some(MORE_PERMISSIONS));
+    }
+
+    #[test]
+    fn metadata_over_the_limit_is_unreadable_not_parsed() {
+        let huge = format!(
+            "[Context]\nsockets=x11;\n# {}\n",
+            "c".repeat(MAX_METADATA_BYTES)
+        );
+        assert_eq!(new_permissions(OLD, &huge), vec![UNREADABLE]);
+        assert_eq!(new_permissions(&huge, OLD), vec![UNREADABLE]);
+    }
+
+    mod props {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn metadata() -> impl Strategy<Value = String> {
+            prop_oneof![
+                1 => any::<String>(),
+                3 => "(\\[[A-Za-z ]{0,12}\\]\n|[a-z-]{1,8}=[a-z!;:\\\\ \u{202e}\u{7}-]{0,16}\n){0,12}",
+            ]
+        }
+
+        proptest! {
+            #[test]
+            fn prop_permission_lists_are_clean_and_bounded(old in metadata(), new in metadata()) {
+                let got = new_permissions(&old, &new);
+                prop_assert!(got.len() <= MAX_PERMISSIONS + 1);
+                for p in &got {
+                    prop_assert!(!p.is_empty());
+                    prop_assert!(p.chars().count() <= MAX_PERMISSION_CHARS);
+                    prop_assert!(!p.chars().any(|c| c.is_control() || hidden(c)), "{:?}", p);
+                }
+                // never "nothing new" for something that cannot be read
+                if KeyFile::new().load_from_data(&new, KeyFileFlags::NONE).is_err() {
+                    prop_assert_eq!(got, vec![UNREADABLE.to_string()]);
+                }
+            }
+
+            #[test]
+            fn prop_clean_is_plain_and_short(s in any::<String>(), max in 1usize..40) {
+                let c = clean_to(&s, max);
+                prop_assert!(c.chars().count() <= max);
+                prop_assert!(!c.chars().any(|ch| ch.is_control() || hidden(ch)));
+            }
+        }
     }
 }
