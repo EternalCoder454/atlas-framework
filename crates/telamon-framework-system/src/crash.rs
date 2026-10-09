@@ -224,6 +224,45 @@ fn state_home() -> Option<PathBuf> {
     abs_env("XDG_STATE_HOME").or_else(|| Some(abs_env("HOME")?.join(".local/state")))
 }
 
+/// The biggest settings, DSN, marker or ID file that is read: they hold a
+/// line or two, so anything bigger is not one of ours.
+const MAX_SMALL_FILE: u64 = 64 * 1024;
+/// The biggest `recent` ledger that is read (a day of crashes, 28 bytes each).
+const MAX_LEDGER_FILE: u64 = 1024 * 1024;
+
+/// A small file's bytes without ever blocking or growing without bound: only
+/// a regular file (a FIFO planted in its place would hang the reader, a
+/// device would never end), at most `max` bytes (`InvalidData` when bigger).
+/// A symbolic link is followed unless `nofollow` (a dotfiles manager may link
+/// the settings; the state files are always written as real files).
+fn read_small(path: &Path, max: u64, nofollow: bool) -> io::Result<Vec<u8>> {
+    let mut flags = libc::O_NONBLOCK | libc::O_NOCTTY | libc::O_CLOEXEC;
+    if nofollow {
+        flags |= libc::O_NOFOLLOW;
+    }
+    let f = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(flags)
+        .open(path)?;
+    if !f.metadata()?.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    let mut bytes = Vec::new();
+    f.take(max + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > max {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "file too large"));
+    }
+    Ok(bytes)
+}
+
+/// [`read_small`] as text; `None` for anything that is not a small UTF-8 file.
+fn read_small_text(path: &Path, max: u64, nofollow: bool) -> Option<String> {
+    String::from_utf8(read_small(path, max, nofollow).ok()?).ok()
+}
+
 /// `key = "value"` / `key = true` lookup in a tiny TOML subset. `Some("")`
 /// when the key is present but empty.
 fn toml_value(text: &str, key: &str) -> Option<String> {
@@ -272,8 +311,7 @@ impl Settings {
     }
 
     pub fn load_from(path: &Path) -> Settings {
-        let on = fs::read_to_string(path)
-            .ok()
+        let on = read_small_text(path, MAX_SMALL_FILE, false)
             .and_then(|t| toml_value(&t, "enabled"))
             .is_some_and(|v| v == "true");
         Settings { enabled: on }
@@ -376,8 +414,7 @@ impl Endpoint {
     /// The first of `files` with a `dsn` key decides.
     fn load_from_files(files: &[&str]) -> Option<Endpoint> {
         for p in files {
-            if let Some(v) = fs::read_to_string(p)
-                .ok()
+            if let Some(v) = read_small_text(Path::new(p), MAX_SMALL_FILE, false)
                 .and_then(|t| toml_value(&t, "dsn"))
             {
                 return Self::parse(&v);
@@ -387,7 +424,10 @@ impl Endpoint {
     }
 
     pub fn load_from(path: &Path) -> Option<Endpoint> {
-        Self::parse(&toml_value(&fs::read_to_string(path).ok()?, "dsn")?)
+        Self::parse(&toml_value(
+            &read_small_text(path, MAX_SMALL_FILE, false)?,
+            "dsn",
+        )?)
     }
 
     /// `https` only; `http` is accepted for localhost, 127.0.0.1 and [::1].
@@ -1374,7 +1414,11 @@ fn adopt_state_dir(new: &Path, old: &Path) -> io::Result<bool> {
         return Ok(false);
     }
     match fs::rename(old, new) {
-        Ok(()) => Ok(true),
+        Ok(()) => {
+            // 1.x may have left it open to other users; its files are reports
+            let _ = fs::set_permissions(new, fs::Permissions::from_mode(0o700));
+            Ok(true)
+        }
         // Another process moved it first, or made the new one.
         Err(e)
             if matches!(
@@ -1405,7 +1449,7 @@ pub(crate) fn crash_id() -> io::Result<String> {
 fn crash_id_in(dir: &Path, now: SystemTime) -> io::Result<String> {
     let path = dir.join("crash-id");
     let secs = |t: SystemTime| t.duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
-    if let Ok(text) = fs::read_to_string(&path) {
+    if let Some(text) = read_small_text(&path, MAX_SMALL_FILE, true) {
         let mut l = text.lines();
         if let (Some(id), Some(created)) = (l.next(), l.next().and_then(|c| c.parse::<u64>().ok()))
             && id.len() == 32
@@ -1520,6 +1564,14 @@ pub(crate) fn write_report(dir: &Path, report: &Report) -> io::Result<PathBuf> {
             .chars()
             .all(|c| c.is_ascii_digit() || "TZ:-+.".contains(c))
     {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "bad report time",
+        ));
+    }
+    // the time is the start of the file name: not a hidden file (which no
+    // list could delete or send), and no `-`/`+` that a tool takes for an option
+    if !report.time.starts_with(|c: char| c.is_ascii_digit()) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "bad report time",
@@ -1930,7 +1982,7 @@ fn ledger_allow(dir: &Path, now: SystemTime, key: u64, cap: bool) -> bool {
         Duration::from_millis(200),
     );
     let path = dir.join(RECENT);
-    let mut recent: Vec<(u64, u64)> = fs::read(&path)
+    let mut recent: Vec<(u64, u64)> = read_small(&path, MAX_LEDGER_FILE, true)
         .map(|b| String::from_utf8_lossy(&b).into_owned())
         .unwrap_or_default()
         .lines()
@@ -2299,8 +2351,12 @@ impl Coredump {
             return None;
         }
         let ts: u64 = field(entry, "COREDUMP_TIMESTAMP")?.parse().ok()?;
-        let exe = field(entry, "COREDUMP_EXE")
-            .filter(|e| valid_exe(e))
+        let raw_exe = field(entry, "COREDUMP_EXE");
+        let exe = raw_exe
+            .as_deref()
+            // no bidi or zero-width characters either: the path is a name
+            .filter(|e| valid_exe(e) && clean(e, usize::MAX, false) == *e)
+            .map(str::to_string)
             .unwrap_or_default();
         let comm = clean(
             &field(entry, "COREDUMP_COMM").unwrap_or_default(),
@@ -2311,7 +2367,15 @@ impl Coredump {
             .map(|s| clean(&s, 64, false))
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "unknown signal".into());
-        let origin = coredump_origin(entry, &exe);
+        let mut origin = coredump_origin(entry, &exe);
+        // A program path that is there but odd (control characters, `..`, not
+        // absolute, over 4096 bytes) is no OS program's: the kernel never gives
+        // one for them. Without this it would pass as the host's, named by its
+        // `COREDUMP_COMM`, which the crashing process sets to anything. Only a
+        // missing field (older systemd) counts as the host's.
+        if origin == Origin::Host && raw_exe.is_some() && exe.is_empty() {
+            origin = Origin::Foreign;
+        }
         Some(Coredump {
             ts,
             exe,
@@ -2534,12 +2598,18 @@ fn journal(args: &[String]) -> Vec<Value> {
 /// error or past the limit.
 fn journal_with(program: &Path, args: &[String], limit: Duration) -> Vec<Value> {
     match output_within(Command::new(program).args(args), limit, JOURNAL_MAX_OUT) {
-        Some((status, out)) if status.success() => String::from_utf8_lossy(&out)
-            .lines()
-            .filter_map(|l| serde_json::from_str(l).ok())
-            .collect(),
+        Some((status, out)) if status.success() => journal_lines(&out),
         _ => Vec::new(),
     }
+}
+
+/// The JSON values on the lines of journalctl's output; a line that is not
+/// JSON, or output that is not UTF-8, costs only that line.
+fn journal_lines(out: &[u8]) -> Vec<Value> {
+    String::from_utf8_lossy(out)
+        .lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect()
 }
 
 /// The journal fields we read; `--output-fields` keeps the rest (command
@@ -2726,7 +2796,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
 /// it neither restarts at "now" (skipping every crash since) nor reads the
 /// whole journal again.
 fn read_coredump_marker(marker: &Path) -> Option<u64> {
-    let text = match fs::read(marker) {
+    let text = match read_small(marker, MAX_SMALL_FILE, true) {
         Ok(t) => t,
         Err(e) if e.kind() == io::ErrorKind::NotFound => return None,
         Err(_) => Vec::new(),
@@ -2771,7 +2841,7 @@ fn purge_ignored_pending() {
     let (Some(dir), Some(marker)) = (reports_dir(), last_seen_path("coredump-rules")) else {
         return;
     };
-    if fs::read_to_string(&marker).is_ok_and(|t| t.trim() == ORIGIN_RULES) {
+    if read_small_text(&marker, MAX_SMALL_FILE, true).is_some_and(|t| t.trim() == ORIGIN_RULES) {
         return;
     }
     let done = purge_ignored_in(
@@ -3044,7 +3114,7 @@ type EventMarker = (String, usize);
 /// one counts from its modification time (see [`read_coredump_marker`]),
 /// the events of that second taken.
 fn read_event_marker(marker: &Path, events: &[crate::events::Event]) -> Option<EventMarker> {
-    let text = match fs::read(marker) {
+    let text = match read_small(marker, MAX_SMALL_FILE, true) {
         Ok(t) => String::from_utf8(t).unwrap_or_default(),
         Err(e) if e.kind() == io::ErrorKind::NotFound => return None,
         Err(_) => String::new(),
@@ -3281,6 +3351,8 @@ fn curl_args(ep: &Endpoint, body_file: &Path) -> Vec<String> {
     a.extend([
         "--proto".into(),
         proto.into(),
+        // no TLS older than 1.2, whatever the system's curl defaults to
+        "--tlsv1.2".into(),
         "--noproxy".into(),
         "*".into(),
         "--request".into(),
@@ -3448,14 +3520,34 @@ fn post_in(dir: &Path, report: &Report, ep: &Endpoint) -> io::Result<Server> {
         let text = String::from_utf8_lossy(&stderr);
         let http = http_status(&text);
         let failure = SendFailure::from_http(http);
+        // curl's text can carry what the server sent (a certificate's names):
+        // one capped line without control characters, not the raw bytes
         eprintln!(
             "telamon-framework: crash report not sent: {failure} (curl exit {:?}, HTTP {http:?}): {}",
             status.code(),
-            text.trim()
+            log_text(&text)
         );
         return Err(io::Error::new(failure.kind(), failure));
     }
+    // curl succeeds on a 3xx it was told not to follow: that is no relay's
+    // "received", and the report must stay pending
+    if !(200..=299).contains(&http_status(&String::from_utf8_lossy(&stderr))) {
+        let failure = SendFailure::BadAnswer;
+        return Err(io::Error::new(failure.kind(), failure));
+    }
     Ok(parse_server_answer(&stdout))
+}
+
+/// `s` for one log line: control and invisible characters dropped, line
+/// breaks shown as " / ", at most 400 characters.
+fn log_text(s: &str) -> String {
+    let joined = s
+        .lines()
+        .map(|l| clean(l.trim(), 400, false))
+        .filter(|l| !l.is_empty())
+        .collect::<Vec<_>>()
+        .join(" / ");
+    clean(&joined, 400, false)
 }
 
 /// curl's status, its answer (at most [`MAX_ANSWER`] + 1 bytes) and its
@@ -3621,6 +3713,9 @@ fn cap_url(mut url: String) -> String {
     url.truncate(end);
     url
 }
+
+#[cfg(test)]
+mod secure_tests;
 
 #[cfg(test)]
 mod tests {
@@ -4400,9 +4495,11 @@ mod tests {
         ] {
             let mut e = real_entry();
             e["COREDUMP_EXE"] = json!(bad);
-            let (_, r) =
-                coredump_report(&e, &sc(), "1000", |x| panic!("rpm called with {x:?}")).unwrap();
-            assert!(!r.app_name.contains("eval"), "{bad}");
+            // an odd program path is no OS program: left out, never looked up
+            assert!(
+                coredump_report(&e, &sc(), "1000", |x| panic!("rpm called with {x:?}")).is_none(),
+                "{bad}"
+            );
         }
         assert!(!valid_exe(&format!("/{}", "a".repeat(5000))));
     }
