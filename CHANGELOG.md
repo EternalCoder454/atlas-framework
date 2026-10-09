@@ -11,11 +11,45 @@ package side.
 
 ## 2.1.0
 
-New controls. `telamon-ui` now needs `kf6-syntax-highlighting` (packages and the dev
-container; see `packaging/Containerfile.dev`). Nothing was renamed or removed.
+Two new controls for apps that show code and command output (the Telamon Gates
+coding workspace asked for them). Nothing was renamed or removed. `telamon-ui` now
+needs `kf6-syntax-highlighting` (`Requires:` in the spec; building the framework
+needs `kf6-syntax-highlighting-devel`, which `packaging/Containerfile.dev` has).
+Apps that use `TelamonCodeEditor` or `TelamonConsoleView` raise their
+`telamon-ui >=` and `ui:` to 2.1.0.
 
-- New: `TelamonCodeEditor`. (Draft: the full entry is written before the release.)
-- New: `TelamonConsoleView`. (Draft: the full entry is written before the release.)
+- New: `TelamonCodeEditor`, an editable code editor
+  ([reference](docs/reference/telamon-ui/telamon-code-editor.md)).
+  - Syntax highlighting with KSyntaxHighlighting by `language` (a name, an alternative
+    name or an extension) or `fileName`; `syntaxName` says which one is in use. The
+    colours come from the Telamon theme and follow Light, Dark and high contrast
+    (in high contrast the kinds of text differ by weight and slant only).
+  - A line-number gutter, the monospace font, the caret's row tinted, `wrap`,
+    `tabWidth`, `insertSpaces`, `framed`.
+  - API: `text`, `modified` (set it false when the app saves), `readOnly`,
+    `cursorLine`/`cursorColumn` (read and set, from 1), `scrollToLine(n)`,
+    `undo()`, `redo()`, `canUndo`, `canRedo`, `selectAll()`, `copy()`, `lineCount`,
+    `firstVisibleLine`, `lastVisibleLine`, and the signals `textEdited()` (the user's
+    edits only) and `cursorMoved()`.
+  - `setTextPreserving(text)` replaces the text from outside (an assistant's live
+    edit) rewriting only what differs, with the caret, the selection and the first
+    visible line kept. `markLines(ranges, TelamonCodeEditor.Added | .Changed, fadeMs)`
+    and `clearMarks()` mark lines with a gutter bar (solid or dashed) and a tinted
+    band; the marks move with the lines and can fade out (`markFadeDuration`; with
+    reduced motion they stay as they are and then go).
+  - Large and hostile text: the editor never stalls the window. A text over 64 KiB is
+    loaded a few lines at a time (`loading`, `loaded()`); highlighting reads the lines
+    in slices as far as the viewport needs; a line over 4,000 characters is left
+    unhighlighted; a text over `maximumSize` (1 MiB; `tooLarge`) or with a line over
+    200,000 characters is shown read-only in `TelamonTextView` under a note. The text
+    is plain: HTML and Markdown in it stay literal. Line breaks read back as LF.
+  - Keys: Tab and Shift+Tab indent and outdent (Escape then Tab leaves the editor),
+    smart Home, Ctrl+Z, Ctrl+Shift+Z, Ctrl+A. Screen readers get an editable text
+    named "Code editor" (set `Accessible.name`).
+- New: `TelamonConsoleView`. (Draft: the entry is written with the control.)
+- Build: `telamon-ui` links KF6 SyntaxHighlighting (`BuildRequires:
+  cmake(KF6SyntaxHighlighting)`, `Requires: kf6-syntax-highlighting`). `TelamonTextView`'s
+  own `syntax` properties are unchanged and still unused by it.
 
 ## 2.0.10
 
