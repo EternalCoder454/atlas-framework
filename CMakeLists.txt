@@ -13,7 +13,7 @@
 cmake_minimum_required(VERSION 3.24)
 # The version is the Telamon.Ui version: TelamonApp.uiVersion reports it, and apps
 # name the oldest one they work with (`ui:` in telamon_framework_ui::app!).
-project(telamon-framework VERSION 2.0.10 LANGUAGES CXX)
+project(telamon-framework VERSION 2.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,6 +34,8 @@ qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 find_package(KF6WindowSystem REQUIRED)
 find_package(KF6Config REQUIRED)
+# TelamonCodeEditor's syntax highlighting (the definitions ship with the library).
+find_package(KF6SyntaxHighlighting REQUIRED)
 
 # QML modules land under the build root (build/Telamon/Ui), where qmllint and
 # qmlcachegen look, and beside the gallery's executable, where the QML

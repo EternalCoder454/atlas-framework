@@ -9,6 +9,14 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.1.0
+
+New controls. `telamon-ui` now needs `kf6-syntax-highlighting` (packages and the dev
+container; see `packaging/Containerfile.dev`). Nothing was renamed or removed.
+
+- New: `TelamonCodeEditor`. (Draft: the full entry is written before the release.)
+- New: `TelamonConsoleView`. (Draft: the full entry is written before the release.)
+
 ## 2.0.10
 
 Tooling only, no API change: nothing in Telamon.Ui or the crates moved. Apps that

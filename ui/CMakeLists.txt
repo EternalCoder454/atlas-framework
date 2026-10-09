@@ -206,7 +206,7 @@ target_include_directories(telamontext PUBLIC
 target_link_libraries(telamontext PUBLIC Qt6::Core Qt6::Gui)
 
 target_link_libraries(telamonui PRIVATE telamontext Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Network Qt6::DBus
-    KF6::WindowSystem KF6::ConfigCore)
+    KF6::WindowSystem KF6::ConfigCore KF6::SyntaxHighlighting)
 
 # Every Telamon app loads the plugin, and nothing links it: the QML engine only
 # looks up the two symbols Q_PLUGIN_METADATA marks for export

@@ -42,7 +42,8 @@ Fedora 44, in a container (the host has no Qt development packages):
 
 ```sh
 dnf install cmake ninja-build gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel \
-  kf6-kirigami-devel kf6-kwindowsystem-devel kf6-kconfig-devel kf6-qqc2-desktop-style
+  kf6-kirigami-devel kf6-kwindowsystem-devel kf6-kconfig-devel kf6-syntax-highlighting-devel \
+  kf6-qqc2-desktop-style
 cmake -S . -B build -G Ninja && cmake --build build
 build/telamon-symbols
 ```
