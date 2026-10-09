@@ -38,10 +38,23 @@ with in the tar header), and every directory has its own entry before its conten
 header too small for a long or non-ASCII name is followed by a PAX `x` extended header
 that carries it; a reader must read both.
 
+The tar itself is written in one form, and `bundle.py verify` accepts only that form,
+so that no reader (the Store's, `tar`, Python) can read a different archive out of the
+same bytes: POSIX ustar headers (magic `ustar\0`, version `00`), every number octal (no
+base-256, no sign), a correct checksum, zero padding after each entry's data, no ustar
+name prefix and no owner names, entry types `0` (file), `2` (symlink) and `5` (directory)
+only (no hard link, device, fifo, sparse, contiguous, GNU long name or global pax
+entry), a pax `x` header only for a `path` and a `linkpath` record (at most once each, 64 KiB at most;
+no `size`, `uid`, `mtime` or any other key), a link name only on a symlink, and nothing
+but zeros after the end marker. The zstd stream is read with the decoder's default
+128 MiB window limit, and unpacking stops after 1 GiB plus 1,536 bytes of header for
+each of the 40,016 entries a bundle may hold (the Store's cut-off for a "zip bomb").
+
 Limits, the Store's: 20,000 files and 20,000 links, 40,000 entries in all, 512 MiB for
-one file, 1 GiB unpacked, a 256 MiB archive, a path of 1,024 bytes (255 in a name), and for
-what is copied out: at most 64 icons and 200 files in all, a `.desktop` or `.service` file
-of 64 KiB and 1,000 lines at most (400 keys, 32 groups), any other copied file 1 MiB.
+one file, 1 GiB unpacked, a 256 MiB archive, a manifest of 1 MiB, a path of 1,024 bytes
+(255 in a name), and for what is copied out: at most 64 icons and 200 files in all, a
+`.desktop` or `.service` file of 64 KiB and 1,000 lines at most (400 keys, 32 groups),
+any other copied file 1 MiB.
 
 ```text
 bin/                                   executables; the binary links Qt, KF6 and telamon-ui from the OS
@@ -113,6 +126,18 @@ trailing newline; `files` and `links` are sorted by path.
 
 The inner manifest in the archive is the outer one without `archive`, byte for
 byte.
+
+The JSON is read strictly (the Store uses serde, which is strict about types and
+duplicate keys, and the tool refuses more): UTF-8 without a byte order mark and
+at most 1 MiB; no duplicate key, `NaN`, `Infinity`, fraction or exponent; whole numbers
+of at most 20 digits (`schema`, `size`, `archive.size` are exact integers, not `1.0`
+and not `true`); no lone surrogate escape; exactly the keys above in that order, no
+others (the Store ignores unknown keys, this tool does not write them); every `path`
+the same plain relative path as in the archive; `telamon-bundle.json` is not listed in `files`;
+no path is both a file and a link; `files` is not empty. `name`, `summary` and `license`
+are what the Store shows of them: it drops control and invisible characters, collapses white
+space, and cuts at 80, 300 and 100 characters, so a manifest holding anything the cleaning
+would change is refused (otherwise the page would say something the manifest does not).
 
 ## What the Store copies out of a bundle
 
@@ -221,6 +246,7 @@ tools/make-bundle.sh --app-dir apps/telamon-gates --spec packaging/telamon-gates
 | `--cmake-arg ARG` | An extra `cmake` configure argument. Repeatable. |
 | `--min-telamon-ui X`, `--min-os-version N` | Override what is read from the spec and the container. |
 | `--keep` | Keep the temporary directories. |
+| `--allow-network` | Let the build use the network (see "No network after the one declared download" below). |
 
 What it does:
 
@@ -251,9 +277,24 @@ What it does:
 
 It prints the two file names. The archive is reproducible: the same source
 built twice in the same container gives the same bytes (entries sorted by path, times
-clamped to the commit's, owner 0:0, modes 0755/0644, one zstd thread, and the
-source paths remapped). `tools/test-make-bundle.sh` tests all of this on a tiny
-fake app and every kind of bad bundle it must refuse; `tools/dev-check.sh` and CI run it.
+clamped to the commit's, owner 0:0, modes 0755/0644, one zstd thread at a fixed level, and the
+source paths remapped), whoever builds it and wherever: the script fixes `LC_ALL=C`, `TZ=UTC`,
+`umask 022` and drops the `ZSTD_*` and Python settings of the environment, and the
+tar names are written as UTF-8 whatever the locale.
+
+**No network after the one declared download.** The only step that uses the network is
+`cargo fetch --locked` for an app with a `Cargo.toml` (every crate is pinned by
+`Cargo.lock`, by checksum or by commit; a stale lock fails the build, and so does a build that
+changes the lock). Configure, build and install then run with `CARGO_NET_OFFLINE=true`,
+`FETCHCONTENT_FULLY_DISCONNECTED=ON` and a dead proxy, and, where the kernel lets a user make
+a network namespace (`unshare -rn`; hosted CI runners often do not, and the script says so),
+in a namespace with no network at all. A CMake file that downloads (`FetchContent`,
+`ExternalProject`, `file(DOWNLOAD)`, `curl`, `wget`, `git clone`, `pip install`...) is refused before
+anything is configured; `--allow-network` lifts both, and the bundle is then not
+guaranteed to be reproducible. `tools/test-make-bundle.sh` tests all of this on a tiny
+fake app and every kind of bad bundle it must refuse, `tools/test_bundle_rules.py` holds the
+Store's rules as a reference and fuzzes the verifier against them
+(`--cases N --seed S`; CI runs 20,000 cases), and `tools/dev-check.sh` runs the first two.
 
 ## The workflow
 

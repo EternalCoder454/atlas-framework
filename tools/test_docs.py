@@ -69,6 +69,23 @@ class DocsCase(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class Reports(DocsCase):
+    """What `check` prints about a tree it does not trust."""
+
+    def test_control_characters_in_names_never_reach_the_output(self):
+        import contextlib
+        import io
+        self.write("lib/bad\x1b[31m\rname.md", page())
+        self.write("odd\n::set-output name=x::y.md", page())
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit):
+            docs.main(["docs.py", "--root", self.ref, "check"])
+        text = err.getvalue()
+        self.assertIn("bad?[31m?name", text)
+        self.assertNotRegex(text, "[\x00-\x08\x0b-\x1f\x7f]")
+        self.assertFalse(any(line.startswith("::") for line in text.splitlines()))
+
+
 class ApiCoverage(DocsCase):
     """Every type and public member in the API file is on a telamon-ui page."""
 

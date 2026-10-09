@@ -23,6 +23,44 @@
 # exactly FRAMEWORK_COMMIT, and crates.io packages the app already had or the
 # framework's own Cargo.lock names. Anything else, and nothing is pushed.
 #
+# Why the split holds (tools/test-open-update-pr.sh forges every input below):
+#
+#   lock job     sees: the app's whole tree, its cargo and the network. Holds: no
+#                token (GH_TOKEN and the Actions tokens are unset before cargo runs;
+#                the workflow gives it contents: read and no secret). Can change: the
+#                files it uploads, and nothing else. Its output is untrusted text.
+#   publish job  sees: that output, the framework checkout, the token. Never checks
+#                the app out and runs nothing from it: it reads the app through
+#                `git fetch` of one commit into a bare repository of its own (no work
+#                tree, no hooks, no config but its own) and writes git objects.
+#
+#   What publish takes from the lock job, and what it checks:
+#     base         40 hex digits, and equal to the app's HEAD now (else it pushes nothing).
+#                  It is only a name for that commit; every byte pushed is derived from it.
+#     locks, files only a path that is a plain Cargo.lock blob of the base tree (so no
+#                  `..`, no absolute path, no control character, no option-looking text),
+#                  whose file in files/ is a plain file below files/ (realpath, no link, no
+#                  pipe), at most 8 MiB, printable ASCII, and written exactly as cargo
+#                  writes a lock file (lock_shaped: so what awk reads is what TOML and
+#                  cargo read), and whose every new or changed package is a
+#                  telamon-framework crate from this repository at exactly FRAMEWORK_COMMIT
+#                  (the commit the workflow runs at) or a crates.io package the app or the
+#                  framework's own lock already had; no checksum of a version the app
+#                  already had changes. Anything else: nothing is pushed.
+#     nothing else base, locks and files/ are the only entries; the rest of the directory
+#                  is never read.
+#   Cargo.toml is not taken from the lock job at all: it is rewritten here from the base's
+#   blobs. The commit's author, its parent, the branch, the title and the body come from
+#   arguments the workflow fixes and from sanitised names; a name from the app or the lock
+#   job reaches the log only with control characters replaced, after `::warning::` /
+#   `::error::` (a workflow command must start a line).
+#   So a hostile lock job can make publish push a pull request whose Cargo.lock differs from
+#   the app's by what a framework update can change, or nothing; it cannot add a source,
+#   touch another file, another repository or the default branch, or learn the token.
+#   It can still pick any published crates.io version of a crate already in the lock (the
+#   cargo registry vouches for the file by checksum); the pull request is reviewed and
+#   built with --locked before anything merges.
+#
 # Every `telamon-framework-*` git dependency on this repository pinned by tag or
 # branch becomes `tag = "<vX.Y.Z>"`; one pinned by rev stays a rev, of the
 # commit the tag names (an app's CI may require revs, as Notepad's does).
