@@ -28,5 +28,5 @@ A screen reader gets `accessibleName`: the `name`, or "Profile picture" when the
 | `allowRemote` | `bool` | `false` | Lets an `https:` `source` load, for a trusted source. Without it only local files, `qrc:` and `image:` sources load; `http:` never does. |
 | `name` | `string` | `""` | The person's name; gives the initials and the colour. |
 | `size` | `real` | 2 grid units | The width and height in pixels. |
-| `source` | `url` | empty | The image: a local file, a `qrc:` or `image:` url, or an `https:` url with `allowRemote`. Any other source (`http:`, `ftp:`, a network path) is refused and the initials show, so a picture named by someone else's data cannot make the app fetch it. The image is decoded at twice the drawn size, so it stays sharp on high-DPI screens. |
+| `source` | `url` | empty | The image: a local file, a `qrc:` or `image:` url, or an `https:` url with `allowRemote`. Any other source (`http:`, `ftp:`, `data:`, a network path, one over 8192 characters) is refused and the initials show, so a picture named by someone else's data cannot make the app fetch it. The image is decoded at twice the drawn size, so it stays sharp on high-DPI screens. |
 | `symbol` | `int` (a `Symbols.<Name>` value, see [Symbols](symbols.md)) | `Symbols.Person` | Shown when there is no image and no name. |

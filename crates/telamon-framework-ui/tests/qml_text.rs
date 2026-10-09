@@ -52,8 +52,21 @@ const TEXT_TYPES: &[&str] = &[
     "Label",
     "Heading",
     "SelectableLabel",
+    "Abbreviation",
     "TextEdit",
     "TextArea",
+];
+
+/// Files that set the text of the style's own tooltip (`QQC2.ToolTip.text`),
+/// which the style draws with the format it likes. Each is a constant of the
+/// framework or a label the app chose, never data. Telamon.Ui's own tooltip
+/// (`TelamonToolTip`, plain) is the one to use for anything else.
+const STYLE_TOOLTIPS: &[(&str, &str)] = &[
+    (
+        "ui/TelamonCopyButton.qml",
+        "the text is qsTr(\"Copy\") or the app's own copiedLabel, set by the app, never data",
+    ),
+    ("ui/TelamonDetailGrid.qml", "the text is qsTr(\"Copy\")"),
 ];
 
 /// Types whose instances are Telamon.Ui text: they must never be given a
@@ -181,6 +194,12 @@ fn sources() -> Vec<Source> {
 /// `text` with comments and the inside of string, template and regular
 /// expression literals replaced by spaces (newlines kept).
 fn mask(text: &str) -> String {
+    mask_with(text, true)
+}
+
+/// `mask`, optionally keeping the strings (only comments and regular
+/// expressions blanked).
+fn mask_with(text: &str, strings: bool) -> String {
     let b = text.as_bytes();
     let mut out = b.to_vec();
     let blank = |out: &mut Vec<u8>, from: usize, to: usize| {
@@ -225,12 +244,14 @@ fn mask(text: &str) -> String {
                     i += 1;
                 }
                 let end = i.min(b.len());
-                blank(&mut out, start, end);
+                if strings {
+                    blank(&mut out, start, end);
+                }
                 i = end + 1;
                 prev = q;
                 continue;
             }
-            b'/' if b"(,=:[!&|?{};\n".contains(&prev) => {
+            b'/' if regex_may_start(&out, i, prev) => {
                 // A regular expression literal.
                 let start = i + 1;
                 i += 1;
@@ -256,6 +277,41 @@ fn mask(text: &str) -> String {
         i += 1;
     }
     String::from_utf8(out).unwrap()
+}
+
+/// Whether a `/` at `at` starts a regular expression: after an operator, an
+/// opening bracket, a separator, `=>`, or a keyword such as `return`; after a
+/// name, a number or a closing bracket it divides. `out` is the source so far
+/// with comments and strings blanked.
+fn regex_may_start(out: &[u8], at: usize, prev: u8) -> bool {
+    if b"(,=:[!&|?{};\n+-*<>%~^".contains(&prev) {
+        return true;
+    }
+    if !(prev.is_ascii_alphanumeric() || prev == b'_') {
+        return false;
+    }
+    let mut end = at;
+    while end > 0 && out[end - 1].is_ascii_whitespace() {
+        end -= 1;
+    }
+    let mut start = end;
+    while start > 0 && (out[start - 1].is_ascii_alphanumeric() || out[start - 1] == b'_') {
+        start -= 1;
+    }
+    matches!(
+        &out[start..end],
+        b"return"
+            | b"typeof"
+            | b"case"
+            | b"in"
+            | b"of"
+            | b"delete"
+            | b"void"
+            | b"throw"
+            | b"new"
+            | b"else"
+            | b"do"
+    )
 }
 
 fn line_of(text: &str, offset: usize) -> usize {
@@ -335,6 +391,14 @@ fn elements(src: &Source) -> Vec<Element> {
 /// The values of `prop:` (or `prop =`) that belong to the element itself, not
 /// to an element or a function inside it.
 fn own_values<'a>(src: &'a Source, e: &Element, prop: &str) -> Vec<&'a str> {
+    own_spans(src, e, prop)
+        .into_iter()
+        .map(|(from, to)| src.masked[from..to].trim())
+        .collect()
+}
+
+/// The byte ranges of the values of `prop:` that belong to the element itself.
+fn own_spans(src: &Source, e: &Element, prop: &str) -> Vec<(usize, usize)> {
     let b = src.masked.as_bytes();
     let mut out = Vec::new();
     let mut depth = 0i32;
@@ -362,7 +426,7 @@ fn own_values<'a>(src: &'a Source, e: &Element, prop: &str) -> Vec<&'a str> {
                         while j < e.close && !matches!(b[j], b'\n' | b';' | b'}') {
                             j += 1;
                         }
-                        out.push(src.masked[from..j].trim());
+                        out.push((from, j));
                     }
                 }
                 continue;
@@ -372,6 +436,36 @@ fn own_values<'a>(src: &'a Source, e: &Element, prop: &str) -> Vec<&'a str> {
         i += 1;
     }
     out
+}
+
+/// The names of the types of `ui/` whose root is a text type (`TelamonLabel`
+/// is a `QQC2.Label`, `NotesText` a `Text`), also through each other: an
+/// instance of one is text and follows the same rule as the `Text` itself.
+fn derived_text_types() -> &'static Vec<String> {
+    static TYPES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    TYPES.get_or_init(|| {
+        let all = sources();
+        let mut found: Vec<String> = Vec::new();
+        loop {
+            let before = found.len();
+            for src in all.iter().filter(|s| {
+                s.path.starts_with("ui/") && !s.path[3..].contains('/') && s.path.ends_with(".qml")
+            }) {
+                let stem = src.path[3..src.path.len() - 4].to_string();
+                if found.contains(&stem) {
+                    continue;
+                }
+                if let Some(root) = elements(src).first()
+                    && (TEXT_TYPES.contains(&root.base()) || found.iter().any(|f| f == root.base()))
+                {
+                    found.push(stem);
+                }
+            }
+            if found.len() == before {
+                return found;
+            }
+        }
+    })
 }
 
 // ---------------------------------------------------------------- the checks
@@ -385,7 +479,7 @@ fn text_findings(src: &Source, rich: &[(&str, &str, usize, &str)]) -> Vec<String
             let formats = own_values(src, &e, "textFormat");
             if !formats
                 .iter()
-                .any(|f| f.ends_with(".PlainText") || rich_ok(src, rich, f))
+                .any(|f| (f.ends_with(".PlainText") && !f.contains('?')) || rich_ok(src, rich, f))
             {
                 out.push(format!(
                     "{}:{}: `{}` without `textFormat: Text.PlainText` draws <b>, <a href> and <img> of \
@@ -394,7 +488,9 @@ fn text_findings(src: &Source, rich: &[(&str, &str, usize, &str)]) -> Vec<String
                 ));
             }
         }
-        if PLAIN_BY_DEFAULT.contains(&e.base()) {
+        if PLAIN_BY_DEFAULT.contains(&e.base())
+            || derived_text_types().iter().any(|t| t == e.base())
+        {
             for f in own_values(src, &e, "textFormat") {
                 if !f.ends_with(".PlainText") {
                     out.push(format!(
@@ -427,7 +523,9 @@ fn text_findings(src: &Source, rich: &[(&str, &str, usize, &str)]) -> Vec<String
                 .unwrap_or("")
                 .trim()
                 .to_string();
-            if !value.ends_with(".PlainText") && !rich_ok(src, rich, &value) {
+            if (!value.ends_with(".PlainText") || value.contains('?'))
+                && !rich_ok(src, rich, &value)
+            {
                 out.push(format!(
                     "{}:{}: textFormat is `{value}`: text from outside is plain",
                     src.path,
@@ -435,6 +533,16 @@ fn text_findings(src: &Source, rich: &[(&str, &str, usize, &str)]) -> Vec<String
                 ));
             }
         }
+    }
+    if let Some(p) = m.find("ToolTip.text")
+        && !STYLE_TOOLTIPS.iter().any(|(f, _)| *f == src.path)
+    {
+        out.push(format!(
+            "{}:{}: ToolTip.text: the style draws that tooltip in a format of its own; use \
+             TelamonToolTip (plain), or list the file in STYLE_TOOLTIPS with the reason",
+            src.path,
+            line_of(&src.text, p)
+        ));
     }
     for token in [
         "RichText",
@@ -467,30 +575,55 @@ fn rich_ok(src: &Source, rich: &[(&str, &str, usize, &str)], value: &str) -> boo
         .any(|(f, token, _, _)| *f == src.path && value.ends_with(token))
 }
 
+/// Where the name `word` is called in the masked source: `word`, white space,
+/// `(`, and not the tail of a longer name (`evaluate(` is another name; a `.`
+/// before it is a method call of the same name and counts). Offsets of the
+/// word and of the first byte after the `(`.
+fn calls(masked: &str, word: &str) -> Vec<(usize, usize)> {
+    let b = masked.as_bytes();
+    let mut out = Vec::new();
+    let mut at = 0;
+    while let Some(p) = masked[at..].find(word) {
+        let p = at + p;
+        at = p + word.len();
+        let before_ok = p == 0 || !(b[p - 1].is_ascii_alphanumeric() || b[p - 1] == b'_');
+        let mut j = at;
+        while j < b.len() && b[j].is_ascii_whitespace() {
+            j += 1;
+        }
+        if before_ok && j < b.len() && b[j] == b'(' {
+            out.push((p, j + 1));
+        }
+    }
+    out
+}
+
 /// Violations of the link rules in `src`.
 fn link_findings(src: &Source, openers: &[(&str, &[&str], &str)], linkers: &[&str]) -> Vec<String> {
     let mut out = Vec::new();
     let m = &src.masked;
-    for bad in ["Qt.openUrlExternally", "Qt.openUrl"] {
-        if let Some(p) = m.find(bad) {
+    // Qt.openUrlExternally in any spelling (also Qt["openUrlExternally"], which
+    // the masking blanks): anywhere in the code, comments aside.
+    let code = mask_with(&src.text, false);
+    if let Some(p) = code.find("openUrlExternally") {
+        out.push(format!(
+            "{}:{}: openUrlExternally: open a link with TelamonPortal.openUrl, which refuses what \
+             is not http, https, mailto or a safe local file",
+            src.path,
+            line_of(&src.text, p)
+        ));
+    }
+    // openUrl(<argument>): Qt.openUrl is not used; TelamonPortal.openUrl from the listed files only.
+    for (p, arg_at) in calls(m, "openUrl") {
+        if m[..p].trim_end().ends_with("Qt.") || m[..p].ends_with("Qt.") {
             out.push(format!(
-                "{}:{}: {bad}: open a link with TelamonPortal.openUrl, which refuses what is not \
-                 http, https, mailto or a safe local file",
+                "{}:{}: Qt.openUrl: open a link with TelamonPortal.openUrl",
                 src.path,
                 line_of(&src.text, p)
             ));
-            break;
-        }
-    }
-    // TelamonPortal.openUrl(<argument>)
-    let mut at = 0;
-    while let Some(p) = m[at..].find("openUrl(") {
-        let p = at + p;
-        at = p + "openUrl(".len();
-        if m[..p].ends_with("Qt.") {
             continue;
         }
-        let arg: String = text_of_call(&src.text, &src.masked, at);
+        let arg: String = text_of_call(&src.text, &src.masked, arg_at);
         match openers.iter().find(|(f, _, _)| *f == src.path) {
             None => out.push(format!(
                 "{}:{}: openUrl is called here; OPENERS lists the files that may, each with the URL \
@@ -545,35 +678,82 @@ fn text_of_call(text: &str, masked: &str, from: usize) -> String {
 fn code_findings(src: &Source) -> Vec<String> {
     let mut out = Vec::new();
     let m = &src.masked;
-    let mut add = |p: usize, what: &str| {
-        out.push(format!("{}:{}: {what}", src.path, line_of(&src.text, p)));
-    };
     for bad in [
-        "eval(",
         "new Function",
-        "Function(",
         "Qt.include",
         "XMLHttpRequest",
-        "fetch(",
         "WebSocket",
         "WebView",
         "WebEngine",
         "Qt.callLater(eval",
         "importScripts",
+        "setSource",
     ] {
         let mut at = 0;
         while let Some(p) = m[at..].find(bad) {
             let p = at + p;
             at = p + bad.len();
-            let prev = if p == 0 { b' ' } else { m.as_bytes()[p - 1] };
-            // `evaluate(` etc. are other names; `.Function(` is a method.
-            if bad.ends_with('(') && (is_name(prev)) {
-                continue;
-            }
-            add(
+            note(
+                &mut out,
+                src,
                 p,
                 &format!("{bad}: QML here neither runs text as code nor fetches"),
             );
+        }
+    }
+    // Calls of these, `eval (s)` and `window.fetch(u)` too.
+    for word in ["eval", "Function", "fetch"] {
+        for (p, _) in calls(m, word) {
+            note(
+                &mut out,
+                src,
+                p,
+                &format!("{word}(): QML here neither runs text as code nor fetches"),
+            );
+        }
+    }
+    // A template literal hides what is in its ${ } from this scan.
+    if let Some(p) = m.find('`') {
+        note(
+            &mut out,
+            src,
+            p,
+            "a template literal: use string concatenation, so the lint reads all the code",
+        );
+    }
+    // A `source` set by a statement or a Binding is not read by the image rule.
+    for (n, line) in src.text.lines().enumerate() {
+        let t = line.trim_start();
+        if t.starts_with("//") || t.starts_with('*') {
+            continue;
+        }
+        let squeezed: String = line.split_whitespace().collect();
+        if squeezed.contains("property:\"source\"") || squeezed.contains("property:'source'") {
+            out.push(format!(
+                "{}:{}: a Binding or PropertyChanges on `source`: set it as a property of the item, where the image rule reads it",
+                src.path,
+                n + 1
+            ));
+        }
+    }
+    {
+        let b = m.as_bytes();
+        let mut at = 0;
+        while let Some(p) = m[at..].find(".source") {
+            let p = at + p;
+            at = p + ".source".len();
+            let mut j = at;
+            while j < b.len() && b[j].is_ascii_whitespace() {
+                j += 1;
+            }
+            if j < b.len() && b[j] == b'=' && !matches!(b.get(j + 1), Some(b'=') | Some(b'>')) {
+                note(
+                    &mut out,
+                    src,
+                    p,
+                    ".source = …: set the source as a property of the item, where the image rule reads it",
+                );
+            }
         }
     }
     // Qt.createQmlObject / Qt.createComponent: a literal argument only.
@@ -590,7 +770,9 @@ fn code_findings(src: &Source) -> Vec<String> {
                 && !arg[1..arg.len() - 1].contains(arg.chars().next().unwrap())
                 && !arg.contains('+');
             if !literal {
-                add(
+                note(
+                    &mut out,
+                    src,
                     p,
                     &format!(
                         "{call}…): the argument is not a string literal, so text from outside could become code"
@@ -628,6 +810,10 @@ fn code_findings(src: &Source) -> Vec<String> {
     out
 }
 
+fn note(out: &mut Vec<String>, src: &Source, p: usize, what: &str) {
+    out.push(format!("{}:{}: {what}", src.path, line_of(&src.text, p)));
+}
+
 /// Violations of the image rules: an `Image` is made only where `images`
 /// says, with the checked source.
 fn image_findings(src: &Source, images: &[(&str, &[&str], &str)]) -> Vec<String> {
@@ -639,27 +825,37 @@ fn image_findings(src: &Source, images: &[(&str, &[&str], &str)]) -> Vec<String>
         ) {
             continue;
         }
-        let sources = own_values(src, &e, "source");
-        match images.iter().find(|(f, _, _)| *f == src.path) {
-            None => {
-                // Only a literal qrc/relative file is fine anywhere.
-                for s in &sources {
-                    let lit = text_at(src, e.open, e.close, "source");
-                    let ok = lit.starts_with('"') && !lit.contains("http");
-                    if !ok {
+        let spans = own_spans(src, &e, "source");
+        let listed = images.iter().find(|(f, _, _)| *f == src.path);
+        if let Some((_, wanted, _)) = listed
+            && spans.len() != 1
+        {
+            out.push(format!(
+                "{}:{}: `{}` has {} `source:` lines, IMAGES wants exactly one, {wanted:?}",
+                src.path,
+                e.line,
+                e.name,
+                spans.len()
+            ));
+        }
+        for (from, to) in spans {
+            let masked = src.masked[from..to].trim();
+            let raw = src.text[from..to].trim();
+            match listed {
+                Some((_, wanted, _)) => {
+                    if !wanted.contains(&masked) {
                         out.push(format!(
-                            "{}:{}: `{} {{ source: {s} }}`: a source from outside loads over the network \
-                             or from any file; list the file in IMAGES with its check",
+                            "{}:{}: `{}` source is `{masked}`, IMAGES wants one of {wanted:?} (the checked one)",
                             src.path, e.line, e.name
                         ));
                     }
                 }
-            }
-            Some((_, wanted, _)) => {
-                for s in &sources {
-                    if !wanted.contains(&s.trim()) {
+                None => {
+                    if !is_local_literal(masked, raw) {
                         out.push(format!(
-                            "{}:{}: `{}` source is `{s}`, IMAGES wants one of {wanted:?} (the checked one)",
+                            "{}:{}: `{} {{ source: {raw} }}`: only one string literal of a local file or qrc \
+                             is fine here; a source from outside loads over the network or from any file, \
+                             so list the file in IMAGES with its check",
                             src.path, e.line, e.name
                         ));
                     }
@@ -670,17 +866,20 @@ fn image_findings(src: &Source, images: &[(&str, &[&str], &str)]) -> Vec<String>
     out
 }
 
-/// The unmasked text of `prop:`'s first value in the element (for a literal).
-fn text_at<'a>(src: &'a Source, open: usize, close: usize, prop: &str) -> &'a str {
-    let body = &src.text[open..close];
-    let Some(p) = body.find(&format!("{prop}:")) else {
-        return "";
-    };
-    body[p + prop.len() + 1..]
-        .lines()
-        .next()
-        .unwrap_or("")
-        .trim()
+/// One string literal and nothing else, that does not name a remote address.
+fn is_local_literal(masked: &str, raw: &str) -> bool {
+    let b = masked.as_bytes();
+    if b.len() < 2 || !(b[0] == b'"' || b[0] == b'\'') || b[b.len() - 1] != b[0] {
+        return false;
+    }
+    // The masking blanked the inside: anything else in between is code.
+    if !masked[1..masked.len() - 1].bytes().all(|c| c == b' ') {
+        return false;
+    }
+    let inner = raw[1..raw.len() - 1].trim().to_ascii_lowercase();
+    !["http", "ftp", "ws", "//", "\\\\", "data:"]
+        .iter()
+        .any(|p| inner.starts_with(p))
 }
 
 /// Password fields made in `src` (outside TelamonPasswordField itself) must
@@ -1135,4 +1334,128 @@ fn checker_finds_the_real_files() {
         all.iter().any(|s| s.path.starts_with("template/")),
         "the template is read"
     );
+}
+
+#[test]
+fn checker_catches_the_evasions() {
+    let bad_links = [
+        "Item { onClicked: Qt.openUrl (u) }",
+        "Item { onClicked: Qt[\"openUrlExternally\"](u) }",
+        "Item { onClicked: TelamonPortal.openUrl (u) }",
+        "Item { onClicked: Qt . openUrl(u) }",
+    ];
+    for bad in bad_links {
+        assert!(!links_of("ui/X.qml", bad).is_empty(), "{bad}");
+    }
+    let bad_code = [
+        "Item { Component.onCompleted: globalThis.eval(s) }",
+        "Item { Component.onCompleted: eval (s) }",
+        "Item { Component.onCompleted: window.fetch (u) }",
+        "Item { property string s: `${eval(x)}` }",
+        "Item { Loader { id: l; Component.onCompleted: l.setSource(x) } }",
+        "Item { Image { id: img; Component.onCompleted: img.source = x } }",
+        "Item { Image { id: img } Binding { target: img; property: \"source\"; value: x } }",
+    ];
+    for bad in bad_code {
+        assert!(
+            !code_findings(&snippet("ui/X.qml", bad)).is_empty(),
+            "{bad}"
+        );
+    }
+    // `==` and `=>` after `.source` are not assignments.
+    assert!(
+        code_findings(&snippet(
+            "ui/X.qml",
+            "Item { property bool b: a.source == b.source }"
+        ))
+        .is_empty()
+    );
+    let images = IMAGES;
+    for bad in [
+        "Item { Image { source: \"file://\" + model.path } }",
+        "Item { Image { source: \"\" + url } }",
+        "Item { Image { source: \"HTTPS://a/b.png\" } }",
+        "Item { Image { source: \"//host/share/a.png\" } }",
+        "Item { Image { source: \"a.png\"; source: x } }",
+    ] {
+        assert!(
+            !image_findings(&snippet("ui/X.qml", bad), images).is_empty(),
+            "{bad}"
+        );
+    }
+    // An Image of a listed file with no source line at all.
+    assert!(
+        !image_findings(
+            &snippet("ui/TelamonAvatar.qml", "Item { Image { } }"),
+            images
+        )
+        .is_empty()
+    );
+    assert!(
+        image_findings(
+            &snippet("ui/X.qml", "Item { Image { source: \"a/b.png\" } }"),
+            images
+        )
+        .is_empty()
+    );
+    // A format picked by a condition.
+    assert!(
+        !text_of(
+            "ui/X.qml",
+            "Item { Text { textFormat: c ? 2 : Text.PlainText } }"
+        )
+        .is_empty()
+    );
+}
+
+#[test]
+fn checker_masks_a_regex_after_return_and_arrow() {
+    // `return /"/` and `=> /'/` are regular expressions: the quote in them must not
+    // start a string that swallows the Text after it.
+    for js in [
+        "Item { function f(s) { return /\"/.test(s); } Text { text: a } }",
+        "Item { property var g: s => /'/.test(s); Text { text: a } }",
+        "Item { function f(s) { if (a) return /{/.test(s); } Text { text: a } }",
+    ] {
+        assert_eq!(text_of("ui/X.qml", js).len(), 1, "{js}");
+    }
+}
+
+#[test]
+fn checker_covers_derived_text_types_and_tooltips() {
+    // Types of ui/ whose root is a Label or a Text are text too.
+    let derived = derived_text_types();
+    for name in ["TelamonLabel", "NotesText", "TelamonTextArea"] {
+        assert!(derived.iter().any(|d| d == name), "{name} in {derived:?}");
+    }
+    assert!(
+        !text_of(
+            "ui/X.qml",
+            "Item { TelamonLabel { textFormat: Text.RichText } }"
+        )
+        .is_empty()
+    );
+    assert!(
+        !text_of(
+            "ui/X.qml",
+            "Item { NotesText { textFormat: Text.StyledText } }"
+        )
+        .is_empty()
+    );
+    assert!(!text_of("ui/X.qml", "Item { Kirigami.Abbreviation { text: a } }").is_empty());
+    assert!(
+        !text_of(
+            "ui/X.qml",
+            "Item { Button { QQC2.ToolTip.text: model.name } }"
+        )
+        .is_empty()
+    );
+    assert!(
+        text_of(
+            "ui/TelamonCopyButton.qml",
+            "Item { QQC2.ToolTip.text: qsTr(\"Copy\") }"
+        )
+        .is_empty()
+    );
+    assert!(STYLE_TOOLTIPS.iter().all(|(_, why)| why.len() > 10));
 }

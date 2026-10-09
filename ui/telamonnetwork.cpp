@@ -90,7 +90,9 @@ QNetworkReply *AccessManager::createRequest(Operation op, const QNetworkRequest 
         return new RefusedReply(request, op, this);
     }
     QNetworkRequest limited(request);
-    // A redirect from https to cleartext (or to another host's cleartext) is not followed.
+    // A redirect to a less safe address (https to http) is not followed. (An
+    // http address on this computer that redirects to another computer's http
+    // address is: the first request is the app's own to a local server.)
     limited.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     limited.setMaximumRedirectsAllowed(kMaxRedirects);
     if (limited.transferTimeout() == 0) {

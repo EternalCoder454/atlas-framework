@@ -78,16 +78,36 @@ Item {
         }
 
         function test_notes_text_drops_what_would_fetch() {
+            const allowed = ["a", "b", "i", "u", "s", "p", "br", "hr", "ul", "ol", "li", "em", "strong", "del", "h1", "h2", "h3", "h4", "h5", "h6", "code", "pre", "blockquote"];
+            const hostile = [
+                "<p>Fixed <img src=\"http://127.0.0.1:1/x.png\"> a bug</p><style>p { color: red }</style><script>alert(1)</script>",
+                "<IMG SRC=x><svg onload=1><iframe src=y></iframe><link rel=stylesheet href=z><img src=\"q",
+                "<im<img>g src=\"https://x/a.png\">",
+                "<i<form>mg src=x>",
+                "<sty<style></style>le>@import url(https://x);</style>",
+                "<img/src=\"https://x/a.png\">< img src=x><\timg src=x>",
+                "<table background=\"https://x/a.png\"><tr><td>x</td></tr></table>",
+                "<p style=\"background-image:url(https://x/a.png)\">x</p>",
+                "<a href=\"https://example.org\" style=\"background:url(https://x/a.png)\" onclick=\"x\">more</a>",
+                "<<<img src=x>>>",
+                "<"
+            ];
+            for (const html of hostile) {
+                const n = createTemporaryObject(notes, root, {html: html});
+                const body = n.body;
+                const tagStart = /<\/?([a-zA-Z0-9]*)/g;
+                let m;
+                while ((m = tagStart.exec(body)) !== null) {
+                    verify(allowed.indexOf(m[1]) >= 0, "tag <" + m[1] + "> left in: " + body + " (from " + html + ")");
+                }
+                for (const t of body.match(/<[^>]*>/g) ?? []) {
+                    verify(/^<\/?[a-z0-9]+>$/.test(t) || /^<a href="[^"<>]*">$/.test(t), "tag with attributes left: " + t + " in " + body);
+                }
+            }
             const n = createTemporaryObject(notes, root, {
-                html: "<p>Fixed <img src=\"http://127.0.0.1:1/x.png\"> a bug</p><style>p { color: red }</style>"
-                    + "<script>alert(1)</script><p><a href=\"https://example.org\">more</a></p>"
-                    + "<IMG SRC=x><svg onload=1><iframe src=y></iframe><link rel=stylesheet href=z><img src=\"q"
+                html: "<p>Fixed a bug</p><p><a href=\"https://example.org\" onclick=\"x\">more</a> &amp; <code>x</code></p>"
             });
-            const body = n.body;
-            verify(!/<\s*(img|style|script|svg|iframe|link)/i.test(body), body);
-            verify(body.indexOf("alert") < 0 && body.indexOf("color: red") < 0, body);
-            verify(body.indexOf("<a href=\"https://example.org\">more</a>") >= 0, "links stay: " + body);
-            verify(body.indexOf("Fixed") >= 0 && body.indexOf("a bug") >= 0);
+            compare(n.body, "<p>Fixed a bug</p><p><a href=\"https://example.org\">more</a> &amp; <code>x</code></p>");
         }
 
         function test_avatar_loads_local_sources_only() {
