@@ -42,6 +42,7 @@ Item {
         target: below
         Component.onCompleted: open()
         QQC2.Label {
+            textFormat: Text.PlainText
             text: "Opens below its target, with an arrow."
         }
         TextButton {
@@ -53,6 +54,7 @@ Item {
         target: above
         Component.onCompleted: open()
         QQC2.Label {
+            textFormat: Text.PlainText
             text: "No room below: opens above."
         }
     }
@@ -62,6 +64,7 @@ Item {
         side: TelamonPopover.End
         Component.onCompleted: open()
         QQC2.Label {
+            textFormat: Text.PlainText
             text: "Beside it."
         }
     }

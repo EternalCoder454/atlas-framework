@@ -66,6 +66,7 @@ T.AbstractButton {
             border.width: control.current || control.done ? 0 : 1
             border.color: TelamonStyle.controlBorder
             Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 visible: !control.done || control.current
                 text: control.number

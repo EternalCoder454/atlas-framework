@@ -121,12 +121,14 @@ T.AbstractButton {
     // widths: they are as wide as each other only in a monospace face.
     Text {
         id: narrow
+        textFormat: Text.PlainText
         visible: false
         text: "iiiiiiiiii"
         font.pointSize: 12
     }
     Text {
         id: wide
+        textFormat: Text.PlainText
         visible: false
         text: "WWWWWWWWWW"
         font.pointSize: 12

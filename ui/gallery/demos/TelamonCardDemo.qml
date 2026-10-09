@@ -29,6 +29,7 @@ Item {
                 }
             ]
             QQC2.Label {
+                textFormat: Text.PlainText
                 text: "42 files protected."
             }
             footer: [
@@ -41,6 +42,7 @@ Item {
             title: "Clickable card"
             clickable: true
             QQC2.Label {
+                textFormat: Text.PlainText
                 text: "The whole card is a button."
             }
         }

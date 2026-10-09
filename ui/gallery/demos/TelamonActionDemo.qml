@@ -63,6 +63,7 @@ Item {
                     filled: row.modelData.checked
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: row.modelData.text.replace("&", "") + "  (tooltip: " + row.modelData.toolTip + ")"
                     elide: Text.ElideRight

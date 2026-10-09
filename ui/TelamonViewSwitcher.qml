@@ -246,6 +246,7 @@ T.Control {
                             Accessible.ignored: true
                             Text {
                                 id: badgeText
+                                textFormat: Text.PlainText
                                 anchors.centerIn: parent
                                 text: tab.badge > 99 ? "99+" : String(tab.badge)
                                 font.pixelSize: TelamonStyle.fontSizeCaption - 1
@@ -254,6 +255,7 @@ T.Control {
                         }
                     }
                     Text {
+                        textFormat: Text.PlainText
                         text: tab.label
                         font.pixelSize: control.narrow ? TelamonStyle.fontSizeCaption : TelamonStyle.fontSizeBody
                         font.weight: tab.current ? Font.DemiBold : Font.Normal

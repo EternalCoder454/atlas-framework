@@ -20,7 +20,16 @@ Text {
 
     // The section title already says "What's new in X": drop a leading heading
     // that repeats it.
-    readonly property string body: html.replace(/^\s*<h[1-5][^>]*>\s*What(?:'|&#39;|&#x27;|&rsquo;|\u2019)?s new[^<]*<\/h[1-5]>/i, "")
+    //
+    // Qt's rich text loads a picture named by an <img> (over the network, for
+    // an http or https address) and applies <style> rules: the backend sends
+    // neither, and whatever slips through is dropped here, so the notes can
+    // never make this item fetch anything.
+    readonly property string body: root._withoutActive(html).replace(/^\s*<h[1-5][^>]*>\s*What(?:'|&#39;|&#x27;|&rsquo;|\u2019)?s new[^<]*<\/h[1-5]>/i, "")
+
+    function _withoutActive(markup: string): string {
+        return markup.replace(/<\s*(style|script|object|iframe|svg|video|audio)\b[\s\S]*?<\s*\/\s*\1\s*>/gi, "").replace(/<\s*\/?\s*(?:img|link|style|script|object|embed|iframe|svg|video|audio|source|meta|base|input|form)\b[^>]*>?/gi, "");
+    }
 
     text: "<style>" + css + "</style>" + body
     Accessible.role: Accessible.StaticText

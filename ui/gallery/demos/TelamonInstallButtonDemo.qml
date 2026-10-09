@@ -67,6 +67,7 @@ Rectangle {
                 Layout.columnSpan: 2
                 spacing: Kirigami.Units.gridUnit
                 Text {
+                    textFormat: Text.PlainText
                     Layout.preferredWidth: Kirigami.Units.gridUnit * 12
                     text: cell.modelData.label + (cell.modelData.label === "installing" ? (cell.unknown ? " (unknown)" : " (0.4)") : "")
                     color: Kirigami.Theme.textColor
