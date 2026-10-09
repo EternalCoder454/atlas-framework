@@ -971,6 +971,10 @@ def read_archive(path):
         with tarfile.open(fileobj=stream, mode="r|", encoding="utf-8", errors="surrogateescape", tarinfo=_SafeInfo) as tf:
             for ti in tf:
                 name = ti.name
+                # tarfile expands a PAX sparse member (GNU.sparse.* records) to its full size, which
+                # the Store's reader does not: the two would see different files.
+                if ti.sparse is not None or any(k.startswith("GNU.sparse") for k in ti.pax_headers):
+                    raise BundleError(f"{printable(name)}: a sparse file (PAX GNU.sparse): only plain regular files are allowed")
                 if ti.size < 0:
                     raise BundleError(f"{printable(name)}: a negative size")
                 if ti.isdir():

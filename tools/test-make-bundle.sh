@@ -470,6 +470,16 @@ if mode == "bombpax":        # an extended header that claims 3 GiB, to be read 
     raw = hdr(b"PaxHeader", 3 * 1024 ** 3, b"x") + b"\0" * (1 << 20)
 if mode == "sparse":
     raw = hdr(b"share/net.example.fake/sparse", 10, b"S") + b"\0" * 4096
+if mode == "paxsparse":      # a PAX 1.0 sparse member: tarfile expands it, the Store's reader does not
+    def rec(k, v):
+        body = f" {k}={v}\n".encode()
+        n = len(body) + 1
+        while len(str(n)) + len(body) != n:
+            n = len(str(n)) + len(body)
+        return f"{n}".encode() + body
+    pax = rec("GNU.sparse.major", 1) + rec("GNU.sparse.minor", 0) + rec("GNU.sparse.name", PAD + "sparse") + rec("GNU.sparse.realsize", 1000)
+    sdata = blocks(b"1\n0\n10\n") + b"0123456789"
+    raw = hdr(b"PaxHeader", len(pax), b"x") + blocks(pax) + hdr(b"GNUSparseFile.0/sparse", len(sdata), b"0") + blocks(sdata)
 if mode == "globalpax":
     raw = hdr(b"GlobalHeader", 13, b"g") + blocks(b"13 comment=x\n")
 if mode == "bombtail":       # real zeros after the end of the tar, more than the limits allow
@@ -563,6 +573,7 @@ tamper bombsize "larger than the limits"
 tamper bombpax "extended tar header of 3221225472 bytes"
 tamper bombtail "unpacks to more than the limits"
 tamper sparse "GNU sparse"
+tamper paxsparse "sparse file \(PAX GNU.sparse\)"
 tamper globalpax "global PAX header"
 tamper trailing "data after the end of the tar"
 tamper gzip "not zstd-compressed"
@@ -900,6 +911,62 @@ EOF
         else bad "a non-tmpfs directory is refused cleanly" "$(cat "$scratch/log")"; fi
     fi
 
+    # the key is never in the environment of anything that parses the bundle: stand-ins for python3
+    # and zstd record the secret variables they were started with and their arguments
+    mkdir "$scratch/shim2"
+    for prog in python3 zstd; do
+        cat >"$scratch/shim2/$prog" <<EOF
+#!/bin/bash
+echo "$prog: env=\$(env | grep -c '^MINISIGN_') \$*" >>"$scratch/shim2.log"
+exec $(command -v "$prog") "\$@"
+EOF
+        chmod +x "$scratch/shim2/$prog"
+    done
+    fresh
+    : >"$scratch/shim2.log"
+    if MINISIGN_KEY=$(cat "$keys/b.key") MINISIGN_PASSWORD='correct horse' PATH="$scratch/shim2:$PATH" "$sign" "$scratch/sign" >"$scratch/log" 2>&1 &&
+        grep -q 'bundle.py verify' "$scratch/shim2.log" && grep -q '^zstd:' "$scratch/shim2.log" && ! grep -qv ' env=0 ' "$scratch/shim2.log"; then
+        ok "in one go, python3 and zstd (which parse the bundle) are started without the key or the password"
+    else bad "the key is out of the environment of what parses the bundle" "$(cat "$scratch/log" "$scratch/shim2.log")"; fi
+
+    # the two steps of the sign job
+    fresh
+    : >"$scratch/gh-output"
+    : >"$scratch/shim2.log"
+    if MINISIGN_KEY=$(cat "$keys/a.key") "$sign" --verify-only "$scratch/sign" >"$scratch/log" 2>&1; then
+        bad "the verify step ran with the key in its environment"
+    elif grep -q "verify step has the signing key" "$scratch/log" && [ ! -e "$sig" ]; then ok "the verify step refuses to run with the key in its environment"
+    else bad "the verify step refuses the key cleanly" "$(cat "$scratch/log")"; fi
+    if env -u MINISIGN_KEY -u MINISIGN_PASSWORD GITHUB_OUTPUT="$scratch/gh-output" "$sign" --verify-only "$scratch/sign" >"$scratch/log" 2>&1 &&
+        [ ! -e "$sig" ] && grep -qx "manifest-sha256=$(sha256sum "$manifest" | cut -d' ' -f1)" "$scratch/gh-output"; then
+        ok "step A (--verify-only) verifies, writes the manifest's hash as an output, and signs nothing"
+    else bad "step A verifies and prints the hash" "$(cat "$scratch/log" "$scratch/gh-output")"; fi
+    sha=$(sha256sum "$manifest" | cut -d' ' -f1)
+    if MINISIGN_KEY=$(cat "$keys/a.key") PATH="$scratch/shim2:$PATH" "$sign" --sign-only --manifest-sha256 "$sha" --public-key "$pub_a" "$scratch/sign" >"$scratch/log" 2>&1 &&
+        minisign -V -H -p "$keys/a.pub" -m "$scratch/sign/telamon-bundle.json" >/dev/null &&
+        ! grep -q 'bundle.py\|^zstd:' "$scratch/shim2.log"; then
+        ok "step B (--sign-only) signs a manifest with the hash step A verified, and parses nothing (no bundle.py, no zstd)"
+    else bad "step B signs without parsing the archive" "$(cat "$scratch/log" "$scratch/shim2.log")"; fi
+    fresh
+    if MINISIGN_KEY=$(cat "$keys/a.key") "$sign" --sign-only --manifest-sha256 "$(printf '0%.0s' {1..64})" "$scratch/sign" >"$scratch/log" 2>&1; then
+        bad "step B signed a manifest that is not the verified one"
+    elif [ ! -e "$sig" ] && grep -q "is not the file that was verified" "$scratch/log"; then ok "step B refuses a manifest whose hash is not the verified one"
+    else bad "step B refuses another manifest cleanly" "$(cat "$scratch/log")"; fi
+    if MINISIGN_KEY=$(cat "$keys/a.key") "$sign" --sign-only "$scratch/sign" >/dev/null 2>&1; then
+        bad "step B ran without the hash"; else ok "step B needs the hash of step A"; fi
+    echo extra >"$scratch/sign/notes.txt"
+    if MINISIGN_KEY=$(cat "$keys/a.key") "$sign" --sign-only --manifest-sha256 "$sha" "$scratch/sign" >"$scratch/log" 2>&1; then
+        bad "step B signed a directory with another file in it"
+    elif [ ! -e "$sig" ] && grep -q "not part of the bundle" "$scratch/log"; then ok "step B refuses a directory that holds anything but the archive and the manifest"
+    else bad "step B refuses an extra file cleanly" "$(cat "$scratch/log")"; fi
+
+    # a public key but no signing key is a misconfiguration, not an unsigned release
+    fresh
+    if env -u MINISIGN_KEY GITHUB_ACTIONS=true "$sign" --public-key "$pub_a" "$scratch/sign" >"$scratch/log" 2>&1; then
+        bad "sign-bundle went on without a key although --public-key was given"
+    elif [ ! -e "$sig" ] && grep -q "there is no signing key" "$scratch/log" && ! grep -q '^::warning::' "$scratch/log"; then ok "--public-key without a signing key fails"
+    else bad "--public-key without a key fails cleanly" "$(cat "$scratch/log")"; fi
+
     # no key: the release is still made, unsigned, with a warning
     fresh
     : >"$scratch/gh-output"
@@ -967,6 +1034,18 @@ for name, body in jobs.items():
         problems.append(f"job {name} can write")
     if name == "bundle" and "secrets." in block:
         problems.append("the job that runs the app's build can read a secret")
+# the step that parses the bundle has no secret; the step that has the key signs and parses nothing
+steps = re.split(r"\n      - ", "\n".join(jobs.get("sign", [])))
+for st in steps:
+    if "secrets." in st and "--verify-only" in st:
+        problems.append("the sign job's verifying step has a secret")
+    if "secrets." in st and "--sign-only" not in st:
+        problems.append("a secret in a sign step that is not the signing one")
+if not any("--verify-only" in st for st in steps) or not any("--sign-only" in st and "secrets.minisign-key" in st for st in steps):
+    problems.append("the sign job is not split into a verify step and a signing step")
+attach = "\n".join(jobs.get("attach", []))
+if "ALLOW_UNSIGNED" not in attach or "keep_draft" not in attach:
+    problems.append("attach does not keep an unsigned release a draft")
 if "    permissions: {}" not in jobs.get("sign", []):
     problems.append("the sign job has a token")
 if "    needs: bundle" not in jobs.get("sign", []) or "    needs: [bundle, sign]" not in jobs.get("attach", []):

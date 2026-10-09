@@ -13,7 +13,18 @@
 #         and nothing else
 #   --public-key RW...   the key the catalog pins for the app: the signature
 #         is then verified with it, so a wrong key in the CI secret fails
-#         here and not on a user's computer
+#         here and not on a user's computer; given without a key, it fails
+#
+# By hand this does everything in one go. The `sign` job of bundle.yml runs it
+# in two steps, so that the key is never in the environment of anything that
+# parses the bundle:
+#   --verify-only DIR     step A, with no secret in the environment (it refuses
+#                         to run with one): the verify below; writes
+#                         manifest-sha256 to GITHUB_OUTPUT
+#   --sign-only --manifest-sha256 HEX DIR   step B, with the key: parses
+#                         nothing; checks that DIR holds exactly the plain
+#                         files and that the manifest's sha256 is HEX (what
+#                         step A verified), then signs
 #
 # What it does, in this order:
 #   1. checks the bundle with `bundle.py verify` (the archive against the
@@ -48,8 +59,23 @@ die() {
 
 dir=
 pub=
+mode=both
+want_sha=
 while [ $# -gt 0 ]; do
     case $1 in
+    --verify-only)
+        mode=verify
+        shift
+        ;;
+    --sign-only)
+        mode=sign
+        shift
+        ;;
+    --manifest-sha256)
+        [ $# -ge 2 ] || die "--manifest-sha256 needs a value"
+        want_sha=$2
+        shift 2
+        ;;
     --public-key)
         [ $# -ge 2 ] || die "--public-key needs a value"
         pub=$2
@@ -70,9 +96,23 @@ done
 [ -n "$dir" ] || die "needs the directory of the bundle (see --help)"
 [ -z "$pub" ] || [[ $pub =~ ^RW[A-Za-z0-9+/]{54}$ ]] || die "--public-key is the 56 characters of a minisign public key, starting RW"
 [ -d "$dir" ] && [ ! -L "$dir" ] || die "$dir is not a directory"
-for tool in python3 zstd sha256sum; do
+[ "$mode" != sign ] || [[ $want_sha =~ ^[0-9a-f]{64}$ ]] || die "--sign-only needs --manifest-sha256 <the hash the verify step printed>"
+[ "$mode" = sign ] || [ -z "$want_sha" ] || die "--manifest-sha256 goes with --sign-only"
+[ "$mode" != verify ] || [ -z "$pub" ] || die "--public-key goes with the signing"
+for tool in python3 sha256sum; do
     command -v "$tool" >/dev/null || die "$tool is not installed"
 done
+[ "$mode" = sign ] || command -v zstd >/dev/null || die "zstd is not installed"
+
+# The key and the password are taken out of the environment before anything else runs:
+# no program started from here (the bundle is parsed by python3 and zstd) has them.
+# A step that only verifies must not have been given them at all.
+if [ "$mode" = verify ] && { [ -n "${MINISIGN_KEY:-}" ] || [ -n "${MINISIGN_PASSWORD:-}" ]; }; then
+    die "the verify step has the signing key in its environment: give the key only to the signing step"
+fi
+key=${MINISIGN_KEY:-}
+password=${MINISIGN_PASSWORD:-}
+unset MINISIGN_KEY MINISIGN_PASSWORD
 
 # The key never stays: whatever happens, the file is shredded and removed and
 # the variables are gone.
@@ -83,7 +123,7 @@ cleanup() {
         find "$keydir" -type f -exec shred -u -- {} + 2>/dev/null || true
         rm -rf -- "$keydir"
     fi
-    unset MINISIGN_KEY MINISIGN_PASSWORD
+    unset MINISIGN_KEY MINISIGN_PASSWORD key password
 }
 trap cleanup EXIT
 
@@ -105,21 +145,26 @@ shopt -u nullglob dotglob
 manifest=$dir/$MANIFEST
 sig=$dir/$MANIFEST.minisig
 
-echo "== verify the bundle" >&2
-python3 -I "$bundle_py" verify "${archives[0]}" "$manifest" >&2 || die "the bundle does not verify: nothing is signed"
-manifest_sha=$(sha256sum -- "$manifest")
-manifest_sha=${manifest_sha%% *}
-
 out() { # out name value: a step output for GitHub Actions
     if [ -n "${GITHUB_OUTPUT:-}" ]; then echo "$1=$2" >>"$GITHUB_OUTPUT"; fi
 }
+if [ "$mode" != sign ]; then
+    echo "== verify the bundle" >&2
+    python3 -I "$bundle_py" verify "${archives[0]}" "$manifest" >&2 || die "the bundle does not verify: nothing is signed"
+fi
+manifest_sha=$(sha256sum -- "$manifest")
+manifest_sha=${manifest_sha%% *}
+if [ "$mode" = sign ] && [ "$manifest_sha" != "$want_sha" ]; then
+    die "$MANIFEST is not the file that was verified (sha256 $manifest_sha, not $want_sha): nothing is signed"
+fi
 out manifest-sha256 "$manifest_sha"
+[ "$mode" != verify ] || exit 0
 
-key=${MINISIGN_KEY:-}
-password=${MINISIGN_PASSWORD:-}
-unset MINISIGN_KEY MINISIGN_PASSWORD
 if [ -z "$key" ]; then
     unset password
+    if [ -n "$pub" ]; then
+        die "--public-key is given but there is no signing key (the minisign-key secret is empty or missing, misspelled, or not passed to a fork): nothing is signed"
+    fi
     out signed false
     msg="no signing key (the minisign-key secret is empty or missing): $MANIFEST is not signed, and Telamon Store will not offer an unsigned release"
     if [ "${GITHUB_ACTIONS:-}" = true ]; then
