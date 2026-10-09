@@ -112,6 +112,14 @@ lowers it again.
   TelamonChoiceCard and TelamonAccentPicker (selection, keys, mirrored layout, the
   edit rule in the three app styles); TelamonWindow.`kiosk` (full screen, a close
   request refused, no close button).
+- `editor/`: `TelamonCodeEditor` (`tst_editor.qml`): the text round trip (plain text,
+  line breaks, no-break space), `modified` and `textEdited`, undo, read-only,
+  `cursorLine`/`cursorColumn`, `scrollToLine`, `setTextPreserving` (the caret, the
+  selection and the first visible line stay; streamed edits), marks (kinds, nonsense
+  ranges, bounds, following edits, fading with and without animation, drawn), the
+  size and line-length caps, highlighting by language and file name, the long-line rule,
+  lazy highlighting (a far line is not read until the view gets there) and that the window keeps
+  running meanwhile, Tab, Shift+Tab, Escape then Tab, Home, and the accessible name.
 - `i18n/`: with `LANGUAGE=de` and a throwaway `telamon-ui_de.qm` (built from
   `i18n/telamon-ui_de.ts`), a default `SearchField` must show the German string.
   Needs qt6-linguist; skipped without it.

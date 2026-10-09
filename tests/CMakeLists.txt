@@ -179,6 +179,21 @@ set_tests_properties(input PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "TELAMON_TEST_BIN=$<TARGET_FILE:telamon-input-tests>;TELAMON_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;TELAMON_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;TELAMON_OUT_DIR=${CMAKE_BINARY_DIR}/input-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
+# TelamonCodeEditor (tests/editor): setTextPreserving keeping the caret and the
+# scroll, marks, read-only, the size and line-length caps, lazy highlighting,
+# plain text and the keys.
+add_executable(telamon-editor-tests editor/main.cpp)
+target_compile_definitions(telamon-editor-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/editor")
+target_link_libraries(telamon-editor-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(telamon-editor-tests telamonui)
+add_test(NAME editor
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(editor PROPERTIES
+    TIMEOUT 300
+    ENVIRONMENT "TELAMON_TEST_BIN=$<TARGET_FILE:telamon-editor-tests>;TELAMON_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;TELAMON_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;TELAMON_OUT_DIR=${CMAKE_BINARY_DIR}/editor-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
 # The translation test: a throwaway telamon-ui_de.qm (tests/i18n) in a directory
 # of its own, found through TELAMON_UI_TRANSLATIONS_DIR (development builds only).
 find_package(Qt6 6.11 QUIET COMPONENTS LinguistTools)
