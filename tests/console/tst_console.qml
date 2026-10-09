@@ -187,6 +187,38 @@ Item {
 
         // ---- the bound
 
+        function test_structure_characters_and_invisible_ones_are_dropped() {
+            view.append("a\ufdd0b\ufdd1c\ufffcd\u2060e\u00adf\n");
+            compare(view.plainText(), "abcdef\n");
+            // The text engine would break a line at U+FDD0: one line stays one block.
+            compare(sink().blockCount(), 2);
+            compare(view.lineCount, 1);
+            // The tag characters hide text: U+E0041 is gone.
+            view.clear();
+            view.append("x\udb40\udc41y\udb40\udc01z\n");
+            compare(view.plainText(), "xyz\n");
+        }
+
+        function test_maximumLines_at_the_top_of_the_range() {
+            view.maximumLines = 2147483647;
+            view.append("x\n");
+            view.append(lines(50));
+            compare(view.lineCount, 51);
+            view.maximumLines = 1;
+            compare(view.lineCount, 1);
+        }
+
+        function test_a_flood_of_style_changes_is_bounded() {
+            let s = "";
+            for (let i = 0; i < 2000; ++i) {
+                s += esc("^[1ma^[0mb");
+            }
+            view.append(s + "\n");
+            const runs = sink().runsAt(0);
+            verify(runs.length <= 256, "runs: " + runs.length);
+            compare(view.plainText().length, 4001, "the text is all there, 2,000 a, 2,000 b and the newline");
+        }
+
         function test_maximumLines_bound() {
             view.maximumLines = 100;
             for (let i = 0; i < 250; ++i) {

@@ -10,6 +10,14 @@
 #include <algorithm>
 #include <utility>
 
+namespace
+{
+// Style runs kept for one line (a line is at most 4,096 units): one run is a
+// layout format, and a flood of colour changes would cost a view of 10,000
+// lines the memory of a million.
+constexpr qsizetype MaxRunsPerLine = 256;
+} // namespace
+
 using namespace TelamonConsole;
 
 TelamonConsoleSinkPrivate::TelamonConsoleSinkPrivate(QObject *parent)
@@ -61,13 +69,14 @@ int TelamonConsoleSinkPrivate::blockCount() const
 
 void TelamonConsoleSinkPrivate::setMaximumLines(int lines)
 {
-    lines = std::max(1, lines);
+    // Not more than a bound that keeps the arithmetic of a trim in range.
+    lines = std::clamp(lines, 1, 100'000'000);
     if (lines == m_max) {
         return;
     }
     m_max = lines;
     if (m_doc) {
-        const int excess = m_doc->blockCount() - (m_max + (lastBlockEmpty() ? 1 : 0));
+        const int excess = m_doc->blockCount() - (m_max + (lastBlockEmpty() ? 1 : 0)); // m_max <= 100,000,000
         if (excess > 0) {
             removeFront(excess);
             if (m_trimmedHeight > 0) {
@@ -151,7 +160,7 @@ void TelamonConsoleSinkPrivate::apply(Parsed &parsed)
         ++newlines;
     }
     const bool endsEmpty = text.isEmpty() ? (parsed.clearsLastLine || lastBlockEmpty()) : text.endsWith(QLatin1Char('\n'));
-    const qint64 excess = qint64(blocks) + newlines - (m_max + (endsEmpty ? 1 : 0));
+    const qint64 excess = qint64(blocks) + newlines - (qint64(m_max) + (endsEmpty ? 1 : 0));
 
     // Everything that is there goes, and the first lines of the new text with it.
     qsizetype dropChars = 0;
@@ -216,9 +225,9 @@ void TelamonConsoleSinkPrivate::apply(Parsed &parsed)
         Runs &target = m_lines[size_t(line)];
         if (!target.isEmpty() && target.last().start + target.last().length == placed.start && target.last().style == placed.style) {
             target.last().length += placed.length;
-        } else {
+        } else if (target.size() < MaxRunsPerLine) {
             target.append(placed);
-        }
+        } // else: the rest of the line stays in the plain style
     }
 
     setBlockFormats(firstBlock);

@@ -90,16 +90,13 @@ FocusScope {
     // is cleared, `modified` becomes true when the text differs and
     // `textEdited` is not emitted.
     function setTextPreserving(newText: string): void {
-        if (core.tooLarge || !edit.visible) {
-            control.text = newText;
-            return;
-        }
+        const keepView = !core.tooLarge && edit.visible;
         const top = flick.contentY - edit.topPadding;
         const line = core.lineAtY(top);
         const inside = top - core.lineTopY(line);
         control._preserving = true;
         core.replacePreserving(newText);
-        if (!core.tooLarge) {
+        if (keepView && !core.tooLarge) {
             control._layoutNow();
             flick.contentY = control._clampY(core.lineTopY(Math.min(line, core.lineCount - 1)) + inside + edit.topPadding);
         }
@@ -242,11 +239,15 @@ FocusScope {
         const line = Math.max(1, Math.min(core.lineCount, control.cursorLine)) - 1;
         const column = Math.max(1, control.cursorColumn) - 1;
         if (core.tooLarge) {
-            view.cursorPosition = view.positionOfLine(line) + column;
+            const start = view.positionOfLine(line);
+            const next = line + 1 < core.lineCount ? view.positionOfLine(line + 1) - 1 : view.length;
+            view.cursorPosition = Math.min(start + column, Math.max(start, next));
             view.ensureVisible(view.cursorPosition);
         } else {
             edit.cursorPosition = core.positionOfLine(line, column);
         }
+        // The caret may not have moved (a line past the end): say where it is.
+        control._readCursor();
     }
     onCursorLineChanged: if (!_syncing) _applyCursor()
     onCursorColumnChanged: if (!_syncing) _applyCursor()
@@ -525,7 +526,7 @@ FocusScope {
                     const modified = event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier);
                     if ((event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) && !modified) {
                         const forward = event.key === Qt.Key_Tab && !(event.modifiers & Qt.ShiftModifier);
-                        if (control.readOnly || control._tabEscapes) {
+                        if (control.readOnly || core.loading || control._tabEscapes) {
                             const next = edit.nextItemInFocusChain(forward);
                             if (next && next !== edit) {
                                 next.forceActiveFocus(forward ? Qt.TabFocusReason : Qt.BacktabFocusReason);

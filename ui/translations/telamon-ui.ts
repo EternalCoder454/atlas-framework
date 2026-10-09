@@ -609,6 +609,24 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
     </message>
 </context>
 <context>
+    <name>TelamonCodeEditor</name>
+    <message>
+        <location filename="../TelamonCodeEditor.qml" line="181"/>
+        <source>Code editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TelamonCodeEditor.qml" line="384"/>
+        <source>This text has a line longer than %1 characters, so it is shown read-only and as plain text.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TelamonCodeEditor.qml" line="384"/>
+        <source>This text is longer than %1 characters, so it is shown read-only and as plain text.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>TelamonConsoleView</name>
     <message>
         <location filename="../TelamonConsoleView.qml" line="216"/>

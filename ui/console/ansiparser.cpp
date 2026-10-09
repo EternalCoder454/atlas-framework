@@ -12,7 +12,13 @@ constexpr char16_t Replacement = 0xFFFD;
 bool isBidiOrInvisible(char16_t c)
 {
     return c == 0x061C || (c >= 0x200B && c <= 0x200F) || (c >= 0x202A && c <= 0x202E)
-        || (c >= 0x2066 && c <= 0x2069) || c == 0xFEFF;
+        || (c >= 0x2066 && c <= 0x2069) || c == 0xFEFF
+        // Invisible format characters (soft hyphen, combining grapheme joiner,
+        // Mongolian vowel separator, word joiner and the deprecated controls
+        // after it, interlinear annotation marks) and what the text engine takes
+        // for structure: the object marker and the two frame markers.
+        || c == 0x00AD || c == 0x034F || c == 0x180E || (c >= 0x2060 && c <= 0x2064) || (c >= 0x206A && c <= 0x206F)
+        || (c >= 0xFFF9 && c <= 0xFFFC) || c == 0xFDD0 || c == 0xFDD1;
 }
 
 // One parameter group of an SGR sequence: the numbers between two ';', split at ':'.
@@ -232,6 +238,11 @@ void AnsiParser::ground(char16_t c, Parsed &out)
         if (m_high) {
             const char16_t pair[2] = {m_high, c};
             m_high = 0;
+            // The tag characters (U+E0001, U+E0020 to U+E007F) are invisible: a
+            // way to hide text in what is shown.
+            if (pair[0] == 0xDB40 && (pair[1] == 0xDC01 || (pair[1] >= 0xDC20 && pair[1] <= 0xDC7F))) {
+                return;
+            }
             put(pair, 2, out);
         } else {
             put(&Replacement, 1, out);

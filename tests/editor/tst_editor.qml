@@ -27,6 +27,19 @@ Item {
         signalName: "cursorMoved"
     }
     Component {
+        id: boundComp
+        Item {
+            property string source: "one"
+            property alias ed: ed
+            TelamonCodeEditor {
+                id: ed
+                width: 300
+                height: 100
+                text: parent.source
+            }
+        }
+    }
+    Component {
         id: spyComp
         SignalSpy {}
     }
@@ -252,6 +265,28 @@ Item {
             compare(editor.text, s);
             compare(editor.lineCount, 201);
             compare(editor.cursorLine, 1);
+        }
+
+        function test_set_text_preserving_in_a_hidden_editor_keeps_state_and_binding() {
+            editor.text = "a\nb\nc";
+            focusEditor();
+            editor.cursorLine = 2;
+            editor.cursorColumn = 1;
+            editor.visible = false;
+            editor.setTextPreserving("a\nB\nc");
+            compare(editor.text, "a\nB\nc");
+            compare(editor.cursorLine, 2, "the caret stays");
+            compare(editor.modified, true, "the text differs from what was loaded");
+            editor.visible = true;
+        }
+
+        function test_set_text_preserving_keeps_a_text_binding() {
+            const holder = createTemporaryObject(boundComp, root);
+            verify(holder);
+            holder.ed.setTextPreserving("two");
+            compare(holder.ed.text, "two");
+            holder.source = "three";
+            compare(holder.ed.text, "three", "the binding still drives the text");
         }
 
         // ---- Marks ----

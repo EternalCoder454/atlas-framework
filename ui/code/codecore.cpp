@@ -270,6 +270,7 @@ void TelamonCodeCorePrivate::setText(const QString &input)
 // start (`text` returns all of it); the editor is read-only until the end.
 void TelamonCodeCorePrivate::startLoad(const QString &text)
 {
+    ++m_loadGen;
     m_loading = true;
     m_loadText = text;
     m_loadPos = 0;
@@ -296,6 +297,7 @@ void TelamonCodeCorePrivate::loadSlice()
     ScopedInternal guard(m_internal);
     QElapsedTimer slice;
     slice.start();
+    const quint64 generation = m_loadGen;
     const qsizetype length = m_loadText.size();
     do {
         QElapsedTimer one;
@@ -309,6 +311,10 @@ void TelamonCodeCorePrivate::loadSlice()
         QTextCursor c(m_doc);
         c.movePosition(QTextCursor::End);
         c.insertText(m_loadText.mid(m_loadPos, end - m_loadPos));
+        if (generation != m_loadGen) {
+            // A handler of the change set another text: its load is the one that goes on.
+            return;
+        }
         // About 4 ms a piece.
         const double took = std::max(0.2, double(one.nsecsElapsed()) / 1e6);
         m_chunk = std::clamp<qsizetype>(qsizetype((double(m_chunk) + double(m_chunk) * 4.0 / took) / 2), 2 * 1024, 256 * 1024);
@@ -336,6 +342,7 @@ void TelamonCodeCorePrivate::cancelLoad()
     if (!m_loading) {
         return;
     }
+    ++m_loadGen;
     m_loadTimer.stop();
     m_loading = false;
     m_loadText = QString();
@@ -486,6 +493,29 @@ void TelamonCodeCorePrivate::replacePreserving(const QString &input)
     const bool hadSelection = selStart != selEnd;
     const bool cursorAtEnd = cursor == selEnd;
 
+    auto resolve = [&](const Spot &s) { return positionOfLine(s.line, s.column); };
+    auto restore = [&] {
+        if (hadSelection) {
+            const int a = resolve(startSpot);
+            const int b = resolve(endSpot);
+            if (cursorAtEnd) {
+                selectRange(a, b);
+            } else {
+                selectRange(b, a);
+            }
+        } else {
+            selectRange(resolve(cursorSpot), resolve(cursorSpot));
+        }
+    };
+
+    if (newEnd - prefix > m_sliceLoadFrom) {
+        // A change this big is a new text: loaded in slices, as setText() does,
+        // not in one stall. (`modified` is false once it is in.)
+        setText(text);
+        restore();
+        return;
+    }
+
     {
         ScopedInternal guard(m_internal);
         const bool undo = m_doc->isUndoRedoEnabled();
@@ -509,18 +539,7 @@ void TelamonCodeCorePrivate::replacePreserving(const QString &input)
         m_doc->setModified(true);
     }
 
-    auto resolve = [&](const Spot &s) { return positionOfLine(s.line, s.column); };
-    if (hadSelection) {
-        const int a = resolve(startSpot);
-        const int b = resolve(endSpot);
-        if (cursorAtEnd) {
-            selectRange(a, b);
-        } else {
-            selectRange(b, a);
-        }
-    } else {
-        selectRange(resolve(cursorSpot), resolve(cursorSpot));
-    }
+    restore();
 }
 
 // ---- Lines -----------------------------------------------------------------

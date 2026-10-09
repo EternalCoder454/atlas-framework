@@ -63,9 +63,9 @@ Any other number is ignored without breaking the rest of the sequence (blink, co
 - `\n` ends a line, and so do U+2028 and U+2029. `\r\n` is one line break, also when the two arrive in different `append()` calls.
 - A lone `\r` (a progress bar) makes the next character that is shown replace the content of the last line; only the last line is touched. Output that ends in `\r` leaves the line as it is until more text comes.
 - Tab is kept (a tab stop every 8 characters). BEL, backspace, vertical tab, form feed, NUL, DEL and every other control character are dropped: no bell, no cursor movement.
-- Bidirectional controls (U+061C, U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) and U+FEFF, U+200B, U+200C, U+200D are dropped, so output cannot reorder or hide text. A lone surrogate becomes U+FFFD; half a surrogate pair at the end of a call waits for the next one.
+- Bidirectional controls (U+061C, U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) and U+FEFF, U+200B, U+200C, U+200D are dropped, and so are the other invisible format characters (U+00AD, U+034F, U+180E, U+2060 to U+2064, U+206A to U+206F, U+FFF9 to U+FFFC, the tag characters U+E0001 and U+E0020 to U+E007F) and U+FDD0 and U+FDD1, so output cannot reorder or hide text. A lone surrogate becomes U+FFFD; half a surrogate pair at the end of a call waits for the next one.
 
-Other Unicode text passes through unchanged. A line is cut after 4096 UTF-16 units and the rest goes on in a new line (a character is not cut in two), so one huge line cannot slow the view.
+Other Unicode text passes through unchanged. A line is cut after 4096 UTF-16 units and the rest goes on in a new line (a character is not cut in two), so one huge line cannot slow the view. A line keeps its first 256 changes of style; the rest of it is drawn in the plain style.
 
 ## Scrollback
 
@@ -96,7 +96,7 @@ Screen readers get the text field, named "Console output", read-only. Set `Acces
 | `framed` | `bool` | `true` | Draws a card around the text. |
 | `inset` | `bool` | `false` | Gives an unframed view the same leading and trailing room as the text of a `SectionRow`. See [TelamonCodeView](telamon-code-view.md#properties). |
 | `lineCount` | `int` | `0` | Read-only. The lines held. |
-| `maximumLines` | `int` | `10000` | The most lines kept. Less than 1 is 1; a lower value drops the oldest lines at once. |
+| `maximumLines` | `int` | `10000` | The most lines kept. Less than 1 is 1 and more than 100,000,000 is 100,000,000; a lower value drops the oldest lines at once. |
 | `selectedText` | `string` | `""` | Read-only. The selected text, plain. |
 | `wrap` | `bool` | `false` | Wraps long lines instead of scrolling sideways. |
 

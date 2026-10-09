@@ -34,6 +34,7 @@ editor.scrollToLine(12)
 
 - **Plain text only.** Nothing in the text is taken as HTML or Markdown, and a link in it is not a link. The text field is a plain text field.
 - **Line breaks read back as LF.** CR, CRLF and U+2029 in a text you set become `\n`. An app that must keep CRLF files converts them back when it saves. Other characters, a no-break space included, come back as they went in. The two code points U+FDD0 and U+FDD1, which the text engine reads as frame markers, are replaced by U+FFFD.
+- **Bidirectional controls are shown.** The editor draws the text as it is, so a file with bidirectional control characters (U+202A to U+202E, U+2066 to U+2069) can show its code in another order than the compiler reads it. The characters are kept so that a save changes nothing; an app that opens files it does not trust should look for them in `text` and tell the user.
 - **Setting `text` loads a document.** The undo history is cleared, the marks are cleared and `modified` is false. `textEdited` is not emitted: it tells the app about the user's edits only.
 
 ## Large files
@@ -112,7 +113,7 @@ The values of the `kind` of `markLines()`:
 
 | Name | Description |
 |---|---|
-| `setTextPreserving(newText)` | Replaces the text from outside. Only the part that differs is rewritten. The caret and the selection stay at the same line and column (clamped to the new text), and the view keeps the same first visible line, so a reader's place does not jump while text arrives. The undo history is cleared, `modified` becomes `true` when the text differs, and `textEdited()` is not emitted. Cheap enough to call for every chunk of a streamed edit. |
+| `setTextPreserving(newText)` | Replaces the text from outside. Only the part that differs is rewritten. The caret and the selection stay at the same line and column (clamped to the new text), and the view keeps the same first visible line, so a reader's place does not jump while text arrives. The undo history is cleared, `modified` becomes `true` when the text differs, and `textEdited()` is not emitted. Cheap enough to call for every chunk of a streamed edit; a change of more than 64 KiB is loaded in slices like `text` (then `modified` is `false`, and the caret and the selection stay at the same line and column as far as the text has arrived). |
 | `markLines(ranges, kind, fadeMs)` | Marks lines with a bar in the gutter and a tinted band behind the text. `ranges` is a list of line numbers (from 1), `[first, last]` pairs or `{first, last}` objects; a range past the end stops at the last line, an invalid one is ignored, and at most 10,000 ranges are taken at a time. `kind` is `TelamonCodeEditor.Added` or `.Changed`. With `fadeMs` above 0 (omit it for `markFadeDuration`) the marks fade out after that long; under reduced motion they stay as they are for that long and then go. Marks move with the lines when the text is edited, and are cleared when `text` is set. Call it after `setTextPreserving()`, which rewrites the lines it marks. |
 | `clearMarks()` | Removes every mark. |
 | `scrollToLine(n)` | Scrolls so line `n` (from 1) is in view. A line that is already in view does not move the text; otherwise it is placed a third of the way down. |
