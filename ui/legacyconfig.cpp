@@ -65,7 +65,9 @@ bool readRegular(const QByteArray &path, qint64 maxBytes, QByteArray *data, mode
     struct stat st;
     bool ok = ::fstat(fd, &st) == 0 && S_ISREG(st.st_mode) && st.st_size <= maxBytes;
     if (ok) {
-        *mode = st.st_mode & 0777;
+        // The mode, but never writable by the group or others: a settings file
+        // that was open to them is not copied open.
+        *mode = st.st_mode & 0755;
         data->clear();
         char buf[16384];
         for (;;) {
