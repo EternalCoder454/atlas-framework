@@ -508,7 +508,9 @@ class WholeArchive(unittest.TestCase):
     def test_a_zstd_stream_that_is_not_a_tar_or_is_cut_off(self):
         tarb, inner = self.build()
         z = zstd(tarb)
-        for bad in (z[:len(z) // 2], b"\x28\xb5\x2f\xfd" + b"\xff" * 20, b"\x50\x2a\x4d\x18\x00\x00\x00\x00", b"junk"):
+        # a window of 1 GiB (the Store's decoder, like zstd's, takes at most 128 MiB: a small input could make a reader allocate it)
+        wide = subprocess.run(["zstd", "--long=30", "-q", "-c"], input=tarb, capture_output=True, check=True).stdout
+        for bad in (z[:len(z) // 2], b"\x28\xb5\x2f\xfd" + b"\xff" * 20, b"\x50\x2a\x4d\x18\x00\x00\x00\x00", b"junk", wide):
             name = "net.example.fake-1.2.3-x86_64.tar.zst"
             outer = dict(inner)
             outer["archive"] = {"name": name, "sha256": hashlib.sha256(bad).hexdigest(), "size": len(bad)}
