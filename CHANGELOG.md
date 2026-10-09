@@ -9,6 +9,47 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.10
+
+Tooling only, no API change: nothing in Telamon.Ui or the crates moved. Apps that
+ship as native bundles (`docs/BUNDLES.md`) get this by moving the pinned
+`bundle.yml` to the 2.0.10 commit; Telamon Store offers only releases whose
+`telamon-bundle.json` carries a minisign signature, and this is how a release gets one.
+
+- New: signing. The `bundle.yml` workflow has a `sign` job (the framework's own tools,
+  never the app's code) and attaches `telamon-bundle.json.minisig` beside the other two
+  files. The job runs `tools/sign-bundle.sh` in two steps: step A re-verifies the bundle
+  (`tools/bundle.py verify`) with no secret in its environment, step B has the optional
+  secret `minisign-key` (and `minisign-password`), parses nothing, checks that the
+  manifest is the file step A verified, and signs it with `minisign`. So the key is
+  never in the environment of anything that parses the bundle. A release without a
+  signature (no secret, a misspelled one, a fork) is attached but left a **draft**,
+  with an error annotation that says how to sign offline and publish; the new input
+  `allow-unsigned: true` publishes it anyway (Store will not offer it). The new input
+  `publish: false` leaves any release a draft, so its owner can sign offline
+  (`minisign -Sm telamon-bundle.json`) and publish by hand: the recommended model,
+  because a key stored as a repository secret is available to everyone who can change
+  the workflow or the build. The new input `minisign-public-key` makes the run check the
+  signature against the catalog's key, and fail when the secret is missing. "Signing" in
+  `docs/BUNDLES.md` has the keys, the catalog entry and key rotation.
+  `tools/check-workflows.py` lists the signing job as the one job without an
+  `environment:` that may read (those two) secrets, with the reason.
+- Fix (security): `make-bundle.sh --exclude` removed what its glob matched through a
+  symlink in the app's install tree, and split a name with a newline into two paths;
+  either could delete a file outside the install. It now removes only what is inside
+  the install. The list of files holding the stage path and the messages escape control
+  characters (a file name could start a `::command::` line in a workflow log).
+- Fix (security): `tools/bundle.py` resolved links in time proportional to links times
+  entries (40 s for 20,000 dangling links) and without a bound on the links followed
+  (now the kernel's 40); a metainfo file could declare another encoding to hide a
+  DOCTYPE; `verify` accepted a gzip, xz or lz4 archive; `pack` did not refuse a setuid,
+  setgid or sticky file and followed a link swapped in for a file; its messages did not
+  escape file names.
+- The workflow checks the tag against `vX.Y.Z[-pre]` before it uses it, refuses an
+  `app-dir` or `spec` that starts with `-`, and attaches exactly the archive, the
+  manifest and the signature (the sign job's hash of the manifest and the manifest's
+  hash of the archive must match).
+
 ## 2.0.9
 
 Secure phase for the whole framework (docs/SECURITY.md has the threat model

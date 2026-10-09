@@ -8,6 +8,11 @@
 tools/make-bundle.sh builds and installs an app, then calls `pack`. The format
 is described in docs/BUNDLES.md; this file is its reference implementation
 (the Store reads the same rules). Standard library only, plus the `zstd` program.
+
+`verify` reads hostile input (a bundle may come from anywhere, and the signing job of
+.github/workflows/bundle.yml runs it on whatever an app's build made), so it never
+extracts: the archive is streamed through `zstd -dc` into `scan_tar`, every entry is
+only looked at and hashed, and nothing is written to disk.
 """
 
 import argparse
@@ -56,6 +61,7 @@ MAX_EXPORT = 1024 * 1024          # one exported file
 MAX_KEYFILE = 64 * 1024           # a .desktop or .service file
 MAX_KEYFILE_LINES = 1000
 MAX_PATH = 1024                   # bytes, a whole path
+MAX_FOLLOWS = 40                  # symlinks followed to resolve one link (Linux's own limit)
 SMALL = MAX_EXPORT                # files read whole: desktop, service, metainfo, manifest
 MAX_MANIFEST = 1024 * 1024        # telamon-store-core native/manifest.rs MAX_MANIFEST
 MAX_PAX = 64 * 1024               # the one pax header before an entry (path, linkpath): nothing else is written
@@ -175,7 +181,28 @@ class Entry:
 
 def dump(obj):
     """The one JSON form: insertion order, 2-space indent, trailing newline."""
-    return json.dumps(obj, indent=2, ensure_ascii=False) + "\n"
+    return json.dumps(obj, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+
+
+def printable(text):
+    """`text` with control, hidden and non-printing characters written as \\uXXXX, for messages:
+    a file name must not be able to start a line of its own in a log (GitHub Actions reads
+    `::workflow-command::` lines) or move the cursor in a terminal."""
+    return "".join(c if c.isprintable() and not hidden(c) else
+                   (f"\\u{ord(c):04x}" if ord(c) <= 0xFFFF else f"\\U{ord(c):08x}") for c in text)
+
+
+def open_regular(path):
+    """Opens a regular file for reading without following a symlink at `path`
+    (a file swapped for a link while the tree is read is refused)."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
+    except OSError as exc:
+        raise BundleError(f"cannot read {printable(path)}: {exc.strerror}") from None
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise BundleError(f"{printable(path)}: not a regular file")
+    return os.fdopen(fd, "rb")
 
 
 # ---------------------------------------------------------------- path rules
@@ -236,11 +263,13 @@ def resolve_link(path, target, by_path=None):
         if joined == "." or joined == ".." or joined.startswith("../"):
             return None
         return joined
-    parts = _walk(by_path, posixpath.dirname(path).split("/") if "/" in path else [], target, 0)
+    # Like the kernel, at most MAX_FOLLOWS links are followed to resolve one path (ELOOP):
+    # without it a few links that name each other many times over take for ever.
+    parts = _walk(by_path, posixpath.dirname(path).split("/") if "/" in path else [], target, [MAX_FOLLOWS])
     return "/".join(parts) if parts else None
 
 
-def _walk(by_path, start, rel, depth):
+def _walk(by_path, start, rel, budget):
     parts = list(start)
     for comp in rel.split("/"):
         if comp in ("", "."):
@@ -253,9 +282,10 @@ def _walk(by_path, start, rel, depth):
         parts.append(comp)
         e = by_path.get("/".join(parts))
         if e is not None and e.kind == "link":
-            if depth >= 16 or e.target == "" or e.target.startswith("/") or "\\" in e.target:
+            budget[0] -= 1
+            if budget[0] < 0 or e.target == "" or e.target.startswith("/") or "\\" in e.target:
                 return None
-            parts = _walk(by_path, parts[:-1], e.target, depth + 1)
+            parts = _walk(by_path, parts[:-1], e.target, budget)
             if parts is None:
                 return None
     return parts
@@ -285,6 +315,8 @@ def validate(entries, archive):
     if nfiles > MAX_FILES or nlinks > MAX_FILES:
         errs.append(f"{nfiles} files and {nlinks} links: at most {MAX_FILES} of each")
 
+    # every directory some entry is below, to tell a link to a missing directory in O(1)
+    dirs = {p.rsplit("/", i)[0] for p in by_path for i in range(1, p.count("/") + 1)}
     for e in by_path.values():
         top = e.path.split("/", 1)[0]
         if "/" not in e.path and e.kind != "dir":
@@ -324,7 +356,7 @@ def validate(entries, archive):
             if dest is None:
                 errs.append(f"{e.path}: symlink to {e.target!r}, which is not a relative path inside the tree "
                             "(plain names and '..', no empty or '.' part, no hidden character)")
-            elif dest not in by_path and not any(x.startswith(dest + "/") for x in by_path):
+            elif dest not in by_path and dest not in dirs:
                 errs.append(f"{e.path}: symlink to {e.target!r}, which is not in the archive")
             if e.path.startswith("bin/") and e.path.count("/") > 1:
                 errs.append(f"{e.path}: bin/ holds no subdirectories")
@@ -617,6 +649,11 @@ def parse_metainfo(data, app_id):
     # No entity or DOCTYPE tricks: a metainfo file has neither.
     if b"<!DOCTYPE" in data or b"<!ENTITY" in data or b"\x00" in data or not data.lstrip(b"\xef\xbb\xbf \t\r\n").startswith(b"<"):
         raise BundleError("must be UTF-8 XML without a DOCTYPE or ENTITY declaration")
+    # Another declared encoding would hide a DOCTYPE from the check above (the rest of the
+    # file is then in that encoding, EBCDIC for example).
+    declared = re.match(rb"\s*<\?xml[^>]*?\bencoding\s*=\s*[\"']([^\"']*)[\"']", data.lstrip(b"\xef\xbb\xbf"))
+    if declared and declared.group(1).lower().replace(b"_", b"-") not in (b"utf-8", b"utf8"):
+        raise BundleError(f"declares the encoding {printable(declared.group(1).decode('latin-1'))}: it must be UTF-8")
     try:
         root = ET.fromstring(data)
     except ET.ParseError as exc:
@@ -646,7 +683,7 @@ def parse_metainfo(data, app_id):
 def cmake_version(app_dir):
     path = os.path.join(app_dir, "CMakeLists.txt")
     try:
-        text = open(path, encoding="utf-8").read()
+        text = open(path, encoding="utf-8", errors="replace").read()
     except OSError as exc:
         raise BundleError(f"cannot read {path}: {exc}") from None
     text = re.sub(r"#[^\n]*", "", text)
@@ -683,7 +720,7 @@ def vkey(v):
 def spec_min_ui(spec):
     found = {"BuildRequires": [], "Requires": []}
     try:
-        lines = open(spec, encoding="utf-8").read().splitlines()
+        lines = open(spec, encoding="utf-8", errors="replace").read().splitlines()
     except OSError as exc:
         raise BundleError(f"cannot read {spec}: {exc}") from None
     for line in lines:
@@ -716,7 +753,7 @@ def os_version_id():
 def spec_field(spec, field):
     if not spec:
         return ""
-    for line in open(spec, encoding="utf-8"):
+    for line in open(spec, encoding="utf-8", errors="replace"):
         m = re.match(rf"^{field}:\s*(\S.*?)\s*$", line)
         if m and "%{" not in m.group(1):
             return m.group(1)
@@ -725,9 +762,15 @@ def spec_field(spec, field):
 
 # ------------------------------------------------------------------- tree / pack
 
+def read_small(tree, rel):
+    """At most SMALL + 1 bytes of a file of the tree (more means it is too large)."""
+    with open_regular(os.path.join(tree, rel)) as f:
+        return f.read(SMALL + 1)
+
+
 def sha256_file(path):
     h = hashlib.sha256()
-    with open(path, "rb") as f:
+    with open_regular(path) as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
@@ -748,10 +791,13 @@ def scan_tree(tree):
             elif stat.S_ISLNK(st.st_mode):
                 entries.append(Entry(r, "link", 0o777, target=os.readlink(p)))
             elif stat.S_ISREG(st.st_mode):
+                if st.st_mode & 0o7000:
+                    raise BundleError(f"{printable(r)}: mode {st.st_mode & 0o7777:04o} has a setuid, setgid or sticky bit: "
+                                      "nothing in a bundle runs with another identity; install it with mode 0755 or 0644")
                 mode = 0o755 if st.st_mode & 0o111 else 0o644
                 entries.append(Entry(r, "file", mode, size=st.st_size, sha256=sha256_file(p)))
             else:
-                raise BundleError(f"{r}: not a directory, file or symlink")
+                raise BundleError(f"{printable(r)}: not a directory, file or symlink (a device, fifo or socket)")
 
     walk("")
     return entries
@@ -786,10 +832,9 @@ def cmd_pack(a):
     if not entries:
         raise BundleError("the install produced no files")
     by_path = validate(entries, archive=False)
-    app_id, mi = check_semantics(by_path, lambda p: open(os.path.join(tree, p), "rb").read(SMALL + 1))
+    app_id, mi = check_semantics(by_path, lambda p: read_small(tree, p))
 
-    desktop = parse_ini_group(open(os.path.join(tree, f"share/applications/{app_id}.desktop"),
-                                   encoding="utf-8", errors="replace").read(), "Desktop Entry")
+    desktop = parse_ini_group(read_small(tree, f"share/applications/{app_id}.desktop").decode("utf-8", "replace"), "Desktop Entry")
     meta = {
         "id": app_id,
         "name": a.name or mi.get("name") or desktop.get("Name", ""),
@@ -852,7 +897,7 @@ def cmd_pack(a):
                             tf.addfile(ti, io.BytesIO(inner_bytes))
                         else:
                             ti.size = e.size
-                            with open(os.path.join(tree, e.path), "rb") as f:
+                            with open_regular(os.path.join(tree, e.path)) as f:
                                 tf.addfile(ti, f)
             finally:
                 z.stdin.close()
@@ -1056,6 +1101,14 @@ def scan_tar(stream, want_small=False):
 
 def read_archive(path):
     """(entries, {path: bytes} for the small files)."""
+    try:
+        with open(path, "rb") as f:
+            magic = f.read(4)
+    except OSError as exc:
+        raise BundleError(f"cannot read {printable(path)}: {exc.strerror}") from None
+    if magic != b"\x28\xb5\x2f\xfd":
+        # `zstd -d` also unpacks gzip, xz and lz4 when built with them: a bundle is zstd.
+        raise BundleError("the archive is not zstd-compressed")
     try:
         z = subprocess.Popen(["zstd", "-dc", "-qq", "--memory=128MiB", "--", path], stdout=subprocess.PIPE)
     except FileNotFoundError:
@@ -1326,10 +1379,10 @@ def main(argv):
             print(f"ok: {m['id']} {m['version']}, {len(m['files'])} files, {len(m['links'])} links")
     except BundleError as exc:
         for line in exc.problems:
-            print(f"bundle: {line}", file=sys.stderr)
+            print(f"bundle: {printable(line)}", file=sys.stderr)
         return 1
     except OSError as exc:      # an unreadable file, a full disk: a message, not a traceback
-        print(f"bundle: {exc}", file=sys.stderr)
+        print(f"bundle: {printable(str(exc))}", file=sys.stderr)
         return 1
     return 0
 

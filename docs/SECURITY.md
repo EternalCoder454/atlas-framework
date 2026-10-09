@@ -226,7 +226,10 @@ the build when a workflow:
   outputs, matrix values, event fields) in a `run:` or `script:`: it goes through
   `env:`;
 - uses a secret other than `GITHUB_TOKEN` outside a job with an `environment:`
-  (a reviewer gate), puts one in a script, or says `secrets: inherit`;
+  (a reviewer gate), puts one in a script, or says `secrets: inherit` (the one
+  exception, on the checker's `SECRET_USERS` list with its reason: `bundle.yml`'s
+  `sign` job reads the optional `minisign-key` and `minisign-password`, in the one
+  step that signs; see "Bundles");
 - pipes a download into a shell, or saves a cache from a step a pull request can
   reach (the exception, `bundle.yml`'s framework RPM cache, is listed with its
   reason: it is saved before any of the app's code runs).
@@ -235,8 +238,10 @@ The pins were checked against the actions' tags. The reusable `app-checks.yml`
 validates `framework-ref` (a name, no option) and verifies that a full sha
 fetched is the sha asked for; `bundle.yml` insists on a full sha, checks its
 inputs, builds with a read-only token and uploads to a second job that can write
-and runs nothing but `gh` on exactly two files (an archive named
-`<id>-<version>-x86_64.tar.zst` and `telamon-bundle.json`). Dependabot
+and runs nothing but `gh` on exactly the files a bundle is (an archive named
+`<id>-<version>-x86_64.tar.zst`, `telamon-bundle.json` and, signed,
+`telamon-bundle.json.minisig`), after checking their hashes against what the
+signing job verified. Dependabot
 (`.github/dependabot.yml`) moves the pins.
 
 Repository settings that complete this (checked, not changed here): the default
@@ -313,7 +318,25 @@ code).
   (`FetchContent`, `ExternalProject`, `file(DOWNLOAD)`, curl, wget, `git clone`,
   `pip install`) is refused unless `--allow-network`. A build from another path,
   locale, time zone, umask or `ZSTD_CLEVEL` gives a byte-identical bundle (tested).
-- **Tests:** `tools/test-make-bundle.sh` (96 checks), `tools/test_bundle_rules.py`
+- **Signing** (`tools/sign-bundle.sh`, the `sign` job of `bundle.yml`; docs/BUNDLES.md,
+  "Signing"). Telamon Store offers a release only with a minisign signature over
+  `telamon-bundle.json`, pinned per app in its catalog. The `sign` job has no token
+  and runs only the framework's tools, by sha: step A verifies the bundle
+  (`bundle.py verify`) with no secret in its environment, step B has the key, parses
+  nothing, checks the manifest is the verified file (its sha256) and the directory
+  holds only the plain archive and manifest, writes the key to a 0600 file on tmpfs
+  (shredded), never on a command line, and signs. A release without a signature
+  stays a draft unless `allow-unsigned`. Offline signing (`publish: false`) keeps the
+  key off the repository altogether and is the recommended model.
+- **Also here (not in the strict reader):** links are resolved with the kernel's budget of
+  40 followed links and a set of directories (a hostile bundle made the check take
+  40 s); `pack` refuses setuid, setgid and sticky files and reads without following a link
+  swapped in; a metainfo file declaring another encoding is refused (it could hide a
+  DOCTYPE); the archive must be zstd (`zstd -d` also unpacks gzip, xz and lz4); every message
+  escapes control and hidden characters (a file name could start a `::command::` line in
+  a log); `make-bundle.sh --exclude` removes only what is inside the install (it
+  followed a symlink and split a name at a newline).
+- **Tests:** `tools/test-make-bundle.sh`, `tools/test_bundle_rules.py`
   (the Store's rules as a reference port plus a seeded fuzzer; CI runs 20,000
   cases), `tools/test-tool-scripts.sh`.
 - **Other scripts that read other people's trees** (`migrate-app-to-telamon.sh`,
@@ -368,6 +391,11 @@ the same way (stdlib only; 20,000 cases in CI). Regressions found are kept under
 
 ## What is left
 
+- **A signing key in CI** is available to whoever controls the app's build, the
+  workflow or a tag in that repository: the `sign` job signs a *valid* bundle, not
+  the owner's intent. It also runs on a mutable runtime (`fedora:44` and `dnf`
+  `minisign`). Offline signing is the model for an app with several writers or a high value.
+  Store does not check Sigstore or GitHub attestations yet.
 - **Repository settings** noted above (a ruleset for `main`, Dependabot security
   updates, requiring pinned actions) are the owner's to switch on.
 - **The framework RPM cache** in `bundle.yml` is verified against a checksum file

@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.9
+Version:        2.0.10
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -223,6 +223,13 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Fri Oct 09 2026 Telamon <atlas@eterneon.net> - 2.0.10-1
+- Tooling only, no API change: the native-bundle workflow signs telamon-bundle.json
+  with minisign (the new sign job and tools/sign-bundle.sh; a release without a
+  signature, or with publish: false, stays a draft for offline signing), the
+  bundle tools refuse a PAX sparse member and resolve links with a budget, and
+  make-bundle.sh --exclude no longer removes through a symlink or a newline in a name.
+
 * Fri Oct 09 2026 Telamon <atlas@eterneon.net> - 2.0.9-1
 - Secure phase: every text control in Telamon.Ui is plain text (a string that
   starts with "<" was read as HTML), links open through TelamonPortal.openUrl,

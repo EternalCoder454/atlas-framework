@@ -67,6 +67,18 @@ WRITERS = {
     ),
 }
 
+# Secrets other than GITHUB_TOKEN that a job with no `environment:` may read, with the reason. A reusable
+# workflow cannot ask the caller for an environment, and the key is optional: without it nothing is signed.
+SECRET_USERS = {
+    ".github/workflows/bundle.yml:sign": (
+        {"minisign-key", "minisign-password"},
+        "the optional minisign key that signs telamon-bundle.json, read by the one step that signs and "
+        "parses nothing (the step before it, which parses the bundle, has no secret); the app's code "
+        "never runs in this job. docs/BUNDLES.md, \"Signing\", says to sign offline instead when the "
+        "repository has several writers",
+    ),
+}
+
 # Cache saves that are not limited to a push to main, with the reason.
 CACHE_SAVERS = {
     ".github/workflows/bundle.yml:bundle": (
@@ -422,17 +434,17 @@ def check_file(path, rel, text, errors):
                 if re.search(r"\b(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(ba|z)?sh\b", script):
                     errors.append(f"{where}: pipes a download into a shell")
             blob = repr(step)
-            for m in re.finditer(r"secrets\.([A-Za-z0-9_]+)", blob):
+            for m in re.finditer(r"secrets\.([A-Za-z0-9_-]+)", blob):
                 if m.group(1) == "GITHUB_TOKEN":
                     continue
-                if not gated:
+                if not gated and m.group(1) not in SECRET_USERS.get(key, (set(), ""))[0]:
                     errors.append(f"{where}: secrets.{m.group(1)} in a job with no `environment:` (no reviewer gate)")
                 if script is not None and f"secrets.{m.group(1)}" in script:
                     errors.append(f"{where}: secrets.{m.group(1)} inside a run script: pass it through env")
         for k in ("env",):
             blob = repr(job.get(k))
-            for m in re.finditer(r"secrets\.([A-Za-z0-9_]+)", blob):
-                if m.group(1) != "GITHUB_TOKEN" and not gated:
+            for m in re.finditer(r"secrets\.([A-Za-z0-9_-]+)", blob):
+                if m.group(1) != "GITHUB_TOKEN" and not gated and m.group(1) not in SECRET_USERS.get(key, (set(), ""))[0]:
                     errors.append(f"{key}: secrets.{m.group(1)} in a job with no `environment:`")
 
 

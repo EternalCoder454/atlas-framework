@@ -110,6 +110,15 @@ class Rules(unittest.TestCase):
         t = GOOD.replace("    runs-on: ubuntu-latest\n", "    runs-on: ubuntu-latest\n    environment: release\n")
         self.assertEqual(check(t.replace("REF: ${{ github.ref_name }}", "REF: ${{ secrets.TOKEN }}")), [])
 
+    def test_listed_secret_only_in_its_job(self):
+        # the bundle workflow's signing job may read its two optional secrets, and nothing else may
+        sign = GOOD.replace("  a:\n", "  sign:\n").replace("REF: ${{ github.ref_name }}", "REF: ${{ secrets.minisign-key }}")
+        self.assertEqual(check(sign, ".github/workflows/bundle.yml"), [])
+        self.bad(sign, "no `environment:`")                       # the same job in another workflow
+        self.bad(sign.replace("  sign:\n", "  attach:\n"), "no `environment:`", ".github/workflows/bundle.yml")
+        self.bad(sign.replace("minisign-key", "other-key"), "no `environment:`", ".github/workflows/bundle.yml")
+        self.bad(sign.replace('echo "$REF"', 'echo "${{ secrets.minisign-key }}"'), "secrets.minisign-key", ".github/workflows/bundle.yml")
+
     def test_secrets_inherit(self):
         t = GOOD + "  b:\n    uses: ./.github/workflows/x.yml\n    secrets: inherit\n"
         self.bad(t, "secrets: inherit")

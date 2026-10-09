@@ -6,8 +6,19 @@ name: Telamon native app bundle
 # attaches both files to that tag's GitHub release, where Telamon Store finds
 # them. The app's repository calls it from a tag; docs/BUNDLES.md ("Connecting
 # an app") has the caller's file. The caller must grant `contents: write` to
-# the job that calls this workflow. No secrets are used: the release is made
-# with the run's own GITHUB_TOKEN.
+# the job that calls this workflow.
+#
+# Three jobs, each with the least it needs:
+#   bundle  runs the APP's build (arbitrary code): read-only token, no secrets.
+#   sign    runs only the framework's own tools, on the artifact `bundle` made:
+#           it re-verifies the bundle, then signs telamon-bundle.json with the
+#           optional minisign-key secret. Telamon Store offers only releases
+#           with a valid signature, so an app that wants its release used
+#           either passes the secret or signs by hand. A release without a
+#           signature stays a draft (allow-unsigned: true publishes it anyway),
+#           and so does any release with publish: false. docs/BUNDLES.md, "Signing".
+#   attach  runs nothing but gh, on files whose hashes it checks: the only job
+#           that can write.
 on:
   workflow_call:
     inputs:
@@ -27,6 +38,25 @@ on:
         description: Attach the bundle to the GitHub release of a v* tag (the bundle is always uploaded as a workflow artifact)
         type: boolean
         default: true
+      publish:
+        description: Publish a release this run made (true), or leave it a draft (false) so its owner can sign telamon-bundle.json offline and publish it by hand. A release without a signature is left a draft whatever this says, unless allow-unsigned is true
+        type: boolean
+        default: true
+      allow-unsigned:
+        description: Publish a release that has no signature (no minisign-key secret) as a normal release. Telamon Store will not offer it. The default is to leave it a draft, so a missing or misspelled secret cannot publish an unsigned release
+        type: boolean
+        default: false
+      minisign-public-key:
+        description: The minisign public key the catalog pins for this app (RW and 54 more characters); when given, the signature made with the minisign-key secret must verify with it, so a wrong key fails the run and not the users
+        type: string
+        default: ''
+    secrets:
+      minisign-key:
+        description: The content of the minisign secret key file (both lines) that signs telamon-bundle.json; without it the release is attached unsigned, which Telamon Store will not offer. Anyone who can change the app's workflow or build can use this key; for an app with several writers sign offline (publish false) instead
+        required: false
+      minisign-password:
+        description: The password of the minisign-key, if it has one
+        required: false
 
 permissions:
   contents: read
@@ -48,12 +78,20 @@ jobs:
         run: dnf -y install git-core tar zstd gawk diffutils gh cmake ninja-build python3 gcc-c++ dnf5-plugins
 
       - name: Check the inputs
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           for pair in "app-dir:$APP_DIR" "spec:$SPEC"; do
-            if ! [[ ${pair#*:} =~ ^[A-Za-z0-9._/-]*$ ]] || [[ /${pair#*:}/ == *"/../"* ]] || [[ ${pair#*:} == /* ]]; then
-              echo "::error::${pair%%:*} must be a path inside the repository: letters, digits, . _ - and /"; exit 1
+            if ! [[ ${pair#*:} =~ ^[A-Za-z0-9._/-]*$ ]] || [[ /${pair#*:}/ == *"/../"* ]] || [[ ${pair#*:} == /* ]] || [[ ${pair#*:} == -* ]]; then
+              echo "::error::${pair%%:*} must be a path inside the repository: letters, digits, . _ - and /, not starting with -"; exit 1
             fi
           done
+          # A tag is data: it names the release and the version, and is only ever used
+          # quoted, from the environment; a name like v1.0.0$(id) stops here.
+          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == v* ]] && ! [[ $REF_NAME =~ ^v[0-9]+(\.[0-9]+)+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::the tag $(printf '%q' "$REF_NAME") is not vX.Y.Z or vX.Y.Z-prerelease (digits, letters, . and -)"; exit 1
+          fi
           if ! [[ $FRAMEWORK_REF =~ ^[0-9a-f]{40}$ ]]; then
             echo "::error::framework-ref must be the full 40-character commit sha of a telamon-framework release (it is '$FRAMEWORK_REF'): a branch or tag names something that moves"; exit 1
           fi
@@ -155,6 +193,10 @@ jobs:
               echo "::error::the tag is $REF_NAME but the bundle's version is $got: tag v$got"; exit 1
             fi
           fi
+          # The artifact is the two files this build made and nothing else.
+          if [ "$(find bundle-out -mindepth 1 | wc -l)" != 2 ] || [ "$(find bundle-out -mindepth 1 -type f | wc -l)" != 2 ]; then
+            echo "::error::bundle-out must hold the archive and telamon-bundle.json and nothing else"; exit 1
+          fi
           {
             echo '### Telamon bundle'
             echo '```'
@@ -170,57 +212,189 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  attach:
-    # The only job that can write: it runs nothing but gh, on the two files the
-    # build job uploaded. A caller must grant `contents: write`.
+  sign:
+    # Runs none of the app's code, only the framework's own tools fetched by
+    # sha: tools/bundle.py verify, then minisign. The key is in the environment
+    # of the one step that signs, which parses nothing: the step before it,
+    # which parses the bundle, has no secret. A malicious
+    # app build can get a *structurally valid* bundle signed (the archive must
+    # match its manifest and the layout rules) and nothing else; whoever
+    # controls the app's build controls what that bundle contains, which is
+    # why an app with several writers signs offline (publish: false).
     needs: bundle
     if: ${{ inputs.attach && github.ref_type == 'tag' && startsWith(github.ref_name, 'v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: write
+    container: registry.fedoraproject.org/fedora:44
+    # No token at all: the job only downloads this run's artifact and fetches a public repository.
+    permissions: {}
+    outputs:
+      signed: ${{ steps.sign.outputs.signed }}
+      manifest-sha256: ${{ steps.verify.outputs.manifest-sha256 }}
+    env:
+      FRAMEWORK_REF: ${{ inputs.framework-ref }}
+      TAG: ${{ github.ref_name }}
     steps:
+      - name: Tools for the framework fetch, the check and the signature
+        run: dnf -y install git-core python3 zstd minisign coreutils findutils
+
+      - name: Check the tag and the framework ref
+        run: |
+          if ! [[ $TAG =~ ^v[0-9]+(\.[0-9]+)+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::the tag $(printf '%q' "$TAG") is not vX.Y.Z or vX.Y.Z-prerelease (digits, letters, . and -)"; exit 1
+          fi
+          if ! [[ $FRAMEWORK_REF =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::framework-ref must be the full 40-character commit sha of a telamon-framework release"; exit 1
+          fi
+
+      - name: Fetch the framework
+        id: framework
+        run: |
+          # The same fetch as the bundle job: that exact commit, outside the workspace.
+          dir="$RUNNER_TEMP/telamon-framework"
+          git init -q "$dir"
+          git -C "$dir" fetch -q --depth 1 -- https://github.com/EternalCoder454/atlas-framework "$FRAMEWORK_REF"
+          git -C "$dir" checkout -q FETCH_HEAD
+          if [ "$(git -C "$dir" rev-parse HEAD)" != "$FRAMEWORK_REF" ]; then
+            echo "::error::fetched $(git -C "$dir" rev-parse HEAD), not $FRAMEWORK_REF"; exit 1
+          fi
+          if [ ! -x "$dir/tools/sign-bundle.sh" ]; then
+            echo "::error::framework-ref has no tools/sign-bundle.sh: use a commit from 2.0.10 on"; exit 1
+          fi
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: telamon-bundle
           path: bundle-out
 
-      # The build job is the app's own code with a read-only token, but what it
-      # uploads is data for a job that can write: only the two files a bundle is.
-      - name: Only the bundle and its manifest
-        run: |
-          shopt -s nullglob dotglob
-          files=(bundle-out/*)
-          if [ ${#files[@]} -ne 2 ] || [ ! -f bundle-out/telamon-bundle.json ] || [ -L bundle-out/telamon-bundle.json ]; then
-            echo "::error::the uploaded bundle is not exactly an archive and telamon-bundle.json"; exit 1
-          fi
-          for f in "${files[@]}"; do
-            b=${f#bundle-out/}
-            [ "$b" = telamon-bundle.json ] && continue
-            if ! [[ $b =~ ^[A-Za-z0-9._][A-Za-z0-9._-]*-[0-9][A-Za-z0-9.-]*-x86_64\.tar\.zst$ ]] || [ -L "$f" ] || [ ! -f "$f" ]; then
-              echo "::error::unexpected file in the uploaded bundle"; exit 1
-            fi
-          done
-
-      - name: The tag is v + the bundle's version
+      # Step A parses the hostile bundle (python3, zstd, tarfile) and has no
+      # secret in its environment (the script refuses to run with one).
+      - name: Verify the bundle
+        id: verify
         env:
-          TAG: ${{ github.ref_name }}
+          FRAMEWORK_DIR: ${{ steps.framework.outputs.dir }}
+        run: '"$FRAMEWORK_DIR/tools/sign-bundle.sh" --verify-only bundle-out'
+
+      # Step B has the key and parses nothing: it checks that the manifest is
+      # the file step A verified and that the directory holds only the bundle,
+      # then signs.
+      - name: Sign the manifest
+        id: sign
+        env:
+          FRAMEWORK_DIR: ${{ steps.framework.outputs.dir }}
+          MANIFEST_SHA256: ${{ steps.verify.outputs.manifest-sha256 }}
+          PUBLIC_KEY: ${{ inputs.minisign-public-key }}
+          MINISIGN_KEY: ${{ secrets.minisign-key }}
+          MINISIGN_PASSWORD: ${{ secrets.minisign-password }}
         run: |
-          got=$(jq -r .version bundle-out/telamon-bundle.json)
+          args=()
+          [ -z "$PUBLIC_KEY" ] || args+=(--public-key "$PUBLIC_KEY")
+          "$FRAMEWORK_DIR/tools/sign-bundle.sh" --sign-only --manifest-sha256 "$MANIFEST_SHA256" "${args[@]}" bundle-out
+
+      - name: Upload the signature
+        if: steps.sign.outputs.signed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: telamon-bundle-signature
+          path: bundle-out/telamon-bundle.json.minisig
+          if-no-files-found: error
+          retention-days: 14
+
+  attach:
+    # The only job that can write: it runs nothing but gh, jq and sha256sum, on
+    # the files the other jobs uploaded, which it checks against what the sign
+    # job verified. A caller must grant `contents: write`.
+    needs: [bundle, sign]
+    if: ${{ inputs.attach && github.ref_type == 'tag' && startsWith(github.ref_name, 'v') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      SIGNED: ${{ needs.sign.outputs.signed }}
+      MANIFEST_SHA256: ${{ needs.sign.outputs.manifest-sha256 }}
+      PUBLISH: ${{ inputs.publish }}
+      ALLOW_UNSIGNED: ${{ inputs.allow-unsigned }}
+    steps:
+      - name: Check the tag
+        run: |
+          if ! [[ $TAG =~ ^v[0-9]+(\.[0-9]+)+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::the tag $(printf '%q' "$TAG") is not vX.Y.Z or vX.Y.Z-prerelease (digits, letters, . and -)"; exit 1
+          fi
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: telamon-bundle
+          path: bundle-out
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: needs.sign.outputs.signed == 'true'
+        with:
+          name: telamon-bundle-signature
+          path: bundle-out
+
+      # Only the files the sign job saw are attached: the manifest has the hash
+      # it verified and signed, the archive has the hash the manifest names, and
+      # nothing else is in the directory.
+      - name: The files are the ones that were verified
+        id: files
+        run: |
+          [[ $MANIFEST_SHA256 =~ ^[0-9a-f]{64}$ ]] || { echo "::error::the sign job gave no manifest hash"; exit 1; }
+          manifest=bundle-out/telamon-bundle.json
+          got=$(sha256sum -- "$manifest"); got=${got%% *}
+          if [ "$got" != "$MANIFEST_SHA256" ]; then
+            echo "::error::telamon-bundle.json is not the file the sign job verified"; exit 1
+          fi
+          name=$(jq -r .archive.name "$manifest")
+          if ! [[ $name =~ ^[A-Za-z0-9._-]+-x86_64\.tar\.zst$ ]]; then
+            echo "::error::the manifest names an archive that is not <id>-<version>-x86_64.tar.zst"; exit 1
+          fi
+          want=$(jq -r .archive.sha256 "$manifest")
+          got=$(sha256sum -- "bundle-out/$name"); got=${got%% *}
+          if [ "$got" != "$want" ]; then
+            echo "::error::$name is not the archive the manifest names"; exit 1
+          fi
+          expected=("$name" telamon-bundle.json)
+          [ "$SIGNED" != true ] || expected+=(telamon-bundle.json.minisig)
+          if [ "$(find bundle-out -mindepth 1 -printf '%P\n' | LC_ALL=C sort)" != "$(printf '%s\n' "${expected[@]}" | LC_ALL=C sort)" ] ||
+            [ -n "$(find bundle-out -mindepth 1 ! -type f)" ]; then
+            echo "::error::bundle-out must hold exactly: ${expected[*]}"; exit 1
+          fi
+          got=$(jq -r .version "$manifest")
           if [ "v$got" != "$TAG" ]; then
             echo "::error::the tag is $TAG but the bundle's version is $got: tag v$got"; exit 1
           fi
+          {
+            echo "name=$name"
+            echo "signed=$SIGNED"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Attach the bundle to the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          ARCHIVE: ${{ steps.files.outputs.name }}
         run: |
           # GitHub sometimes answers 5xx to a release create or an upload: try again.
-          # A release made here is a draft until both files are on it, so Store
+          # A release made here is a draft until its files are on it, so Store
           # never sees a release without its bundle; one that exists (made by
           # hand, or a draft a failed run left) just gets the assets.
           repo=(--repo "$GITHUB_REPOSITORY")
+          assets=("bundle-out/$ARCHIVE" bundle-out/telamon-bundle.json)
+          [ "$SIGNED" != true ] || assets+=(bundle-out/telamon-bundle.json.minisig)
+          # No signature (the secret is missing, misspelled or not passed to a fork): the release
+          # stays a draft, so it cannot go public by mistake. Telamon Store would not offer it.
+          keep_draft=0
+          [ "$PUBLISH" = true ] || keep_draft=1
+          if [ "$SIGNED" != true ]; then
+            if [ "$ALLOW_UNSIGNED" = true ]; then
+              echo "::warning::$ARCHIVE and telamon-bundle.json are attached WITHOUT telamon-bundle.json.minisig (allow-unsigned): Telamon Store will not offer this release until it is signed (docs/BUNDLES.md, Signing)"
+            else
+              keep_draft=1
+              echo "::error title=Release left as a draft (not signed)::there is no signature, so $TAG stays a DRAFT. Telamon Store will not offer an unsigned release. Sign it offline and publish: gh release download $TAG -p telamon-bundle.json -p '*.tar.zst'; python3 tools/bundle.py verify <archive> telamon-bundle.json; minisign -Sm telamon-bundle.json; gh release upload $TAG telamon-bundle.json.minisig; gh release edit $TAG --draft=false. Or pass the minisign-key secret, or set allow-unsigned to publish it unsigned"
+            fi
+          fi
           created=0
           if ! gh release view "$TAG" "${repo[@]}" >/dev/null 2>&1; then
             flags=(--verify-tag --title "$TAG" --generate-notes --draft)
@@ -243,7 +417,7 @@ jobs:
           draft=$(gh release view "$TAG" "${repo[@]}" --json isDraft --jq .isDraft)
           uploaded=0
           for attempt in 1 2 3 4 5; do
-            if gh release upload "$TAG" "${repo[@]}" --clobber bundle-out/*; then
+            if gh release upload "$TAG" "${repo[@]}" --clobber "${assets[@]}"; then
               uploaded=1; break
             fi
             sleep $((attempt * 5))
@@ -256,13 +430,17 @@ jobs:
             echo "::error::could not upload the bundle to $TAG"; exit 1
           fi
           if [ "$created" = 1 ] || [ "$draft" = true ]; then
-            published=0
-            for attempt in 1 2 3 4 5; do
-              if gh release edit "$TAG" "${repo[@]}" --draft=false; then
-                published=1; break
-              fi
-              sleep $((attempt * 5))
-            done
-            [ "$published" = 1 ] || { echo "::error::the bundle is on the draft release $TAG, but publishing it failed: publish it by hand"; exit 1; }
+            if [ "$keep_draft" = 1 ]; then
+              [ "$PUBLISH" = true ] || echo "::notice::the release $TAG is a draft (publish is false). To sign it by hand: gh release download $TAG -p telamon-bundle.json -p '*.tar.zst', python3 tools/bundle.py verify <archive> telamon-bundle.json, minisign -Sm telamon-bundle.json, gh release upload $TAG telamon-bundle.json.minisig, gh release edit $TAG --draft=false"
+            else
+              published=0
+              for attempt in 1 2 3 4 5; do
+                if gh release edit "$TAG" "${repo[@]}" --draft=false; then
+                  published=1; break
+                fi
+                sleep $((attempt * 5))
+              done
+              [ "$published" = 1 ] || { echo "::error::the bundle is on the draft release $TAG, but publishing it failed: publish it by hand"; exit 1; }
+            fi
           fi
           echo "Attached to $TAG:"; ls -l bundle-out
