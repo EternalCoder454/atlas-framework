@@ -9,6 +9,44 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.8
+
+Tooling only, no API change: nothing in Telamon.Ui or the crates moved. Apps that
+ship as native bundles (`docs/BUNDLES.md`) get this by moving the pinned
+`bundle.yml` to the 2.0.8 commit; Telamon Store offers only releases whose
+`telamon-bundle.json` carries a minisign signature, and this is how a release gets one.
+
+- New: signing. The `bundle.yml` workflow has a `sign` job (the framework's own tools,
+  never the app's code: it re-verifies the bundle, then signs `telamon-bundle.json`
+  with `minisign`) and attaches `telamon-bundle.json.minisig` beside the other two
+  files. The key is the optional secret `minisign-key` (and `minisign-password`);
+  without it the release is attached unsigned, with a warning that Store will not
+  offer it. The new input `publish: false` leaves the release a draft, so its owner
+  can sign offline (`minisign -Sm telamon-bundle.json`) and publish by hand: the
+  recommended model, because a key stored as a repository secret is available to
+  everyone who can change the workflow or the build. The new input
+  `minisign-public-key` makes the run check the signature against the catalog's key.
+  `tools/sign-bundle.sh` does the signing (and runs by hand); "Signing" in
+  `docs/BUNDLES.md` has the keys, the catalog entry and key rotation.
+- Fix (security): `tools/bundle.py verify` read a hostile bundle without limits in
+  three places: an extended tar header that claims gigabytes was read into memory,
+  the zeros after the end of the tar were read whole, and a GNU sparse file passed
+  as a regular one. The decompressed stream is now capped, such headers are refused,
+  data after the end of the tar is refused, and so are global PAX headers and
+  archives that are not zstd. A non-finite modification time, a NaN or a lone
+  surrogate in a manifest no longer end in a traceback; the manifest is read with a
+  1 MiB cap, and names in messages are escaped (a file name could start a
+  `::command::` line in a workflow log). `pack` refuses a file with a setuid, setgid
+  or sticky bit and does not follow a link swapped in for a file.
+- Fix (security): `make-bundle.sh --exclude` removed what its glob matched through a
+  symlink in the app's install tree, and split a name with a newline into two paths;
+  either could delete a file outside the install. It now removes only what is inside
+  the install. The list of files holding the stage path is escaped.
+- The workflow checks the tag against `vX.Y.Z[-pre]` before it uses it, refuses an
+  `app-dir` or `spec` that starts with `-`, and attaches exactly the archive, the
+  manifest and the signature (the sign job's hash of the manifest and the manifest's
+  hash of the archive must match), not whatever the artifact held.
+
 ## 2.0.7
 
 Two regressions of 2.0.6, found by the Telamon Gates screenshots at 150% scale.

@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.7
+Version:        2.0.8
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -203,6 +203,13 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.8-1
+- Tooling only, no API change: the native-bundle workflow signs telamon-bundle.json
+  with minisign (the new sign job and tools/sign-bundle.sh; publish: false leaves the
+  release a draft for offline signing), tools/bundle.py verify caps what it reads
+  from a hostile bundle, and make-bundle.sh --exclude no longer removes through a
+  symlink or a newline in a name.
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.7-1
 - Fix: an InfoBanner's close button (and FindBar's, TabBar's, and the shortcut
   field's clear button) draws a Material Symbol, not a chevron where the icon
