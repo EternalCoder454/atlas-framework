@@ -9,6 +9,76 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.0.9
+
+Secure phase for the whole framework (docs/SECURITY.md has the threat model
+and the tests that keep each rule true). Apps get this by moving to
+`tag = "v2.0.9"`. API additions only: `app!`'s `crash:` field,
+`telamon_app_set_crash_reporting`, `TelamonAvatar.allowRemote`,
+`TelamonChoiceCard.allowRemote`, and a few documented functions in the crates
+(`fsutil::open_lock_file`, `create_private_dir_all`, `MAX_LINE_BYTES`,
+`bootc::MAX_JSON_BYTES`, `polkit::action_id_ok`, `unique_name_ok`,
+`notify::sanitize_body`, `action_key_ok`, flatpak `MORE_PERMISSIONS`,
+`MAX_METADATA_BYTES`). Behaviour that is stricter than before is listed under
+"Stricter".
+
+- New: `crash: false` in `app!` (or `telamon_app_set_crash_reporting(false)`
+  before `telamon_app_init`) keeps an app out of Telamon crash reporting
+  altogether: no panic hook, a fatal Qt message is only logged, whatever the
+  user chose for Telamon apps. For apps that are not part of Telamon OS. The
+  default is unchanged.
+- Fix (Telamon.Ui): about 100 `Text`, `Label` and `Heading` elements did not set
+  `textFormat`, so a string starting with `<` was read as HTML (an `<img>` made a
+  request). All are plain text now, as are `TelamonTextArea` and the About page's
+  link opening (through `TelamonPortal.openUrl`). `NotesText` rebuilds only the
+  tags a release note may have. A `TelamonAppMenu` data row's `&` is no longer a
+  mnemonic. A test (`crates/telamon-framework-ui/tests/qml_text.rs`) fails when
+  a text control is not plain, a link is opened elsewhere, an image source is not
+  vetted or QML fetches or evaluates text.
+- Fix (Telamon.Ui): every QML engine refuses cleartext `http:` and `ftp:`
+  (loopback excepted), so `Kirigami.Icon` cannot be pointed at one, and limits
+  redirects and transfer time. `TelamonAvatar` and `TelamonChoiceCard` take
+  https pictures only with `allowRemote: true`.
+- Fix (crash): a 3xx answer no longer counts as "sent"; curl is held to TLS 1.2
+  or newer; a core dump whose program path is odd is not taken for the host's
+  own crash; markers, the crash id and the ledger are read with a size cap and
+  never block on a FIFO; a report time that is not a plain time cannot name a
+  hidden file; the 1.x state directory becomes 0700; curl's error text is one
+  clean line in the log.
+- Fix (crates): `history.jsonl` fields from an image are cut and cleaned, lines
+  over 8 KB are refused, and lines over 64 KiB are dropped unread; a FIFO or
+  device as a log or lock file fails at once instead of blocking; `bootc status`
+  JSON is capped at 4 MiB; settings values can no longer forge another group or
+  key (`set_in` included), values keep non-ASCII edge spaces, and new
+  directories are 0700; the stderr log prefixes every line; polkit is asked only
+  about unique bus names and valid action ids; notification titles, labels, keys,
+  icons and bodies are validated and the body keeps only `b`, `i`, `u`, `br` and
+  https links; Flatpak permission lists from publishers are cleaned and bounded.
+- Fix (tools): `bundle.py verify` reads the tar with one strict parser and the
+  manifest as strict JSON, with the Store's rules and caps; `make-bundle.sh` has
+  a fixed environment and no downloads after the locked `cargo fetch`;
+  `open-update-pr.sh` moved its checks to `tools/lib/update-pr-lib.sh` and refuses
+  more (tests: `tools/test-open-update-pr.sh`); `migrate-app-to-telamon.sh` no
+  longer writes through a planted link; `lint-app.sh`, `check-app-names.sh` and
+  `docs.py` print file names with control characters replaced.
+- Build and CI: `cargo-deny` and `cargo-audit` (workspace and template, weekly),
+  `tools/check-workflows.py` (pinned actions, read-only tokens, no
+  `pull_request_target`, no untrusted expressions in scripts), Dependabot,
+  property tests with 20,000 cases, the bundle fuzzer, and a hardening check
+  (`packaging/check-hardening.sh`, with `annocheck`) in the spec's `%check` for
+  the plugin, `telamon-preview` and `telamon-symbols`. The bundle workflow
+  attaches only the archive and its manifest. `app-checks.yml` validates its
+  `framework-ref`.
+- Template: hardening flags in CMake, overflow checks in the release profile,
+  `publish = false`, `deny.toml`, a security workflow, Dependabot, the framework
+  workflow pinned by commit, a plain-text label, and the `crash: false` note.
+
+Stricter (could affect an app): `TelamonAvatar` and `TelamonChoiceCard` refuse
+`http:` and `data:` sources; a notification action key must be a plain word and
+a body loses tags other than `b`, `i`, `u`, `br` and https `a`; `Settings::set_in`
+returns the text unchanged for a name `set` would refuse; `polkit::check_bus_name`
+answers `Denied::Unavailable` for a name that is not a unique bus name.
+
 ## 2.0.8
 
 Security fixes for the crash report scrubber, found by an audit of the built

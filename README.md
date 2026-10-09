@@ -56,6 +56,12 @@ cargo test --workspace --all-features
 
 RPMs: `packaging/build-rpm.sh <out dir>` inside `registry.fedoraproject.org/fedora:44`.
 
+## Security
+
+[docs/SECURITY.md](docs/SECURITY.md) is the threat model: what the framework trusts, the
+rule each entry point follows, and the test behind it. Report a vulnerability
+privately through GitHub's "Report a vulnerability" (Security tab).
+
 ## Licence
 
 MIT. The Material Symbols fonts are Apache-2.0 (`ui/symbols/LICENSE.txt`).

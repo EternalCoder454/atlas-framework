@@ -217,6 +217,19 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Fri Oct 09 2026 Telamon <atlas@eterneon.net> - 2.0.9-1
+- Secure phase: every text control in Telamon.Ui is plain text (a string that
+  starts with "<" was read as HTML), links open through TelamonPortal.openUrl,
+  QML engines refuse cleartext http: and ftp:, TelamonAvatar and
+  TelamonChoiceCard take https pictures only with allowRemote, NotesText keeps
+  only a release note's tags. New: crash: false in app! (and
+  telamon_app_set_crash_reporting) keeps an app out of Telamon crash reporting.
+  The crash sender needs a 2xx answer and TLS 1.2; the crates read state files
+  with caps and never block on a FIFO, settings values cannot forge keys,
+  notifications and polkit checks validate their input. The package build now
+  checks the hardening of the plugin and programs (readelf and annocheck).
+  See docs/SECURITY.md.
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.8-1
 - Fix: the crash report scrubber hides more. Secrets such as PGPASSWORD=,
   dbPassword=, pass=, an OAuth ?code=, Authorization: Bearer with several
