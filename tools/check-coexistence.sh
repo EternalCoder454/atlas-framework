@@ -36,7 +36,7 @@ for d in "$old" "$new"; do
     fi
 done
 
-exec podman run --rm --security-opt label=disable -v "$old:/old:ro" -v "$new:/new:ro" \
+exec podman run --rm --ulimit core=0 --security-opt label=disable -v "$old:/old:ro" -v "$new:/new:ro" \
     registry.fedoraproject.org/fedora:44 bash -euo pipefail -c '
 fail() { echo "check-coexistence: FAIL: $*" >&2; exit 1; }
 ok() { echo "ok: $*"; }
