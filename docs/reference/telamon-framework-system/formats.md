@@ -87,7 +87,7 @@ All user files except `crash-reporting.toml` (0644) are under XDG directories an
 
 ### Crash reports
 
-A report file is the pretty-printed JSON of `crash::Report` (schema 2). A report without `event_id` (schema 1) is deleted when found. `path` is never stored.
+A report file is the pretty-printed JSON of `crash::Report` (schema 2). A report without `event_id` (schema 1) is deleted when found. `path` is never stored. `uptime_secs` is a multiple of 3600 and `ram_total_kb` a multiple of 1048576 in files written since 2.0.8 (older files hold the exact figures; they are coarsened when listed). A file is read only if it is a regular file of at most 1 MiB.
 
 ```json
 {
@@ -116,7 +116,7 @@ A report file is the pretty-printed JSON of `crash::Report` (schema 2). A report
 }
 ```
 
-What `crash::send` posts is not this file but `Report::payload()`, a Sentry event: `event_id`, `timestamp`, `platform` (`native`), `level` (`fatal`), `logger` (`atlas-core`), `release` (`atlasos@<version>`), `environment` (the channel), `message`, `tags`, `contexts` (`os`, `gpu`, `device`, `runtime`) and, when the trace has frames, `exception`. It goes to the endpoint's `store_url` with the header `X-Sentry-Auth: Sentry sentry_version=7, sentry_key=<key>, sentry_client=atlas-core/<version>`.
+What `crash::send` posts is not this file but `Report::payload()`, a Sentry event: `event_id`, `timestamp`, `platform` (`native`), `level` (`fatal`), `logger` (`atlas-core`), `release` (`atlasos@<version>`), `environment` (the channel), `message`, `tags`, `contexts` (`os`, `gpu`, `device`, `runtime`) and, when the trace has frames, `exception` (and `extra.trace_frames_dropped` when frames were cut to keep the body under 64 KiB). `runtime.uptime_secs` is in whole hours and `device.memory_size` in whole GB. It goes to the endpoint's `store_url` with the header `X-Sentry-Auth: Sentry sentry_version=7, sentry_key=<key>, sentry_client=atlas-core/<version>`.
 
 The relay's answer is JSON `{"id": ..., "url": ...}`. The `url` is kept only if `crash::is_issue_url` accepts it, and the `id` only if it is a plain event ID.
 
