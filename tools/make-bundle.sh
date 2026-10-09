@@ -115,10 +115,16 @@ app_dir=$(cd "$app_dir" && pwd)
 # A build that downloads is not reproducible and fetches what nobody pinned.
 # Comments are ignored; a Rust app's crates are fetched below, locked.
 if [ "$allow_network" = 0 ]; then
-    downloads='FetchContent_(Declare|MakeAvailable|Populate)|ExternalProject_Add|file[[:space:]]*\([[:space:]]*(DOWNLOAD|UPLOAD)|(^|[^[:alnum:]_.-])(curl|wget)([^[:alnum:]_-]|$)|git[[:space:]]+(clone|fetch|pull|submodule)|(pip3?|npm|yarn|pnpm|gem)[[:space:]]+(install|ci|add)'
+    # CMake commands and tools that fetch, matched without regard to case; and
+    # curl or wget as a program name, in lower case only (so find_package(CURL)
+    # and CURL::libcurl, which link a library, are not taken for a download).
+    downloads='FetchContent_(Declare|MakeAvailable|Populate)|ExternalProject_Add|file[[:space:]]*\([[:space:]]*(DOWNLOAD|UPLOAD)|(git|GIT_EXECUTABLE[^[:space:]]*)[[:space:]]+(clone|fetch|pull|submodule)|(pip3?|npm|yarn|pnpm|gem)[[:space:]]+(install|ci|add)'
+    programs='(^|[^[:alnum:]_.:-])(curl|wget)([^[:alnum:]_:-]|$)'
     while IFS= read -r -d '' f; do
+        # Comments out, lines joined (file(\n DOWNLOAD ...) is one command).
         # grep -c reads it all: a -q that quits early would SIGPIPE sed, which pipefail reads as "no match".
-        if [ "$(sed 's/#.*$//' -- "$f" | grep -ciE -e "$downloads" || true)" != 0 ]; then
+        text=$(sed 's/#.*$//' -- "$f" | tr '\n\r\t' '   ')
+        if [ "$(grep -ciE -e "$downloads" <<<"$text" || true)" != 0 ] || [ "$(grep -cE -e "$programs" <<<"$text" || true)" != 0 ]; then
             die "${f#"$app_dir"/} downloads something at build time (FetchContent, ExternalProject, file(DOWNLOAD), curl, wget, git clone...): vendor or pin it in the repository, or pass --allow-network (the bundle is then not reproducible)"
         fi
     done < <(find "$app_dir" \( -type d \( -name .git -o -name build -o -name 'build-*' -o -name _build -o -name target -o -name node_modules -o -name bundle-out \) -prune \) \

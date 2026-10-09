@@ -55,6 +55,11 @@ fn an_app_with_crash_false_writes_no_report_and_installs_no_hook() {
     };
     assert_eq!(files(&reports.join("pending")), 0);
 
+    // A native crash still reaches systemd-coredump: the app is written down
+    // as one whose crashes the other Telamon apps do not report.
+    let list = std::fs::read_to_string(home.path().join("state/telamon/crash-optout")).unwrap();
+    assert!(list.contains("app net.eterneon.telamon.crashoff"), "{list}");
+
     // The rest of the app is as it was: its names are served.
     let id = unsafe { std::ffi::CStr::from_ptr(telamon_framework_ui_field(1)) };
     assert_eq!(id.to_str().unwrap(), "net.eterneon.telamon.crashoff");

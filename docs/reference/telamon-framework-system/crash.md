@@ -124,6 +124,7 @@ A secret name (`token`, `secret`, `password`, `passwd`, `passphrase`, `apikey`, 
 |---|---|---|
 | `install` | `pub fn install(app: AppInfo)` | Installs the panic hook for `app`. Call once, early in `main` (telamon-framework-ui does it). The previous hook runs first, then, only when reporting is on, a report is queued (not for a panic inside the hook itself) |
 | `record_fatal` | `pub fn record_fatal(message: &str) -> Option<PathBuf>` | Queues a report for a fatal error that is not a Rust panic (a Qt fatal message handler). Needs `install`; does nothing when disabled |
+| `opt_out` | `pub fn opt_out(app: &AppInfo)` | Writes the app's program path and app ID to `$XDG_STATE_HOME/telamon/crash-optout` (0600, at most 64 entries) so that `collect_coredumps` of any Telamon app never reports its crashes, even when the user turned reporting on. The core dump itself stays with systemd-coredump. `telamon-framework-ui` calls it for an app with `crash: false` in `app!`; an app that does not use that crate can call it itself |
 | `pending` | `pub fn pending() -> Vec<Report>` | Reports waiting for the user's decision, oldest first. Also prunes old sent reports |
 | `sent` | `pub fn sent() -> Vec<Report>` | Reports already sent, oldest first: the history list |
 | `discard` | `pub fn discard(report: &Report) -> io::Result<()>` | "Don't send": deletes the pending report's file. The report needs a `path` (the ones from `pending` have one), and only a report file (`*.json`, not a symlink) directly in `pending/` is deleted: any other path fails with `InvalidInput` |

@@ -23,7 +23,7 @@ fn cfg(max: u32) -> ProptestConfig {
     c
 }
 
-fn trusted_entry() -> Value {
+pub(super) fn trusted_entry() -> Value {
     json!({
         "_COMM": "systemd-coredum",
         "_UID": "1000",

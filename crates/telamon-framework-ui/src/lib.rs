@@ -184,6 +184,10 @@ pub fn start() {
         telamon_framework_core::log::init(app);
         if crash_reporting() {
             telamon_framework_system::crash::install(app.clone());
+        } else {
+            // A native crash still goes to systemd-coredump: tell the other
+            // Telamon apps that collect those not to report this program's.
+            telamon_framework_system::crash::opt_out(app);
         }
     });
 }

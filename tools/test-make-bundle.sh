@@ -294,6 +294,7 @@ expect_fail "a version that is not the CMake version" "does not match project" -
 expect_fail "a version that is not a version" "version .* dotted numbers" --version banana
 
 # ------------------------------------------------------ no network in the build
+# shellcheck disable=SC2016 # the ${} are CMake's
 # A CMake file that downloads is refused before anything is configured (comments are not read) ...
 for variant in 'include(FetchContent)\nFetchContent_Declare(x URL https://example.invalid/x.tgz)\nFetchContent_MakeAvailable(x)' \
     'ExternalProject_Add(x GIT_REPOSITORY https://example.invalid/x.git)' \
@@ -301,7 +302,9 @@ for variant in 'include(FetchContent)\nFetchContent_Declare(x URL https://exampl
     'execute_process(COMMAND curl -O https://example.invalid/x)' \
     'execute_process(COMMAND wget https://example.invalid/x)' \
     'execute_process(COMMAND git clone https://example.invalid/x.git)' \
-    'execute_process(COMMAND pip install requests)'; do
+    'execute_process(COMMAND pip install requests)' \
+    'file(\n  DOWNLOAD https://example.invalid/x.tgz x.tgz)' \
+    'execute_process(COMMAND ${GIT_EXECUTABLE} clone https://example.invalid/x.git)'; do
     rm -rf "$scratch/repo-dl"
     cp -r "$repo" "$scratch/repo-dl"
     printf '\n%b\n' "$variant" >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
@@ -311,6 +314,11 @@ for variant in 'include(FetchContent)\nFetchContent_Declare(x URL https://exampl
         ok "a CMake file that downloads is refused before configure: ${variant%%$'\n'*}"
     else bad "a CMake file that downloads: ${variant%%$'\n'*}" "$(tail -n 5 "$scratch/log")"; fi
 done
+rm -rf "$scratch/repo-dl"
+cp -r "$repo" "$scratch/repo-dl"
+printf '\nmessage(STATUS "an app may link libcurl: find_package(CURL) and CURL::libcurl")\n' >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+if (cd "$scratch/repo-dl" && "$make_bundle" --out "$scratch/out-dl4" --min-os-version 44 --build-dir "$scratch/build-dl4") >"$scratch/log" 2>&1; then
+    ok "linking libcurl (find_package(CURL)) is not a download"; else bad "linking libcurl is not a download" "$(tail -n 5 "$scratch/log")"; fi
 rm -rf "$scratch/repo-dl"
 cp -r "$repo" "$scratch/repo-dl"
 printf '\n# curl, wget, git clone and FetchContent_Declare are only words in a comment here\n' >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"

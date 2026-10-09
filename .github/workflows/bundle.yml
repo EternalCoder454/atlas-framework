@@ -185,15 +185,6 @@ jobs:
           name: telamon-bundle
           path: bundle-out
 
-      - name: The tag is v + the bundle's version
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          got=$(jq -r .version bundle-out/telamon-bundle.json)
-          if [ "v$got" != "$TAG" ]; then
-            echo "::error::the tag is $TAG but the bundle's version is $got: tag v$got"; exit 1
-          fi
-
       # The build job is the app's own code with a read-only token, but what it
       # uploads is data for a job that can write: only the two files a bundle is.
       - name: Only the bundle and its manifest
@@ -206,10 +197,19 @@ jobs:
           for f in "${files[@]}"; do
             b=${f#bundle-out/}
             [ "$b" = telamon-bundle.json ] && continue
-            if ! [[ $b =~ ^[a-z0-9][a-z0-9._-]*-[0-9][A-Za-z0-9.+~_-]*-x86_64\.tar\.zst$ ]] || [ -L "$f" ] || [ ! -f "$f" ]; then
+            if ! [[ $b =~ ^[A-Za-z0-9._][A-Za-z0-9._-]*-[0-9][A-Za-z0-9.-]*-x86_64\.tar\.zst$ ]] || [ -L "$f" ] || [ ! -f "$f" ]; then
               echo "::error::unexpected file in the uploaded bundle"; exit 1
             fi
           done
+
+      - name: The tag is v + the bundle's version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          got=$(jq -r .version bundle-out/telamon-bundle.json)
+          if [ "v$got" != "$TAG" ]; then
+            echo "::error::the tag is $TAG but the bundle's version is $got: tag v$got"; exit 1
+          fi
 
       - name: Attach the bundle to the release
         env:

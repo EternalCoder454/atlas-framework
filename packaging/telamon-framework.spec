@@ -179,6 +179,12 @@ packaging/check-hardening.sh --lib --cxx \
     --forbid TELAMON_UI_SYMBOLS_DIR --forbid TELAMON_UI_TRANSLATIONS_DIR --forbid TELAMON_UI_TEST_FIXED_ENV \
     %{buildroot}%{_libdir}/qt6/qml/Telamon/Ui/libtelamonui.so
 packaging/check-hardening.sh --cxx %{buildroot}%{_bindir}/telamon-preview %{buildroot}%{_bindir}/telamon-symbols
+# annocheck agrees (PIE, BIND_NOW, RELRO, non-executable stack, CET, no writable
+# GOT, ...). The tests that need annobin notes or debuginfo, which this build
+# has neither of, are skipped: check-hardening.sh covers stack protectors.
+annocheck --ignore-unknown --skip-notes --skip-optimization --skip-pic --skip-stack-clash \
+    --skip-stack-prot --skip-fortify --skip-gaps \
+    %{buildroot}%{_libdir}/qt6/qml/Telamon/Ui/libtelamonui.so %{buildroot}%{_bindir}/telamon-preview %{buildroot}%{_bindir}/telamon-symbols
 
 # Every language catalogue (telamon-ui_<locale>.ts) must have shipped as a .qm:
 # a missing LinguistTools would otherwise build without translations, quietly.

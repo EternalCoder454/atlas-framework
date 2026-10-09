@@ -141,7 +141,7 @@ and, only when the user says so, sends one report.
   call `telamon_app_set_crash_reporting(false)` before `telamon_app_init`)
   installs no panic hook and only logs a fatal Qt message, whatever the user
   chose for Telamon apps. For an app that is not part of Telamon OS and must
-  never feed the Telamon relay. Tests: `crates/telamon-framework-ui/tests/crash_off.rs`,
+  never feed the Telamon relay. A native crash still goes to systemd-coredump, so the app is also written to `$XDG_STATE_HOME/telamon/crash-optout` (`crash::opt_out`) and the coredump collection of every other Telamon app skips its program path and Flatpak ID; the core dump stays with `coredumpctl`. Tests: `crates/telamon-framework-ui/tests/crash_off.rs`,
   `crash_cpp_switch.rs`, and `crash_on.rs` for the default.
 - **Which crashes count.** An entry counts only if journald itself says
   systemd-coredump wrote it (`_COMM`, `_SYSTEMD_UNIT=systemd-coredump@*.service`)
@@ -217,7 +217,7 @@ the build when a workflow:
   access without an entry (with its reason) in the checker's `WRITERS` list:
   today `publish-docs` (force-pushes `docs-published` from main and tags),
   `release` (creates the release), `attach` (attaches the bundle; runs nothing
-  but `gh`) and the `checks: write` of the audit jobs;
+  but `gh`) and the `checks: write` and `issues: write` of the audit jobs;
 - uses an action or reusable workflow not pinned to a full commit sha with its
   version in a comment, or a `docker://` action (the template's placeholders
   `<FRAMEWORK_SHA>` and `vX.Y.Z` are allowed only under `template/`);

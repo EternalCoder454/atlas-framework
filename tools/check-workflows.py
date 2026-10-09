@@ -50,16 +50,16 @@ WRITERS = {
         "attaches the bundle to the release; runs nothing but gh",
     ),
     ".github/workflows/security.yml:audit": (
-        {"checks"},
-        "rustsec/audit-check reports its result as a check run; nothing is checked out beyond the repository",
+        {"checks", "issues"},
+        "rustsec/audit-check reports its result as a check run, and files an issue for an advisory on the weekly run",
     ),
     ".github/workflows/security.yml:audit-template": (
-        {"checks"},
+        {"checks", "issues"},
         "the same, for the template's lock file",
     ),
     "template/.github/workflows/security.yml:audit": (
-        {"checks"},
-        "rustsec/audit-check reports its result as a check run",
+        {"checks", "issues"},
+        "rustsec/audit-check reports its result as a check run, and files an issue for an advisory on the weekly run",
     ),
     "template/.github/workflows/bundle.yml:bundle": (
         {"contents"},

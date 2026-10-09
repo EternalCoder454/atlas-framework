@@ -3452,6 +3452,7 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
     let scrubber = Scrubber::from_env();
     let uid = own_uid();
     let rpm = RpmLookup::new(rpm_version);
+    let optout = optout::OptOut::load();
     let mut newest = since;
     let mut out = Vec::new();
     for e in &entries {
@@ -3464,7 +3465,8 @@ pub fn collect_coredumps(since_micros: Option<u64>) -> Vec<Report> {
         }
         // not the host's crash (a container, a build tree): never a report,
         // and the marker moves past it
-        if Coredump::parse(e, &uid).is_some_and(|d| d.origin.ignored()) {
+        // (or a program that opted out of reporting: see [`opt_out`])
+        if Coredump::parse(e, &uid).is_some_and(|d| d.origin.ignored() || optout.matches(&d)) {
             newest = newest.max(ts);
             continue;
         }
@@ -4476,6 +4478,9 @@ fn cap_url(mut url: String) -> String {
     url.truncate(end);
     url
 }
+
+mod optout;
+pub use optout::opt_out;
 
 #[cfg(test)]
 mod secure_tests;
