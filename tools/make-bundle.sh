@@ -24,10 +24,33 @@
 #   --min-telamon-ui X, --min-os-version N   override what is read from the spec
 #                    and /etc/os-release
 #   --keep           keep the temporary directories
+#   --allow-network  let the build use the network (see below); the bundle is
+#                    then no longer guaranteed to be reproducible
 #
 # SOURCE_DATE_EPOCH is the commit time (git log -1) unless it is set. The
 # result is checked again from the archive (tools/bundle.py verify).
+#
+# Reproducible, and offline after the one declared download. The environment is
+# fixed (LC_ALL=C, TZ=UTC, umask 022, no proxy, no zstd/Python/Cargo settings
+# from outside), the archive is written by bundle.py in one fixed form (sorted
+# names, owner 0:0, the commit time, modes 0755/0644, zstd -19 -T1). The only
+# step that uses the network is `cargo fetch --locked` for an app that has a
+# Cargo.toml (Cargo.lock pins every crate by checksum or commit; the build
+# fails if it would change the lock). Configure, build and install then run
+# with CARGO_NET_OFFLINE, FETCHCONTENT_FULLY_DISCONNECTED=ON, a dead proxy and,
+# where the kernel allows it without root (unshare -rn), in a network
+# namespace of their own, so a build that downloads fails instead of fetching
+# what nobody pinned. A CMake file that downloads (FetchContent, ExternalProject,
+# file(DOWNLOAD), curl, wget, git clone...) is refused before anything runs.
 set -euo pipefail
+
+# The same bytes from the same source, wherever and by whoever it is built.
+umask 022
+export LC_ALL=C TZ=UTC
+unset LANG LANGUAGE LC_CTYPE LC_MESSAGES LC_TIME LC_COLLATE LC_NUMERIC
+unset PYTHONPATH PYTHONHOME PYTHONSTARTUP PYTHONUTF8 PYTHONIOENCODING PYTHONHASHSEED
+unset ZSTD_CLEVEL ZSTD_NBTHREADS
+export PYTHONHASHSEED=0 PYTHONDONTWRITEBYTECODE=1
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 bundle_py=$here/bundle.py
@@ -44,6 +67,7 @@ version=
 stage=
 build=
 keep=0
+allow_network=0
 min_ui=
 min_os=
 excludes=()
@@ -63,6 +87,7 @@ while [ $# -gt 0 ]; do
     --min-telamon-ui) need_arg "$1" $#; min_ui=$2; shift 2 ;;
     --min-os-version) need_arg "$1" $#; min_os=$2; shift 2 ;;
     --keep) keep=1; shift ;;
+    --allow-network) allow_network=1; shift ;;
     -h | --help) sed '/^set -euo/,$d;1d' "$0"; exit 0 ;;
     *) die "unknown argument: $1 (see --help)" ;;
     esac
@@ -86,6 +111,19 @@ if [ -z "$app_dir" ]; then
 fi
 [ -f "$app_dir/CMakeLists.txt" ] || die "$app_dir/CMakeLists.txt does not exist"
 app_dir=$(cd "$app_dir" && pwd)
+
+# A build that downloads is not reproducible and fetches what nobody pinned.
+# Comments are ignored; a Rust app's crates are fetched below, locked.
+if [ "$allow_network" = 0 ]; then
+    downloads='FetchContent_(Declare|MakeAvailable|Populate)|ExternalProject_Add|file[[:space:]]*\([[:space:]]*(DOWNLOAD|UPLOAD)|(^|[^[:alnum:]_.-])(curl|wget)([^[:alnum:]_-]|$)|git[[:space:]]+(clone|fetch|pull|submodule)|(pip3?|npm|yarn|pnpm|gem)[[:space:]]+(install|ci|add)'
+    while IFS= read -r -d '' f; do
+        # grep -c reads it all: a -q that quits early would SIGPIPE sed, which pipefail reads as "no match".
+        if [ "$(sed 's/#.*$//' -- "$f" | grep -ciE -e "$downloads" || true)" != 0 ]; then
+            die "${f#"$app_dir"/} downloads something at build time (FetchContent, ExternalProject, file(DOWNLOAD), curl, wget, git clone...): vendor or pin it in the repository, or pass --allow-network (the bundle is then not reproducible)"
+        fi
+    done < <(find "$app_dir" \( -type d \( -name .git -o -name build -o -name 'build-*' -o -name _build -o -name target -o -name node_modules -o -name bundle-out \) -prune \) \
+        -o -type f \( -name CMakeLists.txt -o -name '*.cmake' \) -print0)
+fi
 
 if [ -z "$spec" ]; then
     mapfile -t found < <(compgen -G 'packaging/*.spec' || true)
@@ -149,19 +187,54 @@ else
     export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-ffile-prefix-map=$PWD=. -ffile-prefix-map=$build=build"
 fi
 
+# The one step that may use the network: the crates of a Rust app, exactly as
+# Cargo.lock pins them (checksums for crates.io, a commit for git). The lock may
+# not change, now or during the build.
+locks=()
+for manifest in "$app_dir/Cargo.toml" "$PWD/Cargo.toml"; do
+    [ -f "$manifest" ] || continue
+    command -v cargo >/dev/null || die "$manifest exists but cargo is not installed"
+    echo "== fetch (network: the crates of Cargo.lock, locked)" >&2
+    cargo fetch --locked --manifest-path "$manifest" >&2 || die "cargo fetch --locked failed: commit an up to date Cargo.lock"
+    root=$(cargo locate-project --workspace --message-format plain --manifest-path "$manifest") || die "cargo locate-project failed for $manifest"
+    lock=$(dirname -- "$root")/Cargo.lock
+    [ -f "$lock" ] || die "no Cargo.lock beside $root"
+    locks+=("$lock:$(sha256sum -- "$lock" | cut -d' ' -f1)")
+    [ "$app_dir/Cargo.toml" != "$PWD/Cargo.toml" ] || break
+done
+
+# From here on nothing is downloaded. Every layer is a belt, none a proof:
+# cargo, FetchContent and the proxies are told so; a network namespace of the
+# build's own does the rest where the kernel lets a user make one.
+offline=()
+if [ "$allow_network" = 0 ]; then
+    export CARGO_NET_OFFLINE=true
+    export http_proxy=http://127.0.0.1:9 https_proxy=http://127.0.0.1:9 all_proxy=http://127.0.0.1:9
+    export HTTP_PROXY=$http_proxy HTTPS_PROXY=$https_proxy ALL_PROXY=$all_proxy NO_PROXY=127.0.0.1,localhost,::1 no_proxy=127.0.0.1,localhost,::1
+    cmake_args=(-DFETCHCONTENT_FULLY_DISCONNECTED=ON "${cmake_args[@]}")
+    if unshare -rn true 2>/dev/null; then
+        offline=(unshare -rn --)
+    else
+        echo "make-bundle: warning: cannot make a network namespace here; the build is told to stay offline, not stopped" >&2
+    fi
+fi
+
 gen=()
 command -v ninja >/dev/null && gen=(-G Ninja)
 echo "== configure ($app_dir, version $version)" >&2
-cmake -S "$app_dir" -B "$build" "${gen[@]}" -DCMAKE_BUILD_TYPE=Release \
+"${offline[@]}" cmake -S "$app_dir" -B "$build" "${gen[@]}" -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$stage" "${cmake_args[@]}" >&2
 # An app that forces its own prefix would install somewhere else, over /usr.
 got=$(sed -n 's/^CMAKE_INSTALL_PREFIX:[A-Z]*=//p' "$build/CMakeCache.txt")
 [ "$got" = "$stage" ] || die "the app's CMake sets CMAKE_INSTALL_PREFIX to $got, not $stage: make it only a default (if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT))"
 echo "== build" >&2
-cmake --build "$build" >&2
+"${offline[@]}" cmake --build "$build" >&2
 echo "== install" >&2
-cmake --install "$build" >&2
+"${offline[@]}" cmake --install "$build" >&2
 [ -n "$(ls -A -- "$stage")" ] || die "cmake --install put nothing in $stage"
+for entry in "${locks[@]}"; do
+    [ "$(sha256sum -- "${entry%:*}" | cut -d' ' -f1)" = "${entry##*:}" ] || die "the build changed ${entry%:*}: commit the lock file the build needs"
+done
 
 # Legacy files an app still installs for its RPM (an old .desktop file, a
 # renamed command's link) do not go in a bundle.
