@@ -26,3 +26,6 @@ jobs:
     # secrets:
     #   minisign-key: ${{ secrets.MINISIGN_KEY }}
     #   minisign-password: ${{ secrets.MINISIGN_PASSWORD }}   # only if the key has a password
+    # And under `with:` above, next to them: `minisign-public-key: RWQ...` (the key the catalog
+    # lists for the app). The run then fails when the secret is missing or is another key.
+    # A release without a signature stays a draft (`allow-unsigned: true` publishes it anyway).

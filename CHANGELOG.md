@@ -19,9 +19,12 @@ ship as native bundles (`docs/BUNDLES.md`) get this by moving the pinned
 - New: signing. The `bundle.yml` workflow has a `sign` job (the framework's own tools,
   never the app's code: it re-verifies the bundle, then signs `telamon-bundle.json`
   with `minisign`) and attaches `telamon-bundle.json.minisig` beside the other two
-  files. The key is the optional secret `minisign-key` (and `minisign-password`);
-  without it the release is attached unsigned, with a warning that Store will not
-  offer it. The new input `publish: false` leaves the release a draft, so its owner
+  files. The key is the optional secret `minisign-key` (and `minisign-password`),
+  in the environment of a step that parses nothing (the bundle is verified in the
+  step before, with no secret); without it the release is attached but left a
+  **draft**, with an error annotation that says how to sign offline (Store will not
+  offer an unsigned release; the input `allow-unsigned: true` publishes it anyway).
+  The new input `publish: false` leaves any release a draft, so its owner
   can sign offline (`minisign -Sm telamon-bundle.json`) and publish by hand: the
   recommended model, because a key stored as a repository secret is available to
   everyone who can change the workflow or the build. The new input
@@ -29,7 +32,8 @@ ship as native bundles (`docs/BUNDLES.md`) get this by moving the pinned
   `tools/sign-bundle.sh` does the signing (and runs by hand); "Signing" in
   `docs/BUNDLES.md` has the keys, the catalog entry and key rotation.
 - Fix (security): `tools/bundle.py verify` read a hostile bundle without limits in
-  three places: an extended tar header that claims gigabytes was read into memory,
+  three places (and a PAX sparse member, which Python expands and the Store does not,
+  is refused): an extended tar header that claims gigabytes was read into memory,
   the zeros after the end of the tar were read whole, and a GNU sparse file passed
   as a regular one. The decompressed stream is now capped, such headers are refused,
   data after the end of the tar is refused, and so are global PAX headers and

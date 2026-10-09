@@ -14,8 +14,9 @@ name: Telamon native app bundle
 #           it re-verifies the bundle, then signs telamon-bundle.json with the
 #           optional minisign-key secret. Telamon Store offers only releases
 #           with a valid signature, so an app that wants its release used
-#           either passes the secret or signs by hand (publish: false leaves
-#           the release a draft for that). docs/BUNDLES.md, "Signing".
+#           either passes the secret or signs by hand. A release without a
+#           signature stays a draft (allow-unsigned: true publishes it anyway),
+#           and so does any release with publish: false. docs/BUNDLES.md, "Signing".
 #   attach  runs nothing but gh, on files whose hashes it checks: the only job
 #           that can write.
 on:
@@ -38,9 +39,13 @@ on:
         type: boolean
         default: true
       publish:
-        description: Publish a release this run made (true), or leave it a draft (false) so its owner can sign telamon-bundle.json offline and publish it by hand
+        description: Publish a release this run made (true), or leave it a draft (false) so its owner can sign telamon-bundle.json offline and publish it by hand. A release without a signature is left a draft whatever this says, unless allow-unsigned is true
         type: boolean
         default: true
+      allow-unsigned:
+        description: Publish a release that has no signature (no minisign-key secret) as a normal release. Telamon Store will not offer it. The default is to leave it a draft, so a missing or misspelled secret cannot publish an unsigned release
+        type: boolean
+        default: false
       minisign-public-key:
         description: The minisign public key the catalog pins for this app (RW and 54 more characters); when given, the signature made with the minisign-key secret must verify with it, so a wrong key fails the run and not the users
         type: string
@@ -209,8 +214,9 @@ jobs:
 
   sign:
     # Runs none of the app's code, only the framework's own tools fetched by
-    # sha: tools/bundle.py verify, then minisign. The key is in this job's
-    # environment for the one step that signs, and nowhere else. A malicious
+    # sha: tools/bundle.py verify, then minisign. The key is in the environment
+    # of the one step that signs, which parses nothing: the step before it,
+    # which parses the bundle, has no secret. A malicious
     # app build can get a *structurally valid* bundle signed (the archive must
     # match its manifest and the layout rules) and nothing else; whoever
     # controls the app's build controls what that bundle contains, which is
@@ -224,7 +230,7 @@ jobs:
     permissions: {}
     outputs:
       signed: ${{ steps.sign.outputs.signed }}
-      manifest-sha256: ${{ steps.sign.outputs.manifest-sha256 }}
+      manifest-sha256: ${{ steps.verify.outputs.manifest-sha256 }}
     env:
       FRAMEWORK_REF: ${{ inputs.framework-ref }}
       TAG: ${{ github.ref_name }}
@@ -262,19 +268,29 @@ jobs:
           name: telamon-bundle
           path: bundle-out
 
-      # The bundle is verified (archive against manifest and the layout rules)
-      # before anything is signed; the key is read here and only here.
-      - name: Verify the bundle and sign its manifest
+      # Step A parses the hostile bundle (python3, zstd, tarfile) and has no
+      # secret in its environment (the script refuses to run with one).
+      - name: Verify the bundle
+        id: verify
+        env:
+          FRAMEWORK_DIR: ${{ steps.framework.outputs.dir }}
+        run: '"$FRAMEWORK_DIR/tools/sign-bundle.sh" --verify-only bundle-out'
+
+      # Step B has the key and parses nothing: it checks that the manifest is
+      # the file step A verified and that the directory holds only the bundle,
+      # then signs.
+      - name: Sign the manifest
         id: sign
         env:
           FRAMEWORK_DIR: ${{ steps.framework.outputs.dir }}
+          MANIFEST_SHA256: ${{ steps.verify.outputs.manifest-sha256 }}
           PUBLIC_KEY: ${{ inputs.minisign-public-key }}
           MINISIGN_KEY: ${{ secrets.minisign-key }}
           MINISIGN_PASSWORD: ${{ secrets.minisign-password }}
         run: |
           args=()
           [ -z "$PUBLIC_KEY" ] || args+=(--public-key "$PUBLIC_KEY")
-          "$FRAMEWORK_DIR/tools/sign-bundle.sh" "${args[@]}" bundle-out
+          "$FRAMEWORK_DIR/tools/sign-bundle.sh" --sign-only --manifest-sha256 "$MANIFEST_SHA256" "${args[@]}" bundle-out
 
       - name: Upload the signature
         if: steps.sign.outputs.signed == 'true'
@@ -300,6 +316,7 @@ jobs:
       SIGNED: ${{ needs.sign.outputs.signed }}
       MANIFEST_SHA256: ${{ needs.sign.outputs.manifest-sha256 }}
       PUBLISH: ${{ inputs.publish }}
+      ALLOW_UNSIGNED: ${{ inputs.allow-unsigned }}
     steps:
       - name: Check the tag
         run: |
@@ -366,8 +383,17 @@ jobs:
           repo=(--repo "$GITHUB_REPOSITORY")
           assets=("bundle-out/$ARCHIVE" bundle-out/telamon-bundle.json)
           [ "$SIGNED" != true ] || assets+=(bundle-out/telamon-bundle.json.minisig)
+          # No signature (the secret is missing, misspelled or not passed to a fork): the release
+          # stays a draft, so it cannot go public by mistake. Telamon Store would not offer it.
+          keep_draft=0
+          [ "$PUBLISH" = true ] || keep_draft=1
           if [ "$SIGNED" != true ]; then
-            echo "::warning::$ARCHIVE and telamon-bundle.json are attached WITHOUT telamon-bundle.json.minisig: Telamon Store will not offer this release until it is signed (docs/BUNDLES.md, Signing)"
+            if [ "$ALLOW_UNSIGNED" = true ]; then
+              echo "::warning::$ARCHIVE and telamon-bundle.json are attached WITHOUT telamon-bundle.json.minisig (allow-unsigned): Telamon Store will not offer this release until it is signed (docs/BUNDLES.md, Signing)"
+            else
+              keep_draft=1
+              echo "::error title=Release left as a draft (not signed)::there is no signature, so $TAG stays a DRAFT. Telamon Store will not offer an unsigned release. Sign it offline and publish: gh release download $TAG -p telamon-bundle.json -p '*.tar.zst'; python3 tools/bundle.py verify <archive> telamon-bundle.json; minisign -Sm telamon-bundle.json; gh release upload $TAG telamon-bundle.json.minisig; gh release edit $TAG --draft=false. Or pass the minisign-key secret, or set allow-unsigned to publish it unsigned"
+            fi
           fi
           created=0
           if ! gh release view "$TAG" "${repo[@]}" >/dev/null 2>&1; then
@@ -404,8 +430,8 @@ jobs:
             echo "::error::could not upload the bundle to $TAG"; exit 1
           fi
           if [ "$created" = 1 ] || [ "$draft" = true ]; then
-            if [ "$PUBLISH" != true ]; then
-              echo "::notice::the release $TAG is a draft (publish is false). To sign it by hand: gh release download $TAG -p telamon-bundle.json -p '*.tar.zst', python3 tools/bundle.py verify <archive> telamon-bundle.json, minisign -Sm telamon-bundle.json, gh release upload $TAG telamon-bundle.json.minisig, gh release edit $TAG --draft=false"
+            if [ "$keep_draft" = 1 ]; then
+              [ "$PUBLISH" = true ] || echo "::notice::the release $TAG is a draft (publish is false). To sign it by hand: gh release download $TAG -p telamon-bundle.json -p '*.tar.zst', python3 tools/bundle.py verify <archive> telamon-bundle.json, minisign -Sm telamon-bundle.json, gh release upload $TAG telamon-bundle.json.minisig, gh release edit $TAG --draft=false"
             else
               published=0
               for attempt in 1 2 3 4 5; do

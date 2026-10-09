@@ -278,21 +278,27 @@ the app's code:
 For a `v*` tag two more jobs follow:
 
 5. `sign` (a `fedora:44` container, no token): runs only the framework's own tools,
-   fetched by commit sha. It downloads `telamon-bundle`, **verifies it again**
-   (`tools/bundle.py verify`: the archive against the manifest and the layout rules; a
-   directory with anything else in it is refused), and signs `telamon-bundle.json` with
-   `minisign` and the optional secret `minisign-key`, through `tools/sign-bundle.sh`
-   ("Signing" below). It uploads `telamon-bundle.json.minisig` as the artifact
-   `telamon-bundle-signature`. Without the secret it signs nothing, prints a
-   `::warning::` that Telamon Store will not offer an unsigned release, and the run goes on.
+   fetched by commit sha, in two steps through `tools/sign-bundle.sh` ("Signing" below).
+   Step A downloads `telamon-bundle` and **verifies it again** (`tools/bundle.py verify`:
+   the archive against the manifest and the layout rules; a directory with anything
+   else in it is refused) with no secret in its environment. Step B has the optional
+   secret `minisign-key` and parses nothing: it checks that the manifest is the file
+   step A verified (its sha256) and that the directory holds only the archive and the
+   manifest, then signs `telamon-bundle.json` with `minisign`. So the key is never in the
+   environment of anything that parses the bundle. It uploads `telamon-bundle.json.minisig`
+   as the artifact `telamon-bundle-signature`. Without the secret nothing is signed, and
+   the release is left a draft (next item).
 6. `attach` (the only job with a write token; it runs nothing but `gh`, `jq` and
    `sha256sum`): downloads both artifacts and checks that the manifest is the file
    `sign` verified (its sha256), that the archive is the one the manifest names, and
    that the directory holds exactly those files and the signature. When there is no
    release for the tag it creates a **draft** with generated notes, uploads the files, and only then
    publishes it (`gh release edit --draft=false`), so Store never sees a release
-   without its bundle; a draft it made is deleted if the upload fails. With
-   `publish: false` it stops at the draft. An existing release just
+   without its bundle; a draft it made is deleted if the upload fails. It stops at the
+   draft, with an `::error` annotation that says how to sign offline and publish, when
+   `publish` is `false` **or when there is no signature** (unless `allow-unsigned` is
+   `true`): a missing or misspelled secret, or a fork that gets none, cannot publish an
+   unsigned release by mistake. An existing release just
    gets the files (`gh release upload --clobber`). GitHub sometimes answers 5xx, so each
    call is tried again a few times.
 
@@ -302,12 +308,13 @@ For a `v*` tag two more jobs follow:
 | `app-dir` | As `--app-dir`. |
 | `spec` | As `--spec`; also the spec `dnf builddep` installs. |
 | `attach` | `true` (default): sign and attach to the release of a `v*` tag. |
-| `publish` | `true` (default): publish a release this run created. `false`: leave it a **draft**, so its owner can sign `telamon-bundle.json` offline and publish it by hand ("Signing"). |
-| `minisign-public-key` | Optional: the catalog's public key for the app (`RW...`). When given, the signature made with the secret must verify with it, so a wrong key in the secret fails the run and not the users. |
+| `publish` | `true` (default): publish a release this run created, when it is signed. `false`: leave it a **draft** whatever happens, so its owner can sign `telamon-bundle.json` offline and publish it by hand ("Signing"). |
+| `allow-unsigned` | `false` (default): a release with no signature stays a draft. `true`: publish it as a normal release anyway; Telamon Store will not offer it until `telamon-bundle.json.minisig` is added. |
+| `minisign-public-key` | Optional: the catalog's public key for the app (`RW...`). When given, the signature made with the secret must verify with it, so a wrong key in the secret fails the run and not the users, and **the run fails when the secret is empty or missing**. Set it next to the secret. |
 
 | Secret | |
 |---|---|
-| `minisign-key` | Optional: the **content of the minisign secret key file** (both lines). Without it the release is attached unsigned. It is read by one step of the `sign` job and by nothing that runs the app's code. |
+| `minisign-key` | Optional: the **content of the minisign secret key file** (both lines). Without it the release is attached unsigned and left a draft. It is read by one step of the `sign` job, which parses nothing, and by nothing that runs the app's code. |
 | `minisign-password` | Optional: the key's password, if it has one. |
 
 The calling job must grant `contents: write` (the workflow itself defaults to
@@ -384,7 +391,9 @@ gh release edit "$tag" --draft=false --repo "$repo"
 it. The `sign` job puts the key in a file on tmpfs (umask 077), runs `minisign -S`
 with it, shreds the file and removes it whatever happens; the key and the password
 are never an argument, never printed (tracing is off), and not in the environment of
-`minisign`. The job checks the form of the signature (`ED`, four lines), and with
+`minisign`. The step that has them parses nothing; the step before it parses the bundle with
+no secret in its environment, so the key is never in the environment of anything that parses
+the bundle. The job checks the form of the signature (`ED`, four lines), and with
 `minisign-public-key` that it verifies with the catalog's key. It runs none
 of the app's code, and only signs a bundle that passes `tools/bundle.py verify`.
 
@@ -399,9 +408,16 @@ that is run with it. **For an app whose repository has more than one writer,
 sign offline.** A key kept in CI suits a repository with one trusted owner who
 accepts that a stolen account or token can sign a release.
 
-Without a key the run is not an error: the archive and the manifest are attached,
-the run prints `::warning::` that Telamon Store will not offer the release, and
-the owner can add `telamon-bundle.json.minisig` to the release afterwards, as above.
+Without a key the run is not an error, but the release is **not published**: the archive
+and the manifest are attached to a draft, the run prints an `::error` annotation that says how
+to sign offline and publish, and the owner adds `telamon-bundle.json.minisig` and publishes, as
+above. `allow-unsigned: true` publishes it as a normal release instead; Telamon Store will not
+offer it. (With `minisign-public-key` set and no key, the run fails.)
+
+**The runtime of the signing job** is a `fedora:44` container with `minisign` from `dnf`
+(and git, python3, zstd), both mutable: whatever those repositories serve that day runs
+next to the key. The framework's tools are pinned by sha, the runtime is not. For a
+high-value app, sign offline.
 
 ## Connecting an app
 
@@ -435,7 +451,11 @@ jobs:
     # secrets:
     #   minisign-key: ${{ secrets.MINISIGN_KEY }}
     #   minisign-password: ${{ secrets.MINISIGN_PASSWORD }}   # only if the key has a password
+    # and, with `with:`, minisign-public-key: RWQ...   # the catalog's key: the run fails when the secret is missing or another key
 ```
+
+An unsigned release (no secret, a misspelled one, a fork) is left a draft; `allow-unsigned: true`
+publishes it anyway, and Telamon Store will not offer it.
 
 The app needs a spec (`packaging/<app>.spec`) whose `BuildRequires:` build it
 (the workflow installs them) and a `project(<name> VERSION x.y.z)` in its
@@ -504,8 +524,9 @@ Enforced today:
   and `verify` stops reading a decompressed stream that is longer than they allow).
 - **The producer's workflow** keeps the secret away from the app's code: the job
   that builds the app has a read-only token and no secret; the job that holds the key
-  runs the framework's own tools (by commit sha) on a bundle it has verified; the job
-  that writes the release runs only `gh` on files whose hashes it has checked. The tag
+  runs the framework's own tools (by commit sha) on a bundle it has verified, and the key
+  is never in the environment of anything that parses the bundle; a release without a signature
+  stays a draft; the job that writes the release runs only `gh` on files whose hashes it has checked. The tag
   and the inputs never reach a shell as code, actions are pinned by sha, and no job
   asks for an OIDC token.
 
@@ -522,6 +543,9 @@ What remains:
   controls what is signed, and can read the secret. This is why offline signing
   (`publish: false`) is the recommended model for any app whose repository has
   several writers.
+- **The signing job's runtime is mutable.** It is a `fedora:44` container with `minisign`
+  from `dnf`; the framework's tools are pinned by sha, the packages are not. For a
+  high-value app, sign offline.
 - **No freshness.** A signature does not expire: an attacker who can block or
   replay GitHub's answers can keep a computer on an older signed release, and a
   validly signed old release that is still the latest can be offered to a computer
