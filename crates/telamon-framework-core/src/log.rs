@@ -76,13 +76,9 @@ impl Log for Journal {
                 return;
             }
         }
-        let _ = writeln!(
-            std::io::stderr().lock(),
-            "{}: {}: {}",
-            self.ident,
-            record.level().as_str().to_ascii_lowercase(),
-            for_terminal(&message)
-        );
+        let _ = std::io::stderr()
+            .lock()
+            .write_all(for_stderr(&self.ident, record.level(), &message).as_bytes());
     }
 
     fn flush(&self) {}
@@ -142,6 +138,22 @@ fn for_terminal(s: &str) -> std::borrow::Cow<'_, str> {
         })
         .collect::<String>()
         .into()
+}
+
+/// A message for stderr, which a service manager may turn into journal
+/// entries line by line: every line carries the `<ident>: <level>: ` prefix, so
+/// a message with a line break in it (text from a remote, a file name) cannot
+/// pass a line of its own off as another program's or another level's entry.
+fn for_stderr(ident: &str, level: Level, message: &str) -> String {
+    let prefix = format!("{ident}: {}: ", level.as_str().to_ascii_lowercase());
+    let message = for_terminal(message);
+    let mut out = String::with_capacity(message.len() + prefix.len() + 1);
+    for line in message.split('\n') {
+        out.push_str(&prefix);
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
 }
 
 fn truncate(s: &mut String, max: usize) {
@@ -242,5 +254,62 @@ mod tests {
         assert_eq!(s, "é…");
         assert_eq!(for_terminal("a\nb\tc"), "a\nb\tc");
         assert_eq!(for_terminal("\u{1b}[2J"), "\\u{1b}[2J");
+    }
+
+    #[test]
+    fn stderr_lines_all_carry_the_prefix() {
+        assert_eq!(
+            for_stderr("telamon-x", Level::Warn, "one line"),
+            "telamon-x: warn: one line\n"
+        );
+        // a forged second line stays inside this entry's own prefix
+        assert_eq!(
+            for_stderr("telamon-x", Level::Info, "ok\ntelamon-y: error: forged"),
+            "telamon-x: info: ok\ntelamon-x: info: telamon-y: error: forged\n"
+        );
+        assert_eq!(
+            for_stderr("t", Level::Error, "a\u{1b}[2J\r\nb"),
+            "t: error: a\\u{1b}[2J\\u{d}\nt: error: b\n"
+        );
+    }
+
+    mod props {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn prop_no_stderr_line_escapes_its_prefix(m in any::<String>()) {
+                let out = for_stderr("telamon-x", Level::Warn, &m);
+                prop_assert!(out.ends_with('\n'));
+                for line in out[..out.len() - 1].split('\n') {
+                    prop_assert!(line.starts_with("telamon-x: warn: "), "{:?}", line);
+                    prop_assert!(!line.chars().any(|c| c.is_control()));
+                }
+            }
+
+            #[test]
+            fn prop_journal_entries_keep_one_message_field(m in any::<String>()) {
+                let mut m = m;
+                truncate(&mut m, 200);
+                let args = format_args!("{m}");
+                let r = Record::builder().args(args).level(Level::Info).target("t").build();
+                let e = entry("telamon-x", &r, &m);
+                // the message is the first field and nothing in it starts another:
+                // the 5 other fields follow it
+                let mut want = Vec::new();
+                field(&mut want, "MESSAGE", &m);
+                prop_assert!(e.starts_with(&want));
+                let rest = &e[want.len()..];
+                prop_assert!(rest.starts_with(b"PRIORITY=6\nSYSLOG_IDENTIFIER=telamon-x\n"));
+            }
+
+            #[test]
+            fn prop_truncate_stays_valid_and_bounded(s in any::<String>(), max in 0usize..64) {
+                let mut s = s;
+                truncate(&mut s, max);
+                prop_assert!(s.len() <= max + '…'.len_utf8());
+            }
+        }
     }
 }

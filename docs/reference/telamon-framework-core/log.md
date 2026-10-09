@@ -25,7 +25,7 @@ log::info!("started");
 - Level: `TELAMON_LOG` (`ATLAS_LOG`, its name before 2.0.0, when that is not set) sets it to `error`, `warn`, `info`, `debug`, `trace` or `off`. The default is `info`, also used for a value that is not a level.
 - Journal fields per entry: `MESSAGE`, `PRIORITY` (error 3, warning 4, info 6, debug and trace 7), `SYSLOG_IDENTIFIER` (the app's `short_name()`), `TELAMON_TARGET` (the log target), and `CODE_FILE` and `CODE_LINE` when known. A message with a newline is sent in the journal's length-prefixed form.
 - Messages are cut at 32 KiB.
-- The socket is non-blocking: a stalled journal never stalls the app. A message it cannot take goes to stderr as `<ident>: <level>: <message>`, with control characters other than newline and tab shown as `\u{..}` escapes.
+- The socket is non-blocking: a stalled journal never stalls the app. A message it cannot take goes to stderr as `<ident>: <level>: <message>`, with control characters other than newline and tab shown as `\u{..}` escapes. A message with line breaks gets the `<ident>: <level>: ` prefix on every line, so text from outside (a file name, a remote's answer) cannot pass a line of its own off as another program's or another level's entry when stderr ends up in the journal.
 - The journal socket is `/run/systemd/journal/socket`.
 
 ## Items

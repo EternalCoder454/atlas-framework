@@ -182,4 +182,63 @@ mod tests {
             None
         );
     }
+
+    #[test]
+    fn load_from_refuses_big_files_and_fifos() {
+        let d = tempfile::tempdir().unwrap();
+        let big = d.path().join("big");
+        std::fs::write(&big, vec![b'#'; 1024 * 1024 + 1]).unwrap();
+        assert_eq!(OsRelease::load_from(&big), None);
+        let fifo = d.path().join("fifo");
+        let c = std::ffi::CString::new(fifo.to_str().unwrap()).unwrap();
+        // SAFETY: a NUL-terminated path.
+        assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
+        assert_eq!(OsRelease::load_from(&fifo), None); // and does not block
+        let dir = d.path().join("dir");
+        std::fs::create_dir(&dir).unwrap();
+        assert_eq!(OsRelease::load_from(&dir), None);
+    }
+
+    mod props {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn prop_parse_never_panics_and_fields_come_from_the_text(t in any::<String>()) {
+                let r = OsRelease::parse(&t);
+                for f in [&r.id, &r.name, &r.version, &r.version_id, &r.pretty_name,
+                          &r.logo, &r.home_url, &r.bug_report_url] {
+                    prop_assert!(f.len() <= t.len());
+                }
+                prop_assert!(!r.display_name().is_empty());
+                if let Some(icon) = r.logo_icon() {
+                    prop_assert!(!icon.is_empty());
+                    prop_assert!(icon.chars().all(|c| c.is_ascii_alphanumeric()
+                        || matches!(c, '-' | '_' | '.' | '+')));
+                }
+            }
+
+            #[test]
+            fn prop_parse_survives_os_release_shaped_text(
+                lines in proptest::collection::vec(
+                    ("[A-Z_]{0,16}", prop_oneof!["[ -~]{0,24}", "\"[ -~]{0,16}\"?", "'[ -~]{0,16}'?"]),
+                    0..12
+                )
+            ) {
+                let t: String = lines.iter().map(|(k, v)| format!("{k}={v}\n")).collect();
+                let r = OsRelease::parse(&t);
+                prop_assert!(!r.display_name().is_empty());
+                // the last LOGO= line decides, the way a shell source would
+                let logo = lines.iter().rev().find(|(k, _)| k == "LOGO").map(|(_, v)| v);
+                prop_assert_eq!(logo.is_some() && !r.logo.is_empty(), logo.is_some_and(|v| !unquote(v.trim()).is_empty()));
+            }
+
+            #[test]
+            fn prop_unquote_never_panics(v in any::<String>()) {
+                let u = unquote(&v);
+                prop_assert!(u.len() <= v.len());
+            }
+        }
+    }
 }

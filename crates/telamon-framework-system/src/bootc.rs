@@ -416,8 +416,23 @@ fn split_tag(image: &str) -> (&str, Option<&str>) {
     }
 }
 
+/// The biggest `bootc status --json` document [`Status::from_json`] reads
+/// (4 MiB; a real one is a few KB, with a signature policy a few more).
+pub const MAX_JSON_BYTES: usize = 4 * 1024 * 1024;
+
 impl Status {
+    /// Parses a `bootc status --json` document. Fails, without parsing, for
+    /// one over [`MAX_JSON_BYTES`]; nesting deeper than serde_json's limit
+    /// (128 levels) is an error too, never a stack overflow. Strings in it
+    /// (image references, version labels) come from whoever built the image:
+    /// the types keep them as they are, so cut and clean them before they go
+    /// into a file or a window (see [`history::record_boot`](crate::history::record_boot)).
     pub fn from_json(json: &str) -> Result<Status, serde_json::Error> {
+        if json.len() > MAX_JSON_BYTES {
+            return Err(<serde_json::Error as serde::de::Error>::custom(format!(
+                "bootc status is over {MAX_JSON_BYTES} bytes"
+            )));
+        }
         serde_json::from_str(json)
     }
 

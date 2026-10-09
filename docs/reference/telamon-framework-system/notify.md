@@ -43,7 +43,8 @@ The names the app gives KNotification come from its `AppInfo`: the component (th
 - With no notification service (or no session bus), the error reads "No notification service is running".
 - `send` and `close` need a Tokio runtime with the time driver (`#[tokio::main]` and `enable_all()` have it); without one the timeout panics.
 - `send_blocking` runs on a thread of its own with a runtime of its own, so it is safe to call inside an existing Tokio runtime's `spawn_blocking`, but not from the UI thread or from async code.
-- An event ID that is not valid is refused with an error. An `icon` that is not valid is replaced by the app icon and logged.
+- An event ID that is not valid is refused with an error, and so is an action key that is not (see `action_key_ok`). An `icon` that is not valid is replaced by the app icon and logged.
+- What goes on the bus is bounded and plain: the title is one line of at most 256 characters, an action label one line of at most 64, at most 8 actions are sent, and the body goes through `sanitize_body` (below). Reading the notifyrc files is bounded by the same 10 seconds.
 
 ## Note
 
@@ -53,8 +54,8 @@ The names the app gives KNotification come from its `AppInfo`: the component (th
 |---|---|---|
 | `event` | `&'static str` | The notifyrc event (`updateStaged`, `restartSoon`, ...): camelCase, letters and digits only |
 | `title` | `String` | |
-| `text` | `String` | Body markup: `escape` anything that came from outside |
-| `icon` | `String` | Empty (the app's own icon), an icon name (letters, digits and `._+-`) or an absolute path without `..`. Anything else is replaced by the app's icon |
+| `text` | `String` | Body markup: `escape` anything that came from outside. `send` keeps only the safe markup of `sanitize_body` and cuts the body at 4096 characters |
+| `icon` | `String` | Empty (the app's own icon), an icon name (letters, digits and `._+-`, but not `.` or `..`) or an absolute path without `..`. Anything else is replaced by the app's icon |
 | `actions` | `Vec<(&'static str, String)>` | (key, label) pairs. `DEFAULT_ACTION` is the click on the notification itself |
 | `urgency` | `Option<Urgency>` | `None` leaves the server's default |
 | `persistent` | `bool` | Stays until the user acts (no timeout) |
@@ -89,4 +90,6 @@ The names the app gives KNotification come from its `AppInfo`: the component (th
 | `escape` | `pub fn escape(s: &str) -> String` | Escapes text for the body, which the server reads as markup: `&`, `<`, `>`, `"` and `'` become entities, and control characters other than line feed and tab become spaces |
 | `event_id_ok` | `pub fn event_id_ok(event: &str) -> bool` | 1 to 64 ASCII letters and digits, not starting with a digit |
 | `icon_ok` | `pub fn icon_ok(icon: &str) -> bool` | Empty, an icon name, or an absolute path without `..` and control characters. A URL or relative path is not |
+| `sanitize_body` | `pub fn sanitize_body(text: &str, max: usize) -> String` | What `send` makes of the body: only `b`, `i`, `u`, `br` tags without attributes and `a href="https://..."` links stay; any other `<` (an `img`, a `file:` or `javascript:` link, a stray tag) becomes `&lt;`; control characters other than line feed and tab become spaces; cut at `max` characters, never inside an entity or a tag. Text that went through `escape` is unchanged |
+| `action_key_ok` | `pub fn action_key_ok(key: &str) -> bool` | 1 to 64 ASCII letters, digits and `-`, `_`, `.` |
 | `close` | `pub async fn close(conn: &zbus::Connection, id: u32) -> zbus::Result<()>` | Closes notification `id`. Gives up after 10 seconds |

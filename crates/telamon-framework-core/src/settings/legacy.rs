@@ -59,7 +59,7 @@ pub(super) fn adopt(new: &Path, old: &Path) -> io::Result<bool> {
     let Some(dir) = new.parent() else {
         return Ok(false);
     };
-    fs::create_dir_all(dir)?;
+    crate::fsutil::create_private_dir_all(dir)?;
     let name = new.file_name().unwrap_or_default().to_string_lossy();
     let tmp = dir.join(format!(".{name}.adopt{}", std::process::id()));
     let mode = meta.mode() & 0o777;
@@ -196,5 +196,49 @@ mod tests {
         let old = d.path().join("atlas-xrc");
         fs::write(&old, "[G]\nK=1\n").unwrap();
         assert!(!adopt(&new, &old).unwrap());
+    }
+
+    mod props {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn text() -> impl Strategy<Value = String> {
+            prop_oneof![
+                1 => any::<String>(),
+                3 => proptest::collection::vec(
+                    prop_oneof![
+                        Just("[Atlas]".to_string()),
+                        Just("[Atlas][$i]".to_string()),
+                        Just("[Atlas][Sub]".to_string()),
+                        Just("[AtlasX]".to_string()),
+                        Just("[Atlas] ".to_string()),
+                        Just("# [Atlas]".to_string()),
+                        "[ -~]{0,12}",
+                    ],
+                    0..8
+                )
+                .prop_map(|l| l.join("\n")),
+            ]
+        }
+
+        proptest! {
+            #[test]
+            fn prop_only_atlas_headers_change_and_nothing_else_moves(t in text()) {
+                let out = rename_group(&t);
+                prop_assert_eq!(out.lines().count(), t.lines().count());
+                prop_assert_eq!(out.matches('\n').count(), t.matches('\n').count());
+                // 7 bytes become 9: the length only grows, by 2 per header
+                prop_assert!(out.len() >= t.len());
+                for (a, b) in t.lines().zip(out.lines()) {
+                    if a != b {
+                        prop_assert!(a.starts_with("[Atlas]"));
+                        prop_assert!(b.starts_with("[Telamon]"));
+                        prop_assert_eq!(&a["[Atlas]".len()..], &b["[Telamon]".len()..]);
+                    }
+                }
+                // renaming is idempotent: no [Atlas] header is left
+                prop_assert_eq!(rename_group(&out), out);
+            }
+        }
     }
 }

@@ -313,7 +313,7 @@ impl Settings {
         };
         // The one place a watch creates anything: the file's own directory,
         // as `set` would, so a first start has something to watch.
-        fs::create_dir_all(dir_of(&self.path)?)?;
+        crate::fsutil::create_private_dir_all(dir_of(&self.path)?)?;
         let (watched, target) = establish(&ino, &self.path)?;
         let path = self.path.clone();
         // None: unknown (unreadable now), so the first read that works is

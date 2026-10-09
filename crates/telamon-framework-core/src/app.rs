@@ -179,4 +179,44 @@ mod tests {
         let a = crate::app_info! { name: "N", id: "net.eterneon.telamon.n", repo: "r" };
         assert_eq!(a.version, env!("CARGO_PKG_VERSION"));
     }
+
+    mod props {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn plain_file_name(n: &str, prefix: &str) -> bool {
+            n.len() <= 64
+                && n.len() > prefix.len()
+                && n.starts_with(prefix)
+                && n.bytes()
+                    .all(|b| matches!(b, b'a'..=b'z' | b'0'..=b'9' | b'_' | b'-'))
+        }
+
+        proptest! {
+            #[test]
+            fn prop_names_derived_from_any_id_are_plain_file_names(id in any::<String>()) {
+                let a = app(&id, "");
+                prop_assert!(plain_file_name(&a.short_name(), "telamon-"), "{:?}", a.short_name());
+                prop_assert!(plain_file_name(&a.legacy_short_name(), "atlas-"));
+                // never a path: no separator, no dot, no NUL
+                let n = a.short_name();
+                prop_assert!(!n.contains(['/', '.', '\0']));
+            }
+
+            #[test]
+            fn prop_links_are_built_only_from_plain_repo_names(repo in any::<String>()) {
+                let a = app("x", &repo);
+                if let Some(u) = a.source_url() {
+                    let name = u.strip_prefix(GITHUB).unwrap();
+                    prop_assert_eq!(name, repo.as_str());
+                    prop_assert!(!name.is_empty() && name != "." && name != "..");
+                    prop_assert!(name.chars().all(|c| c.is_ascii_alphanumeric()
+                        || matches!(c, '.' | '_' | '-')));
+                    prop_assert!(a.issues_url().unwrap().ends_with("/issues"));
+                } else {
+                    prop_assert!(a.issues_url().is_none());
+                }
+            }
+        }
+    }
 }
