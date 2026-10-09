@@ -23,6 +23,44 @@
 # exactly FRAMEWORK_COMMIT, and crates.io packages the app already had or the
 # framework's own Cargo.lock names. Anything else, and nothing is pushed.
 #
+# Why the split holds (tools/test-open-update-pr.sh forges every input below):
+#
+#   lock job     sees: the app's whole tree, its cargo and the network. Holds: no
+#                token (GH_TOKEN and the Actions tokens are unset before cargo runs;
+#                the workflow gives it contents: read and no secret). Can change: the
+#                files it uploads, and nothing else. Its output is untrusted text.
+#   publish job  sees: that output, the framework checkout, the token. Never checks
+#                the app out and runs nothing from it: it reads the app through
+#                `git fetch` of one commit into a bare repository of its own (no work
+#                tree, no hooks, no config but its own) and writes git objects.
+#
+#   What publish takes from the lock job, and what it checks:
+#     base         40 hex digits, and equal to the app's HEAD now (else it pushes nothing).
+#                  It is only a name for that commit; every byte pushed is derived from it.
+#     locks, files only a path that is a plain Cargo.lock blob of the base tree (so no
+#                  `..`, no absolute path, no control character, no option-looking text),
+#                  whose file in files/ is a plain file below files/ (realpath, no link, no
+#                  pipe), at most 8 MiB, printable ASCII, and written exactly as cargo
+#                  writes a lock file (lock_shaped: so what awk reads is what TOML and
+#                  cargo read), and whose every new or changed package is a
+#                  telamon-framework crate from this repository at exactly FRAMEWORK_COMMIT
+#                  (the commit the workflow runs at) or a crates.io package the app or the
+#                  framework's own lock already had; no checksum of a version the app
+#                  already had changes. Anything else: nothing is pushed.
+#     nothing else base, locks and files/ are the only entries; the rest of the directory
+#                  is never read.
+#   Cargo.toml is not taken from the lock job at all: it is rewritten here from the base's
+#   blobs. The commit's author, its parent, the branch, the title and the body come from
+#   arguments the workflow fixes and from sanitised names; a name from the app or the lock
+#   job reaches the log only with control characters replaced, after `::warning::` /
+#   `::error::` (a workflow command must start a line).
+#   So a hostile lock job can make publish push a pull request whose Cargo.lock differs from
+#   the app's by what a framework update can change, or nothing; it cannot add a source,
+#   touch another file, another repository or the default branch, or learn the token.
+#   It can still pick any published crates.io version of a crate already in the lock (the
+#   cargo registry vouches for the file by checksum); the pull request is reviewed and
+#   built with --locked before anything merges.
+#
 # Every `telamon-framework-*` git dependency on this repository pinned by tag or
 # branch becomes `tag = "<vX.Y.Z>"`; one pinned by rev stays a rev, of the
 # commit the tag names (an app's CI may require revs, as Notepad's does).
@@ -48,51 +86,27 @@ esac
 if [ "$mode" = publish ]; then
     [[ $branch =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "bad branch: $branch" >&2; exit 2; }
 fi
+# Only the organisation's own apps: the token in publish can push to all of them.
+[[ $repo == EternalCoder454/* ]] || { echo "bad repository: $repo (an app of EternalCoder454)" >&2; exit 2; }
 url="https://github.com/$repo.git"
 dir=$(realpath -m -- "$dir")
 # Manifests larger than this are skipped (and a person moves them by hand).
 max_manifest=1048576
-
-# Moves the pins in the Cargo.toml files named, in place. Only inline tables
-# naming this repository; the pin key may come before or after `git`. A rev
-# pin moves to $fw_commit, any other to the tag.
-move_pins() {
-    # shellcheck disable=SC2016 # perl, not shell, expands these
-    TAG=$tag COMMIT=$fw_commit timeout 60 perl -0pi -e '
-        sub pin { $_[0] eq "rev" ? qq(rev = "$ENV{COMMIT}") : qq(tag = "$ENV{TAG}") }
-        s#(telamon-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?"[^}\n]*?)\b(rev|tag|branch)\s*=\s*"[^"]*"#$1 . pin($2)#ge;
-        s#(telamon-framework-[a-z0-9-]+\s*=\s*\{[^}\n]*?)\b(rev|tag|branch)\s*=\s*"[^"]*"([^}\n]*?github\.com/EternalCoder454/atlas-framework(?:\.git)?")#$1 . pin($2) . $3#ge;
-    ' -- "$@"
-}
-
-# Lists tree-ish $1 of the repository in the current directory into $2. A
-# failure (a bad ref, a damaged repository) stops the script here: inside
-# blobs_named's process substitution it would read as "no manifests".
-list_tree() {
-    if ! git ls-tree -r -z "$1" >"$2"; then
-        echo "::error::git ls-tree failed for $1; not going on with an empty file list" >&2
-        exit 1
-    fi
-}
-
-# Paths of regular-file blobs (mode 100644) named $1 in the listing in file
-# $2 (from list_tree), one per line. Symlinks (120000) and anything under one
-# are not blobs of this kind, so they never appear.
-blobs_named() {
-    local entry meta path
-    while IFS= read -r -d '' entry; do
-        meta=${entry%%$'\t'*}
-        path=${entry#*$'\t'}
-        [ "${meta%% *}" = 100644 ] || continue
-        [[ $path == *[[:cntrl:]]* ]] && continue
-        case $path in "$1" | */"$1") printf '%s\n' "$path" ;; esac
-    done <"$2"
-}
+# move_pins, list_tree, blobs_named and the checks of publish (tested without a
+# network or a token by tools/test-open-update-pr.sh).
+# shellcheck source-path=SCRIPTDIR source=lib/update-pr-lib.sh
+. "$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")/lib/update-pr-lib.sh"
 
 if [ "$mode" = lock ]; then
     # Nothing here may hold a token: this runs code from the app.
-    unset GH_TOKEN GITHUB_TOKEN
+    unset GH_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL ACTIONS_CACHE_URL ACTIONS_RESULTS_URL
     export RUSTUP_TOOLCHAIN=stable
+    # <out dir> is emptied below: only a directory this script made, or an empty one.
+    if [ -e "$dir" ] && [ ! -d "$dir" ]; then echo "$dir is not a directory" >&2; exit 2; fi
+    if [ -d "$dir" ] && [ -n "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name base ! -name locks ! -name files -print -quit)" ]; then
+        echo "$dir holds something this script did not write: not emptying it (use a new directory)" >&2
+        exit 2
+    fi
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
     # The commit the tag names (peeled, for an annotated tag), for rev pins.
@@ -178,16 +192,12 @@ fw_lock=$(dirname -- "$(realpath -- "$0")")/../Cargo.lock
 # No lock changed (an app that uses no telamon-framework crate, such as the
 # Installer): nothing to open. The artifact upload drops the empty files/, so
 # this is checked before the shape below, from the same two plain files.
-if [ -f "$dir/locks" ] && [ ! -L "$dir/locks" ] && [ ! -s "$dir/locks" ] &&
-    [ -f "$dir/base" ] && [ ! -L "$dir/base" ] &&
-    [ "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name base ! -name locks ! -name files -printf x | wc -c)" = 0 ]; then
+if lock_output_empty "$dir"; then
     echo "$repo: no lock file needs this release: nothing to open"
     exit 0
 fi
 # The lock job's output: base, locks and files/, nothing else, no symlinks.
-if [ "$(find "$dir" -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort | tr '\n' ' ')" != "base files locks " ] ||
-    [ -L "$dir/base" ] || [ ! -f "$dir/base" ] || [ -L "$dir/locks" ] || [ ! -f "$dir/locks" ] ||
-    [ -L "$dir/files" ] || [ ! -d "$dir/files" ]; then
+if ! lock_output_shaped "$dir"; then
     echo "::error::$repo: the lock job's output is not what it writes: nothing pushed" >&2
     exit 1
 fi
@@ -239,41 +249,10 @@ while IFS= read -r m; do
     fi
 done < <(blobs_named Cargo.toml "$tmp/tree")
 
-# Whether the lock file $1 is written exactly as cargo writes one: the
-# header, `version = N`, then [[package]] tables of name, version, source,
-# checksum and a dependencies list, one key per line, each at most once. Any
-# other TOML (other spacing, indentation, other tables, inline arrays) could
-# hide a package from lock_packages, so it is refused.
-lock_shaped() {
-    LC_ALL=C awk '
-        NR == 1 { if ($0 != "# This file is automatically @generated by Cargo.") exit 1; next }
-        inarr && /^ "[^"\\]+",$/ { next }
-        inarr && /^\]$/ { inarr = 0; next }
-        inarr { exit 1 }
-        /^$/ || /^# / { next }
-        !pkg && /^version = [0-9]+$/ && !top++ { next }
-        /^\[\[package\]\]$/ { pkg = 1; split("", seen); next }
-        pkg && /^(name|version|source|checksum) = "[^" \\]+"$/ && !seen[$1]++ { next }
-        pkg && /^dependencies = \[$/ && !seen["dependencies"]++ { inarr = 1; next }
-        { exit 1 }
-        END { if (inarr) exit 1 }' "$1"
-}
-
-# "name version source" of every package in the lock file $1, sorted. Only
-# for files lock_shaped accepts.
-lock_packages() {
-    awk '/^\[\[package\]\]/ { if (n != "") print n, v, src; n = v = src = ""; next }
-         /^name = /    { n = $3 } /^version = / { v = $3 } /^source = / { src = $3 }
-         END { if (n != "") print n, v, src }' "$1" | tr -d '"' | sort
-}
-
 # Names of the packages the framework can bring in.
-fw_names=$(lock_packages "$fw_lock" | cut -d' ' -f1 | sort -u)
-fw_source="git+https://github.com/EternalCoder454/atlas-framework?tag=$tag#$fw_commit"
-fw_source_git="git+https://github.com/EternalCoder454/atlas-framework.git?tag=$tag#$fw_commit"
-fw_source_rev="git+https://github.com/EternalCoder454/atlas-framework?rev=$fw_commit#$fw_commit"
-fw_source_rev_git="git+https://github.com/EternalCoder454/atlas-framework.git?rev=$fw_commit#$fw_commit"
-crates_io="registry+https://github.com/rust-lang/crates.io-index"
+# shellcheck disable=SC2034 # read by lock_change_ok in the library
+fw_names=$(lock_packages "$fw_lock" | cut -d' ' -f1 | LC_ALL=C sort -u)
+set_fw_sources
 
 # Cargo.lock: from the lock job, only over lock files the base has, only what
 # looks like one, and only changes a framework update can make (see the top).
@@ -286,37 +265,19 @@ while IFS= read -r lock; do
     [ -n "$lock" ] || continue
     ok=0
     for b in "${base_locks[@]}"; do [ "$b" = "$lock" ] && ok=1; done
-    file=$dir/files/$lock
-    real=$(realpath -e -- "$file" 2>/dev/null || true)
-    if [ "$ok" != 1 ] || [ "$real" != "$(realpath -- "$dir/files")/$lock" ] || [ ! -f "$file" ] ||
-        [ "$(stat -c %s "$file")" -gt 8388608 ] || ! lock_shaped "$file"; then
+    if [ "$ok" != 1 ] || ! file=$(lock_output_file "$dir" "$lock"); then
         echo "::error::$repo: unexpected lock file from the lock job (not one the base has, or not in cargo's current format): ${lock//[[:cntrl:]]/?}"
         refused=1
         continue
     fi
     git cat-file blob "$base:$lock" >"$tmp/lock.old"
-    base_names=$(lock_packages "$tmp/lock.old" | cut -d' ' -f1 | sort -u)
-    bad=0
-    while read -r name version source; do
-        shown="${lock//[^A-Za-z0-9 ._\/-]/?}: ${name//[^A-Za-z0-9._-]/?} ${version//[^A-Za-z0-9.+-]/?}"
-        if [[ $name == telamon-framework-* ]]; then
-            if [ "$source" = "$fw_source" ] || [ "$source" = "$fw_source_git" ] ||
-                [ "$source" = "$fw_source_rev" ] || [ "$source" = "$fw_source_rev_git" ]; then
-                continue
-            fi
-        elif [ "$source" = "$crates_io" ] &&
-            grep -qxF -- "$name" <<<"$base_names"$'\n'"$fw_names"; then
-            # For the reviewer: anything else the update changed.
-            others+=("$shown")
-            continue
-        fi
-        echo "::error::$repo: the lock job's $shown is not from crates.io or telamon-framework $tag (${source//[^A-Za-z0-9._:\/+#?=-]/?})"
-        bad=1
-    done < <(comm -13 <(lock_packages "$tmp/lock.old") <(lock_packages "$file"))
-    if [ "$bad" = 1 ]; then
+    if ! lock_change_ok "$tmp/lock.old" "$file" "$lock"; then
         refused=1
         continue
     fi
+    # A lock file the base already has changes nothing (the lock job lists only the ones it changed):
+    # no commit, no pull request, for it.
+    cmp -s "$tmp/lock.old" "$file" && continue
     git update-index --cacheinfo "100644,$(git hash-object -w "$file"),$lock"
     changed=1
 done <"$dir/locks"

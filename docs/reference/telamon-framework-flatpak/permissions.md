@@ -32,7 +32,9 @@ assert!(!asked.is_empty()); // pulseaudio and home access are new
 
 | Name | Signature or value | Description |
 |---|---|---|
-| `new_permissions` | `pub fn new_permissions(old: &str, new: &str) -> Vec<String>` | What `new` grants that `old` does not, as `"group: key=item"` strings. Empty when the update asks for nothing new |
+| `new_permissions` | `pub fn new_permissions(old: &str, new: &str) -> Vec<String>` | What `new` grants that `old` does not, as `"group: key=item"` strings. Empty when the update asks for nothing new. The metadata is the app publisher's, so the entries are untrusted text: each has control, invisible and direction-changing characters removed and is cut at 200 characters, duplicates are dropped, and a list of more than 64 entries ends with `MORE_PERMISSIONS`. Show them as plain text, never as markup or a link. Metadata over `MAX_METADATA_BYTES` is `UNREADABLE` |
+| `MORE_PERMISSIONS` | `"more permissions than are listed"` | The last entry of a list that was cut at 64 entries |
+| `MAX_METADATA_BYTES` | `pub const MAX_METADATA_BYTES: usize` | 1 MiB, the biggest metadata `new_permissions` parses |
 | `UNREADABLE` | `"metadata that can't be read"` | Reported for metadata that cannot be read |
 | `UNMATCHED` | `"a change that can't be put down to one app"` | What `hold_new_permissions` reports for everything in an update run when something in it asks for new permissions and cannot be put down to one app |
 | `NEW_APP` | `"an app that wasn't installed"` | What `hold_new_permissions` reports for an app the update would install rather than update |

@@ -14,6 +14,7 @@ import org.kde.kirigami as Kirigami
 //   }
 T.TextArea {
     id: control
+    textFormat: TextEdit.PlainText
 
     // Unwrapped, as wide as the longest line (a ScrollView takes this as its
     // content width); wrapped, a fixed width (contentWidth then follows the

@@ -43,7 +43,9 @@ trap 'rm -f "$names"' EXIT
 # Atlas.Ui 1.x's names too (AtlasButton for TelamonButton): an app that has not
 # moved to Telamon.Ui yet says `import Atlas.Ui`, which hides its own files the
 # same way.
-sed -n 's/^Telamon/Atlas/p' "$names" >>"$names"
+# (read to a variable first: sed would read the file it appends to)
+atlas_names=$(sed -n 's/^Telamon/Atlas/p' "$names")
+[ -z "$atlas_names" ] || printf '%s\n' "$atlas_names" >>"$names"
 sort -u -o "$names" "$names"
 if [ ! -s "$names" ]; then
     echo "check-app-names: found no Telamon.Ui type names under $root/ui" >&2
@@ -53,7 +55,7 @@ fi
 status=0
 for app in "$@"; do
     if [ ! -d "$app" ]; then
-        echo "check-app-names: not a directory: $app" >&2
+        echo "check-app-names: not a directory: ${app//[[:cntrl:]]/?}" >&2
         exit 2
     fi
     count=0

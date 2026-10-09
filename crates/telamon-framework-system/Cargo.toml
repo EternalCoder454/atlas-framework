@@ -28,4 +28,5 @@ tokio = { version = "1.53.2", features = ["rt", "time", "macros"], optional = tr
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
 tokio = { version = "1.53.2", features = ["rt", "macros"] }

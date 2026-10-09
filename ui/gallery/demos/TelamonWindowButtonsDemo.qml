@@ -21,23 +21,23 @@ Item {
         columnSpacing: Kirigami.Units.gridUnit
         rowSpacing: Kirigami.Units.smallSpacing
 
-        QQC2.Label { text: "Rest" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Rest" }
         TelamonWindowButtons { active: true; _animate: root.animate }
-        QQC2.Label { text: "Minimize hover" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Minimize hover" }
         TelamonWindowButtons { active: true; _animate: root.animate; _forceHover: "minimize" }
-        QQC2.Label { text: "Maximize hover" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Maximize hover" }
         TelamonWindowButtons { active: true; _animate: root.animate; _forceHover: "maximize" }
-        QQC2.Label { text: "Close hover" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Close hover" }
         TelamonWindowButtons { active: true; _animate: root.animate; _forceHover: "close" }
-        QQC2.Label { text: "Pressed" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Pressed" }
         TelamonWindowButtons { active: true; _animate: root.animate; _forcePressed: "maximize" }
-        QQC2.Label { text: "Close pressed" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Close pressed" }
         TelamonWindowButtons { active: true; _animate: root.animate; _forcePressed: "close" }
-        QQC2.Label { text: "Maximized" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Maximized" }
         TelamonWindowButtons { active: true; _animate: root.animate; _forceMaximized: 1 }
-        QQC2.Label { text: "Inactive window" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Inactive window" }
         TelamonWindowButtons { active: false; _animate: root.animate }
-        QQC2.Label { text: "Disabled" }
+        QQC2.Label { textFormat: Text.PlainText; text: "Disabled" }
         TelamonWindowButtons { active: true; _animate: root.animate; enabled: false }
     }
 }

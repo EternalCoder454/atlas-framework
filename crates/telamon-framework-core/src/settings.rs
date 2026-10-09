@@ -94,14 +94,14 @@ impl Settings {
     /// Sets `group`/`key`; `None` removes it. Writes nothing when the file
     /// would not change, and never overwrites a file it couldn't read.
     /// Fails with `InvalidInput` for a group or key that can't be written as
-    /// one (control characters, brackets, `=`), and `PermissionDenied` for an
+    /// one (control characters, brackets, `=`, a group starting with `$`), and `PermissionDenied` for an
     /// immutable one. `TimedOut` after 2 s without the file lock, and
     /// `InvalidData` for a file that is not UTF-8 or over 4 MB: show the error.
     pub fn set(&self, group: &str, key: &str, value: Option<&str>) -> io::Result<()> {
         if migrate::migrating() {
             return Err(migrate::reentry());
         }
-        check_name(group, &['[', ']'])?;
+        check_group(group)?;
         check_name(key, &['[', ']', '='])?;
         if self.path.starts_with(NO_HOME) {
             return Err(io::Error::new(
@@ -116,7 +116,7 @@ impl Settings {
             return Ok(());
         }
         if let Some(dir) = target.parent() {
-            fs::create_dir_all(dir)?;
+            crate::fsutil::create_private_dir_all(dir)?;
         }
         // The file lock first, with its deadline: a stuck holder of one file
         // must not make writers of other files wait on the thread lock.
@@ -217,6 +217,19 @@ fn check_name(name: &str, banned: &[char]) -> io::Result<()> {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             format!("not a settings group or key: {name:?}"),
+        ));
+    }
+    Ok(())
+}
+
+/// [`check_name`] for a group, which also cannot start with `$`: `[$i]` is
+/// KConfig's mark for an immutable file, not a group.
+fn check_group(group: &str) -> io::Result<()> {
+    check_name(group, &['[', ']'])?;
+    if group.starts_with('$') {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("not a settings group or key: {group:?}"),
         ));
     }
     Ok(())
@@ -483,14 +496,28 @@ pub fn get_in(text: &str, group: &str, key: &str) -> Option<String> {
             && line_key(line) == Some(key)
             && let Some((_, v)) = line.split_once('=')
         {
-            found = Some(unescape(v.trim()));
+            found = Some(unescape(trim_value(v)));
         }
     }
     found
 }
 
+/// A raw value without the blanks around it. Only ASCII ones: [`escape`] writes
+/// an edge space as `\s`, so any other character (a no-break space, say) at
+/// the edge is part of the value and must survive the round trip.
+fn trim_value(v: &str) -> &str {
+    v.trim_matches([' ', '\t', '\r', '\n'])
+}
+
 /// `text` with `group`/`key` set to `value` (escaped), or removed for `None`.
+/// A `group` or `key` that [`Settings::set`] would refuse (line breaks or
+/// other control characters, brackets, `=` in a key, edge spaces, a leading
+/// `#` or `;`) cannot be written as itself and would forge other lines or
+/// groups, so then `text` comes back unchanged.
 pub fn set_in(text: &str, group: &str, key: &str, value: Option<&str>) -> String {
+    if check_group(group).is_err() || check_name(key, &['[', ']', '=']).is_err() {
+        return text.to_string();
+    }
     let mut out: Vec<String> = Vec::new();
     let mut in_group = false;
     let mut group_seen = false;
@@ -990,5 +1017,143 @@ mod tests {
         s.set("G", "K", Some("2")).unwrap();
         assert_eq!(s.get("Telamon", "Format"), None);
         assert_eq!(s.get("Atlas", "Format").as_deref(), Some("7"));
+    }
+
+    #[test]
+    fn a_value_cannot_forge_another_group_or_key() {
+        let evil = "x\n[Other]\nkey=1\r\n[$i]\n\u{85}[Z]\u{2028}k=v";
+        let t = set_in("[Other]\nA=1\n", "G", "K", Some(evil));
+        assert_eq!(get_in(&t, "G", "K").as_deref(), Some(evil));
+        assert_eq!(get_in(&t, "Other", "key"), None);
+        assert_eq!(get_in(&t, "Other", "A").as_deref(), Some("1"));
+        assert_eq!(get_in(&t, "Z", "k"), None);
+        assert!(!immutable(&t, "Other", "A"));
+        // one header per group, one line per key (and the blank between groups)
+        assert_eq!(t.lines().count(), 5, "{t:?}");
+        assert!(!t.contains('\r'));
+    }
+
+    #[test]
+    fn set_in_refuses_names_that_would_forge_lines() {
+        let base = "[G]\nA=1\n";
+        for (g, k) in [
+            ("G\n[H]", "K"),
+            ("G", "K\nZ=1"),
+            ("G", "K=1\nZ"),
+            ("G]\n[H", "K"),
+            ("G", "K[$i]"),
+            ("$i", "K"),
+            ("$x", "K"),
+            ("G", "#c"),
+            (" G", "K"),
+            ("G", "K\u{85}Z"),
+            ("", "K"),
+            ("G", ""),
+        ] {
+            assert_eq!(set_in(base, g, k, Some("v")), base, "{g:?} {k:?}");
+        }
+    }
+
+    #[test]
+    fn edge_whitespace_other_than_ascii_survives_a_round_trip() {
+        for v in ["\u{a0}x", "x\u{3000}", "\u{a0}", "\u{2003}\u{a0}"] {
+            let t = set_in("", "G", "K", Some(v));
+            assert_eq!(get_in(&t, "G", "K").as_deref(), Some(v), "{v:?}");
+        }
+    }
+
+    #[test]
+    fn a_new_settings_directory_is_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = tempfile::tempdir().unwrap();
+        let s = Settings::at(d.path().join("a/b/telamon-xrc"));
+        s.set("G", "K", Some("1")).unwrap();
+        for p in [d.path().join("a"), d.path().join("a/b")] {
+            assert_eq!(
+                p.metadata().unwrap().permissions().mode() & 0o077,
+                0,
+                "{p:?}"
+            );
+        }
+        let file = d.path().join("a/b/telamon-xrc");
+        assert_eq!(file.metadata().unwrap().permissions().mode() & 0o077, 0);
+    }
+
+    mod props {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn name() -> impl Strategy<Value = String> {
+            // mostly plain names, but any text: the invalid ones are refused
+            prop_oneof![
+                3 => "[A-Za-z0-9_/. -]{1,10}",
+                1 => any::<String>(),
+            ]
+        }
+
+        fn value() -> impl Strategy<Value = String> {
+            prop_oneof![
+                3 => any::<String>(),
+                2 => "[ a-z=\\\\\\[\\]#;\n\r\t\u{a0}\u{85}\u{2028}$]{0,16}",
+            ]
+        }
+
+        proptest! {
+            #[test]
+            fn prop_escape_unescape_round_trips(v in value()) {
+                prop_assert_eq!(unescape(&escape(&v)), v.clone());
+                let e = escape(&v);
+                prop_assert!(!e.contains(['\n', '\r']));
+                let raw_control = e.chars().any(|c| (c as u32) < 0x20 && c != '\t' || c == '\u{7f}');
+                prop_assert!(!raw_control);
+            }
+
+            #[test]
+            fn prop_unescape_never_panics(v in any::<String>()) {
+                let _ = unescape(&v);
+            }
+
+            #[test]
+            fn prop_a_written_value_reads_back_and_forges_nothing(
+                g in name(), k in name(), v in value(), v2 in value(),
+            ) {
+                let base = "# c\n[Other]\nA=1\n\n[Z]\nB=2\n";
+                let valid = check_group(&g).is_ok() && check_name(&k, &['[', ']', '=']).is_ok();
+                let t = set_in(base, &g, &k, Some(&v));
+                if !valid {
+                    prop_assert_eq!(&t, base);
+                    return Ok(());
+                }
+                prop_assert_eq!(get_in(&t, &g, &k), Some(v.clone()));
+                if g != "Other" && g != "Z" {
+                    prop_assert_eq!(get_in(&t, "Other", "A"), Some("1".to_string()));
+                    prop_assert_eq!(get_in(&t, "Z", "B"), Some("2".to_string()));
+                }
+                // every line is a comment, a blank, a header or key=value
+                let headers = t.lines().filter(|l| header(l).is_some()).count();
+                let groups_expected = 2 + usize::from(g != "Other" && g != "Z");
+                prop_assert_eq!(headers, groups_expected, "{:?}", t);
+                prop_assert!(!immutable(&t, &g, &k) || immutable(base, &g, &k));
+                // changing it again changes only that key; removing it removes it
+                let t2 = set_in(&t, &g, &k, Some(&v2));
+                prop_assert_eq!(get_in(&t2, &g, &k), Some(v2.clone()));
+                prop_assert_eq!(t2.lines().count(), t.lines().count());
+                let t3 = set_in(&t2, &g, &k, None);
+                prop_assert_eq!(get_in(&t3, &g, &k), None);
+                // a second identical write is a no-op
+                prop_assert_eq!(set_in(&t, &g, &k, Some(&v)), t);
+            }
+
+            #[test]
+            fn prop_set_and_get_never_panic_on_any_file(
+                text in any::<String>(), g in name(), k in name(), v in any::<String>(),
+            ) {
+                let t = set_in(&text, &g, &k, Some(&v));
+                let _ = get_in(&t, &g, &k);
+                let _ = set_in(&text, &g, &k, None);
+                let _ = immutable(&text, &g, &k);
+                let _ = legacy::rename_group(&text);
+            }
+        }
     }
 }

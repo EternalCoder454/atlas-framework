@@ -4,7 +4,7 @@ summary: The macro that names a Telamon app once, with its name, ID, repository 
 order: 10
 ---
 
-`telamon_framework_ui::app!` names the app for the framework. It defines the two functions the C++ start-up calls to learn who the app is. Use it once, in the app's Rust library. It is the only supported way to define the app info: the C++ side reads it from the Rust library.
+`telamon_framework_ui::app!` names the app for the framework. It defines the functions the C++ start-up calls to learn who the app is. Use it once, in the app's Rust library. It is the only supported way to define the app info: the C++ side reads it from the Rust library.
 
 ## Example
 
@@ -29,7 +29,7 @@ telamon_framework_ui::app! {
 
 ## Fields
 
-The fields are in this order, and a trailing comma is allowed. `ui:` is the only optional one.
+The fields are in this order, and a trailing comma is allowed. `ui:` and `crash:` are optional.
 
 | Field | Type | Description |
 |---|---|---|
@@ -37,6 +37,7 @@ The fields are in this order, and a trailing comma is allowed. `ui:` is the only
 | `id` | expression | The reverse-DNS app ID. It is the desktop file name, the window icon name, the single-instance D-Bus name and the base of the settings file and journal names. See [AppInfo](../telamon-framework-core/app-info.md) |
 | `repo` | expression | The repository under `github.com/EternalCoder454/`. Telamon.Ui's About page builds its links from it |
 | `ui` | string literal or constant expression | The oldest Telamon.Ui the app works with, as `major.minor.patch` (fewer parts are allowed). Optional |
+| `crash` | `bool` expression | `false` keeps the app out of Telamon crash reporting altogether; `true` (the default) lets the user's own switch decide. Optional, after `ui:`. See [Keeping an app out of crash reports](#keeping-an-app-out-of-crash-reports) |
 
 The version in `AppInfo.version` is not a field: it is the `CARGO_PKG_VERSION` of the crate that uses the macro.
 
@@ -51,6 +52,21 @@ The version in `AppInfo.version` is not a field: it is the `CARGO_PKG_VERSION` o
 - Keep `ui:` equal to the RPM's `Requires: telamon-ui >=`.
 - `telamon_app_run` runs the check after the single-instance registration, so a second launch that only raises the window skips it. A C++ call to [`telamon_app_require_ui`](c-api.md#telamon_app_require_ui) with a version overrides `ui:`.
 
+## Keeping an app out of crash reports
+
+```rust
+telamon_framework_ui::app! {
+    name: "Pong",
+    id: "net.example.pong",
+    repo: "pong",
+    crash: false,
+}
+```
+
+An app that is not part of Telamon OS must never feed the Telamon crash relay, even when the user enabled crash reporting for Telamon apps. With `crash: false` the start installs no panic hook ([`crash::install`](../telamon-framework-system/crash.md) is not called) and a fatal Qt message is logged but never saved ([`record_fatal`](../telamon-framework-system/crash.md) is not called). The app is also recorded as one whose crashes the other Telamon apps do not report: a native crash (SIGSEGV, the abort after a Qt fatal) still goes to systemd-coredump, and [`crash::opt_out`](../telamon-framework-system/crash.md) keeps `collect_coredumps` from turning it into a report (the core dump stays available to `coredumpctl`). Logging, the settings file and everything else in the start are unchanged. Without the field, or with `crash: true`, nothing changes for the app: it reports only when the user turned reports on.
+
+A C++ app can decide at run time with [`telamon_app_set_crash_reporting`](c-api.md#functions) before `telamon_app_init`; that call overrides `crash:`. `telamon_framework_ui::crash_reporting()` tells which applies (see [Startup behaviour](startup.md)).
+
 ## Generated items
 
-The macro defines two `#[no_mangle]` functions, `telamon_framework_ui_app_info` and `telamon_framework_ui_required_ui`, which the crate calls. They are not part of the API: do not call or define them yourself. The macro also uses the hidden `ui_version_ok` function for the compile-time check.
+The macro defines three `#[no_mangle]` functions, `telamon_framework_ui_app_info`, `telamon_framework_ui_required_ui` and `telamon_framework_ui_crash_reporting`, which the crate calls. They are not part of the API: do not call or define them yourself. The macro also uses the hidden `ui_version_ok` function for the compile-time check.

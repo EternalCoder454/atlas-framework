@@ -55,7 +55,9 @@ trait Authority {
 pub enum Denied {
     /// The message has no sender (only possible on a peer-to-peer link).
     NoSender,
-    /// polkit couldn't be asked; the action is refused, never allowed.
+    /// polkit couldn't be asked (or was not: the caller's name or the action
+    /// id is not valid, see [`action_id_ok`] and [`unique_name_ok`]); the
+    /// action is refused, never allowed.
     Unavailable(String),
     /// polkit said no, or the user cancelled the password prompt.
     NotAuthorized { action: String },
@@ -87,7 +89,34 @@ pub async fn check(
     check_bus_name(conn, &sender, action, interactive).await
 }
 
-/// [`check`] for a caller known by its unique bus name (`:1.42`).
+/// The longest action id polkit accepts.
+const MAX_ACTION_CHARS: usize = 255;
+
+/// Whether `action` can be a polkit action id: 1 to 255 ASCII letters,
+/// digits and `.`, `-`, `_`, starting with a letter, like
+/// `net.eterneon.telamon.example.do-thing`. polkit would turn anything else
+/// down anyway; refusing it first keeps a caller-derived string (an action
+/// built from an argument) from ever reaching the bus.
+pub fn action_id_ok(action: &str) -> bool {
+    !action.is_empty()
+        && action.len() <= MAX_ACTION_CHARS
+        && action.as_bytes()[0].is_ascii_alphabetic()
+        && action
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_'))
+}
+
+/// Whether `name` is a unique bus name (`:1.42`), the only kind of name that
+/// stands for one connection for as long as it lives. A well-known name
+/// (`org.example.Service`) can change hands between the check and the act,
+/// and is not accepted as a subject.
+pub fn unique_name_ok(name: &str) -> bool {
+    name.len() <= 255 && zbus::names::UniqueName::try_from(name).is_ok()
+}
+
+/// [`check`] for a caller known by its unique bus name (`:1.42`). A name
+/// that is not a unique name, and an `action` that is not an action id
+/// ([`action_id_ok`]), are `Denied::Unavailable` without asking polkit.
 ///
 /// Runs on Tokio, with timers enabled (`#[tokio::main]` and
 /// `Builder::enable_all` do that). A non-interactive check gives up after
@@ -102,8 +131,11 @@ pub async fn check_bus_name(
     action: &str,
     interactive: bool,
 ) -> Result<(), Denied> {
-    let authority = AuthorityProxy::new(conn)
+    validate(sender, action)?;
+    // Building the proxy talks to the bus too: inside the same limit.
+    let authority = tokio::time::timeout(NON_INTERACTIVE_TIMEOUT, AuthorityProxy::new(conn))
         .await
+        .map_err(|_| Denied::Unavailable("polkit did not answer".into()))?
         .map_err(|e| Denied::Unavailable(e.to_string()))?;
     let subject = subject(sender);
     let details = HashMap::new();
@@ -152,6 +184,21 @@ pub async fn check_bus_name(
             action: action.to_string(),
         })
     }
+}
+
+/// The checks made before polkit is asked.
+fn validate(sender: &str, action: &str) -> Result<(), Denied> {
+    if !unique_name_ok(sender) {
+        return Err(Denied::Unavailable(
+            "polkit not asked: the caller is not a unique bus name".into(),
+        ));
+    }
+    if !action_id_ok(action) {
+        return Err(Denied::Unavailable(
+            "polkit not asked: not a polkit action id".into(),
+        ));
+    }
+    Ok(())
 }
 
 const NON_INTERACTIVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(25);
@@ -232,6 +279,66 @@ mod tests {
         assert_eq!(kind, "system-bus-name");
         assert_eq!(details.len(), 1);
         assert_eq!(details["name"], Value::from(":1.42"));
+    }
+
+    #[test]
+    fn only_unique_names_and_action_ids_are_asked_about() {
+        assert!(validate(":1.42", "net.eterneon.telamon.example.do-thing").is_ok());
+        // a well-known name can change owners; a pid or uid is not a name
+        for bad in [
+            "org.freedesktop.NetworkManager",
+            "1234",
+            "",
+            ":",
+            ":1.4 2",
+            ":1.4\0",
+            "pid:1234",
+            "unix-process",
+        ] {
+            let r = validate(bad, "net.eterneon.telamon.x");
+            assert!(matches!(r, Err(Denied::Unavailable(_))), "{bad:?}");
+        }
+        for bad in [
+            "",
+            "1.starts.with.digit",
+            "has space",
+            "new\nline",
+            "nul\0",
+            "a/b",
+            "ünï",
+            &format!("a{}", "b".repeat(255)),
+        ] {
+            let r = validate(":1.1", bad);
+            assert!(matches!(r, Err(Denied::Unavailable(_))), "{bad:?}");
+        }
+        assert!(action_id_ok(&format!("a{}", "b".repeat(254))));
+    }
+
+    mod props {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn prop_validators_never_panic_and_agree_with_their_rules(s in any::<String>()) {
+                if action_id_ok(&s) {
+                    prop_assert!(s.len() <= 255 && s.is_ascii());
+                    prop_assert!(s.as_bytes()[0].is_ascii_alphabetic());
+                    prop_assert!(!s.contains(['\0', '\n', ' ', '/', ':']));
+                }
+                if unique_name_ok(&s) {
+                    prop_assert!(s.starts_with(':'));
+                    prop_assert!(!s.contains(['\0', '\n', ' ', '/']));
+                }
+                prop_assert_eq!(validate(&s, &s).is_ok(), unique_name_ok(&s) && action_id_ok(&s));
+            }
+
+            #[test]
+            fn prop_real_looking_names_pass(n in "[0-9]{1,6}", m in "[0-9]{1,8}", a in "[a-z][a-z0-9.-]{0,40}") {
+                let sender = format!(":{n}.{m}");
+                prop_assert!(validate(&sender, &a).is_ok(), "{} {}", sender, a);
+            }
+        }
     }
 
     #[test]

@@ -26,6 +26,7 @@ Item {
             QQC2.SplitView.minimumWidth: 80
             color: Kirigami.Theme.alternateBackgroundColor
             QQC2.Label {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: "Sidebar"
             }
@@ -34,6 +35,7 @@ Item {
             QQC2.SplitView.fillWidth: true
             color: Kirigami.Theme.backgroundColor
             QQC2.Label {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: "Content"
             }
@@ -53,6 +55,7 @@ Item {
             QQC2.SplitView.preferredWidth: 100
             color: Kirigami.Theme.alternateBackgroundColor
             QQC2.Label {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: "List"
             }
@@ -61,6 +64,7 @@ Item {
             QQC2.SplitView.fillWidth: true
             color: Kirigami.Theme.backgroundColor
             QQC2.Label {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: "Details"
             }

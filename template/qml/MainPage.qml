@@ -313,6 +313,7 @@ TelamonPage {
                 QQC2.Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: parent.value === "running" ? qsTr("Running") : qsTr("Stopped")
+                    textFormat: Text.PlainText
                     opacity: 0.8
                 }
             }

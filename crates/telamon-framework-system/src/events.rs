@@ -111,12 +111,7 @@ pub fn append(path: &Path, event: &Event) -> io::Result<()> {
             ),
         ));
     }
-    let lock = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .mode(0o600)
-        .custom_flags(libc::O_NOFOLLOW)
-        .open(path.with_extension("jsonl.lock"))?;
+    let lock = crate::fsutil::open_lock_file(&path.with_extension("jsonl.lock"))?;
     // released when `lock` is dropped; waits 2 s at most
     crate::fsutil::lock_with_deadline(&lock, crate::fsutil::LOCK_WAIT)?;
     crate::fsutil::append_line(path, &line, 0o644)?;

@@ -98,6 +98,25 @@ endif()
 if(FAKE STREQUAL "lib")
     install(CODE "file(WRITE \"${CMAKE_INSTALL_PREFIX}/lib/libx.so\" \"x\")")
 endif()
+if(FAKE STREQUAL "connect")
+    # an install step that reaches out (to a listener the test runs on 127.0.0.1)
+    install(CODE [=[
+        execute_process(COMMAND python3 -c "import os, socket; socket.create_connection(('127.0.0.1', int(os.environ['FAKE_PORT'])), 2)"
+                        RESULT_VARIABLE r ERROR_QUIET)
+        if(NOT r EQUAL 0)
+            message(FATAL_ERROR "the build cannot reach 127.0.0.1")
+        endif()
+    ]=])
+endif()
+if(FAKE STREQUAL "env")
+    install(CODE [=[
+        file(WRITE "${CMAKE_INSTALL_PREFIX}/share/net.example.fake/env.txt"
+             "CARGO_NET_OFFLINE=$ENV{CARGO_NET_OFFLINE}\nLC_ALL=$ENV{LC_ALL}\nTZ=$ENV{TZ}\nSOURCE_DATE_EPOCH=$ENV{SOURCE_DATE_EPOCH}\nproxy=$ENV{https_proxy}\nZSTD_CLEVEL=$ENV{ZSTD_CLEVEL}\n")
+    ]=])
+endif()
+if(FAKE STREQUAL "touch-lock")
+    install(CODE "file(APPEND \"${CMAKE_CURRENT_SOURCE_DIR}/Cargo.lock\" \"# changed by the build\\n\")")
+endif()
 if(FAKE STREQUAL "force-prefix")
     set(CMAKE_INSTALL_PREFIX /usr/local/fake-forced CACHE PATH "" FORCE)
 endif()
@@ -221,6 +240,37 @@ else
     bad "a second build works" "$(tail -n 20 "$scratch/log")"
 fi
 
+# The same bytes whoever builds it and wherever: another checkout path, another
+# locale, time zone and umask, other zstd and Python settings in the environment.
+cp -r "$repo" "$scratch/another-checkout"
+out3=$scratch/out3
+if (cd "$scratch/another-checkout" && umask 077 && LC_ALL=tr_TR.UTF-8 LANG=de_DE.UTF-8 TZ=Pacific/Auckland PYTHONHASHSEED=random \
+        ZSTD_CLEVEL=3 ZSTD_NBTHREADS=8 PYTHONUTF8=0 HOME="$scratch" TMPDIR="$scratch" \
+        "$make_bundle" --out "$out3" --min-os-version 44 --build-dir "$scratch/build-out3") >"$scratch/log" 2>&1; then
+    check "a build from another path, locale, time zone, umask and zstd settings: archive is byte-identical" cmp "$archive" "$out3/net.example.fake-1.2.3-x86_64.tar.zst"
+    check "... and so is the manifest" cmp "$manifest" "$out3/telamon-bundle.json"
+else
+    bad "a build in another environment works" "$(tail -n 20 "$scratch/log")"
+fi
+if run_make "$scratch/out-env" --min-os-version 44 --cmake-arg -DFAKE=env &&
+    mkdir "$scratch/env-x" && zstd -dc -- "$scratch"/out-env/*.tar.zst | tar -xf - -C "$scratch/env-x" share/net.example.fake/env.txt; then
+    want="CARGO_NET_OFFLINE=true
+LC_ALL=C
+TZ=UTC
+SOURCE_DATE_EPOCH=1767225600
+proxy=http://127.0.0.1:9
+ZSTD_CLEVEL="
+    if [ "$(cat "$scratch/env-x/share/net.example.fake/env.txt")" = "$want" ]; then ok "the build runs with LC_ALL=C, TZ=UTC, SOURCE_DATE_EPOCH, CARGO_NET_OFFLINE, a dead proxy and no ZSTD_CLEVEL"
+    else bad "the build's environment" "$(cat "$scratch/env-x/share/net.example.fake/env.txt")"; fi
+else bad "a build that records its environment" "$(tail -n 8 "$scratch/log")"; fi
+# A name that is not ASCII, built under the C locale (the script sets it): kept, listed, verified and reproducible.
+nonascii=$(printf 'share/net.example.fake/caf\xc3\xa9-\xe4\xb8\xad.txt')
+if run_make "$scratch/out-u1" --min-os-version 44 --cmake-arg "-DFAKE_FILE=$nonascii" && run_make "$scratch/out-u2" --min-os-version 44 --cmake-arg "-DFAKE_FILE=$nonascii" --stage "$scratch/utf-stage" &&
+    python3 -I "$bundle_py" verify "$scratch"/out-u1/*.tar.zst "$scratch/out-u1/telamon-bundle.json" >/dev/null &&
+    zstd -dc -- "$scratch"/out-u1/*.tar.zst | tar --quoting-style=literal -tf - | grep -qxF "$nonascii" && cmp "$scratch"/out-u1/*.tar.zst "$scratch"/out-u2/*.tar.zst; then
+    ok "a non-ASCII file name is packed as UTF-8 (pax), verified and reproducible"
+else bad "a non-ASCII file name" "$(tail -n 8 "$scratch/log")"; fi
+
 # ---------------------------------------------------------------- version
 if run_make "$scratch/out-v" --min-os-version 44 --version v1.2.3 && [ -f "$scratch/out-v/net.example.fake-1.2.3-x86_64.tar.zst" ]; then
     ok "--version v1.2.3 (a tag) matches project VERSION"; else bad "--version v1.2.3 matches" "$(tail -n 5 "$scratch/log")"; fi
@@ -242,6 +292,102 @@ expect_fail() {
 }
 expect_fail "a version that is not the CMake version" "does not match project" --version 1.2.4
 expect_fail "a version that is not a version" "version .* dotted numbers" --version banana
+
+# ------------------------------------------------------ no network in the build
+# shellcheck disable=SC2016 # the ${} are CMake's
+# A CMake file that downloads is refused before anything is configured (comments are not read) ...
+for variant in 'include(FetchContent)\nFetchContent_Declare(x URL https://example.invalid/x.tgz)\nFetchContent_MakeAvailable(x)' \
+    'ExternalProject_Add(x GIT_REPOSITORY https://example.invalid/x.git)' \
+    'file(DOWNLOAD https://example.invalid/x.tgz x.tgz)' \
+    'execute_process(COMMAND curl -O https://example.invalid/x)' \
+    'execute_process(COMMAND wget https://example.invalid/x)' \
+    'execute_process(COMMAND git clone https://example.invalid/x.git)' \
+    'execute_process(COMMAND pip install requests)' \
+    'file(\n  DOWNLOAD https://example.invalid/x.tgz x.tgz)' \
+    'execute_process(COMMAND ${GIT_EXECUTABLE} clone https://example.invalid/x.git)'; do
+    rm -rf "$scratch/repo-dl"
+    cp -r "$repo" "$scratch/repo-dl"
+    printf '\n%b\n' "$variant" >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+    if (cd "$scratch/repo-dl" && "$make_bundle" --out "$scratch/out-dl" --min-os-version 44 --build-dir "$scratch/build-dl") >"$scratch/log" 2>&1; then
+        bad "a CMake file that downloads was accepted: ${variant%%$'\n'*}"
+    elif grep -q "downloads something at build time" "$scratch/log" && ! grep -q '^== configure' "$scratch/log"; then
+        ok "a CMake file that downloads is refused before configure: ${variant%%$'\n'*}"
+    else bad "a CMake file that downloads: ${variant%%$'\n'*}" "$(tail -n 5 "$scratch/log")"; fi
+done
+rm -rf "$scratch/repo-dl"
+cp -r "$repo" "$scratch/repo-dl"
+printf '\nmessage(STATUS "an app may link libcurl: find_package(CURL) and CURL::libcurl")\n' >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+if (cd "$scratch/repo-dl" && "$make_bundle" --out "$scratch/out-dl4" --min-os-version 44 --build-dir "$scratch/build-dl4") >"$scratch/log" 2>&1; then
+    ok "linking libcurl (find_package(CURL)) is not a download"; else bad "linking libcurl is not a download" "$(tail -n 5 "$scratch/log")"; fi
+rm -rf "$scratch/repo-dl"
+cp -r "$repo" "$scratch/repo-dl"
+printf '\n# curl, wget, git clone and FetchContent_Declare are only words in a comment here\n' >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+if (cd "$scratch/repo-dl" && "$make_bundle" --out "$scratch/out-dl2" --min-os-version 44 --build-dir "$scratch/build-dl2") >"$scratch/log" 2>&1; then
+    ok "a comment that names curl or FetchContent is not a download"; else bad "a comment is not a download" "$(tail -n 5 "$scratch/log")"; fi
+rm -rf "$scratch/repo-dl"
+cp -r "$repo" "$scratch/repo-dl"
+printf '\nfile(DOWNLOAD https://example.invalid/x.tgz x.tgz TIMEOUT 1)\n' >>"$scratch/repo-dl/apps/fake/CMakeLists.txt"
+if (cd "$scratch/repo-dl" && "$make_bundle" --allow-network --out "$scratch/out-dl3" --min-os-version 44 --build-dir "$scratch/build-dl3") >"$scratch/log" 2>&1 ||
+    ! grep -q "downloads something at build time" "$scratch/log"; then
+    ok "--allow-network skips that refusal"; else bad "--allow-network skips the refusal" "$(tail -n 5 "$scratch/log")"; fi
+rm -rf "$scratch/repo-dl" "$scratch/out-dl3"
+
+# ... and a build that reaches out anyway fails where the kernel lets a user make a network namespace
+# (unshare -rn; GitHub's hosted runners often do not): the test listens on 127.0.0.1 of THIS namespace.
+python3 -I -c "
+import socket, sys
+s = socket.socket(); s.bind(('127.0.0.1', 0)); s.listen(16)
+print(s.getsockname()[1], flush=True)
+while True:
+    c, _ = s.accept(); c.close()
+" >"$scratch/port" 2>/dev/null &
+listener=$!
+trap 'kill "$listener" 2>/dev/null; rm -rf -- "$scratch"' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$scratch/port" ] && break; sleep 0.2; done
+FAKE_PORT=$(cat "$scratch/port") && export FAKE_PORT
+if run_make "$scratch/out-net" --min-os-version 44 --allow-network --cmake-arg -DFAKE=connect; then
+    ok "(control) the connecting build works when the network is allowed"; else bad "(control) the connecting build" "$(tail -n 8 "$scratch/log")"; fi
+if unshare -rn true 2>/dev/null; then
+    expect_fail "a build that connects to the network" "the build cannot reach 127.0.0.1" --cmake-arg -DFAKE=connect
+else
+    ok "(skipped: this kernel gives a user no network namespace; make-bundle.sh says so)"
+    run_make "$scratch/out-net2" --min-os-version 44 && check "... and warns that it did not isolate the build" grep -q "cannot make a network namespace" "$scratch/log"
+fi
+kill "$listener" 2>/dev/null
+
+# The crates of a Rust app are the one download, and locked: cargo is a stand-in that records what it was asked.
+mkdir "$scratch/shim"
+cat >"$scratch/shim/cargo" <<'EOF'
+#!/bin/sh
+echo "cargo $* [CARGO_NET_OFFLINE=${CARGO_NET_OFFLINE:-}]" >>"$CARGO_LOG"
+case $1 in
+fetch) [ -z "${CARGO_SHIM_FAIL:-}" ] || exit 1 ;;
+locate-project) while [ $# -gt 0 ]; do [ "$1" = --manifest-path ] && { echo "$2"; exit 0; }; shift; done; exit 1 ;;
+*) exit 0 ;;
+esac
+EOF
+chmod +x "$scratch/shim/cargo"
+rm -rf "$scratch/repo-rs"
+cp -r "$repo" "$scratch/repo-rs"
+printf '[package]\nname = "fake"\nversion = "1.2.3"\n' >"$scratch/repo-rs/apps/fake/Cargo.toml"
+printf '# lock\n' >"$scratch/repo-rs/apps/fake/Cargo.lock"
+export CARGO_LOG=$scratch/cargo.log
+: >"$CARGO_LOG"
+if (cd "$scratch/repo-rs" && PATH="$scratch/shim:$PATH" "$make_bundle" --out "$scratch/out-rs" --min-os-version 44 --build-dir "$scratch/build-rs") >"$scratch/log" 2>&1; then
+    ok "an app with a Cargo.toml builds"
+    check "the crates are fetched once, with --locked, before configure" bash -c \
+        "[ \"\$(grep -c '^cargo fetch' '$CARGO_LOG')\" = 1 ] && grep -q '^cargo fetch --locked --manifest-path .*/apps/fake/Cargo.toml' '$CARGO_LOG' &&
+         grep -n '^== fetch\\|^== configure' '$scratch/log' | head -2 | tail -1 | grep -q configure"
+    check "the fetch is the only cargo call that may use the network" bash -c "! grep -v '^cargo fetch\\|^cargo locate-project' '$CARGO_LOG'"
+else bad "an app with a Cargo.toml builds" "$(tail -n 8 "$scratch/log")"; fi
+rm -rf "$scratch/out-rs"
+if (cd "$scratch/repo-rs" && CARGO_SHIM_FAIL=1 PATH="$scratch/shim:$PATH" "$make_bundle" --out "$scratch/out-rs" --min-os-version 44 --build-dir "$scratch/build-rs2") >"$scratch/log" 2>&1; then
+    bad "a failing cargo fetch --locked was ignored"; elif grep -q "cargo fetch --locked failed" "$scratch/log" && ! grep -q '^== configure' "$scratch/log"; then
+    ok "a cargo fetch --locked that fails (the lock is not up to date) stops the build"; else bad "a failing cargo fetch" "$(tail -n 5 "$scratch/log")"; fi
+if (cd "$scratch/repo-rs" && PATH="$scratch/shim:$PATH" "$make_bundle" --out "$scratch/out-rs" --min-os-version 44 --build-dir "$scratch/build-rs3" --cmake-arg -DFAKE=touch-lock) >"$scratch/log" 2>&1; then
+    bad "a build that changed Cargo.lock was accepted"; elif grep -q "the build changed .*Cargo.lock" "$scratch/log" && [ ! -e "$scratch/out-rs/telamon-bundle.json" ]; then
+    ok "a build that changes Cargo.lock is refused"; else bad "a build that changes Cargo.lock" "$(tail -n 5 "$scratch/log")"; fi
+rm -rf "$scratch/repo-rs" "$scratch/out-rs"
 
 # --------------------------------------------------------- tampered installs
 expect_fail "a .desktop Exec naming a missing binary" "bin/fake-missing is not an executable file in the bundle" --cmake-arg -DFAKE=bad-exec
@@ -465,6 +611,8 @@ for bad in ("telamon-other.notifyrc", "telamon-gatesx.notifyrc", "gates.notifyrc
     assert not b.notifyrc_ok("share/knotifications6/" + bad, "net.eterneon.telamon.gates"), bad
 print("units ok")
 EOF
+check "tools/test_bundle_rules.py: the archive, path and manifest rules against the Store's, with a seeded fuzzer" \
+    python3 -I "$here/test_bundle_rules.py" --cases "${TEST_BUNDLE_CASES:-2000}"
 check "the Store's reader rules hold as units (versions, ids, home page, links, names, key files, caps, notification names)" \
     python3 -I "$scratch/units.py" "$here"
 mkdir "$scratch/nover"

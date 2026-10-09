@@ -12,6 +12,8 @@
 #
 # Its API is a contract with every Telamon app: see "Compatibility" in
 # docs/DESIGN.md before renaming or removing anything.
+# QtNetwork comes with QtQml; the network policy (telamonnetwork.cpp) uses it directly.
+find_package(Qt6 6.11 REQUIRED COMPONENTS Network)
 # TelamonStyle is a QML singleton: the qmldir needs it marked before the module.
 set_source_files_properties(TelamonStyle.qml TelamonStatus.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # TelamonStatusView is Telamon.Ui's own: what the views show for a status.
@@ -112,6 +114,7 @@ qt_add_qml_module(telamonui
         TelamonAutocompleteField.qml
         TelamonFontPicker.qml
         fontfamilies.js
+        imagesource.js
         TelamonDropZone.qml
         TelamonOnboarding.qml
         TelamonPasswordStrength.qml
@@ -162,6 +165,7 @@ qt_add_qml_module(telamonui
         telamonwindowchrome.h telamonwindowchrome.cpp
         symbols.h symbols.cpp symbols/symbolnames.h
         legacyconfig.h legacyconfig.cpp
+        telamonnetwork.h telamonnetwork.cpp
         translations.cpp telamonuiplugin.cpp
 )
 # TelamonApp.uiVersion: the project version in the root CMakeLists.txt.
@@ -201,7 +205,7 @@ target_include_directories(telamontext PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/crates/telamon-framework-ui/include>)
 target_link_libraries(telamontext PUBLIC Qt6::Core Qt6::Gui)
 
-target_link_libraries(telamonui PRIVATE telamontext Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::DBus
+target_link_libraries(telamonui PRIVATE telamontext Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Network Qt6::DBus
     KF6::WindowSystem KF6::ConfigCore)
 
 # Every Telamon app loads the plugin, and nothing links it: the QML engine only
@@ -213,6 +217,14 @@ target_link_libraries(telamonui PRIVATE telamontext Qt6::Quick Qt6::QuickControl
 set_target_properties(telamonui telamontext PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON)
+# No RPATH or RUNPATH (see the top-level CMakeLists.txt): Qt's plugin helper
+# sets a relative one on the plugin (`$ORIGIN/../../../lib64`, which is no
+# directory of ours), and a build RPATH had 22 empty entries, each "the current
+# directory" to the loader.
+set_target_properties(telamonui PROPERTIES
+    SKIP_BUILD_RPATH ON
+    BUILD_WITH_INSTALL_RPATH OFF
+    INSTALL_RPATH "")
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(telamonui PRIVATE -ffunction-sections -fdata-sections)
     target_compile_options(telamontext PRIVATE -ffunction-sections -fdata-sections)

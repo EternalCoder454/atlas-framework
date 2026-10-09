@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.8
+Version:        2.0.9
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -28,6 +28,10 @@ BuildRequires:  cmake
 BuildRequires:  ninja-build
 BuildRequires:  gcc-c++
 BuildRequires:  desktop-file-utils
+# %check reads the hardening back from the built files (readelf from binutils,
+# which gcc-c++ brings in) and has annocheck confirm it.
+BuildRequires:  binutils
+BuildRequires:  annobin-annocheck
 BuildRequires:  cmake(Qt6Core)
 BuildRequires:  cmake(Qt6Gui)
 BuildRequires:  cmake(Qt6Qml)
@@ -166,6 +170,22 @@ for s in "%{_builddir}" %{?_telamon_build_cache:"%{_telamon_build_cache}"}; do
     fi
 done
 
+# The library and the programs carry the hardening Fedora's build flags give
+# them (docs/SECURITY.md, "Build hardening"): the plugin every Telamon app loads
+# is a shared object with full RELRO and BIND_NOW, no executable stack, no
+# RPATH and stack protectors, the programs are also position independent; readelf
+# says so, not the flags we meant. None holds a development-only variable.
+packaging/check-hardening.sh --lib --cxx \
+    --forbid TELAMON_UI_SYMBOLS_DIR --forbid TELAMON_UI_TRANSLATIONS_DIR --forbid TELAMON_UI_TEST_FIXED_ENV \
+    %{buildroot}%{_libdir}/qt6/qml/Telamon/Ui/libtelamonui.so
+packaging/check-hardening.sh --cxx %{buildroot}%{_bindir}/telamon-preview %{buildroot}%{_bindir}/telamon-symbols
+# annocheck agrees (PIE, BIND_NOW, RELRO, non-executable stack, CET, no writable
+# GOT, ...). The tests that need annobin notes or debuginfo, which this build
+# has neither of, are skipped: check-hardening.sh covers stack protectors.
+annocheck --ignore-unknown --skip-notes --skip-optimization --skip-pic --skip-stack-clash \
+    --skip-stack-prot --skip-fortify --skip-gaps \
+    %{buildroot}%{_libdir}/qt6/qml/Telamon/Ui/libtelamonui.so %{buildroot}%{_bindir}/telamon-preview %{buildroot}%{_bindir}/telamon-symbols
+
 # Every language catalogue (telamon-ui_<locale>.ts) must have shipped as a .qm:
 # a missing LinguistTools would otherwise build without translations, quietly.
 shopt -s nullglob
@@ -203,6 +223,19 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Fri Oct 09 2026 Telamon <atlas@eterneon.net> - 2.0.9-1
+- Secure phase: every text control in Telamon.Ui is plain text (a string that
+  starts with "<" was read as HTML), links open through TelamonPortal.openUrl,
+  QML engines refuse cleartext http: and ftp:, TelamonAvatar and
+  TelamonChoiceCard take https pictures only with allowRemote, NotesText keeps
+  only a release note's tags. New: crash: false in app! (and
+  telamon_app_set_crash_reporting) keeps an app out of Telamon crash reporting.
+  The crash sender needs a 2xx answer and TLS 1.2; the crates read state files
+  with caps and never block on a FIFO, settings values cannot forge keys,
+  notifications and polkit checks validate their input. The package build now
+  checks the hardening of the plugin and programs (readelf and annocheck).
+  See docs/SECURITY.md.
+
 * Thu Oct 08 2026 Telamon <atlas@eterneon.net> - 2.0.8-1
 - Fix: the crash report scrubber hides more. Secrets such as PGPASSWORD=,
   dbPassword=, pass=, an OAuth ?code=, Authorization: Bearer with several

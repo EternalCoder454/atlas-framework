@@ -42,5 +42,6 @@ Screen readers get a radio button named `text`, checked when chosen.
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `allowRemote` | `bool` | `false` | Lets an `https:` `source` load, for a trusted source. Without it only local files, `qrc:` and `image:` sources load; `http:` never does. |
 | `aspectRatio` | `real` | `1.6` | The picture's width over its height (1.6 is 16:10). A value that is not a finite number above 0 uses 1.6. |
-| `source` | `url` | empty | The picture, cropped to fill its frame with rounded corners. While it loads, and if it is missing or cannot be read, the empty frame shows. |
+| `source` | `url` | empty | The picture (a local file, a `qrc:` or `image:` url, or an `https:` url with `allowRemote`; any other source is refused), cropped to fill its frame with rounded corners. While it loads, and if it is missing or cannot be read, the empty frame shows. |

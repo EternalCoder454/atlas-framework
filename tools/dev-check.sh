@@ -39,6 +39,13 @@ for p in "$root" "$build"; do
         ;;
     esac
 done
+# An image name that starts with a dash would be read by podman as an option.
+case $image in
+-*)
+    echo "dev-check: TELAMON_DEV_IMAGE must be an image name, not an option: $image" >&2
+    exit 2
+    ;;
+esac
 # A relative path would be read by podman as a named volume.
 case $build in
 /*) ;;
@@ -103,7 +110,7 @@ mode=ro
 # --init reaps ninja and ctest children and forwards Ctrl-C; --name makes a
 # stray container easy to find (podman ps --filter name=telamon-dev-check).
 rc=0
-podman run --rm --init --name "telamon-dev-check-$key-$$" --security-opt label=disable \
+podman run --rm --init --name "telamon-dev-check-$key-$$" --ulimit core=0 --security-opt label=disable --security-opt no-new-privileges \
     -v "$root:/src:$mode" -v "$build:/b" "${gitmount[@]}" -w /src \
     -e PYTHONDONTWRITEBYTECODE=1 -e TELAMON_DEMO_FILTER="$filter" -e TRANSLATIONS="$translations" \
     -e JOBS="$jobs" -e CMAKE_BUILD_PARALLEL_LEVEL="$jobs" -e TELAMON_UPDATE_GOLDENS="${TELAMON_UPDATE_GOLDENS:-}" \

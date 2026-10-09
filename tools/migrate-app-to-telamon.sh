@@ -72,6 +72,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 TARGET = "2.0.0"
 TAG = "v" + TARGET
@@ -204,13 +205,22 @@ def parse_args(argv):
     return opts
 
 
+# The tree is someone else's checkout: its .git/config may name programs (core.fsmonitor) for git to run.
+GIT = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"]
+
+
+def shown(text):
+    """A name from the tree as it may be printed: control characters (a terminal escape) made harmless."""
+    return re.sub(r"[\x00-\x1f\x7f-\x9f]", "?", text)
+
+
 def git(root, *args):
-    return subprocess.run(["git", "-C", root, *args], capture_output=True, text=True)
+    return subprocess.run([*GIT, "-C", root, *args], capture_output=True, text=True)
 
 
 def list_files(root, in_git):
     if in_git:
-        r = subprocess.run(["git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        r = subprocess.run([*GIT, "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
                            capture_output=True)
         names = [n for n in r.stdout.decode("utf-8", "surrogateescape").split("\0") if n]
         return [n for n in names if os.path.isfile(os.path.join(root, n)) and not os.path.islink(os.path.join(root, n))]
@@ -219,7 +229,7 @@ def list_files(root, in_git):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS and d != "build" and not d.startswith("build-")]
         for f in files:
             p = os.path.join(base, f)
-            if not os.path.islink(p):
+            if not os.path.islink(p) and os.path.isfile(p):     # not a pipe or a device: reading one would hang
                 out.append(os.path.relpath(p, root))
     return out
 
@@ -401,12 +411,18 @@ def main():
             if opts["pin"]:
                 new = repin(rel, new, report, opts)
         if new != text and not opts["dry"]:
-            tmp = path + ".migrate-tmp"
+            # A new file with a name of its own (a link left at a fixed name would be written through), then renamed over.
             mode = os.stat(path).st_mode & 0o7777
-            with open(tmp, "w", encoding="utf-8", newline="") as f:
-                f.write(new)
-            os.chmod(tmp, mode)
-            os.replace(tmp, path)
+            fd, tmp = tempfile.mkstemp(prefix=".migrate-", dir=os.path.dirname(path))
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+                    f.write(new)
+                os.chmod(tmp, mode)
+                os.replace(tmp, path)
+            except BaseException:
+                if os.path.lexists(tmp):
+                    os.unlink(tmp)
+                raise
         for n, line in enumerate(new.split("\n"), 1):
             if re.search(r"atlas", line, re.I):
                 left.append((rel, n, line.strip()))
@@ -420,8 +436,8 @@ def main():
             report.renamed.append((rel, dst))
             if not opts["dry"]:
                 if os.path.exists(os.path.join(root, dst)):
-                    print(f"migrate-app-to-telamon: {dst} exists already; not renaming {rel}", file=sys.stderr)
-                elif in_git and git(root, "mv", rel, dst).returncode == 0:
+                    print(f"migrate-app-to-telamon: {shown(dst)} exists already; not renaming {shown(rel)}", file=sys.stderr)
+                elif in_git and git(root, "mv", "--", rel, dst).returncode == 0:
                     pass
                 else:
                     os.rename(os.path.join(root, rel), os.path.join(root, dst))
@@ -430,14 +446,14 @@ def main():
     total = 0
     for rel in sorted(report.files):
         kinds = ", ".join(f"{k} x{n}" for k, n in sorted(report.files[rel].items()))
-        print(f"{rel}: {kinds}")
+        print(f"{shown(rel)}: {kinds}")
         total += sum(report.files[rel].values())
     for src, dst in report.renamed:
-        print(f"{src}: {'would be renamed' if opts['dry'] else 'renamed'} to {dst}")
+        print(f"{shown(src)}: {'would be renamed' if opts['dry'] else 'renamed'} to {shown(dst)}")
     print(f"migrate-app-to-telamon: {verb} {total} place(s) in {len(report.files)} file(s), renamed {len(report.renamed)} file(s)")
 
     for note in report.notes:
-        print("note: " + note)
+        print("note: " + shown(note))
 
     # What still says atlas: the app's own names, mostly. Not an error.
     tokens = {}
@@ -451,7 +467,7 @@ def main():
         print("\nStill says \"atlas\" (names of the app itself stay until it is renamed; the repository name\n"
               "atlas-framework stays until GitHub renames it; look at the rest):")
         for tok, (count, f, n) in sorted(tokens.items(), key=lambda kv: (-kv[1][0], kv[0]))[:30]:
-            print(f"  {tok}  x{count}  (first: {f}:{n})")
+            print(f"  {shown(tok)}  x{count}  (first: {shown(f)}:{n})")
         if len(tokens) > 30:
             print(f"  ... and {len(tokens) - 30} more names")
 

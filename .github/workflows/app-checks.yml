@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       framework-ref:
-        description: Branch, tag or full 40-character commit sha of telamon-framework whose tools to use (a short sha cannot be fetched)
+        description: Full 40-character commit sha (best - it cannot be moved), tag or branch of telamon-framework whose tools to use (a short sha cannot be fetched); the tools read the app's files and run no part of the app
         type: string
         default: main
 
@@ -27,11 +27,19 @@ jobs:
         env:
           FRAMEWORK_REF: ${{ inputs.framework-ref }}
         run: |
+          # A ref name only (no option, no space, no control character).
+          if ! [[ $FRAMEWORK_REF =~ ^[A-Za-z0-9_][A-Za-z0-9._/-]*$ ]] || [[ $FRAMEWORK_REF == *..* ]]; then
+            echo "::error::framework-ref is not a branch, tag or commit name"; exit 1
+          fi
           # Outside the workspace, so the framework's own QML is not mistaken for the app's.
           dir="$RUNNER_TEMP/telamon-framework"
           git init -q "$dir"
           git -C "$dir" fetch -q --depth 1 -- https://github.com/EternalCoder454/atlas-framework "$FRAMEWORK_REF"
           git -C "$dir" checkout -q FETCH_HEAD
+          # A full sha is a promise about the content: it must be what came.
+          if [[ $FRAMEWORK_REF =~ ^[0-9a-f]{40}$ ]] && [ "$(git -C "$dir" rev-parse HEAD)" != "$FRAMEWORK_REF" ]; then
+            echo "::error::fetched $(git -C "$dir" rev-parse HEAD), not $FRAMEWORK_REF"; exit 1
+          fi
           echo "TELAMON_FRAMEWORK=$dir" >> "$GITHUB_ENV"
 
       - name: Design rule 6 (no default QQC2 or Kirigami buttons)
