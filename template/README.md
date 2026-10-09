@@ -53,6 +53,10 @@ defaults", says why):
 - Every workflow action is pinned by commit, tokens are read-only unless a job
   says why not, and checkouts do not keep the token. Keep it so: a new
   `uses:` is `owner/repo@<40-character sha> # vX.Y.Z`.
+- Crash reporting is on by default (reports are queued only when the user
+  turned them on for Telamon apps). An app that is not part of Telamon OS and
+  must never feed the Telamon crash relay says `crash: false` in `app!` (or
+  calls `telamon_app_set_crash_reporting(false)` before `telamon_app_init`).
 - Text from outside the app (file names, remote strings, error messages) is
   shown plain: `textFormat: Text.PlainText` on every `Text` and `Label` that can
   hold it, and only `https` links are opened (docs/SECURITY.md in the framework,

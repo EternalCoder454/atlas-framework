@@ -34,7 +34,7 @@
 
 use std::cell::Cell;
 use std::ffi::{CStr, CString, c_char, c_int};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Once, OnceLock};
 
 pub use telamon_framework_core;
@@ -44,23 +44,35 @@ pub use telamon_framework_system;
 /// Names the app for the framework: defines the one function it calls to
 /// learn who the app is. Use it once, in the app's library.
 ///
-/// An optional trailing `ui: "2.0.0"` names the oldest Telamon.Ui the app works
+/// An optional `ui: "2.0.0"` names the oldest Telamon.Ui the app works
 /// with (`major.minor.patch`, checked when the app is built). At startup the
 /// installed Telamon.Ui is checked against it, and an app that is too new for
 /// it says so in a window and exits.
+///
+/// An optional trailing `crash: false` keeps the app out of Telamon crash
+/// reporting altogether (for an app that is not part of Telamon OS and must
+/// never feed its crash relay): no panic hook, no report for a fatal Qt
+/// message, whatever the user chose for Telamon apps. Logging, settings and
+/// the rest of the start are unchanged. `crash: true` is the default.
 #[macro_export]
 macro_rules! app {
-    (name: $name:expr, id: $id:expr, repo: $repo:expr, ui: $ui:expr $(,)?) => {
+    (name: $name:expr, id: $id:expr, repo: $repo:expr, ui: $ui:expr, crash: $crash:expr $(,)?) => {
         const _: () = ::core::assert!(
             $crate::ui_version_ok($ui),
             "ui: must be a version like \"2.0.0\""
         );
-        $crate::app!(@define $name, $id, $repo, $ui);
+        $crate::app!(@define $name, $id, $repo, $ui, $crash);
+    };
+    (name: $name:expr, id: $id:expr, repo: $repo:expr, ui: $ui:expr $(,)?) => {
+        $crate::app!(name: $name, id: $id, repo: $repo, ui: $ui, crash: true);
+    };
+    (name: $name:expr, id: $id:expr, repo: $repo:expr, crash: $crash:expr $(,)?) => {
+        $crate::app!(@define $name, $id, $repo, "", $crash);
     };
     (name: $name:expr, id: $id:expr, repo: $repo:expr $(,)?) => {
-        $crate::app!(@define $name, $id, $repo, "");
+        $crate::app!(@define $name, $id, $repo, "", true);
     };
-    (@define $name:expr, $id:expr, $repo:expr, $ui:expr) => {
+    (@define $name:expr, $id:expr, $repo:expr, $ui:expr, $crash:expr) => {
         #[doc(hidden)]
         #[unsafe(no_mangle)]
         pub fn telamon_framework_ui_app_info() -> $crate::AppInfo {
@@ -71,6 +83,12 @@ macro_rules! app {
         #[unsafe(no_mangle)]
         pub fn telamon_framework_ui_required_ui() -> &'static str {
             $ui
+        }
+
+        #[doc(hidden)]
+        #[unsafe(no_mangle)]
+        pub fn telamon_framework_ui_crash_reporting() -> bool {
+            $crash
         }
     };
 }
@@ -103,6 +121,47 @@ unsafe extern "Rust" {
     safe fn telamon_framework_ui_app_info() -> AppInfo;
     /// Defined by the app's `app!`: "" when it names no Telamon.Ui version.
     safe fn telamon_framework_ui_required_ui() -> &'static str;
+    /// Defined by the app's `app!`: whether the app takes part in crash reporting.
+    safe fn telamon_framework_ui_crash_reporting() -> bool;
+}
+
+/// 0: not set by `telamon_app_set_crash_reporting`, 1: on, 2: off.
+static CRASH_OVERRIDE: AtomicU8 = AtomicU8::new(0);
+
+/// Whether this app takes part in crash reporting: the C++ call
+/// `telamon_app_set_crash_reporting` if there was one, else the `crash:` of its
+/// `app!` (on by default). Off means no panic hook and no report for a fatal Qt
+/// message; the user's own switch ([`telamon_framework_system::crash::Settings`])
+/// is a second, separate condition.
+pub fn crash_reporting() -> bool {
+    crash_reporting_choice(
+        CRASH_OVERRIDE.load(Ordering::SeqCst),
+        telamon_framework_ui_crash_reporting(),
+    )
+}
+
+fn crash_reporting_choice(call: u8, app: bool) -> bool {
+    match call {
+        1 => true,
+        2 => false,
+        _ => app,
+    }
+}
+
+static START: Once = Once::new();
+
+/// C++: opts the app in (`true`) or out (`false`) of crash reporting, over the
+/// `crash:` of its `app!`. Call it before `telamon_app_init`; after that it is
+/// logged and ignored, because the panic hook is already in place.
+#[unsafe(no_mangle)]
+extern "C" fn telamon_app_set_crash_reporting(enabled: bool) {
+    if START.is_completed() {
+        log::warn!(
+            "telamon_app_set_crash_reporting({enabled}) came after telamon_app_init: ignored"
+        );
+        return;
+    }
+    CRASH_OVERRIDE.store(if enabled { 1 } else { 2 }, Ordering::SeqCst);
 }
 
 /// The Telamon.Ui version the app's `app!` asks for (`ui:`), if any.
@@ -116,14 +175,16 @@ pub fn app_info() -> &'static AppInfo {
     APP.get_or_init(telamon_framework_ui_app_info)
 }
 
-/// The logger and the crash hook. `telamon_app_init` calls it; a Rust test or
-/// tool may call it directly. Only the first call does anything.
+/// The logger and the crash hook (not for an app with `crash: false`).
+/// `telamon_app_init` calls it; a Rust test or tool may call it directly. Only
+/// the first call does anything.
 pub fn start() {
-    static START: Once = Once::new();
     START.call_once(|| {
         let app = app_info();
         telamon_framework_core::log::init(app);
-        telamon_framework_system::crash::install(app.clone());
+        if crash_reporting() {
+            telamon_framework_system::crash::install(app.clone());
+        }
     });
 }
 
@@ -145,6 +206,13 @@ unsafe extern "C" fn telamon_framework_ui_fatal(msg: *const c_char) {
     static STARTED: AtomicBool = AtomicBool::new(false);
     static DONE: AtomicBool = AtomicBool::new(false);
     thread_local!(static IN_FATAL: Cell<bool> = const { Cell::new(false) });
+    // An app that keeps out of crash reporting only logs the message.
+    if !crash_reporting() {
+        if !msg.is_null() {
+            log::error!("{}", unsafe { CStr::from_ptr(msg) }.to_string_lossy());
+        }
+        return;
+    }
     // During thread exit the flag may be gone: treat that as re-entry.
     if IN_FATAL.try_with(|f| f.replace(true)).unwrap_or(true) {
         return; // a fatal while saving this thread's report
@@ -230,6 +298,16 @@ mod tests {
         assert_eq!(field(5), "");
         assert_eq!(field(-1), "");
         assert_eq!(required_ui(), None);
+    }
+
+    #[test]
+    fn crash_reporting_choice_is_the_call_then_the_app() {
+        assert!(crash_reporting_choice(0, true));
+        assert!(!crash_reporting_choice(0, false));
+        assert!(crash_reporting_choice(1, false));
+        assert!(!crash_reporting_choice(2, true));
+        // This test app names no `crash:`: on.
+        assert!(telamon_framework_ui_crash_reporting());
     }
 
     #[test]
