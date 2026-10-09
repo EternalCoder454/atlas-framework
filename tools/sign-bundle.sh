@@ -95,7 +95,7 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$dir" ] || die "needs the directory of the bundle (see --help)"
 [ -z "$pub" ] || [[ $pub =~ ^RW[A-Za-z0-9+/]{54}$ ]] || die "--public-key is the 56 characters of a minisign public key, starting RW"
-[ -d "$dir" ] && [ ! -L "$dir" ] || die "$dir is not a directory"
+if [ ! -d "$dir" ] || [ -L "$dir" ]; then die "$dir is not a directory"; fi
 [ "$mode" != sign ] || [[ $want_sha =~ ^[0-9a-f]{64}$ ]] || die "--sign-only needs --manifest-sha256 <the hash the verify step printed>"
 [ "$mode" = sign ] || [ -z "$want_sha" ] || die "--manifest-sha256 goes with --sign-only"
 [ "$mode" != verify ] || [ -z "$pub" ] || die "--public-key goes with the signing"
@@ -139,8 +139,9 @@ for f in "$dir"/*; do
 done
 shopt -u nullglob dotglob
 [ "${#archives[@]}" -eq 1 ] || die "$dir must hold one .tar.zst archive, it holds ${#archives[@]}"
-[ -f "$dir/$MANIFEST" ] && [ ! -L "$dir/$MANIFEST" ] && [ -f "${archives[0]}" ] && [ ! -L "${archives[0]}" ] ||
+if [ ! -f "$dir/$MANIFEST" ] || [ -L "$dir/$MANIFEST" ] || [ ! -f "${archives[0]}" ] || [ -L "${archives[0]}" ]; then
     die "$dir must hold the archive and $MANIFEST as plain files"
+fi
 [ "${#others[@]}" -eq 0 ] || die "$dir holds a file that is not part of the bundle: ${others[0]##*/}"
 manifest=$dir/$MANIFEST
 sig=$dir/$MANIFEST.minisig
