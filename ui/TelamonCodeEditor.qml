@@ -389,6 +389,10 @@ FocusScope {
         anchors.margins: control.framed ? 1 : 0
         anchors.topMargin: (control.framed ? 1 : 0) + control._bodyTop
         clip: true
+        // Code reads left to right, with its numbers on the left, in any
+        // language of the interface.
+        LayoutMirroring.enabled: false
+        LayoutMirroring.childrenInherit: true
 
         // Behind the text: the tint of the marked lines and of the caret's row.
         TelamonCodePaintPrivate {

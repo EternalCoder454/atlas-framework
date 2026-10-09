@@ -28,6 +28,7 @@
 #include <QHash>
 #include <QList>
 #include <QObject>
+#include <QPointer>
 #include <QTextBlock>
 #include <QTextCharFormat>
 #include <QTextCursor>
@@ -90,7 +91,7 @@ private:
     void invalidateAll();
     void flushDirty();
 
-    QTextDocument *m_doc;
+    QPointer<QTextDocument> m_doc;
     bool m_enabled = true;
     // Bumped to make every line stale: its state (a new definition or a new
     // text) or its colours (new styles).

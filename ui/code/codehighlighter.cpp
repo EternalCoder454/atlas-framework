@@ -62,7 +62,7 @@ TelamonCodeHighlighter::TelamonCodeHighlighter(QTextDocument *document, QObject 
     connect(&m_timer, &QTimer::timeout, this, [this] { run(SliceNs); });
     if (m_doc) {
         connect(m_doc, &QTextDocument::contentsChange, this, &TelamonCodeHighlighter::onContentsChange);
-        m_resume = QTextCursor(m_doc);
+        m_resume = QTextCursor(m_doc.data());
     }
 }
 
@@ -128,7 +128,7 @@ void TelamonCodeHighlighter::invalidateAll()
     ++m_stateGen;
     ++m_formatGen;
     if (m_doc) {
-        m_resume = QTextCursor(m_doc);
+        m_resume = QTextCursor(m_doc.data());
     }
     kick();
 }
