@@ -197,6 +197,7 @@ Every type has a page. The groups below are the sidebar sections.
 
 - [TelamonLabel](telamon-label.md): Text in one of the Telamon looks.
 - [TelamonCodeView](telamon-code-view.md): Read-only monospace text with an optional copy button.
+- [TelamonConsoleView](telamon-console-view.md): Read-only monospace view for a command's streaming output, with ANSI colours and follow-tail.
 - [TelamonShortcutLabel](telamon-shortcut-label.md): A keyboard shortcut drawn as keycaps.
 - [NotesText](notes-text.md): Release notes from a safe HTML fragment.
 - [FindBar](find-bar.md): A find and replace bar.
