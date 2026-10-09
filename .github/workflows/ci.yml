@@ -141,6 +141,11 @@ jobs:
       - name: Clippy
         run: $RUN cargo clippy --locked --workspace --all-features --all-targets -- -D warnings
 
+      # The property tests (prop_*) of the parsers that read what other programs
+      # send, with far more cases than a local run: docs/SECURITY.md, "Fuzzing".
+      - name: Property tests (20000 cases)
+        run: $RUN env PROPTEST_CASES=20000 cargo test --locked --workspace --all-features -- prop_
+
       - name: Baseline for cargo-semver-checks
         id: baseline
         env:
@@ -402,7 +407,10 @@ jobs:
           persist-credentials: false
 
       - name: shellcheck
-        run: shellcheck tools/make-bundle.sh tools/test-make-bundle.sh
+        run: shellcheck tools/make-bundle.sh tools/test-make-bundle.sh packaging/*.sh
+
+      - name: Hardening check, tested against programs built with and without each protection
+        run: packaging/test-check-hardening.sh
 
       - name: Test the bundle tools
         run: tools/test-make-bundle.sh

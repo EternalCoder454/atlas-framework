@@ -25,13 +25,38 @@ Telamon.Ui gives it the look and an About page. It builds on its own.
    comment shows how; the tag is what the framework's update pull requests
    move forward), and add `telamon-framework-system` or
    `telamon-framework-flatpak` only if the app needs them.
-4. Replace `vX.Y.Z` in `.github/workflows/telamon.yml` (Telamon.Ui rule checks and
-   desktop-file validation on every push) with the tag `Cargo.toml` uses.
-   The framework's update pull requests move `Cargo.toml`; move the workflow by hand.
+4. In `.github/workflows/telamon.yml` (Telamon.Ui rule checks and desktop-file
+   validation on every push) replace `<FRAMEWORK_SHA>` (twice) with the full
+   40-character commit sha of the tag `Cargo.toml` uses (`git ls-remote
+   https://github.com/EternalCoder454/atlas-framework 'refs/tags/vX.Y.Z^{}'`),
+   and `vX.Y.Z` with the tag. The framework's update pull requests move
+   `Cargo.toml`; move the workflow by hand.
 5. Give the app's RPM `Requires: telamon-ui` and `BuildRequires: telamon-ui`
    `>= 1.4.0` (or whatever `ui:` in `src/lib.rs` says; keep the two the same).
 6. Add properties and invokables to `src/backend.rs`, pages to `qml/` and to the
    `QML_FILES` list in `CMakeLists.txt`.
+
+## Secure by default
+
+What a copied app inherits (telamon-framework's docs/SECURITY.md, "Template
+defaults", says why):
+
+- `CMakeLists.txt` builds with the hardening flags of Fedora's packages (stack
+  protectors, `_FORTIFY_SOURCE=3`, `_GLIBCXX_ASSERTIONS`, position independent
+  code, full RELRO with `BIND_NOW`, no executable stack) however it is built,
+  and the release profile checks arithmetic overflow. An RPM of the app should
+  also run `check-hardening.sh` from telamon-framework's `packaging/` in its
+  `%check`.
+- `deny.toml` and `.github/workflows/security.yml` run cargo-deny and
+  cargo-audit on every change to the dependencies and every week; Dependabot
+  (`.github/dependabot.yml`) moves the pinned actions and the crates.
+- Every workflow action is pinned by commit, tokens are read-only unless a job
+  says why not, and checkouts do not keep the token. Keep it so: a new
+  `uses:` is `owner/repo@<40-character sha> # vX.Y.Z`.
+- Text from outside the app (file names, remote strings, error messages) is
+  shown plain: `textFormat: Text.PlainText` on every `Text` and `Label` that can
+  hold it, and only `https` links are opened (docs/SECURITY.md in the framework,
+  "Untrusted text in the UI").
 
 ## Ship it as a Telamon native app
 

@@ -1,0 +1,60 @@
+# cargo-deny: what may be in the dependency tree of a Telamon app
+# (docs/SECURITY.md, "Template defaults"). This file comes with the app
+# template: copy it next to the app's Cargo.toml. CI runs `cargo deny check` on
+# every change to the dependencies and every week
+# (.github/workflows/security.yml in the template); locally:
+#   cargo install --locked cargo-deny && cargo deny check
+
+[graph]
+# Telamon OS images are x86_64 and aarch64 Fedora; crates only for other
+# systems are not looked at.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+]
+
+[advisories]
+version = 2
+# A known vulnerability, an unmaintained crate or a yanked version in the lock
+# file fails the check. Ignore an advisory only with the reason and a date to
+# look at it again, in `ignore = [{ id = "RUSTSEC-...", reason = "..." }]`.
+yanked = "deny"
+unmaintained = "all"
+ignore = []
+
+[licenses]
+version = 2
+# The framework is MIT; these are the licences its dependencies come under.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Two versions of one crate are common in a tree this size (zbus, cxx-qt and
+# their dependencies); they are listed, not refused.
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+deny = [
+    # TLS is not done in Rust by the framework (see docs/SECURITY.md, "Crash
+    # reports"); a TLS library in an app's tree would be a surprise worth a review.
+    { crate = "openssl", reason = "TLS is not done in Rust here; a library in the tree is new attack surface" },
+    { crate = "openssl-sys", reason = "see openssl" },
+    { crate = "native-tls", reason = "see openssl" },
+]
+
+[sources]
+# crates.io, and the framework's repository (an app takes the telamon-framework
+# crates from git, pinned to a release tag). Anything else is a decision.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = ["https://github.com/EternalCoder454/atlas-framework"]

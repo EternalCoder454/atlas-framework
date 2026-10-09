@@ -49,6 +49,18 @@ WRITERS = {
         {"contents"},
         "attaches the bundle to the release; runs nothing but gh",
     ),
+    ".github/workflows/security.yml:audit": (
+        {"checks"},
+        "rustsec/audit-check reports its result as a check run; nothing is checked out beyond the repository",
+    ),
+    ".github/workflows/security.yml:audit-template": (
+        {"checks"},
+        "the same, for the template's lock file",
+    ),
+    "template/.github/workflows/security.yml:audit": (
+        {"checks"},
+        "rustsec/audit-check reports its result as a check run",
+    ),
     "template/.github/workflows/bundle.yml:bundle": (
         {"contents"},
         "the caller grants what the reusable workflow's attach job may use",

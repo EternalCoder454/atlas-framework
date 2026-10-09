@@ -9,12 +9,14 @@ permissions:
 
 jobs:
   telamon:
-    # Pinned to a framework release tag, like telamon-framework-ui in Cargo.toml
-    # (Cargo.toml). Replace vX.Y.Z with the same tag in both places below, and
-    # move it by hand when the app moves to a newer framework release.
-    uses: EternalCoder454/atlas-framework/.github/workflows/app-checks.yml@vX.Y.Z
+    # Pinned by commit, like the actions below and like bundle.yml: a tag can be
+    # moved, a commit cannot. Replace <FRAMEWORK_SHA> (twice) with the full
+    # 40-character commit sha of the telamon-framework release that
+    # telamon-framework-ui in Cargo.toml is pinned to, and vX.Y.Z with its tag;
+    # move all three by hand when the app moves to a newer framework release.
+    uses: EternalCoder454/atlas-framework/.github/workflows/app-checks.yml@<FRAMEWORK_SHA> # vX.Y.Z
     with:
-      framework-ref: vX.Y.Z
+      framework-ref: <FRAMEWORK_SHA>
 
   desktop-file:
     runs-on: ubuntu-latest
