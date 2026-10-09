@@ -576,6 +576,22 @@ TelamonCommandPalette.property query: QString
 TelamonCommandPalette.property recentCount: int
 TelamonCommandPalette.signal triggered(QObject* action)
 TelamonCommandPalette.type
+TelamonConsoleView.base QQuickItem
+TelamonConsoleView.method append(QString text): QVariant
+TelamonConsoleView.method clear(): QVariant
+TelamonConsoleView.method copy(): QVariant
+TelamonConsoleView.method plainText(): QString
+TelamonConsoleView.method scrollToEnd(): QVariant
+TelamonConsoleView.method selectAll(): QVariant
+TelamonConsoleView.property follow: bool
+TelamonConsoleView.property following: bool [readonly]
+TelamonConsoleView.property framed: bool
+TelamonConsoleView.property inset: bool
+TelamonConsoleView.property lineCount: int [readonly]
+TelamonConsoleView.property maximumLines: int
+TelamonConsoleView.property selectedText: QString [readonly]
+TelamonConsoleView.property wrap: bool
+TelamonConsoleView.type
 TelamonCopyButton.base QQuickAbstractButton
 TelamonCopyButton.enum TipSide: Below = 0
 TelamonCopyButton.enum TipSide: End = 2

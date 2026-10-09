@@ -609,6 +609,14 @@ Shown in a drop-down list when what was typed in its filter matches no choice</e
     </message>
 </context>
 <context>
+    <name>TelamonConsoleView</name>
+    <message>
+        <location filename="../TelamonConsoleView.qml" line="216"/>
+        <source>Console output</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>TelamonCopyButton</name>
     <message>
         <location filename="../TelamonCopyButton.qml" line="26"/>

@@ -59,7 +59,7 @@ Item {
         },
         {
             title: qsTr("Text"),
-            types: ["TelamonLabel", "NotesText", "TelamonCodeView", "TelamonShortcutLabel"]
+            types: ["TelamonLabel", "NotesText", "TelamonCodeView", "TelamonCodeEditor", "TelamonConsoleView", "TelamonShortcutLabel"]
         },
         {
             title: qsTr("Style and services"),
