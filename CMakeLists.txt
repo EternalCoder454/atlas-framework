@@ -20,6 +20,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 include(GNUInstallDirs)
+
+# No RPATH or RUNPATH in anything we build or install. The libraries are the
+# system's, and CMake's build RPATH came out as 22 empty entries, each of which
+# the dynamic loader reads as "the current directory": libtelamonui.so, loaded
+# into every Telamon app, would have searched the app's working directory for
+# its Qt libraries first. packaging/check-hardening.sh fails the package build
+# if one comes back.
+set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+set(CMAKE_INSTALL_RPATH "")
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets DBus)
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)

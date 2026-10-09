@@ -217,6 +217,14 @@ target_link_libraries(telamonui PRIVATE telamontext Qt6::Quick Qt6::QuickControl
 set_target_properties(telamonui telamontext PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON)
+# No RPATH or RUNPATH (see the top-level CMakeLists.txt): Qt's plugin helper
+# sets a relative one on the plugin (`$ORIGIN/../../../lib64`, which is no
+# directory of ours), and a build RPATH had 22 empty entries, each "the current
+# directory" to the loader.
+set_target_properties(telamonui PROPERTIES
+    SKIP_BUILD_RPATH ON
+    BUILD_WITH_INSTALL_RPATH OFF
+    INSTALL_RPATH "")
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(telamonui PRIVATE -ffunction-sections -fdata-sections)
     target_compile_options(telamontext PRIVATE -ffunction-sections -fdata-sections)
