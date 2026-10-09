@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 1476f39a40b6da1b4e49722168b67c2bb2edccc208e0d20b8e20c60f1775c6e1 # shrinks to e = Object {"COREDUMP_COMM": String("foo"), "COREDUMP_EXE": String(""), "COREDUMP_SIGNAL_NAME": String("SIGSEGV"), "COREDUMP_TIMESTAMP": String("1790000000000000"), "COREDUMP_UID": String("1000"), "MESSAGE": String("Process 1 (foo) dumped core.\n\n#0  0x1 f (libc.so + 0x1)"), "_COMM": String("systemd-coredum"), "_SYSTEMD_UNIT": String("systemd-coredump@48-57347-3760438_7887167-0.service"), "_UID": String("1000")}
+cc 13da9672d7d150e3634fa10b3bb719d45f3e6bb77cb855d3bf63fa3d11ceba1f # shrinks to time = "."
