@@ -107,6 +107,24 @@ Item {
             compare(got, ["recent", "/a/two.txt", 1]);
         }
 
+        function test_model_row_text_is_data_not_a_mnemonic() {
+            // "&" in a file name is an "&": the menus read "&x" as Alt+X and
+            // "&&" as one "&", so a data row doubles it.
+            const m = createTemporaryObject(menuComp, root, {
+                menus: [{ title: "File", actions: [{ id: "r", title: "Recent", model: ["R&D notes.txt", "a && b", "&Delete all"], emptyText: "Q&A" },
+                        { id: "e", title: "Empty", model: [], emptyText: "Q&A" }] }]
+            });
+            const r = m._menu.menuAt(0).menuAt(0);
+            compare(r.itemAt(0).text, "R&&D notes.txt");
+            compare(r.itemAt(1).text, "a &&&& b");
+            compare(r.itemAt(2).text, "&&Delete all");
+            compare(r.itemAt(0)._plainText, "R&D notes.txt");
+            compare(r.itemAt(2)._plainText, "&Delete all");
+            compare(m._menu.menuAt(0).menuAt(1).itemAt(0).text, "Q&&A");
+            // An Action row keeps its own text and mnemonic.
+            compare(m._rowText(withMenu, "text"), "&Tools");
+        }
+
         function test_string_model_and_empty_text() {
             const m = createTemporaryObject(menuComp, root, {
                 menus: [{ title: "File", actions: [{ id: "r", title: "Recent", model: ["x.txt", "y.txt"], trail: [clearA] },

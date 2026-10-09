@@ -469,6 +469,7 @@ TelamonAutocompleteField.signal accepted(QString text)
 TelamonAutocompleteField.type
 TelamonAvatar.base QQuickItem
 TelamonAvatar.property accessibleName: QString
+TelamonAvatar.property allowRemote: bool
 TelamonAvatar.property name: QString
 TelamonAvatar.property size: double
 TelamonAvatar.property source: QUrl
@@ -535,6 +536,7 @@ TelamonChipGroup.property exclusive: bool
 TelamonChipGroup.property spacing: double
 TelamonChipGroup.type
 TelamonChoiceCard.base QQuickAbstractButton
+TelamonChoiceCard.property allowRemote: bool
 TelamonChoiceCard.property aspectRatio: double
 TelamonChoiceCard.property source: QUrl
 TelamonChoiceCard.type

@@ -112,6 +112,7 @@ qt_add_qml_module(telamonui
         TelamonAutocompleteField.qml
         TelamonFontPicker.qml
         fontfamilies.js
+        imagesource.js
         TelamonDropZone.qml
         TelamonOnboarding.qml
         TelamonPasswordStrength.qml

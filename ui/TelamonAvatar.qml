@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Effects
 import org.kde.kirigami as Kirigami
+import "imagesource.js" as ImageSource
 
 // A round picture of a person or an account: the image at `source`, or, when
 // there is none or it fails to load, the initials of `name` ("Ada Lovelace"
@@ -16,10 +17,18 @@ import org.kde.kirigami as Kirigami
 // is cropped to a circle with a mask, which needs a GPU backend; on Qt
 // Quick's software backend (which draws no mask at all) it is shown square. The accessible name is
 // `accessibleName`: `name`, or "Profile picture" when there is none.
+//
+// A source from outside (a picture a user chose) loads a local file, a qrc:
+// or image: resource; an https: address only with `allowRemote`; nothing else.
 Item {
     id: root
 
     property url source
+    // Lets an https: `source` load, for a trusted source. Without it only
+    // local files, qrc: and image: sources load; http: never does.
+    property bool allowRemote: false
+    // The url the picture loads: `source` after the check, or "".
+    readonly property string _safeSource: ImageSource.vetted(root.source, root.allowRemote)
     property string name
     // Shown when there is no image and no name (Symbols.Person by default).
     property int symbol: Symbols.Person
@@ -82,7 +91,7 @@ Item {
     Image {
         id: image
         anchors.fill: parent
-        source: root.source
+        source: root._safeSource
         visible: status === Image.Ready
         asynchronous: true
         cache: true
