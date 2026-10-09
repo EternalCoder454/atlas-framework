@@ -134,6 +134,7 @@ qt_add_qml_module(telamonui
         TelamonExpandableSection.qml
         TelamonTreeView.qml
         TelamonCodeView.qml
+        TelamonCodeEditor.qml
         TelamonCopyButton.qml
         TelamonCommandPalette.qml
         TelamonStat.qml
@@ -147,6 +148,9 @@ qt_add_qml_module(telamonui
     SOURCES
         livechart.h livechart.cpp
         text/telamontextview.h text/telamontextview.cpp
+        code/codehighlighter.h code/codehighlighter.cpp
+        code/codecore.h code/codecore.cpp
+        code/codepaint.h code/codepaint.cpp
         telamonsparkline.h telamonsparkline.cpp
         repaintarea.h repaintarea.cpp
         accessibilitystate.h accessibilitystate.cpp
@@ -205,6 +209,8 @@ target_include_directories(telamontext PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/crates/telamon-framework-ui/include>)
 target_link_libraries(telamontext PUBLIC Qt6::Core Qt6::Gui)
 
+# The code editor's headers (ui/code), found by the generated QML type registrations.
+target_include_directories(telamonui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/code)
 target_link_libraries(telamonui PRIVATE telamontext Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Network Qt6::DBus
     KF6::WindowSystem KF6::ConfigCore KF6::SyntaxHighlighting)
 
