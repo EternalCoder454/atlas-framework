@@ -85,6 +85,7 @@ Item {
                     }
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     text: qsTr("Filled")
                 }
                 TelamonSwitch {
@@ -95,6 +96,7 @@ Item {
             }
 
             QQC2.Label {
+                textFormat: Text.PlainText
                 Layout.leftMargin: Kirigami.Units.largeSpacing * 2
                 text: root.shown.length === 0 ? qsTr("No symbol matches “%1”.").arg(search.query) : root.shown.length === 1 ? qsTr("1 symbol") : qsTr("%1 symbols").arg(root.shown.length.toLocaleString(Qt.locale(), "f", 0))
                 opacity: 0.6
@@ -139,6 +141,7 @@ Item {
                             weight: root.weight
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             Layout.leftMargin: Kirigami.Units.smallSpacing
                             Layout.rightMargin: Kirigami.Units.smallSpacing
@@ -175,6 +178,7 @@ Item {
                 }
                 // telamon-lint: allow the gallery shows Kirigami.Heading as is
                 Kirigami.Heading {
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     Layout.topMargin: Kirigami.Units.largeSpacing
                     horizontalAlignment: Text.AlignHCenter
@@ -183,6 +187,7 @@ Item {
                     wrapMode: Text.Wrap
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignHCenter
                     text: "Symbols." + Symbols.key(Symbols.codepoint(root.selected))
@@ -191,6 +196,7 @@ Item {
                 }
 
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.topMargin: Kirigami.Units.gridUnit
                     text: qsTr("Weight %1").arg(root.weight)
                 }
@@ -213,6 +219,7 @@ Item {
                     color: TelamonStyle.alpha(Kirigami.Theme.textColor, 0.06)
                     QQC2.Label {
                         id: code
+                        textFormat: Text.PlainText
                         anchors.fill: parent
                         anchors.margins: Kirigami.Units.largeSpacing
                         text: root.snippet

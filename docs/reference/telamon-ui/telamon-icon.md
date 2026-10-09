@@ -7,7 +7,7 @@ since: "2.0.5"
 
 TelamonIcon is a `Kirigami.Icon` for icons from the icon theme or an image url (`source: "folder"`). Use it wherever an icon can end up under a dialog, popup or menu. With Qt Quick's software renderer, which Telamon apps use by default, a plain `Kirigami.Icon` draws as a render node, and when a repaint touches part of it (a blinking cursor, a list update) the whole icon is painted again over whatever covers it. TelamonIcon is a layer on the software renderer, an ordinary image node that stays in its place. With OpenGL and the other renderers it is the plain icon. Telamon.Ui's own controls use it for all their icons.
 
-TelamonIcon is a `Kirigami.Icon`; all of its properties work as usual. For a Material Symbol, use [Symbol](symbol.md).
+TelamonIcon is a `Kirigami.Icon`; all of its properties work as usual. An image url that is remote loads only over `https:`: Telamon.Ui gives every QML engine that loads it a network access manager that refuses `http:` and `ftp:` addresses of other computers (an address on this computer is fine) and does not follow a redirect to one. Prefer a local file for an icon that comes from data. For a Material Symbol, use [Symbol](symbol.md).
 
 ## Example
 

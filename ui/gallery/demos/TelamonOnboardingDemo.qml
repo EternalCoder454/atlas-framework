@@ -29,7 +29,7 @@ Item {
 
             Item {
                 property string title: qsTr("Welcome")
-                QQC2.Label { text: qsTr("Welcome to Telamon") }
+                QQC2.Label { textFormat: Text.PlainText; text: qsTr("Welcome to Telamon") }
             }
             Item {
                 property string title: qsTr("Account")
@@ -40,6 +40,7 @@ Item {
                     anchors.right: parent.right
                     spacing: Kirigami.Units.largeSpacing
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         text: qsTr("Choose a name")
                         font.bold: true
                     }
@@ -51,7 +52,7 @@ Item {
             }
             Item {
                 property string title: qsTr("Done")
-                QQC2.Label { text: qsTr("All set") }
+                QQC2.Label { textFormat: Text.PlainText; text: qsTr("All set") }
             }
         }
 
@@ -68,15 +69,15 @@ Item {
 
             Item {
                 property string title: qsTr("Welcome")
-                QQC2.Label { text: qsTr("Welcome to Telamon") }
+                QQC2.Label { textFormat: Text.PlainText; text: qsTr("Welcome to Telamon") }
             }
             Item {
                 property string title: qsTr("Network")
-                QQC2.Label { text: qsTr("Checking the connection") }
+                QQC2.Label { textFormat: Text.PlainText; text: qsTr("Checking the connection") }
             }
             Item {
                 property string title: qsTr("Done")
-                QQC2.Label { text: qsTr("All set") }
+                QQC2.Label { textFormat: Text.PlainText; text: qsTr("All set") }
             }
         }
     }

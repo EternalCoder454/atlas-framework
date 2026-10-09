@@ -49,6 +49,7 @@ Item {
                         border.color: TelamonStyle.separator
                     }
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         text: parent.modelData.name
                         font.pointSize: TelamonStyle.fontSizeCaption
                         color: TelamonStyle.textMuted
@@ -76,6 +77,7 @@ Item {
                     border.width: 1
                     border.color: TelamonStyle.separator
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         anchors.centerIn: parent
                         text: box.modelData.name
                         font.pointSize: TelamonStyle.fontSizeCaption
@@ -86,14 +88,14 @@ Item {
 
         ColumnLayout {
             spacing: TelamonStyle.spacingSmall
-            QQC2.Label { text: "Title"; font.pointSize: TelamonStyle.fontSizeTitle; font.bold: true }
-            QQC2.Label { text: "Heading"; font.pointSize: TelamonStyle.fontSizeHeading; font.bold: true }
-            QQC2.Label { text: "Body text"; font.pointSize: TelamonStyle.fontSizeBody }
-            QQC2.Label { text: "Caption"; font.pointSize: TelamonStyle.fontSizeCaption; color: TelamonStyle.textMuted }
+            QQC2.Label { textFormat: Text.PlainText; text: "Title"; font.pointSize: TelamonStyle.fontSizeTitle; font.bold: true }
+            QQC2.Label { textFormat: Text.PlainText; text: "Heading"; font.pointSize: TelamonStyle.fontSizeHeading; font.bold: true }
+            QQC2.Label { textFormat: Text.PlainText; text: "Body text"; font.pointSize: TelamonStyle.fontSizeBody }
+            QQC2.Label { textFormat: Text.PlainText; text: "Caption"; font.pointSize: TelamonStyle.fontSizeCaption; color: TelamonStyle.textMuted }
         }
 
         // Density: the same controls forced to Compact (about 75% of the height).
-        QQC2.Label { text: "Density: Compact"; font.pointSize: TelamonStyle.fontSizeCaption; color: TelamonStyle.textMuted }
+        QQC2.Label { textFormat: Text.PlainText; text: "Density: Compact"; font.pointSize: TelamonStyle.fontSizeCaption; color: TelamonStyle.textMuted }
         ColumnLayout {
             Layout.fillWidth: true
             spacing: TelamonStyle.spacingSmall

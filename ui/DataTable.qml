@@ -943,10 +943,12 @@ FocusScope {
     // The font and colour of every cell's text: a Label's in this table.
     QQC2.Label {
         id: cellLabel
+        textFormat: Text.PlainText
         visible: false
     }
     QQC2.Label {
         id: figureLabel
+        textFormat: Text.PlainText
         visible: false
         font.features: { "tnum": 1 }
     }

@@ -19,6 +19,7 @@ Item {
         Item {
             property string title: "Details"
             QQC2.Label {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: "Second page"
             }

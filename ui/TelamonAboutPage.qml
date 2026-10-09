@@ -168,13 +168,13 @@ TelamonPage {
             title: qsTr("Source code")
             chevron: true
             visible: !page._customLinks && TelamonApp.sourceUrl.length > 0
-            onClicked: Qt.openUrlExternally(TelamonApp.sourceUrl)
+            onClicked: TelamonPortal.openUrl(TelamonApp.sourceUrl)
         }
         SectionRow {
             title: qsTr("Report a problem")
             chevron: true
             visible: !page._customLinks && TelamonApp.issuesUrl.length > 0
-            onClicked: Qt.openUrlExternally(TelamonApp.issuesUrl)
+            onClicked: TelamonPortal.openUrl(TelamonApp.issuesUrl)
         }
         Repeater {
             model: page._links
@@ -182,7 +182,7 @@ TelamonPage {
                 required property var modelData
                 title: modelData.title
                 chevron: true
-                onClicked: Qt.openUrlExternally(modelData.url)
+                onClicked: TelamonPortal.openUrl(modelData.url)
             }
         }
     }

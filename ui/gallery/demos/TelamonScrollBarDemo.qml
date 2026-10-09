@@ -39,6 +39,7 @@ Item {
                 GradientStop { position: 1; color: TelamonStyle.alpha(TelamonStyle.accent, 0.05) }
             }
             QQC2.Label {
+                textFormat: Text.PlainText
                 x: 16
                 y: 16
                 text: "Scroll me"

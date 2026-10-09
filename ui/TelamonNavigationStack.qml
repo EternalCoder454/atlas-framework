@@ -121,6 +121,7 @@ Item {
                 onClicked: control.pop()
             }
             QQC2.Label {
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: header.title
                 elide: Text.ElideRight

@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
+import "imagesource.js" as ImageSource
 
 // One of a few choices, shown as a picture with its name under it: a check
 // circle by the name, a ring in the accent colour around the picture when
@@ -28,6 +29,11 @@ T.AbstractButton {
     id: control
 
     property url source
+    // Lets an https: `source` load, for a trusted source. Without it only
+    // local files, qrc: and image: sources load; http: never does.
+    property bool allowRemote: false
+    // The url the picture loads: `source` after the check, or "".
+    readonly property string _safeSource: ImageSource.vetted(control.source, control.allowRemote)
     property real aspectRatio: 1.6
 
     // The ratio kept to a usable number.
@@ -115,7 +121,7 @@ T.AbstractButton {
             Image {
                 id: picture
                 anchors.fill: parent
-                source: control.source
+                source: control._safeSource
                 visible: status === Image.Ready
                 asynchronous: true
                 fillMode: Image.PreserveAspectCrop

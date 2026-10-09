@@ -15,7 +15,7 @@ QString renameGroup(const QString &text);
 
 // Copies `oldPath` to `newPath`, renaming the `[Atlas]` group, when nothing is
 // at `newPath` (not even a link) and `oldPath` is a regular file (or a link
-// to one) of at most `maxBytes`. The copy keeps the mode, is complete before
+// to one) of at most `maxBytes`. The copy keeps the mode (without write access for the group and others), is complete before
 // it appears under its name and never replaces a file another process made in
 // the meantime. Returns whether a file was made. Bytes that are not UTF-8 are
 // copied as they are.

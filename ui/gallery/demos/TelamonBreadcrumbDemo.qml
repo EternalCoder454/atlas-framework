@@ -69,6 +69,7 @@ Rectangle {
             onActivated: index => root.last = "long: " + index
         }
         Text {
+            textFormat: Text.PlainText
             objectName: "status"
             text: root.last
             color: Kirigami.Theme.textColor

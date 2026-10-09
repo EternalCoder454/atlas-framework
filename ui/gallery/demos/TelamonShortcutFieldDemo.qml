@@ -23,6 +23,7 @@ Item {
     }
 
     component Caption: QQC2.Label {
+        textFormat: Text.PlainText
         font: Kirigami.Theme.smallFont
         opacity: 0.6
     }

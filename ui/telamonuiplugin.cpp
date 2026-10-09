@@ -16,6 +16,7 @@
 
 #include "appearance.h"
 #include "legacyconfig.h"
+#include "telamonnetwork.h"
 
 extern void qml_register_types_Telamon_Ui();
 bool telamonUiInstallTranslations();
@@ -101,6 +102,8 @@ public:
         if (!engine) {
             return;
         }
+        // Before any item fetches: no cleartext address of another computer.
+        TelamonNetwork::install(engine);
         pickRenderer();
         // The violet and the UI font, before any item reads them.
         telamonUiApplyBrand();

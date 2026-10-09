@@ -87,6 +87,7 @@ Rectangle {
             onContextMenuRequested: (index, x, y) => root.last = "menu " + index + " at " + Math.round(x) + "," + Math.round(y)
         }
         Text {
+            textFormat: Text.PlainText
             objectName: "status"
             text: root.last
             color: Kirigami.Theme.textColor
