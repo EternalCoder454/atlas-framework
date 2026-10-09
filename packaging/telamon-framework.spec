@@ -28,6 +28,10 @@ BuildRequires:  cmake
 BuildRequires:  ninja-build
 BuildRequires:  gcc-c++
 BuildRequires:  desktop-file-utils
+# %check reads the hardening back from the built files (readelf from binutils,
+# which gcc-c++ brings in) and has annocheck confirm it.
+BuildRequires:  binutils
+BuildRequires:  annobin-annocheck
 BuildRequires:  cmake(Qt6Core)
 BuildRequires:  cmake(Qt6Gui)
 BuildRequires:  cmake(Qt6Qml)
@@ -165,6 +169,16 @@ for s in "%{_builddir}" %{?_telamon_build_cache:"%{_telamon_build_cache}"}; do
         exit 1
     fi
 done
+
+# The library and the programs carry the hardening Fedora's build flags give
+# them (docs/SECURITY.md, "Build hardening"): the plugin every Telamon app loads
+# is a shared object with full RELRO and BIND_NOW, no executable stack, no
+# RPATH and stack protectors, the programs are also position independent; readelf
+# says so, not the flags we meant. None holds a development-only variable.
+packaging/check-hardening.sh --lib --cxx \
+    --forbid TELAMON_UI_SYMBOLS_DIR --forbid TELAMON_UI_TRANSLATIONS_DIR --forbid TELAMON_UI_TEST_FIXED_ENV \
+    %{buildroot}%{_libdir}/qt6/qml/Telamon/Ui/libtelamonui.so
+packaging/check-hardening.sh --cxx %{buildroot}%{_bindir}/telamon-preview %{buildroot}%{_bindir}/telamon-symbols
 
 # Every language catalogue (telamon-ui_<locale>.ts) must have shipped as a .qm:
 # a missing LinguistTools would otherwise build without translations, quietly.
