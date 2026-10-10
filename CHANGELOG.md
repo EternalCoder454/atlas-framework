@@ -9,6 +9,23 @@ Telamon.Ui (`Requires: telamon-ui >= X.Y.Z`, `ui: "X.Y.Z"` in `app!`) once
 they use something it added. The packaging spec's `%changelog` repeats the
 package side.
 
+## 2.1.1
+
+2.1.0 was tagged but never released (its CI run failed on the editor's stall test),
+so **2.1.1 is the first release with `TelamonCodeEditor` and `TelamonConsoleView`**:
+everything listed under 2.1.0 below is in it, and apps that use either raise their
+`telamon-ui >=` and `ui:` to 2.1.1. No API change since 2.1.0.
+
+- Fix: `TelamonCodeEditor` held the window for 150 ms while a 22,000-line text loaded
+  (about half a second on a slower CPU, as on the CI runners), more with each piece.
+  The cause was the text field, which builds the scene graph of the whole text again
+  after every change unless it observes the viewport (Qt sets that only for a `text`
+  it is given, not for text put into its document); the editor now sets it, so a
+  change costs the lines in view and no more, for edits as much as for the load.
+  The load's pieces also shrink at once when one runs slow (a piece is about 3 ms,
+  a turn of the event loop 6 ms) and start smaller. The longest gap in the stall
+  test went from 150 ms to 32 ms on one CPU.
+
 ## 2.1.0
 
 Two new controls for apps that show code and command output (the Telamon Gates

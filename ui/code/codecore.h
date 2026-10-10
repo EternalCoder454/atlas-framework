@@ -209,7 +209,7 @@ private:
     QString m_loadText;
     qsizetype m_loadPos = 0;
     quint64 m_loadGen = 0;
-    qsizetype m_chunk = 16 * 1024;
+    qsizetype m_chunk = 4 * 1024;
     QTimer m_loadTimer;
     int m_bigLines = 1;
     int m_reason = 0;

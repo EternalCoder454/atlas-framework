@@ -139,6 +139,11 @@ void TelamonCodeCorePrivate::setEdit(QQuickItem *edit)
     m_hl = nullptr;
     m_doc = nullptr;
     if (edit) {
+        // The TextEdit builds scene graph nodes for the whole document, and again
+        // after every change to it, unless it observes the viewport (it sets
+        // that itself only for a `text` it was given, not for text put into its
+        // document, as here): then it builds the lines in view only.
+        edit->setFlag(QQuickItem::ItemObservesViewport, true);
         const auto *qd = qobject_cast<QQuickTextDocument *>(qvariant_cast<QObject *>(edit->property("textDocument")));
         m_doc = qd ? qd->textDocument() : nullptr;
     }
@@ -289,6 +294,14 @@ void TelamonCodeCorePrivate::startLoad(const QString &text)
     loadSlice();
 }
 
+namespace
+{
+// Main-thread time a piece of a load takes, and a turn of the event loop
+// (several pieces) at most.
+constexpr double PieceMs = 3.0;
+constexpr double SliceMs = 6.0;
+} // namespace
+
 void TelamonCodeCorePrivate::loadSlice()
 {
     if (!m_loading || !m_doc) {
@@ -299,6 +312,9 @@ void TelamonCodeCorePrivate::loadSlice()
     slice.start();
     const quint64 generation = m_loadGen;
     const qsizetype length = m_loadText.size();
+    double took = 0;
+    // Pieces of about PieceMs each, as many as fit in SliceMs: no step of the
+    // load holds the window for longer, whatever the speed of the machine.
     do {
         QElapsedTimer one;
         one.start();
@@ -315,16 +331,18 @@ void TelamonCodeCorePrivate::loadSlice()
             // A handler of the change set another text: its load is the one that goes on.
             return;
         }
-        // About 4 ms a piece.
-        const double took = std::max(0.2, double(one.nsecsElapsed()) / 1e6);
-        m_chunk = std::clamp<qsizetype>(qsizetype((double(m_chunk) + double(m_chunk) * 4.0 / took) / 2), 2 * 1024, 256 * 1024);
+        // The size that would have taken PieceMs: a piece that was slow shrinks
+        // the next at once, a quick one lets it grow by a quarter.
+        took = std::max(0.1, double(one.nsecsElapsed()) / 1e6);
+        const double fit = double(end - m_loadPos) * PieceMs / took;
+        m_chunk = std::clamp<qsizetype>(qsizetype(std::min(fit, double(m_chunk) * 1.25)), 1024, 256 * 1024);
         if (m_loadPos == 0 && m_edit) {
             // The text field's caret was at the start of the empty text, and
             // the first piece pushed it to its end.
             m_edit->setProperty("cursorPosition", 0);
         }
         m_loadPos = end;
-    } while (m_loadPos < length && slice.elapsed() < 6);
+    } while (m_loadPos < length && double(slice.nsecsElapsed()) / 1e6 + took < SliceMs);
     if (m_loadPos < length) {
         m_loadTimer.start(0);
         return;

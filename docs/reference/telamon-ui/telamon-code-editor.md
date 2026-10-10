@@ -2,7 +2,7 @@
 title: TelamonCodeEditor
 summary: An editable code editor with syntax highlighting by language or file name, a line-number gutter, marks for changed lines and edits that arrive from outside without moving the caret or the view.
 section: Text and code
-since: "2.1.0"
+since: "2.1.1"
 ---
 
 TelamonCodeEditor edits plain text in the monospace font, coloured by [KSyntaxHighlighting](https://api.kde.org/frameworks/syntax-highlighting/html/index.html) for the language you give it (`language`) or that the file name implies (`fileName`). The colours come from the Telamon theme and follow Light, Dark and high contrast. It has a line-number gutter, tints the caret's row, and can mark lines an app changed (`markLines`). For a read-only view of a log or a command's output use [TelamonCodeView](telamon-code-view.md) or [TelamonConsoleView](telamon-console-view.md).

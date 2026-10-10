@@ -2,7 +2,7 @@
 title: TelamonConsoleView
 summary: Read-only monospace view for the streaming output of a command, with ANSI colours drawn in the theme's colours, bounded scrollback and follow-tail.
 section: Text and code
-since: "2.1.0"
+since: "2.1.1"
 ---
 
 TelamonConsoleView shows the output of a command as it arrives: `append()` adds text at the end, in chunks of any size (a chunk may cut an escape sequence, a line break or a character in two). The text is selectable (mouse, Ctrl+A, Ctrl+C) and plain: nothing in it is taken as HTML or Markdown, no escape sequence is run, and nothing in the output is ever made a link, opened or fetched. The colours and text styles of ANSI escape sequences are drawn in the theme's colours; every other escape sequence is dropped.
