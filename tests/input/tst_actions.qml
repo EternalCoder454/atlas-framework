@@ -348,6 +348,11 @@ Item {
             const d = createTemporaryObject(dialogComp, root, { collection: c, parent: root });
             d.open();
             tryCompare(d, "visible", true);
+            // `visible` is true when the enter transition starts; the dialog
+            // moves the focus to its search field when it has opened (after
+            // the transition), which would take it from a field the test has
+            // already focused. Wait for that, so the focus is settled.
+            tryCompare(d, "opened", true);
             tryVerify(() => rowFor(d, "Save") !== null);
             return { c: c, d: d };
         }
@@ -436,6 +441,9 @@ Item {
                 const d = createTemporaryObject(dialogComp, root, { collection: c, parent: root });
                 d.open();
                 tryCompare(d, "visible", true);
+                // The opened dialog focuses its search field: let that happen
+                // before the test moves the focus.
+                tryCompare(d, "opened", true);
                 const lists = walk(d.contentItem, it => it.contentY !== undefined && it.model !== undefined && it.section !== undefined, []);
                 verify(lists.length > 0);
                 const list = lists[0];
@@ -469,6 +477,9 @@ Item {
                 const d = createTemporaryObject(dialogComp, root, { collection: c, parent: root });
                 d.open();
                 tryCompare(d, "visible", true);
+                // The opened dialog focuses its search field: let that happen
+                // before the test moves the focus.
+                tryCompare(d, "opened", true);
                 const list = walk(d.contentItem, it => it.contentY !== undefined && it.model !== undefined && it.section !== undefined, [])[0];
                 tryVerify(() => list.contentHeight > list.height);
                 compare(list.contentY, 0);
