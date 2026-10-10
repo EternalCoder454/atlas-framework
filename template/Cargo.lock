@@ -805,7 +805,7 @@ dependencies = [
 
 [[package]]
 name = "telamon-framework-core"
-version = "2.0.10"
+version = "2.1.0"
 dependencies = [
  "libc",
  "log",
@@ -814,7 +814,7 @@ dependencies = [
 
 [[package]]
 name = "telamon-framework-system"
-version = "2.0.10"
+version = "2.1.0"
 dependencies = [
  "getrandom 0.3.4",
  "libc",
@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "telamon-framework-ui"
-version = "2.0.10"
+version = "2.1.0"
 dependencies = [
  "cxx-qt-build",
  "libc",

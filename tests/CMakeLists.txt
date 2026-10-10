@@ -179,6 +179,47 @@ set_tests_properties(input PROPERTIES
     TIMEOUT 120
     ENVIRONMENT "TELAMON_TEST_BIN=$<TARGET_FILE:telamon-input-tests>;TELAMON_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;TELAMON_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;TELAMON_OUT_DIR=${CMAKE_BINARY_DIR}/input-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
 
+# TelamonCodeEditor (tests/editor): setTextPreserving keeping the caret and the
+# scroll, marks, read-only, the size and line-length caps, lazy highlighting,
+# plain text and the keys.
+add_executable(telamon-editor-tests editor/main.cpp)
+target_compile_definitions(telamon-editor-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/editor")
+target_link_libraries(telamon-editor-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(telamon-editor-tests telamonui)
+add_test(NAME editor
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(editor PROPERTIES
+    TIMEOUT 300
+    ENVIRONMENT "TELAMON_TEST_BIN=$<TARGET_FILE:telamon-editor-tests>;TELAMON_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;TELAMON_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;TELAMON_OUT_DIR=${CMAKE_BINARY_DIR}/editor-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
+# TelamonConsoleView's ANSI parser and colours (ui/console/ansiparser.cpp and
+# consoletheme.cpp, compiled into the test): every SGR feature, the colour
+# approximation, every escape sequence that must vanish, and a fuzz test.
+add_executable(telamon-console-unit-tests console/tst_ansiparser.cpp
+    ${PROJECT_SOURCE_DIR}/ui/console/ansiparser.h ${PROJECT_SOURCE_DIR}/ui/console/ansiparser.cpp
+    ${PROJECT_SOURCE_DIR}/ui/console/consoletheme.h ${PROJECT_SOURCE_DIR}/ui/console/consoletheme.cpp)
+target_include_directories(telamon-console-unit-tests PRIVATE ${PROJECT_SOURCE_DIR}/ui/console)
+target_link_libraries(telamon-console-unit-tests PRIVATE Qt6::Test Qt6::Gui)
+add_test(NAME console-parser COMMAND telamon-console-unit-tests)
+set_tests_properties(console-parser PROPERTIES TIMEOUT 300 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# TelamonConsoleView itself (tests/console): the bound on the lines (100,000 at
+# once), partial lines and \r, colours in the layout, plain text only,
+# follow-tail, selection and copy, the keys, the disabled state.
+add_executable(telamon-console-tests console/main.cpp)
+target_compile_definitions(telamon-console-tests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/console")
+target_link_libraries(telamon-console-tests PRIVATE
+    Qt6::QuickTest Qt6::Quick Qt6::QuickControls2 Qt6::Widgets)
+add_dependencies(telamon-console-tests telamonui)
+add_test(NAME console
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/visual/run-variant.sh light)
+set_tests_properties(console PROPERTIES
+    TIMEOUT 300
+    ENVIRONMENT "TELAMON_TEST_BIN=$<TARGET_FILE:telamon-console-tests>;TELAMON_DEMO_DIR=${PROJECT_SOURCE_DIR}/ui/gallery/demos;TELAMON_GOLDEN_DIR=${CMAKE_CURRENT_SOURCE_DIR}/visual/golden;TELAMON_OUT_DIR=${CMAKE_BINARY_DIR}/console-out;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}")
+
 # The translation test: a throwaway telamon-ui_de.qm (tests/i18n) in a directory
 # of its own, found through TELAMON_UI_TRANSLATIONS_DIR (development builds only).
 find_package(Qt6 6.11 QUIET COMPONENTS LinguistTools)

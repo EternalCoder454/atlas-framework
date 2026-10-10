@@ -16,7 +16,7 @@
 %endif
 
 Name:           telamon-framework
-Version:        2.0.10
+Version:        2.1.0
 Release:        1%{?dist}
 Summary:        The shared base of Telamon apps: Telamon.Ui and its icon fonts
 # The Material Symbols fonts (ui/symbols) are Apache-2.0.
@@ -45,6 +45,8 @@ BuildRequires:  cmake(Qt6LinguistTools)
 BuildRequires:  qt6-qtbase-devel
 BuildRequires:  cmake(KF6WindowSystem)
 BuildRequires:  cmake(KF6Config)
+# TelamonCodeEditor's syntax highlighting
+BuildRequires:  cmake(KF6SyntaxHighlighting)
 # QML modules qmlcachegen resolves at build time (not linked)
 BuildRequires:  kf6-kirigami-devel
 
@@ -63,6 +65,9 @@ Requires:       telamon-symbols-fonts = %{version}-%{release}
 # QML modules Telamon.Ui imports (the plugin doesn't link them)
 Requires:       kf6-kirigami
 Requires:       qt6-qtdeclarative
+# TelamonCodeEditor's syntax highlighting (libtelamonui.so links it, and the
+# definitions it highlights with are in the same package).
+Requires:       kf6-syntax-highlighting
 # telamon-preview runs every variant on a private session bus, in the
 # org.kde.desktop style.
 Requires:       dbus-daemon
@@ -223,6 +228,12 @@ fi
 %{_datadir}/applications/net.eterneon.telamon.symbols.desktop
 
 %changelog
+* Fri Oct 09 2026 Telamon <atlas@eterneon.net> - 2.1.0-1
+- New: TelamonCodeEditor (an editable code editor with syntax highlighting, a
+  line-number gutter and live edits from outside) and TelamonConsoleView (a
+  bounded, colour-aware view of a command's streaming output). telamon-ui now
+  needs kf6-syntax-highlighting.
+
 * Fri Oct 09 2026 Telamon <atlas@eterneon.net> - 2.0.10-1
 - Tooling only, no API change: the native-bundle workflow signs telamon-bundle.json
   with minisign (the new sign job and tools/sign-bundle.sh; a release without a

@@ -66,6 +66,19 @@ in Qt, KDE, libflatpak, zbus, curl and the services the crates call.
   `http:` and `ftp:` (loopback excepted), limits redirects to 5 and sets a
   transfer timeout, so `Kirigami.Icon` cannot be pointed at a cleartext server;
   an app's own factory is kept.
+- **Text editors and consoles.** `TelamonCodeEditor` holds the text in a plain
+  text document (no rich text, no Markdown, no links), reads a text of any size
+  without handing a big one to the text engine (over `maximumSize` characters or
+  with a line over 200,000 characters it is shown read-only in
+  `TelamonTextView`), bounds what a call can ask for (10,000 mark ranges, 20,000
+  marks), and leaves a line over 4,000 characters unhighlighted: KSyntaxHighlighting
+  runs regular expressions from the language definition over a line, and a long
+  line is a stall. `TelamonConsoleView` shows the output of a command, which is
+  hostile text: only the colour and attribute escape sequences (SGR) have an
+  effect, every other escape sequence and control character is dropped (cursor
+  movement, OSC titles, links and clipboard writes, bell), and so are bidi
+  controls; colours are mapped to the theme's palette, never taken as RGB;
+  its scrollback and its line length are bounded.
 - **No text is run as code, and QML fetches nothing by itself.** No `eval`,
   `Function`, `Qt.include`, `XMLHttpRequest`, WebSocket, WebView, non-literal
   `createQmlObject`, `Loader` source or template literal in Telamon.Ui.
