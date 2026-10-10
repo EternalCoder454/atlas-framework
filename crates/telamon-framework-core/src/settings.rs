@@ -809,16 +809,34 @@ mod tests {
         );
     }
 
+    /// Eight writers queue 80 sets behind one file lock, and every set syncs
+    /// the file and its directory while it holds that lock. The lock's 2 s
+    /// wait (`LOCK_WAIT`) is how long one set may wait, not how long a queue
+    /// of 80 syncs may take: on a disk where a sync costs 15 ms or more
+    /// (a loaded CI runner) the last writer legitimately gets `TimedOut`,
+    /// which `set` documents. So a timed-out set is tried again, as an app
+    /// would show the error and the user retry; what the test proves (no
+    /// update is lost or torn, whatever the interleaving) is unchanged, and
+    /// any other error still fails it.
     #[test]
     fn concurrent_sets_all_land() {
         let dir = tempfile::tempdir().unwrap();
         let s = Settings::at(dir.path().join("telamon-xrc"));
+        let give_up = std::time::Instant::now() + std::time::Duration::from_secs(120);
         std::thread::scope(|scope| {
             for t in 0..8 {
                 let s = &s;
                 scope.spawn(move || {
                     for i in 0..10 {
-                        s.set("G", &format!("K{t}_{i}"), Some("v")).unwrap();
+                        loop {
+                            match s.set("G", &format!("K{t}_{i}"), Some("v")) {
+                                Ok(()) => break,
+                                Err(e)
+                                    if e.kind() == io::ErrorKind::TimedOut
+                                        && std::time::Instant::now() < give_up => {}
+                                Err(e) => panic!("set K{t}_{i}: {e}"),
+                            }
+                        }
                     }
                 });
             }
