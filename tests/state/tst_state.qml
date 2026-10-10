@@ -1,5 +1,6 @@
 import QtQuick
 import QtTest
+import QtQuick.Templates as T
 import org.kde.kirigami as Kirigami
 import Telamon.Ui
 
@@ -33,6 +34,13 @@ Rectangle {
             // draw the ring on ("No Results" looks the same either way).
             "TelamonSearchResults": {
                 c: "an empty list shows no focus"
+            },
+            // The dialog is a Popup, drawn in the window's overlay: the demo
+            // root's `enabled: false` does not reach it, so once it has
+            // opened the picture never changes. (It used to pass because the
+            // first picture was taken while the fade-in was still running.)
+            "TelamonPreferencesDialog": {
+                b: "a Popup does not follow the root's enabled"
             }
         })
 
@@ -61,6 +69,34 @@ Rectangle {
                 prev = now;
             }
             return prev;
+        }
+
+        // The Popups (dialogs, menus, popovers) a demo holds, however deep in
+        // its items. Their content is drawn in the window's overlay, not under the
+        // demo's root.
+        function popupsIn(root) {
+            const found = [];
+            const walk = o => {
+                if (!o.data)
+                    return;
+                for (let i = 0; i < o.data.length; ++i) {
+                    const c = o.data[i];
+                    if (c instanceof T.Popup)
+                        found.push(c);
+                    else if (c)
+                        walk(c);
+                }
+            };
+            walk(root);
+            return found;
+        }
+
+        // Waits until every Popup the demo has opened has finished its enter
+        // transition (`opened`, which Qt sets when the transition ends), not
+        // a fixed time: a busy machine runs the fade slower than a quiet one,
+        // and a picture taken in the middle of it is a different picture.
+        function waitPopupsOpened(root, demo) {
+            tryVerify(() => popupsIn(root).every(p => !p.visible || p.opened), 10000, demo + ": a popup did not finish opening");
         }
 
         function test_demo_data() {
@@ -97,6 +133,7 @@ Rectangle {
                 obj.animate = false;
             waitForRendering(stage);
             wait(100);
+            waitPopupsOpened(obj, demo);
             const problems = [];
             const known = [];
             const report = (check, text) => (stage.allow(demo, check) ? known : problems).push(demo + ": " + text);
