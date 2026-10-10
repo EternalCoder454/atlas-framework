@@ -1,0 +1,41 @@
+---
+title: telamon-framework-core
+summary: The small Rust crate every Telamon app uses, with app identity, the settings file, journal logging, os-release and a safe append helper, and no Qt or async runtime.
+order: 3
+---
+
+`telamon-framework-core` is what every Telamon app shares at the Rust level. It has no Qt and no async runtime, so a light app pays for nothing it does not use.
+
+An app rarely adds it by hand. [telamon-framework-ui](../telamon-framework-ui/index.md) depends on it and re-exports it as `telamon_framework_ui::telamon_framework_core` (and `AppInfo` directly), so a GUI app gets it through that crate. Add it directly only for a command-line tool or a service that has no GUI.
+
+## Add it
+
+```toml
+telamon-framework-core = { git = "https://github.com/EternalCoder454/atlas-framework", tag = "v2.0.0" }
+```
+
+The commit is the one tagged `v1.4.0`. Pin apps to a commit or a release tag, and build with `cargo build --locked`.
+
+## Features
+
+None. Its dependencies are `serde`, `libc` and `log`.
+
+## Pages
+
+| Page | What it covers |
+|---|---|
+| [AppInfo and app_info!](app-info.md) | Who the running app is: name, ID, version, repository |
+| [settings](settings.md) | The app's own `telamon-<app>rc` file in KConfig format |
+| [task](task.md) | Feature `task`: one runtime thread and `spawn_ui`, results back on the UI thread |
+| [log](log.md) | The `log` macros sent to the systemd journal |
+| [osrelease](osrelease.md) | The OS name, version and logo from os-release |
+| [fsutil](fsutil.md) | Appending to shared log files safely |
+
+## Crate root
+
+| Name | Kind | Description |
+|---|---|---|
+| `AppInfo` | struct | Re-exported from the `app` module |
+| `app_info!` | macro | Builds an `AppInfo` with the calling crate's version |
+| `app`, `fsutil`, `log`, `osrelease`, `settings` | modules | All public |
+| `task` | module | Public, behind the cargo feature `task` |

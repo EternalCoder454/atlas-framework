@@ -1,0 +1,1666 @@
+{
+ "version": "2.1.1",
+ "released": true,
+ "commit": "72356aebee3d945c1ba1497c2af32a646497d272",
+ "generated": "2026-10-10T02:14:14Z",
+ "libraries": [
+  {
+   "slug": "telamon-ui",
+   "title": "Telamon.Ui",
+   "summary": "The QML module every Telamon app imports, with windows, pages, buttons, fields, lists, dialogs, charts and the style and services behind them; how to install it, check it and find a type.",
+   "order": 1,
+   "pages": [
+    {
+     "slug": "index",
+     "title": "Telamon.Ui",
+     "summary": "The QML module every Telamon app imports, with windows, pages, buttons, fields, lists, dialogs, charts and the style and services behind them; how to install it, check it and find a type.",
+     "path": "telamon-ui/index.md",
+     "source": "docs/reference/telamon-ui/index.md",
+     "order": 1
+    },
+    {
+     "slug": "design-rules",
+     "title": "Design rules",
+     "summary": "The rules every Telamon app follows, and which Telamon.Ui control or token carries each one.",
+     "path": "telamon-ui/design-rules.md",
+     "source": "docs/reference/telamon-ui/design-rules.md",
+     "order": 10,
+     "section": "Guides"
+    },
+    {
+     "slug": "style-and-theming",
+     "title": "Style and theming",
+     "summary": "TelamonStyle's colour, spacing, radius, size and density tokens, how the Plasma accent, light and dark, blur, high contrast and text scale reach an app.",
+     "path": "telamon-ui/style-and-theming.md",
+     "source": "docs/reference/telamon-ui/style-and-theming.md",
+     "order": 20,
+     "section": "Guides"
+    },
+    {
+     "slug": "motion",
+     "title": "Motion",
+     "summary": "How Telamon apps move: TelamonSpringAnimation standard and expressive, the duration tokens, reduced motion, the violet to sakura gradient rule and why nothing animates while idle.",
+     "path": "telamon-ui/motion.md",
+     "source": "docs/reference/telamon-ui/motion.md",
+     "order": 30,
+     "section": "Guides"
+    },
+    {
+     "slug": "compatibility",
+     "title": "Compatibility",
+     "summary": "Telamon.Ui's API is a contract with every Telamon app: it only grows, and what that means for the app's version requirements and names.",
+     "path": "telamon-ui/compatibility.md",
+     "source": "docs/reference/telamon-ui/compatibility.md",
+     "order": 40,
+     "section": "Guides"
+    },
+    {
+     "slug": "accessibility",
+     "title": "Accessibility",
+     "summary": "Keyboard focus, the focus ring, accessible roles and names, right-to-left mirroring and the checks the framework runs on every control.",
+     "path": "telamon-ui/accessibility.md",
+     "source": "docs/reference/telamon-ui/accessibility.md",
+     "order": 50,
+     "section": "Guides"
+    },
+    {
+     "slug": "accessibility-state",
+     "title": "AccessibilityState",
+     "summary": "A singleton that says whether a screen reader or other assistive technology is listening.",
+     "path": "telamon-ui/accessibility-state.md",
+     "source": "docs/reference/telamon-ui/accessibility-state.md",
+     "order": 1000,
+     "section": "Services"
+    },
+    {
+     "slug": "appearance",
+     "title": "Appearance",
+     "summary": "A singleton with the look switches every Telamon app shares: transparency and blur, colour scheme, motion, text scale and the brand fonts.",
+     "path": "telamon-ui/appearance.md",
+     "source": "docs/reference/telamon-ui/appearance.md",
+     "order": 1000,
+     "section": "Style and motion"
+    },
+    {
+     "slug": "confirm-dialog",
+     "title": "ConfirmDialog",
+     "summary": "A modal dialog in the Telamon look with small rounded buttons, an optional third button and a destructive style.",
+     "path": "telamon-ui/confirm-dialog.md",
+     "source": "docs/reference/telamon-ui/confirm-dialog.md",
+     "order": 1000,
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "context-menu",
+     "title": "ContextMenu",
+     "summary": "A right-click menu in the Telamon look: a raised card with 6 px corners with inset rows.",
+     "path": "telamon-ui/context-menu.md",
+     "source": "docs/reference/telamon-ui/context-menu.md",
+     "order": 1000,
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "context-menu-item",
+     "title": "ContextMenuItem",
+     "summary": "One row of a ContextMenu: an icon or symbol, the text and a shortcut hint, optionally checkable or a radio choice.",
+     "path": "telamon-ui/context-menu-item.md",
+     "source": "docs/reference/telamon-ui/context-menu-item.md",
+     "order": 1000,
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "context-menu-separator",
+     "title": "ContextMenuSeparator",
+     "summary": "A thin rule between groups of ContextMenuItem rows.",
+     "path": "telamon-ui/context-menu-separator.md",
+     "source": "docs/reference/telamon-ui/context-menu-separator.md",
+     "order": 1000,
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "data-table",
+     "title": "DataTable",
+     "summary": "A sortable table in the Section style that only makes the rows on screen.",
+     "path": "telamon-ui/data-table.md",
+     "source": "docs/reference/telamon-ui/data-table.md",
+     "order": 1000,
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "find-bar",
+     "title": "FindBar",
+     "summary": "A find and replace bar that slides down above an editor.",
+     "path": "telamon-ui/find-bar.md",
+     "source": "docs/reference/telamon-ui/find-bar.md",
+     "order": 1000,
+     "section": "Text and code"
+    },
+    {
+     "slug": "info-banner",
+     "title": "InfoBanner",
+     "summary": "An inline banner above the content for notices such as \"File changed on disk\" or \"Could not save\".",
+     "path": "telamon-ui/info-banner.md",
+     "source": "docs/reference/telamon-ui/info-banner.md",
+     "order": 1000,
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "live-chart",
+     "title": "LiveChart",
+     "summary": "A live line-and-area chart of the last 60 samples in the theme's colours.",
+     "path": "telamon-ui/live-chart.md",
+     "source": "docs/reference/telamon-ui/live-chart.md",
+     "order": 1000,
+     "section": "Charts"
+    },
+    {
+     "slug": "live-chart-item",
+     "title": "LiveChartItem",
+     "summary": "The painted item behind LiveChart: a line-and-area chart of the last 60 samples.",
+     "path": "telamon-ui/live-chart-item.md",
+     "source": "docs/reference/telamon-ui/live-chart-item.md",
+     "order": 1000,
+     "section": "Charts"
+    },
+    {
+     "slug": "menu-button",
+     "title": "MenuButton",
+     "summary": "A SecondaryButton with a chevron that opens a menu of the items inside it.",
+     "path": "telamon-ui/menu-button.md",
+     "source": "docs/reference/telamon-ui/menu-button.md",
+     "order": 1000,
+     "section": "Buttons"
+    },
+    {
+     "slug": "mini-bars",
+     "title": "MiniBars",
+     "summary": "A row of small upright bars, one per value, wrapping onto more rows when there are many.",
+     "path": "telamon-ui/mini-bars.md",
+     "source": "docs/reference/telamon-ui/mini-bars.md",
+     "order": 1000,
+     "section": "Charts"
+    },
+    {
+     "slug": "notes-text",
+     "title": "NotesText",
+     "summary": "Release notes shown from a safe HTML fragment, styled with Telamon colours and spacing.",
+     "path": "telamon-ui/notes-text.md",
+     "source": "docs/reference/telamon-ui/notes-text.md",
+     "order": 1000,
+     "section": "Text and code"
+    },
+    {
+     "slug": "primary-button",
+     "title": "PrimaryButton",
+     "summary": "A TelamonButton preset as a filled accent button, for the main action.",
+     "path": "telamon-ui/primary-button.md",
+     "source": "docs/reference/telamon-ui/primary-button.md",
+     "order": 1000,
+     "section": "Buttons"
+    },
+    {
+     "slug": "repaint-area",
+     "title": "RepaintArea",
+     "summary": "An invisible item that repaints its whole area as one rectangle whenever its content changes.",
+     "path": "telamon-ui/repaint-area.md",
+     "source": "docs/reference/telamon-ui/repaint-area.md",
+     "order": 1000,
+     "section": "Charts"
+    },
+    {
+     "slug": "search-field",
+     "title": "SearchField",
+     "summary": "A search field with a magnifier, a clear button and a debounced query.",
+     "path": "telamon-ui/search-field.md",
+     "source": "docs/reference/telamon-ui/search-field.md",
+     "order": 1000,
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "secondary-button",
+     "title": "SecondaryButton",
+     "summary": "A TelamonButton preset as a soft tinted button with a hairline border.",
+     "path": "telamon-ui/secondary-button.md",
+     "source": "docs/reference/telamon-ui/secondary-button.md",
+     "order": 1000,
+     "section": "Buttons"
+    },
+    {
+     "slug": "section",
+     "title": "Section",
+     "summary": "A rounded card that groups SectionRows, or any items, on a raised background.",
+     "path": "telamon-ui/section.md",
+     "source": "docs/reference/telamon-ui/section.md",
+     "order": 1000,
+     "section": "Layout"
+    },
+    {
+     "slug": "section-row",
+     "title": "SectionRow",
+     "summary": "One row in a Section: icon, title and subtitle, with a value, extra items, a check mark, a switch or a chevron.",
+     "path": "telamon-ui/section-row.md",
+     "source": "docs/reference/telamon-ui/section-row.md",
+     "order": 1000,
+     "section": "Layout"
+    },
+    {
+     "slug": "sidebar-group",
+     "title": "SidebarGroup",
+     "summary": "A sidebar entry that folds out into sub-entries.",
+     "path": "telamon-ui/sidebar-group.md",
+     "source": "docs/reference/telamon-ui/sidebar-group.md",
+     "order": 1000,
+     "section": "Navigation"
+    },
+    {
+     "slug": "sidebar-item",
+     "title": "SidebarItem",
+     "summary": "A sidebar entry: accent icon and label with a soft selection and an optional live value or badge.",
+     "path": "telamon-ui/sidebar-item.md",
+     "source": "docs/reference/telamon-ui/sidebar-item.md",
+     "order": 1000,
+     "section": "Navigation"
+    },
+    {
+     "slug": "status-bar",
+     "title": "StatusBar",
+     "summary": "A slim bar along the bottom of a window for Ln/Col, encoding, zoom and similar cells.",
+     "path": "telamon-ui/status-bar.md",
+     "source": "docs/reference/telamon-ui/status-bar.md",
+     "order": 1000,
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "status-bar-item",
+     "title": "StatusBarItem",
+     "summary": "One cell of a StatusBar: a short text, optionally clickable, with a symbol, a tooltip and a menu.",
+     "path": "telamon-ui/status-bar-item.md",
+     "source": "docs/reference/telamon-ui/status-bar-item.md",
+     "order": 1000,
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "status-hero",
+     "title": "StatusHero",
+     "summary": "A big centred status: a round icon badge with an optional ring, a headline, a subtitle and action buttons.",
+     "path": "telamon-ui/status-hero.md",
+     "source": "docs/reference/telamon-ui/status-hero.md",
+     "order": 1000,
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "step-item",
+     "title": "StepItem",
+     "summary": "One step in a setup sidebar: a numbered circle, or a check mark once done, and the step's name.",
+     "path": "telamon-ui/step-item.md",
+     "source": "docs/reference/telamon-ui/step-item.md",
+     "order": 1000,
+     "section": "Navigation"
+    },
+    {
+     "slug": "symbol",
+     "title": "Symbol",
+     "summary": "Draws one Material Symbol, tinted like text.",
+     "path": "telamon-ui/symbol.md",
+     "source": "docs/reference/telamon-ui/symbol.md",
+     "order": 1000,
+     "section": "Icons"
+    },
+    {
+     "slug": "symbols",
+     "title": "Symbols",
+     "summary": "The singleton that holds every Material Symbol's value as Symbols.Name, and looks symbols up by name.",
+     "path": "telamon-ui/symbols.md",
+     "source": "docs/reference/telamon-ui/symbols.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Icons"
+    },
+    {
+     "slug": "tab-bar",
+     "title": "TabBar",
+     "summary": "A strip of document tabs with an unsaved dot, a close button, a new-tab button and drag to reorder.",
+     "path": "telamon-ui/tab-bar.md",
+     "source": "docs/reference/telamon-ui/tab-bar.md",
+     "order": 1000,
+     "since": "1.2.0",
+     "section": "Navigation"
+    },
+    {
+     "slug": "telamon-about-page",
+     "title": "TelamonAboutPage",
+     "summary": "A ready-made About page: app icon, name, version, system info, links, licence and a \"Copy system info\" button.",
+     "path": "telamon-ui/telamon-about-page.md",
+     "source": "docs/reference/telamon-ui/telamon-about-page.md",
+     "order": 1000,
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "telamon-accent-picker",
+     "title": "TelamonAccentPicker",
+     "summary": "A row of round colour swatches, one chosen, for an accent colour.",
+     "path": "telamon-ui/telamon-accent-picker.md",
+     "source": "docs/reference/telamon-ui/telamon-accent-picker.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-action",
+     "title": "TelamonAction",
+     "summary": "One user action with its text, symbol, shortcut and tooltip in one place, shared by toolbar buttons, menu items and the keyboard.",
+     "path": "telamon-ui/telamon-action.md",
+     "source": "docs/reference/telamon-ui/telamon-action.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-action-collection",
+     "title": "TelamonActionCollection",
+     "summary": "The app's actions declared once, read by the command palette, the shortcuts dialog and the app menu, with shortcuts the user can change and that are kept.",
+     "path": "telamon-ui/telamon-action-collection.md",
+     "source": "docs/reference/telamon-ui/telamon-action-collection.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-app",
+     "title": "TelamonApp",
+     "summary": "A read-only singleton with the running app's name, ID, version and repository, the OS, and the Qt and Telamon.Ui versions.",
+     "path": "telamon-ui/telamon-app.md",
+     "source": "docs/reference/telamon-ui/telamon-app.md",
+     "order": 1000,
+     "section": "Services"
+    },
+    {
+     "slug": "telamon-app-card",
+     "title": "TelamonAppCard",
+     "summary": "A store card for one app: icon, name, short summary, rating and size, with an install button at the end.",
+     "path": "telamon-ui/telamon-app-card.md",
+     "source": "docs/reference/telamon-ui/telamon-app-card.md",
+     "order": 1000,
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-app-menu",
+     "title": "TelamonAppMenu",
+     "summary": "The app's menus for the header bar: exported to the desktop's global menu when there is one, else a menu button.",
+     "path": "telamon-ui/telamon-app-menu.md",
+     "source": "docs/reference/telamon-ui/telamon-app-menu.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-autocomplete-field",
+     "title": "TelamonAutocompleteField",
+     "summary": "A text field that suggests completions from a list or model while you type.",
+     "path": "telamon-ui/telamon-autocomplete-field.md",
+     "source": "docs/reference/telamon-ui/telamon-autocomplete-field.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-avatar",
+     "title": "TelamonAvatar",
+     "summary": "A round picture of a person or account, falling back to initials on a name-based colour, or a symbol.",
+     "path": "telamon-ui/telamon-avatar.md",
+     "source": "docs/reference/telamon-ui/telamon-avatar.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-badge",
+     "title": "TelamonBadge",
+     "summary": "A small pill label for a status or count, or a dot meaning \"something is new here\".",
+     "path": "telamon-ui/telamon-badge.md",
+     "source": "docs/reference/telamon-ui/telamon-badge.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-breadcrumb",
+     "title": "TelamonBreadcrumb",
+     "summary": "A path bar with one button per segment; a long path collapses its middle into a menu.",
+     "path": "telamon-ui/telamon-breadcrumb.md",
+     "source": "docs/reference/telamon-ui/telamon-breadcrumb.md",
+     "order": 1000,
+     "section": "Navigation"
+    },
+    {
+     "slug": "telamon-button",
+     "title": "TelamonButton",
+     "summary": "The button every Telamon app uses, with four variants, an optional symbol and a busy state.",
+     "path": "telamon-ui/telamon-button.md",
+     "source": "docs/reference/telamon-ui/telamon-button.md",
+     "order": 1000,
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-calendar",
+     "title": "TelamonCalendar",
+     "summary": "A month grid for choosing a day, with keyboard navigation and optional date limits.",
+     "path": "telamon-ui/telamon-calendar.md",
+     "source": "docs/reference/telamon-ui/telamon-calendar.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-card",
+     "title": "TelamonCard",
+     "summary": "A padded card on the raised surface, with an optional header and footer, and optionally clickable.",
+     "path": "telamon-ui/telamon-card.md",
+     "source": "docs/reference/telamon-ui/telamon-card.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Layout"
+    },
+    {
+     "slug": "telamon-check-box",
+     "title": "TelamonCheckBox",
+     "summary": "A rounded check box with a label and an optional partly-checked state.",
+     "path": "telamon-ui/telamon-check-box.md",
+     "source": "docs/reference/telamon-ui/telamon-check-box.md",
+     "order": 1000,
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-chip",
+     "title": "TelamonChip",
+     "summary": "A small label for a tag, a filter or a value; plain, checkable or closable.",
+     "path": "telamon-ui/telamon-chip.md",
+     "source": "docs/reference/telamon-ui/telamon-chip.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-chip-group",
+     "title": "TelamonChipGroup",
+     "summary": "A wrapping flow of chips, optionally one-of like radio buttons, with one Tab stop.",
+     "path": "telamon-ui/telamon-chip-group.md",
+     "source": "docs/reference/telamon-ui/telamon-chip-group.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-choice-card",
+     "title": "TelamonChoiceCard",
+     "summary": "One of a few choices shown as a picture with its name and a check circle; exclusive in a group.",
+     "path": "telamon-ui/telamon-choice-card.md",
+     "source": "docs/reference/telamon-ui/telamon-choice-card.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-clipboard",
+     "title": "TelamonClipboard",
+     "summary": "A singleton for the system clipboard: copy and read text, rich text and images without a hidden TextEdit.",
+     "path": "telamon-ui/telamon-clipboard.md",
+     "source": "docs/reference/telamon-ui/telamon-clipboard.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Services"
+    },
+    {
+     "slug": "telamon-code-editor",
+     "title": "TelamonCodeEditor",
+     "summary": "An editable code editor with syntax highlighting by language or file name, a line-number gutter, marks for changed lines and edits that arrive from outside without moving the caret or the view.",
+     "path": "telamon-ui/telamon-code-editor.md",
+     "source": "docs/reference/telamon-ui/telamon-code-editor.md",
+     "order": 1000,
+     "since": "2.1.1",
+     "section": "Text and code"
+    },
+    {
+     "slug": "telamon-code-view",
+     "title": "TelamonCodeView",
+     "summary": "Read-only monospace text for a command, log excerpt, snippet or config, with optional line numbers and a copy button.",
+     "path": "telamon-ui/telamon-code-view.md",
+     "source": "docs/reference/telamon-ui/telamon-code-view.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Text and code"
+    },
+    {
+     "slug": "telamon-color-field",
+     "title": "TelamonColorField",
+     "summary": "A colour chooser: a swatch and hex field that opens a palette, a hex field and the system colour dialog.",
+     "path": "telamon-ui/telamon-color-field.md",
+     "source": "docs/reference/telamon-ui/telamon-color-field.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-combo-box",
+     "title": "TelamonComboBox",
+     "summary": "A drop-down list with the current choice in a field and the choices in a raised card, optionally filterable.",
+     "path": "telamon-ui/telamon-combo-box.md",
+     "source": "docs/reference/telamon-ui/telamon-combo-box.md",
+     "order": 1000,
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-command-palette",
+     "title": "TelamonCommandPalette",
+     "summary": "A searchable popup list of the app's actions, opened with a shortcut such as Ctrl+K.",
+     "path": "telamon-ui/telamon-command-palette.md",
+     "source": "docs/reference/telamon-ui/telamon-command-palette.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-console-view",
+     "title": "TelamonConsoleView",
+     "summary": "Read-only monospace view for the streaming output of a command, with ANSI colours drawn in the theme's colours, bounded scrollback and follow-tail.",
+     "path": "telamon-ui/telamon-console-view.md",
+     "source": "docs/reference/telamon-ui/telamon-console-view.md",
+     "order": 1000,
+     "since": "2.1.1",
+     "section": "Text and code"
+    },
+    {
+     "slug": "telamon-copy-button",
+     "title": "TelamonCopyButton",
+     "summary": "A small icon button that copies its text to the clipboard and shows a check mark for a moment.",
+     "path": "telamon-ui/telamon-copy-button.md",
+     "source": "docs/reference/telamon-ui/telamon-copy-button.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-date-picker",
+     "title": "TelamonDatePicker",
+     "summary": "A date field that shows the chosen date and opens a calendar in a raised card.",
+     "path": "telamon-ui/telamon-date-picker.md",
+     "source": "docs/reference/telamon-ui/telamon-date-picker.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-detail-grid",
+     "title": "TelamonDetailGrid",
+     "summary": "Names and values in aligned columns for an item's facts, with optional monospace and copy buttons.",
+     "path": "telamon-ui/telamon-detail-grid.md",
+     "source": "docs/reference/telamon-ui/telamon-detail-grid.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-dialog",
+     "title": "TelamonDialog",
+     "summary": "The general modal dialog: a title row, a scrolling body and a row of buttons, over a dimmed window.",
+     "path": "telamon-ui/telamon-dialog.md",
+     "source": "docs/reference/telamon-ui/telamon-dialog.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-double-spin-box",
+     "title": "TelamonDoubleSpinBox",
+     "summary": "A number field with decimals, minus and plus buttons, a prefix and a suffix.",
+     "path": "telamon-ui/telamon-double-spin-box.md",
+     "source": "docs/reference/telamon-ui/telamon-double-spin-box.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-drop-zone",
+     "title": "TelamonDropZone",
+     "summary": "A dashed, rounded area that files can be dropped on, with a symbol, text and an optional Browse button.",
+     "path": "telamon-ui/telamon-drop-zone.md",
+     "source": "docs/reference/telamon-ui/telamon-drop-zone.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-edge-glow",
+     "title": "TelamonEdgeGlow",
+     "summary": "A soft violet-to-sakura glow along the inside edges of its parent, meaning \"the system is doing something for you now\".",
+     "path": "telamon-ui/telamon-edge-glow.md",
+     "source": "docs/reference/telamon-ui/telamon-edge-glow.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-email-validator",
+     "title": "TelamonEmailValidator",
+     "summary": "A validator for an email address field: one @, a dotted domain and a bounded length.",
+     "path": "telamon-ui/telamon-email-validator.md",
+     "source": "docs/reference/telamon-ui/telamon-email-validator.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Validators"
+    },
+    {
+     "slug": "telamon-empty-state",
+     "title": "TelamonEmptyState",
+     "summary": "What a list shows when it has nothing: a large symbol, a title, an explanation and an optional action button, centred.",
+     "path": "telamon-ui/telamon-empty-state.md",
+     "source": "docs/reference/telamon-ui/telamon-empty-state.md",
+     "order": 1000,
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-expandable-section",
+     "title": "TelamonExpandableSection",
+     "summary": "A header row that folds its content away, with an optional symbol, subtitle and chevron.",
+     "path": "telamon-ui/telamon-expandable-section.md",
+     "source": "docs/reference/telamon-ui/telamon-expandable-section.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Layout"
+    },
+    {
+     "slug": "telamon-file-field",
+     "title": "TelamonFileField",
+     "summary": "A file chooser: a path field and a Browse button that opens the system file dialog.",
+     "path": "telamon-ui/telamon-file-field.md",
+     "source": "docs/reference/telamon-ui/telamon-file-field.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-floating-toolbar",
+     "title": "TelamonFloatingToolbar",
+     "summary": "A capsule of icon buttons that floats over content, such as formatting tools over an editor.",
+     "path": "telamon-ui/telamon-floating-toolbar.md",
+     "source": "docs/reference/telamon-ui/telamon-floating-toolbar.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Navigation"
+    },
+    {
+     "slug": "telamon-flow-layout",
+     "title": "TelamonFlowLayout",
+     "summary": "Lays children out left to right and wraps them onto new rows, honouring Layout attached properties.",
+     "path": "telamon-ui/telamon-flow-layout.md",
+     "source": "docs/reference/telamon-ui/telamon-flow-layout.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Layout"
+    },
+    {
+     "slug": "telamon-focus-ring",
+     "title": "TelamonFocusRing",
+     "summary": "The keyboard focus ring every Telamon control shows: an accent outline with a gap, only for keyboard focus.",
+     "path": "telamon-ui/telamon-focus-ring.md",
+     "source": "docs/reference/telamon-ui/telamon-focus-ring.md",
+     "order": 1000,
+     "section": "Style and motion"
+    },
+    {
+     "slug": "telamon-folder-field",
+     "title": "TelamonFolderField",
+     "summary": "A folder chooser: a path field and a Browse button that opens the system folder dialog.",
+     "path": "telamon-ui/telamon-folder-field.md",
+     "source": "docs/reference/telamon-ui/telamon-folder-field.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-font-picker",
+     "title": "TelamonFontPicker",
+     "summary": "A font chooser: a small rounded button showing the family in its own face and the size, opening a searchable list of installed families.",
+     "path": "telamon-ui/telamon-font-picker.md",
+     "source": "docs/reference/telamon-ui/telamon-font-picker.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-form",
+     "title": "TelamonForm",
+     "summary": "A form of Sections and TelamonFormEntry rows that knows when it is valid, shows every error with validate() and gives its entries the settings they save to.",
+     "path": "telamon-ui/telamon-form.md",
+     "source": "docs/reference/telamon-ui/telamon-form.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Layout"
+    },
+    {
+     "slug": "telamon-format",
+     "title": "TelamonFormat",
+     "summary": "A singleton that formats sizes, speeds, percentages, numbers, durations and dates alike in every Telamon app and in the user's language.",
+     "path": "telamon-ui/telamon-format.md",
+     "source": "docs/reference/telamon-ui/telamon-format.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Services"
+    },
+    {
+     "slug": "telamon-form-entry",
+     "title": "TelamonFormEntry",
+     "summary": "One labelled row of a form: a label and help text, one control, its validation and an optional settings key that loads and saves the control by itself.",
+     "path": "telamon-ui/telamon-form-entry.md",
+     "source": "docs/reference/telamon-ui/telamon-form-entry.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Layout"
+    },
+    {
+     "slug": "telamon-global-shortcut",
+     "title": "TelamonGlobalShortcut",
+     "summary": "A system-wide keyboard shortcut through the desktop portal, working while the app has no focus.",
+     "path": "telamon-ui/telamon-global-shortcut.md",
+     "source": "docs/reference/telamon-ui/telamon-global-shortcut.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Services"
+    },
+    {
+     "slug": "telamon-header-bar",
+     "title": "TelamonHeaderBar",
+     "summary": "The merged header of a frameless Telamon window: window menu, title, main tools and window buttons in one row.",
+     "path": "telamon-ui/telamon-header-bar.md",
+     "source": "docs/reference/telamon-ui/telamon-header-bar.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "telamon-icon",
+     "title": "TelamonIcon",
+     "summary": "A theme icon (Kirigami.Icon) that stays under the dialogs, popups and menus in front of it with Qt Quick's software renderer.",
+     "path": "telamon-ui/telamon-icon.md",
+     "source": "docs/reference/telamon-ui/telamon-icon.md",
+     "order": 1000,
+     "since": "2.0.5",
+     "section": "Icons"
+    },
+    {
+     "slug": "telamon-icon-grid",
+     "title": "TelamonIconGrid",
+     "summary": "A scrolling grid of icons over names that makes cells only for what is on screen, for folders of files or apps.",
+     "path": "telamon-ui/telamon-icon-grid.md",
+     "source": "docs/reference/telamon-ui/telamon-icon-grid.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-install-button",
+     "title": "TelamonInstallButton",
+     "summary": "An install button for apps with a progress bar inside it, a cancel press while installing, and states for install, update, open and retry.",
+     "path": "telamon-ui/telamon-install-button.md",
+     "source": "docs/reference/telamon-ui/telamon-install-button.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-label",
+     "title": "TelamonLabel",
+     "summary": "Text in one of the Telamon looks (body, title, heading, caption, monospace) so an app never hard-codes sizes and weights.",
+     "path": "telamon-ui/telamon-label.md",
+     "source": "docs/reference/telamon-ui/telamon-label.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Text and code"
+    },
+    {
+     "slug": "telamon-list-view",
+     "title": "TelamonListView",
+     "summary": "A ListView in the Telamon look with selection, type-ahead, a default row from model roles, a context menu and optional drag reordering.",
+     "path": "telamon-ui/telamon-list-view.md",
+     "source": "docs/reference/telamon-ui/telamon-list-view.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-navigation-stack",
+     "title": "TelamonNavigationStack",
+     "summary": "Drill-down navigation with pages pushed over each other, a header with a Back button and the page title, and Alt+Left to go back.",
+     "path": "telamon-ui/telamon-navigation-stack.md",
+     "source": "docs/reference/telamon-ui/telamon-navigation-stack.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Navigation"
+    },
+    {
+     "slug": "telamon-number-validator",
+     "title": "TelamonNumberValidator",
+     "summary": "A validator for a number field that checks a range, a number of decimals and the locale's way of writing numbers.",
+     "path": "telamon-ui/telamon-number-validator.md",
+     "source": "docs/reference/telamon-ui/telamon-number-validator.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Validators"
+    },
+    {
+     "slug": "telamon-onboarding",
+     "title": "TelamonOnboarding",
+     "summary": "A setup scaffold with a column of steps, one page at a time, and a footer with Back, Skip and Next or Finish.",
+     "path": "telamon-ui/telamon-onboarding.md",
+     "source": "docs/reference/telamon-ui/telamon-onboarding.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "telamon-page",
+     "title": "TelamonPage",
+     "summary": "A scrolling page with a large bold title, generous centred margins and a place for buttons at the end of the title row.",
+     "path": "telamon-ui/telamon-page.md",
+     "source": "docs/reference/telamon-ui/telamon-page.md",
+     "order": 1000,
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "telamon-password-field",
+     "title": "TelamonPasswordField",
+     "summary": "A rounded password field with an eye that shows the text, an error message, and automatic hiding when focus leaves.",
+     "path": "telamon-ui/telamon-password-field.md",
+     "source": "docs/reference/telamon-ui/telamon-password-field.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-password-strength",
+     "title": "TelamonPasswordStrength",
+     "summary": "A strength bar and label for a password, shown under a TelamonPasswordField; the scoring stays in the app.",
+     "path": "telamon-ui/telamon-password-strength.md",
+     "source": "docs/reference/telamon-ui/telamon-password-strength.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-path-validator",
+     "title": "TelamonPathValidator",
+     "summary": "A validator for a file path field that can require an absolute path or an existing file or folder.",
+     "path": "telamon-ui/telamon-path-validator.md",
+     "source": "docs/reference/telamon-ui/telamon-path-validator.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Validators"
+    },
+    {
+     "slug": "telamon-placeholder",
+     "title": "TelamonPlaceholder",
+     "summary": "A skeleton block of soft rounded bars with a light sweep, shown where content is still loading.",
+     "path": "telamon-ui/telamon-placeholder.md",
+     "source": "docs/reference/telamon-ui/telamon-placeholder.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-popover",
+     "title": "TelamonPopover",
+     "summary": "A raised card that opens next to a control, with a soft shadow, a border and an optional arrow pointing at its target.",
+     "path": "telamon-ui/telamon-popover.md",
+     "source": "docs/reference/telamon-ui/telamon-popover.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-portal",
+     "title": "TelamonPortal",
+     "summary": "A singleton for what an app asks the desktop to do: open a link with the default app and show a desktop notification.",
+     "path": "telamon-ui/telamon-portal.md",
+     "source": "docs/reference/telamon-ui/telamon-portal.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Services"
+    },
+    {
+     "slug": "telamon-preferences-dialog",
+     "title": "TelamonPreferencesDialog",
+     "summary": "A preferences dialog of pages with a sidebar, a search over every setting's label and help, and entries that save themselves.",
+     "path": "telamon-ui/telamon-preferences-dialog.md",
+     "source": "docs/reference/telamon-ui/telamon-preferences-dialog.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-preferences-page",
+     "title": "TelamonPreferencesPage",
+     "summary": "One page of a TelamonPreferencesDialog: a title and symbol for the sidebar, and Sections of form entries.",
+     "path": "telamon-ui/telamon-preferences-page.md",
+     "source": "docs/reference/telamon-ui/telamon-preferences-page.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-progress-bar",
+     "title": "TelamonProgressBar",
+     "summary": "A rounded progress bar in the accent colour, with an indeterminate mode, a text label beside it and normal, paused and error states.",
+     "path": "telamon-ui/telamon-progress-bar.md",
+     "source": "docs/reference/telamon-ui/telamon-progress-bar.md",
+     "order": 1000,
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-radio-button",
+     "title": "TelamonRadioButton",
+     "summary": "A round radio button with a label; buttons with the same parent form a group and the arrow keys move the choice.",
+     "path": "telamon-ui/telamon-radio-button.md",
+     "source": "docs/reference/telamon-ui/telamon-radio-button.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-rating",
+     "title": "TelamonRating",
+     "summary": "Zero to five stars with halves drawn, read-only by default, or editable with hover preview, click and keyboard.",
+     "path": "telamon-ui/telamon-rating.md",
+     "source": "docs/reference/telamon-ui/telamon-rating.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-screenshot-carousel",
+     "title": "TelamonScreenshotCarousel",
+     "summary": "A row of screenshots shown one at a time with previous and next buttons, dots and arrow keys, loading only the neighbours.",
+     "path": "telamon-ui/telamon-screenshot-carousel.md",
+     "source": "docs/reference/telamon-ui/telamon-screenshot-carousel.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-scroll-bar",
+     "title": "TelamonScrollBar",
+     "summary": "A thin, rounded scroll bar whose thumb widens on hover and fades out when nothing is scrolling.",
+     "path": "telamon-ui/telamon-scroll-bar.md",
+     "source": "docs/reference/telamon-ui/telamon-scroll-bar.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Layout"
+    },
+    {
+     "slug": "telamon-search-results",
+     "title": "TelamonSearchResults",
+     "summary": "A launcher's results list with section headings, icons, subtitles and shortcut hints, driven by keys passed on from the search field.",
+     "path": "telamon-ui/telamon-search-results.md",
+     "source": "docs/reference/telamon-ui/telamon-search-results.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-segmented-control",
+     "title": "TelamonSegmentedControl",
+     "summary": "A row of joined segments with one selected, for a choice between a few views or modes.",
+     "path": "telamon-ui/telamon-segmented-control.md",
+     "source": "docs/reference/telamon-ui/telamon-segmented-control.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-settings",
+     "title": "TelamonSettings",
+     "summary": "An app's own settings file, read and written in the format the Rust settings crate uses, with typed values, atomic batched writes and change notices.",
+     "path": "telamon-ui/telamon-settings.md",
+     "source": "docs/reference/telamon-ui/telamon-settings.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Services"
+    },
+    {
+     "slug": "telamon-shelf",
+     "title": "TelamonShelf",
+     "summary": "A titled horizontal row of cards for a store, with scroll buttons at each end and cards made only for what is on screen.",
+     "path": "telamon-ui/telamon-shelf.md",
+     "source": "docs/reference/telamon-ui/telamon-shelf.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-shortcut-field",
+     "title": "TelamonShortcutField",
+     "summary": "A field that records a key combination and reports conflicts with other registered actions.",
+     "path": "telamon-ui/telamon-shortcut-field.md",
+     "source": "docs/reference/telamon-ui/telamon-shortcut-field.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-shortcut-label",
+     "title": "TelamonShortcutLabel",
+     "summary": "A keyboard shortcut drawn as keycaps, one per key, in the platform's own spelling.",
+     "path": "telamon-ui/telamon-shortcut-label.md",
+     "source": "docs/reference/telamon-ui/telamon-shortcut-label.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Text and code"
+    },
+    {
+     "slug": "telamon-shortcuts",
+     "title": "TelamonShortcuts",
+     "summary": "A singleton registry of the app's actions that reports shortcut conflicts and turns shortcuts into readable text.",
+     "path": "telamon-ui/telamon-shortcuts.md",
+     "source": "docs/reference/telamon-ui/telamon-shortcuts.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Services"
+    },
+    {
+     "slug": "telamon-shortcuts-dialog",
+     "title": "TelamonShortcutsDialog",
+     "summary": "A modal list of the app's keyboard shortcuts grouped by section, with search, scrolling and a Close button.",
+     "path": "telamon-ui/telamon-shortcuts-dialog.md",
+     "source": "docs/reference/telamon-ui/telamon-shortcuts-dialog.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-sidebar",
+     "title": "TelamonSidebar",
+     "summary": "A scrolling sidebar for SidebarItem and SidebarGroup entries with filtering, a placeholder, context menus and drop targets.",
+     "path": "telamon-ui/telamon-sidebar.md",
+     "source": "docs/reference/telamon-ui/telamon-sidebar.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Navigation"
+    },
+    {
+     "slug": "telamon-slider",
+     "title": "TelamonSlider",
+     "summary": "A slider with a thin accent track with round ends and a knob, horizontal or vertical, with Page Up, Page Down, Home and End keys.",
+     "path": "telamon-ui/telamon-slider.md",
+     "source": "docs/reference/telamon-ui/telamon-slider.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-sparkline",
+     "title": "TelamonSparkline",
+     "summary": "A small line chart with no axes or captions that shows the trend of a figure in a card or a row.",
+     "path": "telamon-ui/telamon-sparkline.md",
+     "source": "docs/reference/telamon-ui/telamon-sparkline.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Charts"
+    },
+    {
+     "slug": "telamon-sparkline-item",
+     "title": "TelamonSparklineItem",
+     "summary": "The painted item behind TelamonSparkline, a small axis-less line chart drawn with QPainter.",
+     "path": "telamon-ui/telamon-sparkline-item.md",
+     "source": "docs/reference/telamon-ui/telamon-sparkline-item.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Charts"
+    },
+    {
+     "slug": "telamon-spin-box",
+     "title": "TelamonSpinBox",
+     "summary": "A whole-number field with minus and plus buttons, a prefix and a suffix, which can be shown as a plain number field.",
+     "path": "telamon-ui/telamon-spin-box.md",
+     "source": "docs/reference/telamon-ui/telamon-spin-box.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-spinner",
+     "title": "TelamonSpinner",
+     "summary": "A busy indicator, an accent arc that turns while something loads.",
+     "path": "telamon-ui/telamon-spinner.md",
+     "source": "docs/reference/telamon-ui/telamon-spinner.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-split-button",
+     "title": "TelamonSplitButton",
+     "summary": "A main button joined to an arrow that opens a menu of variants of the action, such as Save and Save As.",
+     "path": "telamon-ui/telamon-split-button.md",
+     "source": "docs/reference/telamon-ui/telamon-split-button.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-split-view",
+     "title": "TelamonSplitView",
+     "summary": "Panes side by side or stacked with a thin draggable Telamon divider that can remember the pane sizes between runs.",
+     "path": "telamon-ui/telamon-split-view.md",
+     "source": "docs/reference/telamon-ui/telamon-split-view.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Layout"
+    },
+    {
+     "slug": "telamon-spring-animation",
+     "title": "TelamonSpringAnimation",
+     "summary": "The Telamon spring for movement and size, standard or with a small overshoot, for use in a Behavior.",
+     "path": "telamon-ui/telamon-spring-animation.md",
+     "source": "docs/reference/telamon-ui/telamon-spring-animation.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Style and motion"
+    },
+    {
+     "slug": "telamon-stat",
+     "title": "TelamonStat",
+     "summary": "A figure with a small muted label, a big value with a unit, an optional trend arrow and an optional sparkline.",
+     "path": "telamon-ui/telamon-stat.md",
+     "source": "docs/reference/telamon-ui/telamon-stat.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-status",
+     "title": "TelamonStatus",
+     "summary": "The values of `status` on lists, tables, trees and pages: Ready, Loading, Empty, NoResults and Error.",
+     "path": "telamon-ui/telamon-status.md",
+     "source": "docs/reference/telamon-ui/telamon-status.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "telamon-style",
+     "title": "TelamonStyle",
+     "summary": "A singleton of design tokens: colours by role, spacing, radii, fonts, durations and density, so no app hard-codes a number.",
+     "path": "telamon-ui/telamon-style.md",
+     "source": "docs/reference/telamon-ui/telamon-style.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Style and motion"
+    },
+    {
+     "slug": "telamon-switch",
+     "title": "TelamonSwitch",
+     "summary": "A pill switch with an accent track when on and a knob that slides across with a small overshoot.",
+     "path": "telamon-ui/telamon-switch.md",
+     "source": "docs/reference/telamon-ui/telamon-switch.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Buttons"
+    },
+    {
+     "slug": "telamon-text-area",
+     "title": "TelamonTextArea",
+     "summary": "A multi-line text field with small rounded corners that wraps long lines and lets Tab move focus on.",
+     "path": "telamon-ui/telamon-text-area.md",
+     "source": "docs/reference/telamon-ui/telamon-text-area.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-text-field",
+     "title": "TelamonTextField",
+     "summary": "A single-line text field with an error message, a clear button, a prefix and suffix, a character counter and validation messages.",
+     "path": "telamon-ui/telamon-text-field.md",
+     "source": "docs/reference/telamon-ui/telamon-text-field.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-text-view",
+     "title": "TelamonTextView",
+     "summary": "A virtualized text view for very large text such as logs and files, with selection, copy, line numbers and follow mode.",
+     "path": "telamon-ui/telamon-text-view.md",
+     "source": "docs/reference/telamon-ui/telamon-text-view.md",
+     "order": 1000,
+     "since": "1.5.0",
+     "section": "Text and code"
+    },
+    {
+     "slug": "telamon-time-picker",
+     "title": "TelamonTimePicker",
+     "summary": "A time of day as hours and minutes number fields, with AM/PM in 12-hour mode and an optional day-of-week drop-down.",
+     "path": "telamon-ui/telamon-time-picker.md",
+     "source": "docs/reference/telamon-ui/telamon-time-picker.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Fields and pickers"
+    },
+    {
+     "slug": "telamon-toolbar",
+     "title": "TelamonToolbar",
+     "summary": "A horizontal or vertical bar of actions that moves the ones that don't fit into a \"more\" menu.",
+     "path": "telamon-ui/telamon-toolbar.md",
+     "source": "docs/reference/telamon-ui/telamon-toolbar.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Navigation"
+    },
+    {
+     "slug": "telamon-tool-tip",
+     "title": "TelamonToolTip",
+     "summary": "A small rounded hint on a raised card, opened after the hover delay.",
+     "path": "telamon-ui/telamon-tool-tip.md",
+     "source": "docs/reference/telamon-ui/telamon-tool-tip.md",
+     "order": 1000,
+     "since": "1.3.0",
+     "section": "Menus, dialogs and popups"
+    },
+    {
+     "slug": "telamon-transparency-switch",
+     "title": "TelamonTransparencySwitch",
+     "summary": "A settings row with a switch for the \"Transparency and blur\" setting every Telamon app shares.",
+     "path": "telamon-ui/telamon-transparency-switch.md",
+     "source": "docs/reference/telamon-ui/telamon-transparency-switch.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Layout"
+    },
+    {
+     "slug": "telamon-tree-model",
+     "title": "TelamonTreeModel",
+     "summary": "A read-only tree model built from nested JavaScript objects, for TelamonTreeView.",
+     "path": "telamon-ui/telamon-tree-model.md",
+     "source": "docs/reference/telamon-ui/telamon-tree-model.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-tree-view",
+     "title": "TelamonTreeView",
+     "summary": "A tree of rows in the Telamon list look, on Qt Quick's TreeView.",
+     "path": "telamon-ui/telamon-tree-view.md",
+     "source": "docs/reference/telamon-ui/telamon-tree-view.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Lists and tables"
+    },
+    {
+     "slug": "telamon-url-validator",
+     "title": "TelamonUrlValidator",
+     "summary": "A validator for a text field that accepts a URL with one of a set of schemes.",
+     "path": "telamon-ui/telamon-url-validator.md",
+     "source": "docs/reference/telamon-ui/telamon-url-validator.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Validators"
+    },
+    {
+     "slug": "telamon-view-switcher",
+     "title": "TelamonViewSwitcher",
+     "summary": "Page tabs for the top of a window: a symbol and text per tab, the current one tinted, with an optional count badge.",
+     "path": "telamon-ui/telamon-view-switcher.md",
+     "source": "docs/reference/telamon-ui/telamon-view-switcher.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Navigation"
+    },
+    {
+     "slug": "telamon-window",
+     "title": "TelamonWindow",
+     "summary": "The application window of a Telamon app: blur or opaque, a width class, saved size and an optional frameless header.",
+     "path": "telamon-ui/telamon-window.md",
+     "source": "docs/reference/telamon-ui/telamon-window.md",
+     "order": 1000,
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "telamon-window-buttons",
+     "title": "TelamonWindowButtons",
+     "summary": "The minimise, maximise or restore and close buttons of a frameless window, drawn like the Telamon OS window decoration.",
+     "path": "telamon-ui/telamon-window-buttons.md",
+     "source": "docs/reference/telamon-ui/telamon-window-buttons.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "telamon-window-chrome",
+     "title": "TelamonWindowChrome",
+     "summary": "A singleton with KWin's caption button layout and whether the desktop has a global menu.",
+     "path": "telamon-ui/telamon-window-chrome.md",
+     "source": "docs/reference/telamon-ui/telamon-window-chrome.md",
+     "order": 1000,
+     "since": "1.4.0",
+     "section": "Windows and pages"
+    },
+    {
+     "slug": "text-button",
+     "title": "TextButton",
+     "summary": "A link-styled button: accent text, no fill.",
+     "path": "telamon-ui/text-button.md",
+     "source": "docs/reference/telamon-ui/text-button.md",
+     "order": 1000,
+     "section": "Buttons"
+    },
+    {
+     "slug": "toast",
+     "title": "Toast",
+     "summary": "A short message that appears at the bottom centre of its parent and goes by itself.",
+     "path": "telamon-ui/toast.md",
+     "source": "docs/reference/telamon-ui/toast.md",
+     "order": 1000,
+     "section": "Feedback and status"
+    },
+    {
+     "slug": "toolbar-button",
+     "title": "ToolbarButton",
+     "summary": "A small icon button for toolbars that never takes the editor's focus.",
+     "path": "telamon-ui/toolbar-button.md",
+     "source": "docs/reference/telamon-ui/toolbar-button.md",
+     "order": 1000,
+     "section": "Buttons"
+    },
+    {
+     "slug": "usage-bar",
+     "title": "UsageBar",
+     "summary": "A stacked bar of how something is shared out, with an optional legend.",
+     "path": "telamon-ui/usage-bar.md",
+     "source": "docs/reference/telamon-ui/usage-bar.md",
+     "order": 1000,
+     "section": "Charts"
+    }
+   ]
+  },
+  {
+   "slug": "symbols",
+   "title": "Symbols",
+   "summary": "Google's Material Symbols as fonts, drawn with the Symbol type and named by Symbols.Name: styles, filled and outline, size, colour and how to find a name.",
+   "order": 2,
+   "pages": [
+    {
+     "slug": "index",
+     "title": "Symbols",
+     "summary": "Google's Material Symbols as fonts, drawn with the Symbol type and named by Symbols.Name: styles, filled and outline, size, colour and how to find a name.",
+     "path": "symbols/index.md",
+     "source": "docs/reference/symbols/index.md",
+     "order": 2
+    },
+    {
+     "slug": "gallery",
+     "title": "Telamon Gallery",
+     "summary": "The Telamon Gallery app (telamon-symbols) shows every Telamon.Ui control live and every Material Symbol, and copies the QML for either.",
+     "path": "symbols/gallery.md",
+     "source": "docs/reference/symbols/gallery.md",
+     "order": 10
+    }
+   ]
+  },
+  {
+   "slug": "telamon-framework-core",
+   "title": "telamon-framework-core",
+   "summary": "The small Rust crate every Telamon app uses, with app identity, the settings file, journal logging, os-release and a safe append helper, and no Qt or async runtime.",
+   "order": 3,
+   "pages": [
+    {
+     "slug": "index",
+     "title": "telamon-framework-core",
+     "summary": "The small Rust crate every Telamon app uses, with app identity, the settings file, journal logging, os-release and a safe append helper, and no Qt or async runtime.",
+     "path": "telamon-framework-core/index.md",
+     "source": "docs/reference/telamon-framework-core/index.md",
+     "order": 3
+    },
+    {
+     "slug": "app-info",
+     "title": "AppInfo and app_info!",
+     "summary": "The value that names the running app, from which its settings file, journal identifier, crash reports and links are derived.",
+     "path": "telamon-framework-core/app-info.md",
+     "source": "docs/reference/telamon-framework-core/app-info.md",
+     "order": 10
+    },
+    {
+     "slug": "settings",
+     "title": "settings",
+     "summary": "An app's own settings file in ~/.config, in KConfig INI format, written atomically under a lock shared with Telamon.Ui's TelamonSettings.",
+     "path": "telamon-framework-core/settings.md",
+     "source": "docs/reference/telamon-framework-core/settings.md",
+     "order": 20
+    },
+    {
+     "slug": "task",
+     "title": "task",
+     "summary": "One tokio runtime thread for the app, and spawn_ui, which runs a future with a timeout and cancellation and posts the result back to the UI thread.",
+     "path": "telamon-framework-core/task.md",
+     "source": "docs/reference/telamon-framework-core/task.md",
+     "order": 25
+    },
+    {
+     "slug": "log",
+     "title": "log",
+     "summary": "The log crate's macros sent straight to the systemd journal with a priority and the app's identifier, falling back to stderr.",
+     "path": "telamon-framework-core/log.md",
+     "source": "docs/reference/telamon-framework-core/log.md",
+     "order": 30
+    },
+    {
+     "slug": "osrelease",
+     "title": "osrelease",
+     "summary": "The OS name, version and logo from os-release(5), for About pages and reports.",
+     "path": "telamon-framework-core/osrelease.md",
+     "source": "docs/reference/telamon-framework-core/osrelease.md",
+     "order": 40
+    },
+    {
+     "slug": "fsutil",
+     "title": "fsutil",
+     "summary": "Helpers for appending to shared log files without following symlinks or writing to a planted FIFO, for bounded reads, and for reading lines that may be torn.",
+     "path": "telamon-framework-core/fsutil.md",
+     "source": "docs/reference/telamon-framework-core/fsutil.md",
+     "order": 50
+    }
+   ]
+  },
+  {
+   "slug": "telamon-framework-ui",
+   "title": "telamon-framework-ui",
+   "summary": "The Rust crate that starts every Telamon GUI app, with the app! macro, the C functions main.cpp calls, one instance per session, journal logging, crash hooks and the Telamon.Ui version check.",
+   "order": 4,
+   "pages": [
+    {
+     "slug": "index",
+     "title": "telamon-framework-ui",
+     "summary": "The Rust crate that starts every Telamon GUI app, with the app! macro, the C functions main.cpp calls, one instance per session, journal logging, crash hooks and the Telamon.Ui version check.",
+     "path": "telamon-framework-ui/index.md",
+     "source": "docs/reference/telamon-framework-ui/index.md",
+     "order": 4
+    },
+    {
+     "slug": "app-macro",
+     "title": "app!",
+     "summary": "The macro that names a Telamon app once, with its name, ID, repository and optionally the oldest Telamon.Ui it works with.",
+     "path": "telamon-framework-ui/app-macro.md",
+     "source": "docs/reference/telamon-framework-ui/app-macro.md",
+     "order": 10
+    },
+    {
+     "slug": "c-api",
+     "title": "The C API",
+     "summary": "The C functions in include/telamon/app.h that an app's main.cpp calls to start, with telamon_app_run for most apps and telamon_app_init and telamon_app_ready for apps with their own shell.",
+     "path": "telamon-framework-ui/c-api.md",
+     "source": "docs/reference/telamon-framework-ui/c-api.md",
+     "order": 20
+    },
+    {
+     "slug": "startup",
+     "title": "Startup behaviour",
+     "summary": "What a Telamon app does at start, with one instance per session, the Wayland activation token, journal logging, the Rust panic hook and the fatal Qt message hook.",
+     "path": "telamon-framework-ui/startup.md",
+     "source": "docs/reference/telamon-framework-ui/startup.md",
+     "order": 30
+    }
+   ]
+  },
+  {
+   "slug": "telamon-framework-system",
+   "title": "telamon-framework-system",
+   "summary": "The Rust crate for Telamon system apps, with opt-in crash reports, Telamon OS state (bootc status, boot history, update events), polkit checks for root helpers and desktop notifications.",
+   "order": 5,
+   "pages": [
+    {
+     "slug": "index",
+     "title": "telamon-framework-system",
+     "summary": "The Rust crate for Telamon system apps, with opt-in crash reports, Telamon OS state (bootc status, boot history, update events), polkit checks for root helpers and desktop notifications.",
+     "path": "telamon-framework-system/index.md",
+     "source": "docs/reference/telamon-framework-system/index.md",
+     "order": 5
+    },
+    {
+     "slug": "crash",
+     "title": "crash",
+     "summary": "Opt-in crash reports, the only telemetry a Telamon app may have, with the per-user switch, the endpoint, scrubbing, the pending queue and sending after the user has seen the exact payload.",
+     "path": "telamon-framework-system/crash.md",
+     "source": "docs/reference/telamon-framework-system/crash.md",
+     "order": 10
+    },
+    {
+     "slug": "history",
+     "title": "history",
+     "summary": "The record of Telamon OS versions this machine has booted, one JSON line each, and the helpers that read and append to it.",
+     "path": "telamon-framework-system/history.md",
+     "source": "docs/reference/telamon-framework-system/history.md",
+     "order": 20
+    },
+    {
+     "slug": "bootc",
+     "title": "bootc",
+     "summary": "Typed views of bootc status --json for Telamon OS (booted, staged and rollback images, the update channel and available updates) and the channel tag rewrite.",
+     "path": "telamon-framework-system/bootc.md",
+     "source": "docs/reference/telamon-framework-system/bootc.md",
+     "order": 30
+    },
+    {
+     "slug": "events",
+     "title": "events",
+     "summary": "The update and rollback events the Telamon OS system helper records, one JSON line each, and the functions that read and append them.",
+     "path": "telamon-framework-system/events.md",
+     "source": "docs/reference/telamon-framework-system/events.md",
+     "order": 40
+    },
+    {
+     "slug": "polkit",
+     "title": "polkit",
+     "summary": "The polkit authorization check behind every admin action of a Telamon root D-Bus helper, failing closed, available with the polkit feature.",
+     "path": "telamon-framework-system/polkit.md",
+     "source": "docs/reference/telamon-framework-system/polkit.md",
+     "order": 50
+    },
+    {
+     "slug": "notify",
+     "title": "notify",
+     "summary": "Desktop notifications over org.freedesktop.Notifications, sent the way KNotification sends them so Plasma groups them under the app and honours the user's per-event choice, with the notify feature.",
+     "path": "telamon-framework-system/notify.md",
+     "source": "docs/reference/telamon-framework-system/notify.md",
+     "order": 60
+    },
+    {
+     "slug": "formats",
+     "title": "On-disk formats",
+     "summary": "Every file the system crate and the core crate read or write for other programs, with exact paths, keys, fields and permissions, and the format-version rule.",
+     "path": "telamon-framework-system/formats.md",
+     "source": "docs/reference/telamon-framework-system/formats.md",
+     "order": 70
+    }
+   ]
+  },
+  {
+   "slug": "telamon-framework-flatpak",
+   "title": "telamon-framework-flatpak",
+   "summary": "The Rust crate for Flatpak updates through libflatpak, used by Telamon Updater and the future Telamon Store, with update listing, update runs and a check for newly requested permissions.",
+   "order": 6,
+   "pages": [
+    {
+     "slug": "index",
+     "title": "telamon-framework-flatpak",
+     "summary": "The Rust crate for Flatpak updates through libflatpak, used by Telamon Updater and the future Telamon Store, with update listing, update runs and a check for newly requested permissions.",
+     "path": "telamon-framework-flatpak/index.md",
+     "source": "docs/reference/telamon-framework-flatpak/index.md",
+     "order": 6
+    },
+    {
+     "slug": "updates",
+     "title": "Updates",
+     "summary": "Listing the Flatpak updates available in the system and user installations, running them with progress, and the types that describe the result.",
+     "path": "telamon-framework-flatpak/updates.md",
+     "source": "docs/reference/telamon-framework-flatpak/updates.md",
+     "order": 10
+    },
+    {
+     "slug": "permissions",
+     "title": "Permissions",
+     "summary": "new_permissions compares two Flatpak metadata files and lists what the new one grants that the old one did not, which is how an update can be held back until the user approves.",
+     "path": "telamon-framework-flatpak/permissions.md",
+     "source": "docs/reference/telamon-framework-flatpak/permissions.md",
+     "order": 20
+    }
+   ]
+  },
+  {
+   "slug": "template",
+   "title": "App template",
+   "summary": "A minimal Telamon app to copy: a Kirigami window on Telamon.Ui, one Rust QObject exposed through CXX-Qt, built with CMake and Corrosion on the framework's crates.",
+   "order": 7,
+   "pages": [
+    {
+     "slug": "index",
+     "title": "App template",
+     "summary": "A minimal Telamon app to copy: a Kirigami window on Telamon.Ui, one Rust QObject exposed through CXX-Qt, built with CMake and Corrosion on the framework's crates.",
+     "path": "template/index.md",
+     "source": "docs/reference/template/index.md",
+     "order": 7
+    },
+    {
+     "slug": "start-a-new-app",
+     "title": "Start a new app",
+     "summary": "Copy the template into a new repository and rename the crate, QML module, app ID, desktop file, notification file and binary.",
+     "path": "template/start-a-new-app.md",
+     "source": "docs/reference/template/start-a-new-app.md",
+     "order": 10
+    },
+    {
+     "slug": "build",
+     "title": "Build and run",
+     "summary": "The Fedora 44 packages, the CMake commands and how to run the template without showing a window.",
+     "path": "template/build.md",
+     "source": "docs/reference/template/build.md",
+     "order": 20
+    },
+    {
+     "slug": "how-it-fits-together",
+     "title": "How it fits together",
+     "summary": "How the template starts: app! in lib.rs, main.cpp, the Rust Backend QObject, Main.qml, the Telamon.Ui version check, notifications, settings and threads.",
+     "path": "template/how-it-fits-together.md",
+     "source": "docs/reference/template/how-it-fits-together.md",
+     "order": 30
+    }
+   ]
+  }
+ ],
+ "overview": {
+  "slug": "index",
+  "title": "Telamon Framework",
+  "summary": "The shared base of every Telamon app, with the Telamon.Ui QML controls, the icon fonts, the Rust crates for startup, settings, logging and system work, and the app template.",
+  "path": "index.md",
+  "source": "docs/reference/index.md",
+  "order": 1000
+ }
+}
