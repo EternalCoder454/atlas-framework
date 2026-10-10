@@ -618,6 +618,35 @@ Item {
             verify(ticker.longest < 400, "the longest gap was " + ticker.longest + " ms");
         }
 
+        // The text field draws the lines in view only (it is told to observe the
+        // viewport, or every change to a big text would rebuild all of it):
+        // wherever the view is scrolled to, the lines there are drawn.
+        function test_a_big_text_is_drawn_wherever_it_is_scrolled_to() {
+            editor.text = numbered(6000, "a line of the document");
+            tryVerify(() => !editor.loading, 60000);
+            function ink() {
+                const img = grabImage(editor);
+                const background = img.pixel(editor.width - 12, 4);
+                let n = 0;
+                for (let y = 8; y < editor.height - 8; y += 2) {
+                    for (let x = 70; x < editor.width - 24; x += 2) {
+                        if (img.pixel(x, y) !== background) {
+                            ++n;
+                        }
+                    }
+                }
+                return n;
+            }
+            tryVerify(() => ink() > 200, 5000, "the first lines are drawn");
+            editor.scrollToLine(5000);
+            tryVerify(() => editor.firstVisibleLine > 4000, 5000);
+            tryVerify(() => ink() > 200, 5000, "the lines far down are drawn");
+            editor.scrollToLine(3000);
+            tryVerify(() => ink() > 200, 5000, "and the lines in the middle");
+            editor.scrollToLine(1);
+            tryVerify(() => editor.firstVisibleLine === 1 && ink() > 200, 5000, "and the first lines again");
+        }
+
         Timer {
             id: ticker
             interval: 10
