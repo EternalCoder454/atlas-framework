@@ -77,7 +77,7 @@ jobs:
 
       - name: Upload the actual and diff pictures of a failed visual test
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: visual-test-output
           path: build/visual-out
@@ -261,7 +261,7 @@ jobs:
 
       - name: Upload the performance numbers
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: perf-out
           path: perf/out.json
@@ -312,7 +312,7 @@ jobs:
             registry.fedoraproject.org/fedora:44 /src/packaging/build-rpm.sh /out
 
       - name: Upload the RPMs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rpms
           path: ${{ runner.temp }}/rpms/*.rpm
